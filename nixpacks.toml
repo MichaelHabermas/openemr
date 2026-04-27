@@ -1,0 +1,4 @@
+# Railway / Nixpacks: this repo has both package.json and composer.json.
+# Auto-detect can pick Node only, so `composer` is missing from PATH (exit 127).
+# Merging the PHP provider brings PHP and Composer into the build environment.
+providers = ["...", "php", "node"]
