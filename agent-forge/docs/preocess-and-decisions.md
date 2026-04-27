@@ -11,3 +11,9 @@ This document outlines the process and decisions made during the development of 
 - **Started the Easy Development Docker environment** (`docker/development-easy`, `docker compose up --detach --wait`): the composer/npm steps only build the tree; this runs OpenEMR with MySQL and the rest of the dev stack so the app is actually reachable, not just compiled on disk.
 - **Opened the running instance in the browser** (e.g. `http://localhost:8300/`, or `https://localhost:9300/`): confirmed the project is up; default dev access is documented in `CLAUDE.md` / `CONTRIBUTING.md` (e.g. `admin` / `pass`).
 
+## Git remotes — GitLab and GitHub
+
+Changes are pushed to **both** the GitLab and GitHub remotes.
+
+- **GitLab** is the target Gauntlet expects.
+- **GitHub** is kept in sync because deployments and related workflows are easier there.
