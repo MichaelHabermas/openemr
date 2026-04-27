@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "buildAptPackages": ["curl", "unzip", "git"],
+  "steps": {
+    "install": {
+      "commands": [
+        {
+          "cmd": "curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer",
+          "customName": "Install Composer (not bundled in FrankenPHP runtime image)"
+        },
+        { "path": "/usr/local/bin" },
+        "..."
+      ]
+    }
+  }
+}
