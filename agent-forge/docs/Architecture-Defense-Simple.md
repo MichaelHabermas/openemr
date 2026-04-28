@@ -1,4 +1,6 @@
-# Architecture Defence SIMPLE — Clinical Co-Pilot
+# Architecture Defense SIMPLE — Clinical Co-Pilot
+
+> This is a defense brief. Canonical implementation detail and source-of-truth architecture remain in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Big idea
 

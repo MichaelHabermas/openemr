@@ -16,7 +16,7 @@
 
 2. *Direct parameterized SQL with AUDIT-encoded filters.* The agent reads OpenEMR's MySQL through ten typed Python tool functions — no RAG, no vector search. Each tool emits fixed parameterized SQL with the AUDIT.md data-quality findings (soft-delete columns, polymorphic `lists.type`, dual-storage meds, author-id-zero rows) baked in once. Read-only DB user, finite tool set, code-reviewable surface.
 
-3. *Two-layer verification with citation grammar.* Every clinical claim carries an inline `[src:table.id]` tag anchored to a tool-returned row. A deterministic post-processor checks citation existence and bans inference phrases. An independent verifier model (different family from the primary, deliberately) judges whether claims are grounded and whether they cross the no-inference line. Failure falls through to a deterministic enumeration response — never silent stripping.
+3. *Three-layer verification with citation grammar.* Every clinical claim carries an inline `[src:table.id]` tag anchored to a tool-returned row. Prompt constraints define grounded output, a deterministic post-processor checks citation existence and bans inference phrases, and an independent verifier model (different family from the primary, deliberately) judges whether claims are grounded and whether they cross the no-inference line. Failure falls through to a deterministic enumeration response — never silent stripping.
 
 **The line that's never crossed.** The agent surfaces chart-cited facts. It does not recommend, diagnose, suggest dose changes, or offer causal reasoning. The verifier is tuned over-eager: a 10% false-reject rate is acceptable cost; <1% false-accept is the line. The cost asymmetry is the design principle.
 

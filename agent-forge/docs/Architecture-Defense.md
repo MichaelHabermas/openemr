@@ -1,4 +1,6 @@
-# Architecture Defence — Clinical Co-Pilot
+# Architecture Defense — Clinical Co-Pilot
+
+> This is a defense brief. Canonical implementation detail and source-of-truth architecture remain in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Thesis.** A primary-care physician's first 90 seconds in a 15-minute slot is re-orientation, not reasoning. The agent earns its place only if it surfaces chart-cited facts during that window and never adds a fact the chart doesn't support. Every choice below is downstream of that.
 
