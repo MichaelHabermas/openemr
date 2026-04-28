@@ -54,3 +54,62 @@ Every clinical claim carries inline `[src:table.id]` anchored to a tool-returned
 ## Honest weakest spots
 
 80-case eval gates project-killers, not coverage. Verifier has unknown blind spots until adversarial eval expands. Permissive demo authz policy is closed by the seam, not by v1 code. Each is named in [ARCHITECTURE.md](ARCHITECTURE.md) §12 with the compensating control and the signal that would change priority.
+
+```mermaid
+flowchart TB
+    subgraph OpenEMR ["OpenEMR (PHP Frontend)"]
+        ChartOpen[Chart Open\npid, user_id]
+        PHP[PHP Module]
+        JWT[JWT Minting\nHMAC-signed\nuser_id, pid\n15-min expiry]
+    end
+
+    subgraph UI ["Physician UI Surfaces"]
+        SummaryCard[Pre-computed\nSummary Card\nZero LLM latency]
+        ChatUI[Multi-turn Chat\nEmbedded in Chart]
+    end
+
+    subgraph Agent ["Python Agent Service"]
+        Auth[JWT Verifier\nTrust Token Only]
+        Tools[Tool Functions\n10 Typed SQL Tools]
+        SQL[Parameterized SQL\nRead-only DB User\nAUDIT-encoded]
+        LLM[Primary LLM\nFact Generation\nWith src:table.id Citations]
+        PostProc[Deterministic Post-Processor\nCitation Validator\nBans Inference Phrases]
+        Verifier[Independent Verifier LLM\nDifferent Family\nGrounding + No-Inference Check]
+        Fallback[Safe Fallback\nEnumerated Facts Only]
+        Output[Output to UI]
+    end
+
+    subgraph DB ["OpenEMR MySQL Database"]
+        Data[(Patient Data\nMeds, Labs, Notes\nAUDIT columns)]
+    end
+
+    %% Logic Flows
+    ChartOpen --> PHP
+    PHP --> JWT
+    JWT --> Auth
+    
+    SummaryCard -. "Pre-computed\n(8-10 min earlier)" .-> Agent
+    ChatUI <--> Auth
+    Auth --> Tools
+    Tools --> SQL
+    SQL <--> Data
+    SQL --> Tools
+    Tools --> LLM
+    LLM --> PostProc
+    PostProc --> Verifier
+    
+    Verifier -->|Pass| Output
+    Verifier -->|Fail| Fallback
+    Fallback --> Output
+
+    %% UI Connections
+    SummaryCard <--> ChatUI
+    Output --> SummaryCard
+    Output --> ChatUI
+
+
+    class SummaryCard,ChatUI ui
+    class Agent,LLM,PostProc,Verifier,Tools,Output,Fallback backend
+    class DB,Data db
+    class JWT,Auth security
+```
