@@ -1,4 +1,4 @@
-         Pre-Search Checklist
+# Pre-Search Checklist
 
 Complete this before writing code. Save your AI conversation as a reference document.
 
