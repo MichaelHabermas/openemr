@@ -507,6 +507,29 @@ These are decorator-style hooks. None of them add per-resource access control to
 
 Inferred from absence of DBAL `Connection` references in service code; would be confirmed by tracing the live DB handle through a request. CLAUDE.md's "MySQL via Doctrine DBAL 4.x (ADODB surface API for legacy code)" framing reads, on the code as written, as DBAL-loaded-not-DBAL-driven.
 
+### A8. No service-layer principal API — identity must be reconstructed for any non-HTTP entry point
+
+A2 establishes that identity is read from session globals. The follow-on consequence is structural: **no method signature anywhere in the service layer accepts a principal as a parameter.** A caller that arrives without an active session has no in-band way to declare "I am acting as user X."
+
+```php
+// src/Services/BaseService.php:65-73 — no user parameter
+public function __construct(private $table, ?LoggerInterface $logger = null) { ... }
+
+// src/Services/PatientService.php:392-416 — no user parameter
+public function search($search, $isAndCondition = true, $puuidBind = null) { ... }
+
+// src/Common/Acl/AclMain.php:166 — $user is a string, defaults to session lookup upstream
+public static function aclCheckCore($section, $value, $user = '', $return_value = '') { ... }
+```
+
+A non-HTTP caller — CLI command, queue worker, scheduled task, sidecar process — that invokes `PatientService::search` or any service that internally calls `AclMain::aclCheckCore` will hit three observable consequences:
+
+1. **Most ACL checks deny.** `aclCheckCore` with empty `$user` falls through to denial in nearly every permission category. The session-backed lookup that `request_authorization_check` uses (`$request->getSession()->get("authUser")`) returns empty, and no parameter override is wired into the service layer to compensate.
+2. **Audit attribution is empty or wrong.** `EventAuditLogger` reads the acting username from the same session bag (see C3, C4). Events from a non-HTTP caller log as `''` (or whatever shim the caller sets) and break the "who accessed this chart" question that audit exists to answer.
+3. **Service results are unscoped even if ACL is bypassed.** Setting a synthetic admin session is technically possible, but `PatientService::search` does not narrow by provider/care-team predicate (A1). The caller gets every matching patient regardless of the principal it claimed.
+
+**Implication:** any new entry point that runs outside an HTTP request thread must (a) materialize a `$_SESSION['authUser']` shim before calling services, (b) make a deliberate decision about *what* identity to set, and (c) accept that the existing service surface cannot answer "is this principal allowed to see this patient" in a resource-scoped way. There is no clean "system principal" API to invoke and no parameter-passed alternative path.
+
 ## Data Quality
 
 ### D1 — No foreign key constraints anywhere in the schema
@@ -680,9 +703,9 @@ CREATE TABLE `log` (
 
 The `log` table has no triggers preventing UPDATE/DELETE, no separate audit-only DB user, and no column constraints enforcing immutability. A repository-wide search finds no `UPDATE log` / `DELETE FROM log` statements in source — but no schema-level barrier prevents either. Integrity rests on (a) per-row checksum (which can be recomputed by an attacker who already has DB write access) and (b) the application's own discipline.
 
-### C3 — SELECT auditing is implemented but gated off by default
+### C3 — PHI reads are not audited unless explicitly enabled
 
-`EventAuditLogger` short-circuits SELECT events when the `audit_events_query` global is unset.
+A `SELECT` against `patient_data`, `lists`, `prescriptions`, `pnotes`, or any other clinical table produces no audit row on a default deployment. The audit logger short-circuits SELECT events when the `audit_events_query` global is unset, and the global is unset by default.
 
 ```php
 // src/Common/Logging/EventAuditLogger.php:425
@@ -694,7 +717,7 @@ if (($querytype == "select") && !$this->config->queryEvents) {
 queryEvents: $bag->getBoolean('audit_events_query'),
 ```
 
-The capability exists in code, but PHI **reads** are not audited unless the deployment has explicitly enabled the flag.
+The capability exists; the default state is silence on PHI access. A vanilla install will record `INSERT/UPDATE/DELETE` events but no read events — meaning the "who looked at this chart, when" question that HIPAA's access-disclosure framing depends on cannot be answered from the audit log. Any new caller (background job, sidecar agent, integration script) that only reads PHI is invisible to audit unless this flag is explicitly enabled at the deployment.
 
 ### C4 — Audit coverage is configured per category, not enforced by code
 
@@ -711,13 +734,22 @@ The capability exists in code, but PHI **reads** are not audited unless the depl
 
 Each category is independently togglable. A deployment with these off will silently audit nothing in those categories. Coverage is configuration-determined, not code-determined.
 
-### C5 — Encryption at rest is opt-in and narrow in scope
+### C5 — Clinical data at rest is plaintext by design; encryption is opt-in for audit comments and documents only
 
-`log_comment_encrypt.encrypt` defaults `'No'`. The application-level `CryptoGen` (`src/Common/Crypto/CryptoGen.php`) implements AES-256-CBC + HMAC-SHA384 with a dual keystore (DB-stored keys encrypted by on-disk keys, and vice versa) and versioned key rotation, but it is invoked only for audit comments (when enabled) and document storage in `sites/[site]/documents/`. Clinical tables — `patient_data`, `lists`, `prescriptions`, `pnotes`, `form_encounter` — are plaintext at rest. No `AES_ENCRYPT` or column-encryption wrapper appears in the schema or service writes.
+A snapshot of the live database — backup file, replicated slave, leaked dump — exposes the entire patient record in cleartext. None of the clinical tables that hold PHI (`patient_data`, `lists`, `prescriptions`, `pnotes`, `form_encounter`, `forms`) use column-level encryption. No `AES_ENCRYPT` wrapper appears in any service write, and the schema defines no encrypted column types for clinical data.
 
-### C6 — HTTPS is not enforced in code; core session cookie defaults to non-Secure
+The encryption infrastructure that does exist is real and well-built, but narrow in scope:
 
-A repository-wide search for `force_ssl`, `HSTS`, `Strict-Transport-Security`, `require_ssl` across `src/`, `library/`, and `interface/` returns no application-level enforcement.
+```sql
+-- sql/database.sql (log_comment_encrypt)
+`encrypt` enum('Yes','No') NOT NULL DEFAULT 'No',
+```
+
+`CryptoGen` (`src/Common/Crypto/CryptoGen.php`) implements AES-256-CBC + HMAC-SHA384 with a dual keystore (DB-stored keys encrypted by on-disk keys, and vice versa) and versioned key rotation. It is invoked in two places only: optional audit-comment encryption (default `'No'`, per the column above) and on-disk document storage in `sites/[site]/documents/`. Encryption at rest for clinical data is left to the deployment to solve at the storage layer (filesystem encryption, encrypted MySQL volumes, full-disk encryption on the host) — it is not an application concern.
+
+### C6 — HTTPS is not enforced in code; core UI session cookie is non-Secure
+
+A core-UI session cookie issued over HTTP is sent in clear and replayable on any subsequent HTTP request to the same host. There is no application-level circuit-breaker. A repository-wide search for `force_ssl`, `HSTS`, `Strict-Transport-Security`, or `require_ssl` across `src/`, `library/`, and `interface/` returns no enforcement.
 
 ```php
 // src/Common/Session/SessionConfigurationBuilder.php:26
@@ -727,7 +759,9 @@ A repository-wide search for `force_ssl`, `HSTS`, `Strict-Transport-Security`, `
 // :110 (API session path)    ->setCookieSecure(true)
 ```
 
-The OAuth and REST/API session paths set Secure; the core UI session does not. TLS termination and HTTP→HTTPS redirection are left to the deployment / reverse proxy.
+The OAuth and REST/API session paths set `Secure`; the **core UI session does not**. TLS termination, HTTP→HTTPS redirection, and HSTS are entirely the deployment's responsibility — the application will accept and issue session cookies over plaintext HTTP without complaint.
+
+Combined with S3 (core-UI cookies are non-HttpOnly by deliberate design), the session cookie is recoverable from any environment that can inspect HTTP traffic between the browser and the server. The application provides no in-process refusal of plaintext traffic to fall back on.
 
 ### C7 — Brute-force lockout is real, MFA is opt-in, no MFA gate on PHI access
 
