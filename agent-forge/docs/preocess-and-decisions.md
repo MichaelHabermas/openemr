@@ -17,3 +17,10 @@ Changes are pushed to **both** the GitLab and GitHub remotes.
 
 - **GitLab** is the target Gauntlet expects.
 - **GitHub** is kept in sync because deployments and related workflows are easier there.
+
+## Deployment — what we tried and where it landed
+
+- **Tried Railway first:** ran into difficulty getting the build to work and could not get past it, so abandoned the platform.
+- **Tried DigitalOcean Droplets next:** payment failed because the Ramp card wasn't accepted for some reason, which blocked provisioning, so abandoned that route as well.
+- **Landed on a Vultr Linux VM:** spun up a Linux virtual machine on Vultr, installed Docker and the rest of the required dependencies, pulled the repo, and deployed the app there.
+- **Domain from Namecheap:** registered a domain through Namecheap and pointed it at the Vultr VM. That is the live deployment.
