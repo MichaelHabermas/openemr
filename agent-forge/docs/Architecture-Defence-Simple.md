@@ -23,7 +23,7 @@ Tradeoff:
 
 - One extra network hop and two deployable services.
 
-## 2) Identity by short-lived JWT, never by request body
+## 2) Patient identity comes from JWT only
 
 - PHP creates a short-lived JWT (15 minutes) with user + patient context.
 - Python trusts only the verified token for patient identity.
@@ -53,7 +53,7 @@ When this changes:
 
 - If we add heavy free-text note search, RAG may become necessary.
 
-## 4) Two surfaces, one backend
+## 4) Two user experiences, one backend
 
 - A precomputed summary card is generated before chart-open and served fast.
 - A live chat uses the same backend tools/citations for follow-up.
@@ -67,7 +67,7 @@ Staleness handling:
 
 - Show a staleness banner instead of blocking; transparency over hidden delay.
 
-## 5) Three-layer verification with a citation grammar
+## 5) Three-layer safety + citation rules
 
 Every claim must include a citation like `[src:table.id]`.
 
@@ -106,7 +106,7 @@ It claims the displayed output is constrained by:
 
 - Current eval set is useful but not full coverage.
 - Verifier blind spots may exist until more adversarial testing is added.
-- v1 authz policy is permissive by default, with a clean seam (`PatientAccessPolicy`) for stricter production policy.
+- v1 authz policy is permissive by default, with a clean seam for stricter policy.
 ```mermaid
 flowchart TB
     subgraph OpenEMR ["OpenEMR (PHP Frontend)"]

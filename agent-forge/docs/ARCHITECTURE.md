@@ -10,13 +10,17 @@
 
 **The shape.** Two UI surfaces, one backend. A pre-computed summary card visible the moment the chart opens (zero LLM latency — computed when the patient checked in 8–10 minutes earlier). A multi-turn chat for follow-up drill-downs, embedded in the same chart UI, sharing the same tools, citations, and verifier. The card is "the chat with one prompt nobody typed yet."
 
-**Three load-bearing choices.**
+**Five load-bearing choices.**
 
-1. *JWT-bound identity.* The OpenEMR PHP module mints a 15-minute HMAC-signed JWT carrying `(user_id, pid)` at every chart-open and chat turn. The Python agent service trusts the JWT and only the JWT. Tools read `pid` from the verified token, never from a request body or LLM tool argument. Wrong-patient prompt injection is closed cryptographically, not hopefully.
+1. *Two-process split: PHP module ↔ Python agent service over HTTP.* OpenEMR keeps session, ACL, CSRF, and UI concerns; the Python service owns tool dispatch, LLM calls, verification, and audit traces.
 
-2. *Direct parameterized SQL with AUDIT-encoded filters.* The agent reads OpenEMR's MySQL through ten typed Python tool functions — no RAG, no vector search. Each tool emits fixed parameterized SQL with the AUDIT.md data-quality findings (soft-delete columns, polymorphic `lists.type`, dual-storage meds, author-id-zero rows) baked in once. Read-only DB user, finite tool set, code-reviewable surface.
+2. *JWT-bound identity.* The OpenEMR PHP module mints a 15-minute HMAC-signed JWT carrying `(user_id, pid)` at every chart-open and chat turn. The Python agent service trusts the JWT and only the JWT. Tools read `pid` from the verified token, never from a request body or LLM tool argument. Wrong-patient prompt injection is closed cryptographically, not hopefully.
 
-3. *Three-layer verification with citation grammar.* Every clinical claim carries an inline `[src:table.id]` tag anchored to a tool-returned row. Prompt constraints define grounded output, a deterministic post-processor checks citation existence and bans inference phrases, and an independent verifier model (different family from the primary, deliberately) judges whether claims are grounded and whether they cross the no-inference line. Failure falls through to a deterministic enumeration response — never silent stripping.
+3. *Direct parameterized SQL with AUDIT-encoded filters.* The agent reads OpenEMR's MySQL through ten typed Python tool functions — no RAG, no vector search. Each tool emits fixed parameterized SQL with the AUDIT.md data-quality findings (soft-delete columns, polymorphic `lists.type`, dual-storage meds, author-id-zero rows) baked in once. Read-only DB user, finite tool set, code-reviewable surface.
+
+4. *Two surfaces, one backend.* The pre-computed card and live chat share one backend path, one tool layer, one citation grammar, and one verification flow.
+
+5. *Three-layer verification with citation grammar.* Every clinical claim carries an inline `[src:table.id]` tag anchored to a tool-returned row. Prompt constraints define grounded output, a deterministic post-processor checks citation existence and bans inference phrases, and an independent verifier model (different family from the primary, deliberately) judges whether claims are grounded and whether they cross the no-inference line. Failure falls through to a deterministic enumeration response — never silent stripping.
 
 **The line that's never crossed.** The agent surfaces chart-cited facts. It does not recommend, diagnose, suggest dose changes, or offer causal reasoning. The verifier is tuned over-eager: a 10% false-reject rate is acceptable cost; <1% false-accept is the line. The cost asymmetry is the design principle.
 

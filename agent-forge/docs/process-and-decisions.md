@@ -443,7 +443,7 @@ Changes are pushed to **both** the GitLab and GitHub remotes.
   - **Q3** `PatientAccessPolicy` Protocol seam — demo permissive, production has a place to land without re-architecture.
   - **Q4** Direct parameterized SQL via tools, with AUDIT D-findings encoded in `clinical_filters.py` — single seam, not a pattern the prompt has to remember.
   - **Q5** Two surfaces, one backend (pre-compute card + multi-turn chat) — satisfies SPECS multi-turn rule honestly; card is zero-LLM-latency at chart-open.
-  - **Q6** Two-layer verification (deterministic post-processor + LLM verifier with citation grammar `[src:table.id]`) — the no-inference rule has teeth, not just a prompt.
+  - **Q6** Three-layer verification (prompt constraints + deterministic post-processor + LLM verifier with citation grammar `[src:table.id]`) — the no-inference rule has teeth, not just a prompt.
   - **Q7** Hash-chained append-only JSONL as system of record + summary row in OpenEMR `log` — closes AUDIT C1/C2 integrity gaps for the agent's trail without rewriting OpenEMR.
   - **Q8/Q9** Pre-compute fired at front-desk check-in via cron poller; Twig panel + PHP proxy — chart-open feels instant, browser never speaks to agent service directly.
   - **Q10** Claude Haiku primary + GPT-4.1-mini verifier — different families for defense-in-depth.
