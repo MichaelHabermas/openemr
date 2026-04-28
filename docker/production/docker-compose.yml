@@ -32,6 +32,7 @@ services:
     volumes:
     - logvolume01:/var/log
     - sitevolume:/var/www/localhost/htdocs/openemr/sites
+    - ./../../:/var/www/localhost/htdocs/openemr
     environment:
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: root
