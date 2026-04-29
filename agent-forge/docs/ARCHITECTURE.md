@@ -32,9 +32,11 @@
 
 Two processes over HTTP on a private network: a **PHP shim inside OpenEMR**, and a **standalone Python agent service**.
 
-**PHP shim.** A single file at `interface/main/clinical_copilot.php`. Reads the existing OpenEMR session, mints a 15-min HS256 JWT carrying `(user_id, pid, exp)`, and renders an iframe pointing at the Python service with the JWT in a query parameter (consumed once, swapped for an HttpOnly cookie). The shim is the trust boundary on the OpenEMR side.
+**PHP shim.** A single file at `interface/main/clinical_copilot.php`. Reads the existing OpenEMR session, mints a 15-min HS256 JWT carrying `(user_id, pid, exp)`, and renders an iframe pointing at the Python service's `/bootstrap` endpoint with the JWT in a query parameter. The shim is the trust boundary on the OpenEMR side.
 
-**Python agent service.** FastAPI + uvicorn in its own container, reachable only from the OpenEMR host via the docker network. Owns: tool dispatch, LLM call (Anthropic Haiku 4.5), citation post-processor, JSONL audit log, Langfuse trace export. Stateless except for the JSONL log.
+**Python agent service.** FastAPI + uvicorn in its own container, served at its own public origin (cross-origin to OpenEMR) over TLS. Owns: tool dispatch, LLM call (Anthropic Haiku 4.5), citation post-processor, JSONL audit log, Langfuse trace export. Stateless except for the JSONL log. Cross-origin embedding is permitted by `Content-Security-Policy: frame-ancestors <openemr-origin>`; cross-origin XHR is permitted by CORS for the same origin, with `Allow-Credentials: false` (no cookies cross the boundary).
+
+**Token hand-off.** No cookies. The `/bootstrap` HTML reads `?jwt=` from the URL into a module-scoped JS variable, calls `history.replaceState` to strip the token from the visible URL, and attaches the token as `Authorization: Bearer` on every subsequent `fetch`. The JWT is never written to `localStorage`, `sessionStorage`, or a cookie. `Referrer-Policy: no-referrer` closes the bootstrap-URL leak vector.
 
 **Data flow:**
 
@@ -42,15 +44,18 @@ Two processes over HTTP on a private network: a **PHP shim inside OpenEMR**, and
 chart-open (T+0)
   └─→ browser → OpenEMR PHP shim (clinical_copilot.php)
         ├─→ mint JWT {user_id, pid, exp:+15min}, sign HS256
-        └─→ render <iframe src="/copilot/?jwt=...">
-              └─→ Python agent service
-                    ├─→ verify JWT, set HttpOnly cookie, redirect
-                    ├─→ run default "summary" turn
+        └─→ render <iframe src="https://<copilot-origin>/bootstrap?jwt=...">
+              └─→ Python agent service (/bootstrap)
+                    ├─→ return HTML; inline JS reads ?jwt=, holds in memory,
+                    │   history.replaceState strips token from URL
+                    ├─→ fetch /chat with Authorization: Bearer <jwt>
+                    │     └─→ verify JWT signature + expiry (every request)
+                    │     └─→ run default "summary" turn
                     │     └─→ tool calls (pid from JWT) → MySQL (read-only user)
                     │     └─→ Haiku 4.5 with citation grammar
                     │     └─→ post-processor verifies citations
                     │     └─→ stream tokens to iframe
-                    └─→ accept follow-up turns on /chat
+                    └─→ accept follow-up turns on /chat (same bearer)
 ```
 
 The split honors the AUDIT findings without rewriting OpenEMR. The agent gets typed identity, parameterized SQL, and its own audit log — none of which require touching OpenEMR's session model, ACL surface, or `EventDispatcher`. The shim is small enough to read in one sitting; the iframe boundary keeps Python free to evolve on its own cadence.
@@ -225,7 +230,7 @@ The agent does not:
 | Single HMAC secret, no token revocation | Compromised secret = full agent access until rotation; 15 min JWTs cannot be revoked early | 15-min expiry is the control. Secret in env, rotatable on restart. |
 | Direct SQL agent | Read-only DB user is the floor; the SQL surface is still attack surface | Parameterized SQL only. Tools never accept LLM-generated SQL. AUDIT-encoded filters. Read-only DB user. |
 | 15-case eval | Surfaces project-killers, not long-tail bugs | Cases chosen explicitly for failure-mode coverage (wrong-patient, inference, missing data, adversarial `pnotes`). |
-| Iframe embedding | Iframe depends on JWT-in-URL hand-off | JWT consumed once and swapped for HttpOnly cookie. Same-origin iframe via reverse proxy. |
+| Iframe embedding (cross-origin) | JWT briefly in URL during bootstrap; token held in iframe JS memory afterward (no HttpOnly cookie property) | `Referrer-Policy: no-referrer` + `history.replaceState` close URL-leak vectors. Token in module-scoped JS, never in `localStorage`/cookie. 15-min expiry is the time-bound control. Iframe is a tiny surface (one HTML page, no user-rendered content). XSS in the parent OpenEMR page is in a separate JS context and cannot read the iframe variable. |
 | Small demo patient pool | Can't surface every UC in every chart | Patients chosen for coverage of the failure modes the eval targets. |
 
 Real PHI handling, BAA management, breach notification, and DR/BCP are not in scope for this system. Any real deployment is a separate workstream.

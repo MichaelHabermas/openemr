@@ -23,17 +23,18 @@ This sub-population was chosen because it produces the highest density of legiti
 
 The day timeline:
 
-- ~8:50 AM — patient checks in at the front desk. This fires the pre-compute job for that patient.
-- 9:00 AM — doctor opens the chart for the first visit. The summary card is already rendered.
+- Chart-open — agent fires the default summary turn server-side, streams the cited summary card into the iframe, and accepts follow-ups in the same surface. First-token ≤2s, full response ≤8s.
 - Through the day — every chart-open (including the 60–120 sec re-glance between rooms) shows the same surface.
 
 There is exactly one entry point in scope for this stage: chart-open. A morning-panel-overview (all 20 patients, summaries collapsed) is *designed into the architecture* but not shipped. Same backend; the panel view is a pure UI addition later.
+
+A pre-compute path triggered at front-desk check-in (rendering the summary ~10 minutes before chart-open) is designed into the architecture as a future cache layer — same backend, same tools, same citations. **It is not in the 36-hour build.** The shipped path is live: chart-open → agent service → tools → LLM → citation post-processor → stream.
 
 ## Agent shape — two surfaces, one backend
 
 This is the most load-bearing design decision in the project. The SPECS rule "if you cannot point to a use case that requires multi-turn conversation, you should not have multi-turn conversation" is satisfied honestly, not by force-fitting multi-turn into a 90-second doorknob moment.
 
-**Surface A — pre-computed summary card.** Always-on. Visible the moment the chart opens. Zero LLM call inside chart-open: the card was rendered ~10 minutes earlier when the patient checked in. Every claim cites the row it came from. This is the 90-second answer.
+**Surface A — default summary card.** Streamed live on chart-open. The agent fires a server-side default turn ("what should I know about this patient right now?") through the same tool chain and citation grammar as any follow-up. First-token ≤2s; full response ≤8s. Every claim cites the row it came from. This is the 90-second answer. (A pre-computed variant rendered at front-desk check-in is a future cache layer — same backend, out of scope for the build.)
 
 **Surface B — multi-turn chat drill-down.** Attached to the summary, already loaded with the patient's context. Used when the doctor has 5–10 minutes to ask follow-ups. Ignored when they don't. Same retrievals, same citations as Surface A.
 
