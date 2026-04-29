@@ -28,8 +28,8 @@ services:
     restart: always
     image: openemr/openemr:flex@sha256:e4562b0c7d3f222ec8f72122ce00d10ffa93f559c38c00ab12c1355394c35d1c
     ports:
-    - "${WT_HTTP_PORT:-8300}:80"
-    - "${WT_HTTPS_PORT:-9300}:443"
+    - "${WT_HTTP_PORT:-80}:80"
+    - "${WT_HTTPS_PORT:-443}:443"
     volumes:
     - ${OPENEMR_DIR:-../..}:/openemr:ro
     - ${OPENEMR_DIR:-../..}:/var/www/localhost/htdocs/openemr:rw
@@ -67,7 +67,7 @@ services:
       SELENIUM_FORCE_HEADLESS: "false"
       SELENIUM_BASE_URL: "http://openemr"
       OPENEMR_DOCKER_ENV_TAG: easy-dev-docker
-      OPENEMR_SETTING_site_addr_oath: 'https://localhost:${WT_HTTPS_PORT:-9300}'
+      OPENEMR_SETTING_site_addr_oath: 'https://localhost:${WT_HTTPS_PORT:-443}'
       OPENEMR_SETTING_oauth_password_grant: 3
       OPENEMR_SETTING_rest_system_scopes_api: 1
       OPENEMR_SETTING_rest_api: 1
