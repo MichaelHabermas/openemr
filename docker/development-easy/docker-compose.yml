@@ -52,8 +52,6 @@ services:
       MYSQL_PASS: openemr
       OE_USER: admin
       OE_PASS: pass
-      DOMAIN: openemr.titleredacted.cc
-      EMAIL: michaelghabermas@gmail.com
       EASY_DEV_MODE: "yes"
       EASY_DEV_MODE_NEW: "yes"
       DEVELOPER_TOOLS: "yes"
