@@ -185,6 +185,14 @@ Silent failure is not allowed.
 
 ## Observability
 
+Current local model configuration:
+
+- Provider path: server-side OpenAI draft provider.
+- Model: `gpt-4o-mini`.
+- Credentials: server/container environment only; never browser-exposed.
+- Structured output: JSON-schema draft with sentences, claims, missing sections, refusals/warnings, and source IDs.
+- Pricing: see `COST-ANALYSIS.md` for the exact source and measured local request cost.
+
 Log enough to answer:
 
 - What request happened?

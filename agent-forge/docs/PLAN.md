@@ -162,6 +162,10 @@ Verified facts (no longer unknown):
 - Repo path on the VM: `~/repos/openemr`.
 - Compose directory: `docker/development-easy/`.
 - Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script. See `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility".
+- LLM provider/model for the current AgentForge path: OpenAI `gpt-4o-mini` via server-side `AGENTFORGE_DRAFT_PROVIDER=openai` and `AGENTFORGE_OPENAI_API_KEY`.
+- Structured-output support: `gpt-4o-mini` supports structured outputs and is called from the server-side OpenAI draft provider.
+- Pricing source for `gpt-4o-mini`: OpenAI model documentation records $0.15 input and $0.60 output per 1M text tokens. See `COST-ANALYSIS.md`.
+- Local measured manual request: A1c trend browser test on patient `900001` logged `latency_ms=2989`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
 
 ## Definition Of Done For Any Task
 
@@ -830,6 +834,8 @@ Goal: make behavior measurable from the beginning.
 
 #### Task 7.1.1 - Define Log Contract Tests
 
+Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+
 Why: `SPECS.txt` requires real observability: request order, step latency, tool failures, tokens, and cost.
 
 Start with eval/test:
@@ -849,8 +855,11 @@ Definition of done:
 Human verification:
 
 - A reviewer can inspect one request log and reconstruct what happened without seeing raw chart text.
+- Local proof recorded: `/var/log/apache2/error.log` contained `agent_forge_request` with request id, user id, patient id, decision, latency, question type, tools, source ids, model, tokens, cost, failure reason, and verifier result; no raw prompt, raw question, full answer, patient name, or full chart text was present.
 
 #### Task 7.1.2 - Add Token And Cost Tracking
+
+Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md` and `COST-ANALYSIS.md`.
 
 Why: `SPECS.txt` requires cost analysis and observability.
 
@@ -872,10 +881,13 @@ Definition of done:
 Human verification:
 
 - A reviewer can run one request and see token and cost fields.
+- Local proof recorded: final A1c trend request logged `model=gpt-4o-mini`, `input_tokens=836`, `output_tokens=173`, and `estimated_cost=0.0002292`.
 
 ### Feature 7.2 - Eval Dataset And Runner
 
 #### Task 7.2.1 - Create Eval Cases Before Final Agent Behavior
+
+Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: evals must drive implementation, not describe it afterward.
 
@@ -901,8 +913,11 @@ Definition of done:
 Human verification:
 
 - A reviewer can read the eval file and understand exactly what failure it catches.
+- Local proof recorded: `agent-forge/fixtures/eval-cases.json` covers visit briefing, medications, A1c trend, missing microalbumin, unauthorized/cross-patient access, clinical advice refusal, tool failure, hallucinated claim, prompt injection, malicious chart text, unclear role, and latency capture.
 
 #### Task 7.2.2 - Run Evals And Save Results
+
+Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: final submission requires eval dataset with results.
 
@@ -924,8 +939,11 @@ Definition of done:
 Human verification:
 
 - A reviewer can run the eval command and inspect saved results.
+- Local proof recorded: `php agent-forge/scripts/run-evals.php` passed 13/13 and saved `agent-forge/eval-results/eval-results-20260430-233329.json`.
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
+
+Status: complete for local browser; VM verification remains pending. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: isolated tests do not prove the full clinical path works.
 
@@ -946,6 +964,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can run or follow one smoke path and see the whole chain work.
+- Local proof recorded: admin opened fake patient `900001`, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
 ## Epic 8 - Demo, Cost Analysis, And Final Packaging
 
