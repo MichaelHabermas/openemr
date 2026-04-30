@@ -156,8 +156,8 @@ The OpenAI provider sends only the bounded evidence bundle plus the physician qu
 ## Explicit Deferred Scope
 
 - Live OpenAI calls require `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` in the runtime environment.
-- Optional pricing variables are `AGENTFORGE_OPENAI_INPUT_COST_PER_1M` and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M`; when absent, estimated cost is recorded as unknown instead of guessed.
-- A live API-key manual proof has not been run in this pass; mocked provider tests prove payload, parsing, usage, and cost behavior without making a network call.
+- Optional pricing variables are `AGENTFORGE_OPENAI_INPUT_COST_PER_1M` and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M`; when absent for the default `gpt-4o-mini` model, AgentForge uses built-in default pricing of $0.15 input and $0.60 output per 1M tokens from https://developers.openai.com/api/docs/models/gpt-4o-mini.
+- Live OpenAI proof passed inside the recreated OpenEMR container with `gpt-4o-mini`: provider returned input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and the expected A1c citation. Mocked provider tests also prove payload, parsing, usage, and cost behavior without depending on network access.
 
 ## Manual Verification
 

@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge observability, model usage/cost tracking, deterministic evals, and local smoke proof
-**Status:** Implemented; Browser And Live LLM Human Verification Pending
+**Status:** Implemented; Browser Human Verification Pending
 
 ---
 
@@ -73,7 +73,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 - Runner executes AgentForge in process through parser, authorization gate, verified handler, fixture draft provider, verifier, response checks, telemetry logging context, and latency capture.
 - Runner saves JSON results under `agent-forge/eval-results/`.
 - Local run passed: 13 passed, 0 failed.
-- Saved result: `agent-forge/eval-results/eval-results-20260430-230015.json`.
+- Saved result: `agent-forge/eval-results/eval-results-20260430-231231.json`.
 
 **Suggested Commit:** `test(agent-forge): add eval runner`
 
@@ -88,7 +88,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 - The eval runner covers the local composition path: request parse -> auth gate -> evidence tools -> fixture draft -> verifier -> response citations -> PHI-free log context -> latency captured.
 - The result artifact includes `log_context` for each case with `verifier_result`, `source_ids`, `tools_called`, model usage, latency, and no forbidden PHI-bearing keys.
 - Browser/UI verification was not performed in this implementation pass and remains pending.
-- Live OpenAI API-key verification was not performed in this implementation pass and remains pending.
+- Live OpenAI API-key verification passed inside the recreated OpenEMR container.
 
 **Manual Browser Verification Step:**
 
@@ -100,14 +100,12 @@ The clinician-facing response contract is unchanged. Observability remains inter
 6. Expected log fields: `request_id`, `user_id`, `patient_id`, `decision`, `latency_ms`, `question_type`, `tools_called`, `source_ids`, `model`, `input_tokens`, `output_tokens`, `estimated_cost`, `failure_reason`, and `verifier_result`.
 7. Expected absence: no raw question, full answer, full prompt, patient name, or full chart text.
 
-**Manual Live LLM Verification Step:**
+**Live LLM Verification:**
 
-1. Configure `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` in the OpenEMR runtime.
-2. Optionally configure `AGENTFORGE_OPENAI_MODEL`, `AGENTFORGE_OPENAI_INPUT_COST_PER_1M`, and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M`.
-3. Leave `AGENTFORGE_DRAFT_PROVIDER` unset or set it to `openai`.
-4. Open fake patient `900001` and ask: `Show me the recent A1c trend.`
-5. Expected log fields: `model` is the configured OpenAI model, token counts are populated from provider usage, and `verifier_result` is `passed`.
-6. Expected response: only cited chart facts reach the panel; unsupported claims are blocked by the verifier.
+1. Recreated the OpenEMR container with `docker compose up -d --force-recreate openemr` so Compose injected `docker/development-easy/.env`.
+2. Confirmed the running container sees `AGENTFORGE_OPENAI_API_KEY`, `AGENTFORGE_DRAFT_PROVIDER=openai`, and `AGENTFORGE_OPENAI_MODEL=gpt-4o-mini` without printing the secret.
+3. Ran a temporary in-container PHP smoke using `DraftProviderFactory::create(DraftProviderConfig::fromEnvironment())`, one fake A1c evidence item, and `DraftVerifier`.
+4. Observed live provider output: model `gpt-4o-mini`, input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and citation `lab:procedure_result/agentforge-a1c-2026-04@2026-04-10`.
 
 **Suggested Commit:** `test(agent-forge): add local smoke proof`
 
@@ -135,7 +133,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 | Estimated cost appears only when known; unknown pricing is labeled unknown. | Fixture path records `estimated_cost: null`; no guessed pricing. |
 | Eval dataset exists with deterministic pass/fail criteria. | `agent-forge/fixtures/eval-cases.json`. |
 | Safety-critical cases block release. | `agent-forge/scripts/run-evals.php` exits non-zero on failed safety-critical cases. |
-| Results are saved with timestamp and code version. | `agent-forge/eval-results/eval-results-20260430-230015.json`. |
+| Results are saved with timestamp and code version. | `agent-forge/eval-results/eval-results-20260430-231231.json`. |
 | Smoke proof records latency and proves verifier runs. | Eval result log contexts include `latency_ms` and `verifier_result`. |
 
 ---
@@ -171,7 +169,7 @@ Can I call this done?
 
 - Source criteria mapped to code/proof/deferral? yes
 - Required automated tests executed and captured? yes
-- Required manual checks executed and captured? no, browser/UI and live OpenAI verification are pending
+- Required manual checks executed and captured? partial; live OpenAI provider verification passed, browser/UI verification is pending
 - Required fixtures/data/users for proof exist? yes for local in-process proof
 - Security/privacy/logging/error-handling requirements verified? yes for automated/local proof
 - Known limitations and deferred relationship/scope shapes documented? yes

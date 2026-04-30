@@ -52,6 +52,33 @@ final class DraftProviderFactoryTest extends TestCase
         $this->assertInstanceOf(OpenAiDraftProvider::class, $provider);
     }
 
+    public function testOpenAiDefaultsUseKnownGpt4oMiniPricing(): void
+    {
+        $config = new DraftProviderConfig(
+            mode: DraftProviderConfig::MODE_OPENAI,
+            apiKey: 'test-key',
+        );
+
+        $this->assertSame(0.15, $config->inputCostPerMillionTokens);
+        $this->assertSame(0.60, $config->outputCostPerMillionTokens);
+        $this->assertSame(15.0, $config->timeoutSeconds);
+        $this->assertSame(5.0, $config->connectTimeoutSeconds);
+    }
+
+    public function testNonDefaultModelDoesNotInheritGpt4oMiniPricing(): void
+    {
+        $config = new DraftProviderConfig(
+            mode: DraftProviderConfig::MODE_OPENAI,
+            apiKey: 'test-key',
+            model: 'gpt-4o',
+            inputCostPerMillionTokens: null,
+            outputCostPerMillionTokens: null,
+        );
+
+        $this->assertNull($config->inputCostPerMillionTokens);
+        $this->assertNull($config->outputCostPerMillionTokens);
+    }
+
     public function testUnsupportedExternalModeFailsClosed(): void
     {
         $this->expectException(RuntimeException::class);

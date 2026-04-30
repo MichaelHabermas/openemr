@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\AgentRequest;
 use OpenEMR\AgentForge\ChartEvidenceTool;
 use OpenEMR\AgentForge\DraftClaim;
 use OpenEMR\AgentForge\DraftProvider;
+use OpenEMR\AgentForge\DraftProviderException;
 use OpenEMR\AgentForge\DraftResponse;
 use OpenEMR\AgentForge\DraftSentence;
 use OpenEMR\AgentForge\DraftUsage;
@@ -197,6 +198,29 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertCount(1, $logger->records);
     }
 
+    public function testDraftProviderTransportFailureIsVisibleAndSanitized(): void
+    {
+        $logger = new VerifiedRecordingLogger();
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new UnavailableDraftProvider(),
+            new DraftVerifier(),
+            $logger,
+        );
+
+        $response = $handler->handle($this->request('Show me recent labs.'));
+        $telemetry = $handler->lastTelemetry();
+        $json = json_encode($response->toArray(), JSON_THROW_ON_ERROR);
+
+        $this->assertSame('refused', $response->status);
+        $this->assertSame(['The model draft provider could not be reached. Please try again.'], $response->refusalsOrWarnings);
+        $this->assertStringNotContainsString('cURL timeout internals', $json);
+        $this->assertNotNull($telemetry);
+        $this->assertSame('draft_provider_unavailable', $telemetry->failureReason);
+        $this->assertSame('not_run', $telemetry->verifierResult);
+        $this->assertCount(1, $logger->records);
+    }
+
     public function testUnverifiableDraftIsBlocked(): void
     {
         $handler = new VerifiedAgentHandler(
@@ -298,6 +322,14 @@ final class AlwaysMalformedDraftProvider implements DraftProvider
     public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
     {
         throw new DomainException('malformed internals');
+    }
+}
+
+final class UnavailableDraftProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    {
+        throw new DraftProviderException('cURL timeout internals');
     }
 }
 

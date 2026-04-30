@@ -47,9 +47,14 @@ final class OpenAiDraftProviderTest extends TestCase
 
         $payload = $client->lastPayload();
         $this->assertSame('gpt-4o-mini', $payload['model']);
+        $this->assertSame(0, $payload['temperature']);
         $this->assertSame('json_schema', $this->stringPath($payload, ['response_format', 'type']));
         $this->assertStringContainsString(
             'Use only the supplied bounded evidence JSON.',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
+        $this->assertStringContainsString(
+            'copy the cited evidence display_label and value exactly',
             $this->stringPath($payload, ['messages', 0, 'content']),
         );
         $this->assertStringNotContainsString(

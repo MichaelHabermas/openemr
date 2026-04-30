@@ -29,8 +29,8 @@ final class DraftProviderFactory
             DraftProviderConfig::MODE_OPENAI => new OpenAiDraftProvider(
                 new Client([
                     'base_uri' => 'https://api.openai.com',
-                    'timeout' => 8,
-                    'connect_timeout' => 3,
+                    'timeout' => $config->timeoutSeconds,
+                    'connect_timeout' => $config->connectTimeoutSeconds,
                 ]),
                 (string) $config->apiKey,
                 $config->model,

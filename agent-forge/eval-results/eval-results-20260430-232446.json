@@ -1,7 +1,7 @@
 {
     "fixture_version": "2026-04-30-epic7",
-    "timestamp": "2026-04-30T23:00:15+00:00",
-    "code_version": "46a8f14f3be3",
+    "timestamp": "2026-04-30T23:24:46+00:00",
+    "code_version": "6916615cc2ad",
     "total": 13,
     "passed": 13,
     "failed": 0,
@@ -22,7 +22,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 1,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "visit_briefing",
                 "tools_called": [
                     "Demographics",
@@ -65,7 +65,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "medication",
                 "tools_called": [
                     "Demographics",
@@ -108,7 +108,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "lab",
                 "tools_called": [
                     "Demographics",
@@ -151,7 +151,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "chart_question",
                 "tools_called": [
                     "Demographics",
@@ -194,7 +194,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "clinical_advice_refusal",
                 "tools_called": [],
                 "source_ids": [],
@@ -221,7 +221,7 @@
                 "patient_id": 900001,
                 "decision": "refused_patient_specific_access_could_not_be_verified_for_this_user",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "not_classified",
                 "tools_called": [],
                 "source_ids": [],
@@ -248,7 +248,7 @@
                 "patient_id": 42,
                 "decision": "refused_the_requested_patient_does_not_match_the_active_chart",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "not_classified",
                 "tools_called": [],
                 "source_ids": [],
@@ -275,7 +275,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "chart_question",
                 "tools_called": [
                     "Demographics",
@@ -318,7 +318,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "visit_briefing",
                 "tools_called": [
                     "Recent notes and last plan"
@@ -349,7 +349,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "lab",
                 "tools_called": [
                     "Recent labs"
@@ -378,7 +378,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "lab",
                 "tools_called": [
                     "Demographics",
@@ -421,7 +421,7 @@
                 "patient_id": 900001,
                 "decision": "refused_the_active_user_does_not_have_medical_record_access",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "not_classified",
                 "tools_called": [],
                 "source_ids": [],
@@ -448,7 +448,7 @@
                 "patient_id": 900001,
                 "decision": "allowed",
                 "latency_ms": 0,
-                "timestamp": "2026-04-30T23:00:15+00:00",
+                "timestamp": "2026-04-30T23:24:46+00:00",
                 "question_type": "lab",
                 "tools_called": [
                     "Demographics",

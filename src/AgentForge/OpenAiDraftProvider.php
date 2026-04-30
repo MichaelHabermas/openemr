@@ -16,7 +16,6 @@ use DomainException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\ResponseInterface;
-use RuntimeException;
 use SensitiveParameter;
 
 final readonly class OpenAiDraftProvider implements DraftProvider
@@ -47,7 +46,7 @@ final readonly class OpenAiDraftProvider implements DraftProvider
                 'json' => $this->payload($request, $bundle),
             ]);
         } catch (GuzzleException $exception) {
-            throw new RuntimeException('OpenAI draft request failed.', previous: $exception);
+            throw new DraftProviderException('OpenAI draft request failed.', previous: $exception);
         }
 
         return $this->parseResponse($response);
@@ -66,6 +65,8 @@ final readonly class OpenAiDraftProvider implements DraftProvider
                         'Use only the supplied bounded evidence JSON.',
                         'Do not diagnose, recommend treatment, suggest dosing, recommend medication changes, draft notes, or answer generic medical questions.',
                         'Every patient-specific fact must cite source IDs exactly as provided.',
+                        'For every patient_fact claim, copy the cited evidence display_label and value exactly into the claim text.',
+                        'If a sentence cites multiple sources, include every cited display_label and value in that sentence or split it into separate sentences.',
                         'If evidence is missing, say it was not found in the chart.',
                         'Return only valid JSON matching the response schema.',
                     ]),
@@ -87,6 +88,7 @@ final readonly class OpenAiDraftProvider implements DraftProvider
                     'schema' => $this->schema(),
                 ],
             ],
+            'temperature' => 0,
         ];
     }
 

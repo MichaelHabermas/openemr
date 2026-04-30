@@ -65,6 +65,28 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             $draft = $this->draftWithOneRetry($request, $bundle);
             $result = $this->verifier->verify($draft, $bundle);
             $this->lastTelemetry = $this->telemetryFromRun($request, $bundle, $draft->usage, $result, $toolsCalled);
+        } catch (DraftProviderException $exception) {
+            $this->logger->error(
+                'AgentForge draft provider failed unexpectedly.',
+                [
+                    'exception' => $exception,
+                    'patient_id' => $request->patientId->value,
+                ],
+            );
+
+            $this->lastTelemetry = new AgentTelemetry(
+                questionType: $this->classifyQuestion($request),
+                toolsCalled: [],
+                sourceIds: [],
+                model: 'not_run',
+                inputTokens: 0,
+                outputTokens: 0,
+                estimatedCost: null,
+                failureReason: 'draft_provider_unavailable',
+                verifierResult: 'not_run',
+            );
+
+            return AgentResponse::refusal('The model draft provider could not be reached. Please try again.');
         } catch (DomainException | RuntimeException $exception) {
             $this->logger->error(
                 'AgentForge verified drafting failed unexpectedly.',
