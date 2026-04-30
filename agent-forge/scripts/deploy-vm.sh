@@ -14,6 +14,7 @@ HEALTH_TIMEOUT_SECONDS="${AGENTFORGE_HEALTH_TIMEOUT_SECONDS:-300}"
 HEALTH_INTERVAL_SECONDS="${AGENTFORGE_HEALTH_INTERVAL_SECONDS:-5}"
 SEED_SCRIPT="${AGENTFORGE_SEED_SCRIPT:-agent-forge/scripts/seed-demo-data.sh}"
 DEPLOY_BRANCH="${AGENTFORGE_DEPLOY_BRANCH:-master}"
+DRAFT_PROVIDER="${AGENTFORGE_DRAFT_PROVIDER:-openai}"
 
 check_url() {
     local label="$1"
@@ -60,6 +61,14 @@ wait_for_health() {
     check_url "readiness endpoint" "${READYZ_URL}" || true
 }
 
+verify_agentforge_model_config() {
+    if [[ "${DRAFT_PROVIDER}" == "openai" && -z "${AGENTFORGE_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}" ]]; then
+        printf 'Deploy failed: AGENTFORGE_DRAFT_PROVIDER=openai requires AGENTFORGE_OPENAI_API_KEY or OPENAI_API_KEY.\n' >&2
+        printf 'Set the key in the shell running deploy-vm.sh or in docker/development-easy/.env on the VM.\n' >&2
+        return 1
+    fi
+}
+
 main() {
     cd "${REPO_DIR}"
 
@@ -70,6 +79,7 @@ main() {
     printf 'Repo: %s\n' "${REPO_DIR}"
     printf 'Branch: %s\n' "${current_branch}"
     printf 'Old commit: %s\n' "${old_commit}"
+    verify_agentforge_model_config
 
     # Reattach to the deploy branch if a prior rollback left HEAD detached.
     if [[ "${current_branch}" != "${DEPLOY_BRANCH}" ]]; then

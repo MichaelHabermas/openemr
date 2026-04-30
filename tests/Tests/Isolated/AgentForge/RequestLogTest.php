@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DateTimeImmutable;
+use OpenEMR\AgentForge\AgentTelemetry;
 use OpenEMR\AgentForge\PsrRequestLogger;
 use OpenEMR\AgentForge\RequestLog;
 use PHPUnit\Framework\TestCase;
@@ -39,9 +40,56 @@ final class RequestLogTest extends TestCase
         $this->assertSame('refused_patient_mismatch', $context['decision']);
         $this->assertGreaterThanOrEqual(0, $context['latency_ms']);
         $this->assertSame('2026-04-30T12:00:00+00:00', $context['timestamp']);
+        $this->assertSame('not_classified', $context['question_type']);
+        $this->assertSame([], $context['tools_called']);
+        $this->assertSame([], $context['source_ids']);
+        $this->assertSame('not_run', $context['model']);
+        $this->assertSame(0, $context['input_tokens']);
+        $this->assertSame(0, $context['output_tokens']);
+        $this->assertNull($context['estimated_cost']);
+        $this->assertSame('refused_patient_mismatch', $context['failure_reason']);
+        $this->assertSame('not_run', $context['verifier_result']);
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);
         $this->assertArrayNotHasKey('patient_name', $context);
+    }
+
+    public function testRequestLogContextIncludesPhiFreeAgentTelemetry(): void
+    {
+        $entry = new RequestLog(
+            requestId: '7aa9ef18-3227-4c43-9e5e-b8ae3fb8bbcc',
+            userId: 7,
+            patientId: 900001,
+            decision: 'allowed',
+            latencyMs: 42,
+            timestamp: new DateTimeImmutable('2026-04-30T12:00:00+00:00'),
+            telemetry: new AgentTelemetry(
+                questionType: 'lab',
+                toolsCalled: ['Recent labs'],
+                sourceIds: ['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'],
+                model: 'fixture-draft-provider',
+                inputTokens: 0,
+                outputTokens: 0,
+                estimatedCost: null,
+                failureReason: null,
+                verifierResult: 'passed',
+            ),
+        );
+
+        $context = $entry->toContext();
+
+        $this->assertSame('lab', $context['question_type']);
+        $this->assertSame(['Recent labs'], $context['tools_called']);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $context['source_ids']);
+        $this->assertSame('fixture-draft-provider', $context['model']);
+        $this->assertSame(0, $context['input_tokens']);
+        $this->assertSame(0, $context['output_tokens']);
+        $this->assertNull($context['estimated_cost']);
+        $this->assertNull($context['failure_reason']);
+        $this->assertSame('passed', $context['verifier_result']);
+        $this->assertArrayNotHasKey('question', $context);
+        $this->assertArrayNotHasKey('answer', $context);
+        $this->assertArrayNotHasKey('full_prompt', $context);
     }
 
     public function testPsrRequestLoggerWritesSingleInfoEvent(): void

@@ -92,6 +92,11 @@ services:
       OPENEMR_SETTING_SMTP_Auth: 'TRUE'
       OPENEMR_SETTING_practice_return_email_path: 'noreply@openemr.local'
       OPENEMR_SETTING_Patient_Reminder_Sender_Name: 'OpenEMR Reminders'
+      AGENTFORGE_DRAFT_PROVIDER: "${AGENTFORGE_DRAFT_PROVIDER:-openai}"
+      AGENTFORGE_OPENAI_API_KEY: "${AGENTFORGE_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
+      AGENTFORGE_OPENAI_MODEL: "${AGENTFORGE_OPENAI_MODEL:-gpt-4o-mini}"
+      AGENTFORGE_OPENAI_INPUT_COST_PER_1M: "${AGENTFORGE_OPENAI_INPUT_COST_PER_1M:-}"
+      AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M: "${AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M:-}"
     depends_on:
       mysql:
         condition: service_healthy

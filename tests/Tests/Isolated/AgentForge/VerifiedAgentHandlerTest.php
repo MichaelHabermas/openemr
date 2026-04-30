@@ -48,6 +48,29 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $response->citations);
     }
 
+    public function testSafeChartQuestionCapturesFixtureUsageAndVerificationTelemetry(): void
+    {
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $handler->handle($this->request('Show me recent A1c.'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertNotNull($telemetry);
+        $this->assertSame('lab', $telemetry->questionType);
+        $this->assertSame(['Recent labs'], $telemetry->toolsCalled);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $telemetry->sourceIds);
+        $this->assertSame('fixture-draft-provider', $telemetry->model);
+        $this->assertSame(0, $telemetry->inputTokens);
+        $this->assertSame(0, $telemetry->outputTokens);
+        $this->assertNull($telemetry->estimatedCost);
+        $this->assertNull($telemetry->failureReason);
+        $this->assertSame('passed', $telemetry->verifierResult);
+    }
+
     public function testAdviceRequestIsRefusedBeforeEvidenceDrafting(): void
     {
         $tool = new VerifiedRecordingEvidenceTool();
@@ -60,6 +83,26 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('refused', $response->status);
         $this->assertFalse($tool->called);
         $this->assertStringContainsString('cannot provide diagnosis', $response->refusalsOrWarnings[0]);
+    }
+
+    public function testAdviceRefusalCapturesNoModelNoToolTelemetry(): void
+    {
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $handler->handle($this->request('What dose should I prescribe?'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertNotNull($telemetry);
+        $this->assertSame('clinical_advice_refusal', $telemetry->questionType);
+        $this->assertSame([], $telemetry->toolsCalled);
+        $this->assertSame([], $telemetry->sourceIds);
+        $this->assertSame('not_run', $telemetry->model);
+        $this->assertSame('clinical_advice_refusal', $telemetry->failureReason);
+        $this->assertSame('not_run', $telemetry->verifierResult);
     }
 
     public function testToolFailureIsVisibleWithoutLeakingInternalError(): void
@@ -156,14 +199,22 @@ final class VerifiedAgentHandlerTest extends TestCase
 
     public function testUnverifiableDraftIsBlocked(): void
     {
-        $response = (new VerifiedAgentHandler(
+        $handler = new VerifiedAgentHandler(
             [new VerifiedRecordingEvidenceTool()],
             new FabricatingDraftProvider(),
             new DraftVerifier(),
-        ))->handle($this->request('Show me recent labs.'));
+        );
+
+        $response = $handler->handle($this->request('Show me recent labs.'));
+        $telemetry = $handler->lastTelemetry();
 
         $this->assertSame('refused', $response->status);
         $this->assertSame(['The draft answer could not be verified.'], $response->refusalsOrWarnings);
+        if ($telemetry === null) {
+            $this->fail('Expected failed verification telemetry.');
+        }
+        $this->assertSame('failed', $telemetry->verifierResult);
+        $this->assertSame('verification_failed', $telemetry->failureReason);
     }
 
     private function request(string $question): AgentRequest

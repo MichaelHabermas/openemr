@@ -16,6 +16,7 @@ use OpenEMR\AgentForge\DisabledDraftProvider;
 use OpenEMR\AgentForge\DraftProviderConfig;
 use OpenEMR\AgentForge\DraftProviderFactory;
 use OpenEMR\AgentForge\FixtureDraftProvider;
+use OpenEMR\AgentForge\OpenAiDraftProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -38,6 +39,17 @@ final class DraftProviderFactoryTest extends TestCase
         $provider = DraftProviderFactory::create(new DraftProviderConfig(DraftProviderConfig::MODE_DISABLED));
 
         $this->assertInstanceOf(DisabledDraftProvider::class, $provider);
+    }
+
+    public function testOpenAiModeReturnsOpenAiProvider(): void
+    {
+        $provider = DraftProviderFactory::create(new DraftProviderConfig(
+            mode: DraftProviderConfig::MODE_OPENAI,
+            apiKey: 'test-key',
+            model: 'gpt-4o-mini',
+        ));
+
+        $this->assertInstanceOf(OpenAiDraftProvider::class, $provider);
     }
 
     public function testUnsupportedExternalModeFailsClosed(): void

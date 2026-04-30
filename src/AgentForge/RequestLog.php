@@ -24,6 +24,7 @@ final readonly class RequestLog
         public string $decision,
         public int $latencyMs,
         public DateTimeImmutable $timestamp,
+        public ?AgentTelemetry $telemetry = null,
     ) {
     }
 
@@ -34,12 +35,21 @@ final readonly class RequestLog
      *     patient_id: ?int,
      *     decision: string,
      *     latency_ms: int,
-     *     timestamp: string
+     *     timestamp: string,
+     *     question_type: string,
+     *     tools_called: list<string>,
+     *     source_ids: list<string>,
+     *     model: string,
+     *     input_tokens: int,
+     *     output_tokens: int,
+     *     estimated_cost: ?float,
+     *     failure_reason: ?string,
+     *     verifier_result: string
      * }
      */
     public function toContext(): array
     {
-        return [
+        $context = [
             'request_id' => $this->requestId,
             'user_id' => $this->userId,
             'patient_id' => $this->patientId,
@@ -47,5 +57,7 @@ final readonly class RequestLog
             'latency_ms' => $this->latencyMs,
             'timestamp' => $this->timestamp->format(DateTimeInterface::ATOM),
         ];
+
+        return array_merge($context, ($this->telemetry ?? AgentTelemetry::notRun($this->decision))->toContext());
     }
 }

@@ -82,6 +82,17 @@ final readonly class EvidenceBundle
         );
     }
 
+    /** @return list<string> */
+    public function sourceIds(): array
+    {
+        $sourceIds = [];
+        foreach ($this->items as $item) {
+            $sourceIds[] = $item->sourceId;
+        }
+
+        return array_values(array_unique($sourceIds));
+    }
+
     /** @return array<string, EvidenceBundleItem> */
     public function itemsBySourceId(): array
     {

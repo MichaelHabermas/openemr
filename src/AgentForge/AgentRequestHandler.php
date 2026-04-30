@@ -68,6 +68,7 @@ final readonly class AgentRequestHandler
                 statusCode: 500,
                 decision: 'refused_unexpected_error',
                 logPatientId: $sessionPatientId,
+                telemetry: AgentTelemetry::notRun('unexpected_parser_error'),
             );
         }
 
@@ -87,11 +88,17 @@ final readonly class AgentRequestHandler
             );
         }
 
+        $response = $this->agentHandler->handle($request);
+        $telemetry = $this->agentHandler instanceof AgentTelemetryProvider
+            ? $this->agentHandler->lastTelemetry()
+            : AgentTelemetry::notRun(null);
+
         return new AgentRequestResult(
-            response: $this->agentHandler->handle($request),
+            response: $response,
             statusCode: 200,
             decision: 'allowed',
             logPatientId: $request->patientId->value,
+            telemetry: $telemetry,
         );
     }
 
@@ -106,6 +113,7 @@ final readonly class AgentRequestHandler
             statusCode: $statusCode,
             decision: $decision,
             logPatientId: $logPatientId,
+            telemetry: AgentTelemetry::notRun($decision),
         );
     }
 

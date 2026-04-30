@@ -17,6 +17,7 @@ require_once("../../globals.php");
 use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentResponse;
+use OpenEMR\AgentForge\AgentTelemetry;
 use OpenEMR\AgentForge\DraftProviderFactory;
 use OpenEMR\AgentForge\DraftVerifier;
 use OpenEMR\AgentForge\EvidenceToolFactory;
@@ -58,6 +59,7 @@ $agentForgeLogAndRespond = static function (
     string $decision,
     ?int $userId,
     ?int $patientId,
+    ?AgentTelemetry $telemetry,
 ) use ($agentForgeElapsedMs, $agentForgeJsonResponse): never {
     $logger->record(new RequestLog(
         requestId: $requestId,
@@ -66,6 +68,7 @@ $agentForgeLogAndRespond = static function (
         decision: $decision,
         latencyMs: $agentForgeElapsedMs($startTime),
         timestamp: new DateTimeImmutable(),
+        telemetry: $telemetry,
     ));
     $agentForgeJsonResponse($response, $statusCode);
 };
@@ -118,4 +121,5 @@ $agentForgeLogAndRespond(
     $result->decision,
     $sessionUserId,
     $result->logPatientId,
+    $result->telemetry,
 );

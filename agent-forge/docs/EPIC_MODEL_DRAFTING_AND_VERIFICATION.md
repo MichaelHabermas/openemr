@@ -2,15 +2,15 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge structured drafting, bounded evidence bundle, deterministic verification, and verified endpoint response
-**Status:** Complete For Fixture-First Epic 6; Real External Model Provider Deferred
+**Status:** Complete With OpenAI Provider Support; Live API-Key Proof Pending
 
 ---
 
 ## Overview
 
-Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epic 4 authorization gate and Epic 5 read-only evidence tools. The default path does not call an external LLM; it proves the contract, source matching, refusal behavior, malformed draft handling, visible missing-data behavior, deadline behavior, and endpoint composition before any real provider is introduced.
+Epic 6 adds a drafting and verification pipeline on top of the Epic 4 authorization gate and Epic 5 read-only evidence tools. The implementation now supports a real OpenAI structured-output draft provider behind the `DraftProvider` seam, while preserving fixture mode for deterministic tests and evals.
 
-Real external model calls, vendor-specific adapters, and production token/cost capture for those calls are intentionally deferred until the logging, cost, and model-provider work is ready. Epic 6 exposes an explicit draft-provider mode boundary, but unsupported external provider modes fail closed instead of silently falling back to fixture output.
+The OpenAI provider sends only the bounded evidence bundle plus the physician question, requires structured JSON output, captures usage metadata, and still relies on the deterministic verifier before anything reaches the physician. If credentials are absent, local development remains fixture-first; if `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` is present, default provider selection uses OpenAI unless explicitly overridden.
 
 ---
 
@@ -111,9 +111,10 @@ Real external model calls, vendor-specific adapters, and production token/cost c
 - 2026-04-30: Added explicit known-missing-data handling for urine microalbumin questions so safe missing-data checks return a visible not-found section instead of silently omitting the missing fact.
 - 2026-04-30: Reworked the AgentForge endpoint wrapper to use Symfony `Request` and local closures so the Epic 6 entrypoint passes the focused static-analysis rules.
 - 2026-04-30: Verified Epic 6 on the deployed VM after `agent-forge/scripts/deploy-vm.sh` restarted the stack and re-seeded demo data.
-- 2026-04-30: Added explicit draft-provider mode selection with fixture and disabled modes; unsupported external modes fail closed pending real provider work.
+- 2026-04-30: Added explicit draft-provider mode selection with fixture and disabled modes; unsupported external modes fail closed.
 - 2026-04-30: Added deterministic deadline handling and handler-level proof that missing last-plan and timeout/deadline states surface visibly.
 - 2026-04-30: Completed broader AgentForge static-analysis and boundary type cleanup without changing fixture-first behavior or adding a real model provider.
+- 2026-04-30: Added OpenAI structured-output draft provider support. Default provider selection uses OpenAI when an API key is configured, and fixture mode remains available for deterministic test/eval runs.
 
 ## Proof Log
 
@@ -137,9 +138,10 @@ Real external model calls, vendor-specific adapters, and production token/cost c
 | Valid draft output can be passed to verifier. | `DraftResponseTest`; `DraftVerifierTest`. |
 | Patient-specific claims without source ids are invalid. | `DraftClaim`; `DraftResponseTest::testPatientSpecificClaimsWithoutSourceIdsAreInvalid`. |
 | Full chart dumps and unrelated patient evidence are invalid prompt inputs. | `EvidenceBundleItem`; `EvidenceBundle::toPromptArray`; `EvidenceBundleTest` proves only bounded fields cross the model boundary. |
-| Model-off mode returns deterministic fixture draft. | `FixtureDraftProvider`; `FixtureDraftProviderTest`; `DraftProviderFactoryTest`; endpoint wiring uses the fixture-first provider factory. |
+| Model-off mode returns deterministic fixture draft. | `FixtureDraftProvider`; `FixtureDraftProviderTest`; `DraftProviderFactoryTest`; fixture mode remains available through `AGENTFORGE_DRAFT_PROVIDER=fixture`. |
+| Configured model mode calls a real LLM provider seam. | `OpenAiDraftProvider`; `OpenAiDraftProviderTest`; `DraftProviderFactoryTest`; default provider selection uses OpenAI when an API key is configured. |
 | Draft provider selection is explicit and fail-closed. | `DraftProviderConfig`; `DraftProviderFactory`; `DisabledDraftProvider`; `DraftProviderFactoryTest`. |
-| Token usage and cost fields are captured for fixture mode. | `DraftUsage::fixture`; `FixtureDraftProviderTest`; real provider token/cost is deferred. |
+| Token usage and cost fields are captured. | `DraftUsage::fixture`; `FixtureDraftProviderTest`; `OpenAiDraftProviderTest` verifies provider token usage and optional estimated cost. |
 | Supported claims pass with citations. | `DraftVerifier`; `DraftVerifierTest::testSupportedClaimPassesWithCitation`. |
 | Unsupported, fabricated, mismatched, or partially supported patient claims are blocked. | `DraftVerifierTest`; `VerifiedAgentHandlerTest::testUnverifiableDraftIsBlocked`. |
 | Mixed supported and unsupported claims in one sentence do not leak unsupported text. | `DraftVerifierTest::testUnsupportedClaimRejectsWholeSentenceEvenWhenAnotherClaimIsSupported`. |
@@ -153,10 +155,9 @@ Real external model calls, vendor-specific adapters, and production token/cost c
 
 ## Explicit Deferred Scope
 
-- Real external LLM provider adapters are not implemented in Epic 6.
-- Provider-specific prompt-shape and usage/cost tests for real model calls are deferred until the selected model provider and logging/cost contract are implemented.
-- The default production/demo path remains deterministic fixture drafting.
-- Unsupported external draft-provider modes fail closed instead of making a model call or silently falling back.
+- Live OpenAI calls require `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` in the runtime environment.
+- Optional pricing variables are `AGENTFORGE_OPENAI_INPUT_COST_PER_1M` and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M`; when absent, estimated cost is recorded as unknown instead of guessed.
+- A live API-key manual proof has not been run in this pass; mocked provider tests prove payload, parsing, usage, and cost behavior without making a network call.
 
 ## Manual Verification
 

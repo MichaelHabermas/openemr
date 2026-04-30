@@ -19,6 +19,7 @@ final readonly class AgentRequestResult
         public int $statusCode,
         public string $decision,
         public ?int $logPatientId,
+        public ?AgentTelemetry $telemetry = null,
     ) {
     }
 }
