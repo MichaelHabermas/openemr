@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-30
 **Scope:** deployment tooling and operational verification
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -113,7 +113,7 @@ What this epic does NOT do:
 | TLS termination | Verified 2026-04-30 | `docker ps` shows OpenEMR container binding :80/:443 directly; `curl -sI https://openemr.titleredacted.cc/` returns `server: cloudflare` and `cf-ray` headers | Cloudflare edge in front; OpenEMR container also serves :443 as origin |
 | Environment variables | Verified 2026-04-30 | `cat ~/repos/openemr/docker/development-easy/.env` | No `.env` file; compose defaults only |
 | Public app health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30 |
-| Public readiness health | Pending re-check | `agent-forge/scripts/health-check.sh` | Endpoint is treated as informational; pass not required |
+| Public readiness health | Verified 2026-04-30 | `agent-forge/scripts/health-check.sh` | HTTP 200 (informational; deploy does not block on it) |
 
 The deploy script accepts these optional overrides; defaults are correct for the standard VM:
 
@@ -323,4 +323,7 @@ This closes the PLAN Task 3.1.2 requirement that the seed work in both local and
 
 ## Commit Log
 
-_Commits will be logged here as tasks complete._
+- `466bf079d` chore(agent-forge): add deployment runtime proof
+- `3a6716970` chore(agent-forge): refine deployment and rollback processes for demo environment
+- `6323b43ad` fix(agent-forge): make rollback wait for health and let deploy reattach
+- `6b36945ff` docs(agent-forge): capture deploy and rollback transcripts as Epic 2 evidence

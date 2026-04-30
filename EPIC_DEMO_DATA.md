@@ -52,4 +52,4 @@ Create one repeatable fake-patient dataset that makes the Clinical Co-Pilot demo
 
 ## Commit Log
 
-- Completed without commit in this pass; implementation and verification are present in the working tree.
+- `bfd666d56` feat(agent-forge): add demo data generation and verification scripts
