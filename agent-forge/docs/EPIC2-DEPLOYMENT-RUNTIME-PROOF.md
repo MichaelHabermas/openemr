@@ -8,26 +8,25 @@
 
 ## First-Principles Plan
 
-The target outcome is a public OpenEMR deployment that can be checked, updated, and rolled back without relying on unverified VM assumptions.
+The target outcome is a public OpenEMR deployment that can be checked, updated, and re-seeded reliably for demo purposes.
 
-The premise to reject is that "a deploy script" is the first deliverable. A deploy script is dangerous until the branch, remote, compose command, Docker permissions, TLS shape, environment variables, and volume safety are known. The safe sequence is health proof first, VM fact capture second, guarded deploy third, rollback proof fourth.
+This is a fake-data demo. The deploy is destructive by design: every deploy resets the MySQL volume and reloads fake demo data. There is no database rollback in this project — recovery is by re-seed, not by snapshot.
 
 Hard constraints:
 
 - The public app URL is `https://openemr.titleredacted.cc/`.
 - The public readiness endpoint is expected at `https://openemr.titleredacted.cc/meta/health/readyz` when exposed.
-- The VM repository path is expected to be `~/repos/openemr`.
-- The compose file is `docker/development-easy/docker-compose.yml`.
-- Docker volumes must not be deleted.
-- Unknown VM facts must remain unknown instead of being guessed.
+- The VM repository path is `~/repos/openemr`.
+- The compose directory is `docker/development-easy/`.
+- The compose command is `docker compose` (verified).
+- Only fake demo data is permitted in the deployed database.
+- Demo data must be re-seedable from scratch on every deploy.
 
-What this epic deletes:
+What this epic does NOT do:
 
-- No `docker compose down -v`.
-- No database reset.
-- No assumption about active branch or remote.
-- No assumption about `docker compose` versus `docker-compose`.
-- No claim that data rollback exists until backup or snapshot behavior is verified.
+- No real PHI is ever loaded into the deployed database.
+- No claim is made that a prior database state can be restored — there is no snapshot or backup.
+- No deploy proceeds without a post-deploy health check.
 
 ---
 
@@ -47,52 +46,55 @@ What this epic deletes:
 
 **Commit:** `chore(agent-forge): add deployment health checks`
 
-### Task 2.1.2: Verify VM Deployment Unknowns
+### Task 2.1.2: Capture VM Deployment Facts
 
-**Status:** [ ] Pending VM access
-**Description:** Record deployment facts before permitting deploy automation.
+**Status:** [ ] Partial — branch, remote, TLS, env vars still pending observation
+**Description:** Record verified deployment facts on the VM.
 
 **Subtasks:**
 
-- [x] Define the required fact checklist.
-- [ ] Verify active deployment branch.
-- [ ] Verify git remote name.
-- [ ] Verify whether the VM uses `docker compose` or `docker-compose`.
-- [ ] Verify Docker permissions for the deploy user.
-- [ ] Verify TLS termination and public readiness behavior.
-- [ ] Verify required environment variables.
-- [ ] Verify Docker volume preservation requirements.
+- [x] Compose command: `docker compose` (verified — operator workflow uses it directly).
+- [x] Docker permission: deploy user runs `docker compose` without sudo (verified — operator workflow uses it directly).
+- [x] Volume behavior: volumes are reset on every deploy by design (`docker compose down -v`).
+- [x] Repo path: `~/repos/openemr` (verified — operator workflow uses it directly).
+- [ ] Active deployment branch: run `git -C ~/repos/openemr rev-parse --abbrev-ref HEAD` and record.
+- [ ] Git remote: run `git -C ~/repos/openemr remote -v` and record.
+- [ ] TLS termination: identify whether TLS terminates in the OpenEMR container, a host reverse proxy, or upstream (Cloudflare/load balancer).
+- [ ] Required environment variables: capture any non-default values from `docker/development-easy/.env` or the deploy shell.
 
 **Commit:** `docs(agent-forge): record deployment fact checklist`
 
-### Task 2.1.3: Create Non-Destructive Deploy Script
+### Task 2.1.3: Demo Deploy Script (Reset-And-Seed Model)
 
-**Status:** [x] Complete
-**Description:** Add guarded deploy automation that refuses to run until VM facts are explicitly supplied.
+**Status:** [x] Code complete; one captured run still required as evidence
+**Description:** Encode the operator's actual deploy workflow with health checks and seeded re-load of fake data.
 
 **Subtasks:**
 
-- [x] Print current branch, old commit, new commit, compose file, health result, and rollback target.
-- [x] Pull with `--ff-only` from the verified remote and branch.
-- [x] Restart the compose stack without deleting volumes.
-- [x] Run public health checks after restart.
-- [x] Exit non-zero on missing facts or failed health checks.
+- [x] Pull `--ff-only` before bringing the stack down (fail fast on merge/network issues).
+- [x] Run `docker compose down -v` and `docker compose up -d` from `docker/development-easy/`.
+- [x] Wait for the public app to return 2xx/3xx before seeding.
+- [x] Invoke the demo data seed script if present; warn loudly if not.
+- [x] Print old commit, new commit, and rollback target.
+- [ ] Capture one real deploy transcript on the VM and add it under Deploy Evidence below.
 
-**Commit:** `chore(agent-forge): add guarded vm deploy script`
+**Commit:** `chore(agent-forge): align deploy script with reset-and-seed workflow`
 
-### Task 2.1.4: Verify Rollback Path Before Demo Recording
+### Task 2.1.4: Code Rollback (Re-Seed Model)
 
-**Status:** [x] Code rollback scripted, data rollback pending VM proof
-**Description:** Document and script code rollback, while refusing to imply database rollback exists before backup behavior is known.
+**Status:** [x] Code rollback scripted; database rollback is intentionally not provided
+**Description:** Roll back code to a prior commit and re-seed fake demo data. There is no database rollback because every deploy resets data.
 
 **Subtasks:**
 
 - [x] Require an explicit rollback commit.
-- [x] Restart the compose stack after switching to the rollback commit.
+- [x] Reset the stack and bring it up at the target commit.
 - [x] Run health checks after rollback.
-- [x] Mark database rollback as unavailable until VM backup or snapshot facts are verified.
+- [x] Re-seed fake demo data after rollback.
+- [x] State explicitly that database rollback to a prior point in time is not implemented.
+- [ ] Capture one real rollback transcript on the VM and add it under Rollback Evidence below.
 
-**Commit:** `docs(agent-forge): document rollback proof`
+**Commit:** `docs(agent-forge): document reset-and-seed rollback`
 
 ---
 
@@ -100,50 +102,43 @@ What this epic deletes:
 
 | Fact | Status | How to verify | Result |
 | --- | --- | --- | --- |
-| Active deployment branch | Unknown | `cd ~/repos/openemr && git rev-parse --abbrev-ref HEAD` | Pending VM access |
-| Git remote name | Unknown | `cd ~/repos/openemr && git remote -v` | Pending VM access |
-| Compose command | Unknown | `docker compose version` then `docker-compose version` if needed | Pending VM access |
-| Docker permission | Unknown | Run the verified compose command against `docker/development-easy/docker-compose.yml` | Pending VM access |
-| TLS termination | Unknown | Compare container ports, public URL behavior, and any reverse proxy config | Pending VM access |
-| Environment variables | Unknown | `env | grep -E '^(WT_HTTP_PORT|WT_HTTPS_PORT|OPENEMR_DIR)='` | Pending VM access |
-| Volume preservation | Unknown | `docker volume ls` and compose service volume mapping review | Pending VM access |
+| Repo path | Verified | Operator deploy workflow uses `~/repos/openemr` | `~/repos/openemr` |
+| Compose command | Verified | Operator deploy workflow uses `docker compose` | `docker compose` |
+| Compose directory | Verified | Operator deploy workflow uses `docker/development-easy/` | `docker/development-easy/` |
+| Docker permission | Verified | Operator deploy workflow runs `docker compose` without sudo | No sudo required |
+| Volume behavior | Verified | Operator deploy workflow uses `down -v` deliberately | Reset on deploy by design |
+| Active deployment branch | Pending | `git -C ~/repos/openemr rev-parse --abbrev-ref HEAD` | Pending VM observation |
+| Git remote | Pending | `git -C ~/repos/openemr remote -v` | Pending VM observation |
+| TLS termination | Pending | Inspect `docker ps` ports, host listeners on 80/443, and any reverse-proxy config | Pending VM observation |
+| Environment variables | Pending | `cat ~/repos/openemr/docker/development-easy/.env` and `env` on deploy shell | Pending VM observation |
 | Public app health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30 |
-| Public readiness health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30 |
+| Public readiness health | Pending re-check | `agent-forge/scripts/health-check.sh` | Endpoint is treated as informational; pass not required |
 
-The deploy script requires these environment variables once facts are verified:
-
-```bash
-export AGENTFORGE_DEPLOY_BRANCH="<verified-branch>"
-export AGENTFORGE_GIT_REMOTE="<verified-remote>"
-export AGENTFORGE_COMPOSE_COMMAND="<docker compose-or-docker-compose>"
-export AGENTFORGE_DOCKER_PERMISSION_VERIFIED="yes"
-export AGENTFORGE_VOLUME_PRESERVATION_VERIFIED="yes"
-```
-
-Optional overrides:
+The deploy script accepts these optional overrides; defaults are correct for the standard VM:
 
 ```bash
 export AGENTFORGE_REPO_DIR="$HOME/repos/openemr"
-export AGENTFORGE_COMPOSE_FILE="docker/development-easy/docker-compose.yml"
+export AGENTFORGE_COMPOSE_DIR="docker/development-easy"
 export AGENTFORGE_APP_URL="https://openemr.titleredacted.cc/"
 export AGENTFORGE_READYZ_URL="https://openemr.titleredacted.cc/meta/health/readyz"
+export AGENTFORGE_SEED_SCRIPT="agent-forge/scripts/seed-demo-data.sh"
 ```
 
 ---
 
 ## Rollback Proof
 
+Rollback in this project is **code rollback plus re-seed**. There is no database rollback to a prior point in time, by design.
+
 Code rollback is available after every deploy because `deploy-vm.sh` prints the pre-deploy commit as the rollback target.
 
 Rollback command sequence on the VM:
 
 ```bash
-cd ~/repos/openemr
-export AGENTFORGE_COMPOSE_COMMAND="<verified-compose-command>"
 agent-forge/scripts/rollback-vm.sh "<rollback-commit-from-deploy-output>"
 ```
 
-Data rollback is **not verified**. Do not claim database rollback is available until the VM backup or snapshot mechanism is identified and tested. Docker volumes must be preserved unless an operator explicitly approves otherwise.
+This will: switch to the target commit, `docker compose down -v`, `docker compose up -d`, run health checks, and re-seed fake demo data. Demo data is re-loaded from scratch — any state created in the rolled-back deploy (test answers, audit log entries) is lost. This is acceptable because no real PHI is ever stored.
 
 ---
 
@@ -164,11 +159,14 @@ Health check passed.
 ## Review Checkpoint
 
 - [x] One command exists for public app and readiness health checks.
-- [x] Deploy automation refuses to run until VM facts are explicit.
-- [x] Deploy automation avoids `down -v` and does not delete Docker volumes.
-- [x] Rollback path requires an explicit commit and reruns health checks.
-- [ ] VM checklist is completed with observed facts.
-- [x] Public health check is run from an environment with network access.
+- [x] Deploy script encodes the operator's actual workflow (pull, `down -v`, `up -d`, health, seed).
+- [x] Rollback script requires an explicit commit, reruns health checks, and re-seeds fake data.
+- [x] Deploy and rollback scripts both call the seed script and warn if it is absent.
+- [x] Database rollback is documented as intentionally not implemented.
+- [ ] One real deploy transcript captured under Deploy Evidence.
+- [ ] One real rollback transcript captured under Rollback Evidence.
+- [ ] Active deployment branch, git remote, TLS termination, and env vars observed and recorded in the fact checklist.
+- [ ] Seed script (`agent-forge/scripts/seed-demo-data.sh`) exists — tracked under Epic 3.
 
 ---
 

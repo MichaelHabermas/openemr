@@ -134,17 +134,20 @@ Exit criteria:
 
 - Active deployment branch.
 - Git remote name on the VM.
-- Whether the VM uses `docker compose` or `docker-compose`.
-- Whether the deploy user has passwordless Docker access.
 - Whether TLS terminates in OpenEMR, a reverse proxy, or VM infrastructure.
-- Whether deployment environment variables are set.
-- Whether Docker volumes must be preserved.
-- Whether fake sample data already exists in the deployed database.
-- How fake sample data will be created, loaded, and reset.
+- Whether deployment environment variables differ from defaults.
 - Exact OpenEMR routes, controllers, templates, and tables to modify for the agent.
 - Final patient-specific authorization implementation.
 - Final LLM provider, model, token pricing, and structured-output API until the P0 decision is recorded.
 - Measured latency and cost in the deployed environment.
+
+Verified facts (no longer unknown):
+
+- Compose command: `docker compose` (not `docker-compose`).
+- Deploy user runs `docker compose` without sudo.
+- Repo path on the VM: `~/repos/openemr`.
+- Compose directory: `docker/development-easy/`.
+- Volume behavior: reset on every deploy by design (`down -v`); fake data is re-seeded.
 
 ## Definition Of Done For Any Task
 
@@ -170,6 +173,8 @@ The entire system follows **SOLID** and **modular design** so each piece can be 
 | **D**ependency Inversion | High-level modules (PHP) depend on abstractions (interfaces), not concrete Python classes. |
 
 ## Epic 1 - Submission Gate Hygiene
+
+Status: Completed. Evidence is recorded in `agent-forge/docs/EPIC1-SUBMISSION-GATE-CHECKLIST.md`.
 
 Goal: make the required submission artifacts exist under the required names before building anything else.
 
@@ -319,52 +324,55 @@ Human verification:
 
 - A reviewer can read the checklist and see whether `docker compose down` is safe and whether volumes are preserved.
 
-#### Task 2.1.3 - Create Non-Destructive Deploy Script
+#### Task 2.1.3 - Demo Deploy Script (Reset-And-Seed Model)
 
-Why: repeated submissions need a reliable way to update the public deployment.
+Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so the deploy is destructive by design — the database is reset on every deploy and fake data is re-seeded.
 
 Start with eval/test:
 
-- Write the deploy success criteria before implementation: show branch and commit, capture rollback state, pull latest code, restart stack without deleting volumes, wait for health, check public URL, check readiness endpoint, print clear pass or fail.
+- Write the deploy success criteria before implementation: show branch, old commit, and new commit; pull latest code first so a merge failure does not take the app offline; reset the stack with `docker compose down -v` and `up -d`; wait for the public URL to return 2xx/3xx; re-seed fake demo data; print rollback target.
 
 Implementation:
 
-- Add a deploy script only after Task 2.1.2 verifies the compose command and volume safety.
-- Do not use `down -v`.
-- Capture the pre-deploy commit hash and any verified backup/snapshot command before restart.
+- Pull `--ff-only` before bringing the stack down.
+- Use `docker compose down -v` from `docker/development-easy/`. Volumes are reset on every deploy by design.
+- Invoke the demo data seed script after health passes; warn loudly if the seed script is absent.
 
 Definition of done:
 
 - Script exits non-zero on failure.
-- Script does not delete Docker volumes.
-- Script prints old commit, new commit, rollback target, service restart result, and health result.
+- Script prints old commit, new commit, and rollback target.
+- Script calls the seed script (or warns if absent) and runs the public health check.
+- Real PHI is never loaded; only fake demo data is seeded.
 
 Human verification:
 
-- A reviewer can SSH into the VM, run the script, and see a clear success or failure message.
+- A reviewer can SSH into the VM, run the script, and see a clear success or failure message followed by a re-seeded chart in the live app.
 
-#### Task 2.1.4 - Verify Rollback Path Before Demo Recording
+#### Task 2.1.4 - Code Rollback (Re-Seed Model)
 
-Why: a failed deploy or corrupted demo dataset shortly before recording can burn the deadline.
+Why: a failed deploy shortly before recording can burn the deadline. Code rollback plus re-seed is sufficient because all data is fake and re-loadable.
 
 Start with eval/test:
 
-- Define rollback proof before using it: current commit can be restored, compose stack can be restarted, and health checks can be rerun.
+- Define rollback proof before using it: a prior commit can be checked out, the stack can be reset and brought up at that commit, health checks pass, and fake demo data is re-seeded.
 
 Implementation:
 
-- Document the exact rollback command sequence after VM facts are verified.
-- If database backup/snapshot is not verified, mark database rollback as unavailable rather than implying it exists.
+- Code rollback target is the pre-deploy commit printed by `deploy-vm.sh`.
+- Rollback resets the stack (`down -v`), brings it back up, runs health checks, and re-seeds fake data.
+- Document explicitly that database rollback to a prior point in time is not implemented.
 
 Definition of done:
 
 - Code rollback target is known before each deploy.
-- Data rollback status is explicitly known or explicitly unavailable.
 - Health check is part of rollback verification.
+- Demo data is re-seeded after rollback.
+- The absence of database rollback is stated plainly in the deploy doc and the demo script.
 
 Human verification:
 
-- A reviewer can explain how to return to the last known-good deployed state.
+- A reviewer can explain how to return to the last known-good deployed code, and understands that any data created in the rolled-back deploy is lost on purpose.
 
 ## Epic 3 - Demo Data And Eval Ground Truth
 
