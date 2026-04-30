@@ -1,7 +1,7 @@
 # Epic: Agent Request Shell
 
 **Scope:** patient-chart request shell and fail-closed authorization
-**Status:** In Progress
+**Status:** Local Proof Complete - Deployed VM Verification Pending
 
 ---
 
@@ -101,3 +101,22 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 - Request logging contract added: `RequestLog`, `RequestLogger`, `PsrRequestLogger`, endpoint log-and-respond helper, and isolated logger tests.
 - Exception handling tightened: expected parser validation failures return safe domain messages; unexpected failures are logged and return a generic refusal.
 - Endpoint orchestration extracted into `AgentRequestHandler` so refusal/status-code behavior can be covered by isolated tests.
+- Local proof blockers closed: AgentForge isolated PHPUnit suite passed, JSON output path hardened, seeded no-relationship user verified, and all local manual checks passed.
+
+---
+
+## Definition Of Done Gate
+
+Can I call this DONE-done?
+
+- Source criteria mapped to code/proof/deferral? yes.
+- Required automated tests executed and captured? yes, locally in `agent-forge/docs/epic4-phpunit-output.txt`.
+- Required local manual checks executed and captured? yes.
+- Required fixtures/data/users for local proof exist? yes, `af_demo_unrelated` is seeded for the no-relationship refusal path.
+- Security/privacy/logging/error-handling requirements verified locally? yes.
+- Known limitations and deferred relationship/scope shapes documented? yes.
+- Epic status updated honestly? yes, local proof is complete but deployed VM verification is pending.
+- Git left unstaged and uncommitted unless user asked otherwise? yes.
+- Deployed VM verification executed and captured? no.
+
+Epic 4 is not DONE-done until the same request shell checks pass against the deployed VM after deployment and re-seeding.
