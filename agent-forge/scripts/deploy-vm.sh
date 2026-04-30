@@ -13,6 +13,7 @@ READYZ_URL="${AGENTFORGE_READYZ_URL:-https://openemr.titleredacted.cc/meta/healt
 HEALTH_TIMEOUT_SECONDS="${AGENTFORGE_HEALTH_TIMEOUT_SECONDS:-300}"
 HEALTH_INTERVAL_SECONDS="${AGENTFORGE_HEALTH_INTERVAL_SECONDS:-5}"
 SEED_SCRIPT="${AGENTFORGE_SEED_SCRIPT:-agent-forge/scripts/seed-demo-data.sh}"
+DEPLOY_BRANCH="${AGENTFORGE_DEPLOY_BRANCH:-master}"
 
 check_url() {
     local label="$1"
@@ -69,6 +70,12 @@ main() {
     printf 'Repo: %s\n' "${REPO_DIR}"
     printf 'Branch: %s\n' "${current_branch}"
     printf 'Old commit: %s\n' "${old_commit}"
+
+    # Reattach to the deploy branch if a prior rollback left HEAD detached.
+    if [[ "${current_branch}" != "${DEPLOY_BRANCH}" ]]; then
+        printf 'Switching to deploy branch: %s\n' "${DEPLOY_BRANCH}"
+        git switch "${DEPLOY_BRANCH}"
+    fi
 
     # Pull first so a merge/network failure doesn't take the app offline.
     git pull --ff-only

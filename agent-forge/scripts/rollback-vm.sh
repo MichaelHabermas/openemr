@@ -11,6 +11,21 @@ COMPOSE_DIR="${AGENTFORGE_COMPOSE_DIR:-docker/development-easy}"
 TARGET_COMMIT="${1:-${AGENTFORGE_ROLLBACK_COMMIT:-}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SEED_SCRIPT="${AGENTFORGE_SEED_SCRIPT:-agent-forge/scripts/seed-demo-data.sh}"
+HEALTH_TIMEOUT_SECONDS="${AGENTFORGE_HEALTH_TIMEOUT_SECONDS:-300}"
+HEALTH_INTERVAL_SECONDS="${AGENTFORGE_HEALTH_INTERVAL_SECONDS:-5}"
+
+wait_for_health() {
+    local elapsed=0
+    until "${SCRIPT_DIR}/health-check.sh"; do
+        if [[ "${elapsed}" -ge "${HEALTH_TIMEOUT_SECONDS}" ]]; then
+            printf 'Rollback failed: app did not become healthy within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
+            return 1
+        fi
+        printf 'Health check not ready yet; retrying in %ss...\n' "${HEALTH_INTERVAL_SECONDS}"
+        sleep "${HEALTH_INTERVAL_SECONDS}"
+        elapsed=$((elapsed + HEALTH_INTERVAL_SECONDS))
+    done
+}
 
 if [[ -z "${TARGET_COMMIT}" ]]; then
     printf 'Usage: %s <rollback-commit>\n' "$0" >&2
@@ -30,7 +45,7 @@ cd "${COMPOSE_DIR}"
 docker compose down
 docker compose up -d
 
-"${SCRIPT_DIR}/health-check.sh"
+wait_for_health
 
 if [[ -x "${REPO_DIR}/${SEED_SCRIPT}" ]]; then
     printf 'Seeding fake demo data: %s\n' "${SEED_SCRIPT}"
