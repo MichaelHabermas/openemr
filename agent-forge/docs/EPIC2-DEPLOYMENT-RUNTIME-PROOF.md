@@ -67,7 +67,7 @@ What this epic does NOT do:
 
 ### Task 2.1.3: Demo Deploy Script (Reset-And-Seed Model)
 
-**Status:** [x] Code complete; one captured run still required as evidence
+**Status:** [x] Complete — deploy transcript captured 2026-04-30
 **Description:** Encode the operator's actual deploy workflow with health checks and seeded re-load of fake data.
 
 **Subtasks:**
@@ -77,13 +77,13 @@ What this epic does NOT do:
 - [x] Wait for the public app to return 2xx/3xx before seeding.
 - [x] Invoke the demo data seed script if present; warn loudly if not.
 - [x] Print old commit, new commit, and rollback target.
-- [ ] Capture one real deploy transcript on the VM and add it under Deploy Evidence below.
+- [x] Capture one real deploy transcript on the VM and add it under Deploy Evidence below.
 
 **Commit:** `chore(agent-forge): align deploy script with reset-and-seed workflow`
 
 ### Task 2.1.4: Code Rollback (Re-Seed Model)
 
-**Status:** [x] Code rollback scripted; database rollback is intentionally not provided
+**Status:** [x] Complete — rollback transcript captured 2026-04-30; point-in-time database rollback intentionally not provided
 **Description:** Roll back code to a prior commit and re-seed fake demo data. Volumes are preserved across rollbacks (see "Known VM Bootstrap Fragility"); the idempotent seed restores known demo state for `pid=900001`. There is no point-in-time database rollback.
 
 **Subtasks:**
@@ -93,7 +93,7 @@ What this epic does NOT do:
 - [x] Run health checks after rollback.
 - [x] Re-seed fake demo data after rollback.
 - [x] State explicitly that database rollback to a prior point in time is not implemented.
-- [ ] Capture one real rollback transcript on the VM and add it under Rollback Evidence below.
+- [x] Capture one real rollback transcript on the VM and add it under Rollback Evidence below.
 
 **Commit:** `docs(agent-forge): document reset-and-seed rollback`
 
@@ -174,6 +174,105 @@ Health check passed.
 
 ---
 
+## Deploy Evidence
+
+Captured 2026-04-30 on the demo VM (`gauntlet-mgh`) at commit `6323b43ad` with the aligned `deploy-vm.sh`. Cloudflare's edge takes ~90 seconds to re-establish the origin connection after the stack cycles, which is why the wait loop sees several `HTTP 521` responses before the public app returns 200.
+
+```text
+root@gauntlet-mgh:~/repos/openemr# agent-forge/scripts/deploy-vm.sh
+Repo: /root/repos/openemr
+Branch: master
+Old commit: 6323b43ad92fb25812672379f622820646a42387
+Already up to date.
+New commit: 6323b43ad92fb25812672379f622820646a42387
+Compose dir: docker/development-easy
+[+] down 8/8
+ ✔ Container development-easy-mailpit-1    Removed
+ ✔ Container development-easy-openemr-1    Removed
+ ✔ Container development-easy-selenium-1   Removed
+ ✔ Container development-easy-phpmyadmin-1 Removed
+ ✔ Container development-easy-couchdb-1    Removed
+ ✔ Container development-easy-openldap-1   Removed
+ ✔ Container development-easy-mysql-1      Removed
+ ✔ Network development-easy_default        Removed
+[+] up 8/8
+ ✔ Network development-easy_default        Created
+ ✔ Container development-easy-mysql-1      Healthy
+ ✔ Container development-easy-selenium-1   Started
+ ✔ Container development-easy-couchdb-1    Started
+ ✔ Container development-easy-openldap-1   Started
+ ✔ Container development-easy-mailpit-1    Started
+ ✔ Container development-easy-phpmyadmin-1 Started
+ ✔ Container development-easy-openemr-1    Started
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+WAIT public app: curl exit 0, HTTP 521
+PASS public app: HTTP 200
+PASS readiness endpoint: HTTP 200
+Seeding fake demo data: agent-forge/scripts/seed-demo-data.sh
+Seeding AgentForge demo data from agent-forge/sql/seed-demo-data.sql
+PASS seed: fake demo patient pid=900001 loaded.
+Deploy succeeded.
+Rollback target: 6323b43ad92fb25812672379f622820646a42387
+```
+
+---
+
+## Rollback Evidence
+
+Captured 2026-04-30 on the demo VM (`gauntlet-mgh`). Rollback target was `bfd666d56` (the demo-data scripts commit). The script reattaches HEAD to the target, recreates the stack, polls health-check until the Cloudflare edge sees the origin again, then re-seeds. The intermediate `Health check failed` lines are expected output from the polling loop, not failures of the rollback itself.
+
+```text
+root@gauntlet-mgh:~/repos/openemr# agent-forge/scripts/rollback-vm.sh bfd666d56
+Current commit: 6323b43ad92fb25812672379f622820646a42387
+Rollback target: bfd666d56
+HEAD is now at bfd666d56 feat(agent-forge): add demo data generation and verification scripts
+[+] down 8/8
+ ✔ Container development-easy-phpmyadmin-1 Removed
+ ✔ Container development-easy-couchdb-1    Removed
+ ✔ Container development-easy-openldap-1   Removed
+ ✔ Container development-easy-mailpit-1    Removed
+ ✔ Container development-easy-openemr-1    Removed
+ ✔ Container development-easy-selenium-1   Removed
+ ✔ Container development-easy-mysql-1      Removed
+ ✔ Network development-easy_default        Removed
+[+] up 8/8
+ ✔ Network development-easy_default        Created
+ ✔ Container development-easy-selenium-1   Started
+ ✔ Container development-easy-couchdb-1    Started
+ ✔ Container development-easy-openldap-1   Started
+ ✔ Container development-easy-mailpit-1    Started
+ ✔ Container development-easy-mysql-1      Healthy
+ ✔ Container development-easy-phpmyadmin-1 Started
+ ✔ Container development-easy-openemr-1    Started
+Checking public app: https://openemr.titleredacted.cc/
+FAIL public app: HTTP 521
+Checking readiness endpoint: https://openemr.titleredacted.cc/meta/health/readyz
+FAIL readiness endpoint: HTTP 521
+Health check failed: 2 endpoint(s) failed.
+Health check not ready yet; retrying in 5s...
+[ ... wait loop continues for ~90s while Cloudflare edge re-establishes origin connection ... ]
+Health check not ready yet; retrying in 5s...
+Checking public app: https://openemr.titleredacted.cc/
+PASS public app: HTTP 200
+Checking readiness endpoint: https://openemr.titleredacted.cc/meta/health/readyz
+PASS readiness endpoint: HTTP 200
+Health check passed.
+Seeding fake demo data: agent-forge/scripts/seed-demo-data.sh
+Seeding AgentForge demo data from agent-forge/sql/seed-demo-data.sql
+PASS seed: fake demo patient pid=900001 loaded.
+Rollback completed to bfd666d56.
+```
+
+**Operational note about rollback targets:** the rollback script checks out an older commit, which means the rolled-back tree contains the version of `agent-forge/scripts/` that existed at that target. If a rollback target predates a fix to one of those scripts, the script behavior on the rolled-back tree will reflect the older version. After a rollback, `git switch master` followed by `agent-forge/scripts/deploy-vm.sh` is the correct way to roll forward; this restores the latest scripts before deploying. This was observed during the 2026-04-30 capture and is documented here so future operators are not surprised by it.
+
+---
+
 ## Epic 3 Demo Data — Deployed Verification
 
 Captured 2026-04-30 on the demo VM (`gauntlet-mgh`) after `git pull` brought the Epic 3 seed and verifier scripts onto the host. The seed is idempotent and the verifier asserts the chart-render contract documented in `agent-forge/docs/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
@@ -215,8 +314,8 @@ This closes the PLAN Task 3.1.2 requirement that the seed work in both local and
 - [x] Rollback script requires an explicit commit, reruns health checks, and re-seeds fake data.
 - [x] Deploy and rollback scripts both call the seed script and warn if it is absent.
 - [x] Database rollback is documented as intentionally not implemented.
-- [ ] One real deploy transcript captured under Deploy Evidence.
-- [ ] One real rollback transcript captured under Rollback Evidence.
+- [x] One real deploy transcript captured under Deploy Evidence.
+- [x] One real rollback transcript captured under Rollback Evidence.
 - [x] Active deployment branch, git remote, TLS termination, and env vars observed and recorded in the fact checklist.
 - [x] Seed script (`agent-forge/scripts/seed-demo-data.sh`) exists and runs green on the deployed VM — see Epic 3 Demo Data — Deployed Verification above.
 
