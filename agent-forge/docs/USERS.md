@@ -1,150 +1,80 @@
-# Users
+# Users - First Principles Reset
 
-**Project theme:** A simple success is better than a complicated failure.
+This document is rebuilt from `SPECS.txt` only. Prior user-planning docs are not treated as evidence.
 
-This document defines the target user, the moment in their day the agent shows up, and the four use cases the agent supports. The decisions behind these choices are logged in [process-and-decisions.md](process-and-decisions.md) under Stage 4 (Rounds 1–4).
+## Requirement
 
----
+`SPECS.txt` requires:
 
-## The user
+- a target user
+- the user's workflow
+- specific use cases the agent addresses
+- an explicit reason, for each use case, why an agent is the right solution
 
-**Primary care physician in an employed multi-provider clinic.**
+## Target User
 
-- Panel: ~2,000 patients, geriatric-leaning, polypharmacy / multi-morbid mix (HTN, DM, CKD, AFib, hyperlipidemia).
-- Day shape: 18–22 visits in 15-minute slots, 9:00–12:00 and 1:00–5:00, with the 5:00–6:30 inbox window out of scope.
-- Tools at the desk: fixed desktop or workstation-on-wheels at each pod. Not optimizing for tablet.
-- Working in: OpenEMR. The agent is embedded in the chart UI under `interface/modules/custom_modules/clinical-copilot/`; the agent service runs as a separate process so it can move later.
+Primary care physician seeing scheduled outpatient visits.
 
-This sub-population was chosen because it produces the highest density of legitimate follow-up questions — drug interactions, conflicting trends, "what changed since last visit" — the kind of need a conversational agent is the right shape for. A sorted dashboard isn't.
+This user is narrow enough to constrain the product. The physician is moving from one patient room to the next and has limited time to re-orient to the current patient's chart before the visit starts.
 
-## The anchor moment
+## Workflow
 
-**Chart-open, at every visit.**
+The agent enters at chart-open, immediately before the physician sees the patient.
 
-The day timeline:
+The physician needs to answer four questions quickly:
 
-- Chart-open — agent fires the default summary turn server-side, streams the cited summary card into the iframe, and accepts follow-ups in the same surface. First-token ≤2s, full response ≤8s.
-- Through the day — every chart-open (including the 60–120 sec re-glance between rooms) shows the same surface.
+1. Who is this patient?
+2. Why are they here today?
+3. What changed since the last visit?
+4. What chart facts matter before I walk in?
 
-There is exactly one entry point in scope for this stage: chart-open. A morning-panel-overview (all 20 patients, summaries collapsed) is *designed into the architecture* but not shipped. Same backend; the panel view is a pure UI addition later.
+After reading the first answer, the physician may ask follow-up questions about the same patient's chart.
 
-A pre-compute path triggered at front-desk check-in (rendering the summary ~10 minutes before chart-open) is designed into the architecture as a future cache layer — same backend, same tools, same citations. **It is not in the 36-hour build.** The shipped path is live: chart-open → agent service → tools → LLM → citation post-processor → stream.
+## Use Case 1 - Visit Briefing
 
-## Agent shape — two surfaces, one backend
+**Moment:** The physician opens the patient's chart before entering the room.
 
-This is the most load-bearing design decision in the project. The SPECS rule "if you cannot point to a use case that requires multi-turn conversation, you should not have multi-turn conversation" is satisfied honestly, not by force-fitting multi-turn into a 90-second doorknob moment.
+**Need:** A short, patient-specific briefing: reason for visit, last plan, active problems, current medications, recent labs, and notable changes since the last visit.
 
-**Surface A — default summary card.** Streamed live on chart-open. The agent fires a server-side default turn ("what should I know about this patient right now?") through the same tool chain and citation grammar as any follow-up. First-token ≤2s; full response ≤8s. Every claim cites the row it came from. This is the 90-second answer. (A pre-computed variant rendered at front-desk check-in is a future cache layer — same backend, out of scope for the build.)
+**Why an agent:** The physician's next question depends on what the briefing reveals. If the summary says a medication changed, the physician may ask when, who changed it, or what labs changed afterward. A static dashboard can show fields, but it does not handle follow-up questions across chart sections.
 
-**Surface B — multi-turn chat drill-down.** Attached to the summary, already loaded with the patient's context. Used when the doctor has 5–10 minutes to ask follow-ups. Ignored when they don't. Same retrievals, same citations as Surface A.
+**Boundary:** The agent summarizes chart facts. It does not diagnose, recommend treatment, or decide what the physician should do.
 
-The card serves the between-rooms case; the chat serves the pre-room and between-visit cases. Multi-turn is the optional drill-down on top of a base layer that works without it.
+## Use Case 2 - Follow-Up Drill-Down
 
-## What the agent does and does not do
+**Moment:** The briefing raises a question the physician wants answered before or during the visit.
 
-**The agent surfaces chart-supported facts with row-level citations.**
+**Need:** The physician asks a focused follow-up such as:
 
-It does not:
+- "What changed since the last visit?"
+- "Show me the recent A1c trend."
+- "What medications are active right now?"
+- "What did the last note say the plan was?"
 
-- recommend medications, doses, or dose changes
-- suggest diagnoses or differentials
-- offer causal reasoning ("this lab change is probably from the new med")
-- generate visit notes or patient messages
-- ask questions on behalf of the doctor
+**Why an agent:** The physician does not know in advance which chart section will matter. The value is multi-turn narrowing: ask a broad question, inspect the answer, then narrow by date, problem, medication, lab, or previous note.
 
-These are non-negotiable. The verification layer adversarially tests for inference leakage; any claim not traceable to a returned tool row is a failure. Generation and reasoning workflows are different products with different verification models — they are explicitly out of scope.
+**Boundary:** Every factual answer must be traceable to the patient's chart. If the chart does not support an answer, the agent must say so.
 
-## Use cases
+## Use Case 3 - Missing Or Unclear Data
 
-Four use cases. Each is grounded in chart data, each has a row-citable output, each has a real multi-turn drill-down path.
+**Moment:** The physician asks for something that may not be present, complete, or reliable in the chart.
 
-### UC-1 — Pre-visit "what changed" briefing
+**Need:** A clear answer about what was checked and what could not be determined.
 
-**Trigger:** chart-open. Output is read from the pre-compute cache.
+**Why an agent:** Incomplete records are common enough that the physician needs more than a blank dashboard field. The useful answer is conversational: "I checked medications, labs, and recent notes; I found X, but I did not find Y."
 
-**Output (the four-line summary card):**
+**Boundary:** The agent must not fill gaps with inference. "Not found in the chart" is an acceptable answer. A confident unsupported answer is a failure.
 
-1. Last note's plan and follow-up items — what was supposed to happen by today.
-2. What's new since last visit — labs, meds, problems, hospitalizations.
-3. Active-problem trends — A1C, BP, eGFR trajectories.
-4. Med list with flags — interactions, recent changes, missed refills.
+## Non-Goals
 
-Conditional flags layer on: open care gaps, allergies-that-matter-today.
+- No diagnosis.
+- No treatment recommendation.
+- No medication or dose recommendation.
+- No note drafting.
+- No patient-facing advice.
+- No open-ended medical knowledge chatbot.
+- No support for users other than the chosen primary care physician in this version.
 
-**Tools:** `get_last_encounter(pid)`, `get_changes_since(pid, date)`, `get_active_meds(pid)`, `get_problem_list(pid)`.
+## Success Standard
 
-**Multi-turn justification:** the summary surfaces facts; the natural follow-ups are pivots — "show me the trend behind line 3," "which note flagged the hospitalization," "narrow line 2 to meds only." These are not single-shot queries.
-
-**Counterfactual:** without the agent, the doctor scrolls the last note, scans the med list, scans recent labs, scans the problem list — 3–5 minutes for a multi-morbid patient, longer if the last note is long. The card collapses this to a ~15-second scan.
-
-### UC-2 — Polypharmacy interaction & duplication flag
-
-**Trigger:** chart-open (part of UC-1's summary card) and on-demand re-check after a med change in chat.
-
-**Output:** flagged med pairs or duplications, each with citations to both meds *and* the rule that fired. Flag-only — never "stop X" or "switch to Y."
-
-**Tools:** `get_active_meds(pid)` (joins `prescriptions` and `lists` — the dual-storage gotcha), `check_interactions(med_list)`.
-
-**Interaction data source:** curated rule set shipped as JSON in the repo (~50–100 high-value rules: triple-whammy in CKD, warfarin + amiodarone, beta-blocker + non-DHP CCB, etc.). Behind an interface so the production deploy can swap in RxNorm/OpenFDA without touching the use case.
-
-**Multi-turn justification:** "when did this combo start," "what's the source of this flag," "show me only flags involving the new med" — drill-downs the summary line can't carry.
-
-**Counterfactual:** OpenEMR has no built-in interaction surface. The doctor's working memory is the current defense, and 12-med geriatric polypharmacy patients are exactly where it fails.
-
-### UC-3 — Trend drill-down on labs and vitals
-
-**Trigger:** doctor asks in chat ("A1C trend," "BP last 6 months," "eGFR since the ACE-i started").
-
-**Output:** chronological values with dates, units, reference ranges, source row IDs. Quoted verbatim from the tool.
-
-**Tools:** `get_lab_series(pid, test_code, range)`, `get_vital_series(pid, type, range)`.
-
-**Multi-turn justification:** the doctor's first question is rarely the right question. "A1C trend" → "narrow to last year" → "compare to when we started metformin" — these are pivots on the same series, not three independent queries.
-
-**Counterfactual:** click into the labs tab, filter, scroll — ~30–60 sec per series, more clicks per pivot. The chat collapses pivots.
-
-### UC-4 — "What changed in meds and labs in the last 30 days"
-
-**Trigger:** doctor asks in chat ("anything new since last month," "what did the cardiologist start").
-
-**Output:** dated list of changes — explicit med add/stop/dose-change events, new lab results, new problem-list entries — each with citations.
-
-**Tools:** `get_med_changes(pid, days)`, `get_new_labs(pid, days)`, `get_problem_changes(pid, days)`.
-
-**Stop-event handling — strict mode.** Reports only changes with explicit event timestamps. Output is labeled "based on explicit events" so the doctor knows the coverage. "Row no longer present" is *not* surfaced as "stopped" — that would be inference.
-
-**Multi-turn justification:** "narrow to meds only," "show me the lab that triggered the dose change," "who prescribed the new med."
-
-**Counterfactual:** scroll med history, scroll labs, eyeball dates — 2–3 min, easy to miss a stop event. The "anything new this month" question is exactly the kind the doctor *thinks* they remember and is wrong.
-
-## Tolerances
-
-**Forgive:**
-
-- "I don't know" or "the chart doesn't show this." Always with links to whatever data was checked.
-- Under-coverage that's labeled (UC-4 strict mode tells the doctor it's based on explicit events).
-- A stale summary when a lab landed between check-in and chart-open, *as long as* the staleness is detected and the card refreshes.
-
-**Project-killer:**
-
-- A med, dose, or lab value that is wrong, fabricated, or unsourced.
-- A flag whose underlying rule doesn't exist or doesn't apply.
-- A "change since last visit" claim where the source row contradicts it.
-- Any output crossing the no-inference line — recommendation, diagnosis, causal claim.
-
-## Out of scope for Stage 5
-
-Documented here so the boundary is explicit, not because they're bad ideas.
-
-- Morning-panel-overview UI (architected in, not shipped).
-- End-of-day inbox triage (different anchor moment, different identity context).
-- Visit-note drafting / SOAP generation (generation, not surfacing).
-- Patient-portal message drafting (generation + portal-side identity).
-- Open-ended chart Q&A as a discrete entry point (preserved as the chat surface for UC-1/2/3/4 drill-downs only).
-- "Questions to ask the patient" (requires inference about what's interesting).
-- Transition-of-care reconciliation (Stage 6 — needs CCDA ingest plumbing).
-- Tablet form factor.
-
-## Demo data
-
-The dev-easy compose installs OpenEMR but seeds zero clinical data; `sql/example_patient_data.sql` is demographics-only for 14 patients. Stage 5 will generate Synthea FHIR R4 bundles for an aligned demographic profile and re-key onto the existing 14 named `pid`s, so each named patient (Farrah Rolle, Ted Shaw, Eduardo Perez, Brent Perez, Wallace Buckley, Jim Moses, Richard Jones, Ilias Jenane, Jason Binder, John Dockerty, James Janssen, Jillian Mahoney, Robert Dickey, Nora Cohen) gets a believable multi-year clinical course. Synthea is the standard tool — defensible to a hospital CTO. Decision logged in [process-and-decisions.md](process-and-decisions.md).
+The agent is successful only if the physician would trust it as a fast chart-orientation aid. It fails if it produces an unsupported medication, lab value, diagnosis, recommendation, or patient-specific claim.
