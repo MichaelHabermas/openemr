@@ -12,9 +12,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge;
 
+use DomainException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Throwable;
+use RuntimeException;
 
 final readonly class EvidenceAgentHandler implements AgentHandler
 {
@@ -31,7 +32,7 @@ final readonly class EvidenceAgentHandler implements AgentHandler
         foreach ($this->tools as $tool) {
             try {
                 $results[] = $tool->collect($request->patientId);
-            } catch (Throwable $exception) {
+            } catch (DomainException | RuntimeException $exception) {
                 $this->logger->error(
                     'AgentForge evidence tool failed unexpectedly.',
                     [

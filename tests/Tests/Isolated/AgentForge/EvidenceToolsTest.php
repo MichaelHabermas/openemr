@@ -224,6 +224,13 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame(['Recent notes and last plan not found in the chart.'], $result->missingSections);
     }
 
+    /**
+     * @param array<string, mixed>|null $demographics
+     * @param list<array<string, mixed>>|null $problems
+     * @param list<array<string, mixed>>|null $prescriptions
+     * @param list<array<string, mixed>>|null $labs
+     * @param list<array<string, mixed>>|null $notes
+     */
     private function repository(
         ?array $demographics = null,
         ?array $problems = null,
@@ -232,16 +239,29 @@ final class EvidenceToolsTest extends TestCase
         ?array $notes = null,
     ): ChartEvidenceRepository {
         return new class ($demographics, $problems, $prescriptions, $labs, $notes) implements ChartEvidenceRepository {
+            /**
+             * @param array<string, mixed>|null $demographics
+             * @param list<array<string, mixed>>|null $problems
+             * @param list<array<string, mixed>>|null $prescriptions
+             * @param list<array<string, mixed>>|null $labs
+             * @param list<array<string, mixed>>|null $notes
+             */
             public function __construct(
+                /** @var array<string, mixed>|null */
                 private readonly ?array $demographics,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $problems,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $prescriptions,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $labs,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $notes,
             ) {
             }
 
-            public function demographics(PatientId $patientId): ?array
+            /** @return array<string, mixed> */
+            public function demographics(PatientId $patientId): array
             {
                 return $this->demographics ?? [
                     'pid' => 900001,
@@ -253,6 +273,7 @@ final class EvidenceToolsTest extends TestCase
                 ];
             }
 
+            /** @return list<array<string, mixed>> */
             public function activeProblems(PatientId $patientId, int $limit): array
             {
                 return $this->problems ?? [
@@ -275,6 +296,7 @@ final class EvidenceToolsTest extends TestCase
                 ];
             }
 
+            /** @return list<array<string, mixed>> */
             public function activePrescriptions(PatientId $patientId, int $limit): array
             {
                 return $this->prescriptions ?? [
@@ -297,6 +319,7 @@ final class EvidenceToolsTest extends TestCase
                 ];
             }
 
+            /** @return list<array<string, mixed>> */
             public function recentLabs(PatientId $patientId, int $limit): array
             {
                 return $this->labs ?? [
@@ -319,6 +342,7 @@ final class EvidenceToolsTest extends TestCase
                 ];
             }
 
+            /** @return list<array<string, mixed>> */
             public function recentNotes(PatientId $patientId, int $limit): array
             {
                 return $this->notes ?? [

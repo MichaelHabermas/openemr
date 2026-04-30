@@ -30,16 +30,16 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->activeProblems($patientId, $this->limit) as $row) {
-            if (!$this->truthy($row['activity'] ?? null)) {
+            if (!EvidenceRowValue::truthy($row, 'activity')) {
                 continue;
             }
 
-            $title = trim((string) ($row['title'] ?? ''));
+            $title = EvidenceRowValue::string($row, 'title');
             if ($title === '') {
                 continue;
             }
 
-            $date = $this->dateOnly($row['begdate'] ?? $row['date'] ?? '');
+            $date = EvidenceRowValue::dateOnly($row, 'begdate', 'date');
             $items[] = new EvidenceItem(
                 'problem',
                 'lists',
@@ -56,20 +56,6 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function sourceId(array $row): string
     {
-        return trim((string) ($row['external_id'] ?? '')) !== ''
-            ? (string) $row['external_id']
-            : (string) $row['id'];
-    }
-
-    private function dateOnly(mixed $value): string
-    {
-        $date = trim((string) $value);
-
-        return $date === '' ? 'unknown' : substr($date, 0, 10);
-    }
-
-    private function truthy(mixed $value): bool
-    {
-        return in_array($value, [1, '1', true], true);
+        return EvidenceRowValue::firstString($row, 'external_id', 'id');
     }
 }

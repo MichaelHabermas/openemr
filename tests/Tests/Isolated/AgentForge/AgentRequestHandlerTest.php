@@ -17,7 +17,6 @@ use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentRequestParserInterface;
 use OpenEMR\AgentForge\AgentRequestResult;
-use OpenEMR\AgentForge\AgentQuestion;
 use OpenEMR\AgentForge\ChartEvidenceTool;
 use OpenEMR\AgentForge\EvidenceAgentHandler;
 use OpenEMR\AgentForge\EvidenceItem;
@@ -342,13 +341,29 @@ final class HandlerRecordingLogger extends AbstractLogger
     /** @var list<array{level: mixed, message: string|\Stringable, context: array<string, mixed>}> */
     public array $records = [];
 
-    /** @param array<string, mixed> $context */
+    /** @param array<mixed> $context */
     public function log($level, string|\Stringable $message, array $context = []): void
     {
         $this->records[] = [
             'level' => $level,
             'message' => $message,
-            'context' => $context,
+            'context' => $this->stringKeyedContext($context),
         ];
+    }
+
+    /**
+     * @param array<mixed> $context
+     * @return array<string, mixed>
+     */
+    private function stringKeyedContext(array $context): array
+    {
+        $normalized = [];
+        foreach ($context as $key => $value) {
+            if (is_string($key)) {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return $normalized;
     }
 }

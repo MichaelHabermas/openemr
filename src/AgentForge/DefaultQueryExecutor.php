@@ -18,6 +18,27 @@ final class DefaultQueryExecutor implements QueryExecutor
 {
     public function fetchRecords(string $sql, array $binds = []): array
     {
-        return QueryUtils::fetchRecords($sql, $binds);
+        $records = [];
+        foreach (QueryUtils::fetchRecords($sql, $binds) as $record) {
+            $records[] = $this->stringKeyedRow($record);
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param array<mixed> $record
+     * @return array<string, mixed>
+     */
+    private function stringKeyedRow(array $record): array
+    {
+        $row = [];
+        foreach ($record as $key => $value) {
+            if (is_string($key)) {
+                $row[$key] = $value;
+            }
+        }
+
+        return $row;
     }
 }

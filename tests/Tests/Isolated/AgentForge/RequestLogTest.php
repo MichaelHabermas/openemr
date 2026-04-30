@@ -71,13 +71,29 @@ final class RecordingLogger extends AbstractLogger
     /** @var list<array{level: mixed, message: string|\Stringable, context: array<string, mixed>}> */
     public array $records = [];
 
-    /** @param array<string, mixed> $context */
+    /** @param array<mixed> $context */
     public function log($level, string|\Stringable $message, array $context = []): void
     {
         $this->records[] = [
             'level' => $level,
             'message' => $message,
-            'context' => $context,
+            'context' => $this->stringKeyedContext($context),
         ];
+    }
+
+    /**
+     * @param array<mixed> $context
+     * @return array<string, mixed>
+     */
+    private function stringKeyedContext(array $context): array
+    {
+        $normalized = [];
+        foreach ($context as $key => $value) {
+            if (is_string($key)) {
+                $normalized[$key] = $value;
+            }
+        }
+
+        return $normalized;
     }
 }

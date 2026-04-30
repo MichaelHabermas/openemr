@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge;
 
-use Throwable;
+use RuntimeException;
 
 final readonly class PatientAuthorizationGate
 {
@@ -50,7 +50,7 @@ final readonly class PatientAuthorizationGate
             if (!$this->repository->userHasDirectRelationship($request->patientId, $sessionUserId)) {
                 return AuthorizationDecision::refuse('Patient-specific access could not be verified for this user.');
             }
-        } catch (Throwable) {
+        } catch (RuntimeException) {
             return AuthorizationDecision::refuse('Patient-specific access is unclear.');
         }
 

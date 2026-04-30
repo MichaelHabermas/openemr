@@ -113,6 +113,7 @@ Real external model calls, vendor-specific adapters, and production token/cost c
 - 2026-04-30: Verified Epic 6 on the deployed VM after `agent-forge/scripts/deploy-vm.sh` restarted the stack and re-seeded demo data.
 - 2026-04-30: Added explicit draft-provider mode selection with fixture and disabled modes; unsupported external modes fail closed pending real provider work.
 - 2026-04-30: Added deterministic deadline handling and handler-level proof that missing last-plan and timeout/deadline states surface visibly.
+- 2026-04-30: Completed broader AgentForge static-analysis and boundary type cleanup without changing fixture-first behavior or adding a real model provider.
 
 ## Proof Log
 
@@ -120,6 +121,7 @@ Real external model calls, vendor-specific adapters, and production token/cost c
 - `php -l` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - `vendor/bin/phpcs` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - Focused PHPStan on the Epic 6 source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
+- Broader AgentForge PHPStan, `composer phpstan -- --error-format=raw src/AgentForge tests/Tests/Isolated/AgentForge`: passed after replacing forbidden `Throwable` catches with modeled exceptions, normalizing DB row shapes, and adding typed evidence-row accessors.
 - `agent-forge/scripts/verify-demo-data.sh`: passed against the local Docker OpenEMR database.
 - Live local endpoint smoke test for `Show me recent labs.` on Alex Testpatient: returned verified cited output including A1c `7.4 %` and `8.2 %`, with no missing sections after the temporary fake lab-tool failure was removed.
 - VM deploy: `agent-forge/scripts/deploy-vm.sh` passed on `gauntlet-mgh` at commit `a2a16a61163c301cb7f02c5ea3d529c6a342345d`; public app and readiness endpoint returned HTTP 200; demo seed passed.

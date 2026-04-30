@@ -30,11 +30,11 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->recentNotes($patientId, $this->limit) as $row) {
-            if (!$this->truthy($row['activity'] ?? null) || !$this->truthy($row['authorized'] ?? null)) {
+            if (!EvidenceRowValue::truthy($row, 'activity') || !EvidenceRowValue::truthy($row, 'authorized')) {
                 continue;
             }
 
-            $note = trim((string) ($row['description'] ?? ''));
+            $note = EvidenceRowValue::string($row, 'description');
             if ($note === '') {
                 continue;
             }
@@ -43,8 +43,8 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
                 'note',
                 'form_clinical_notes',
                 $this->sourceId($row),
-                $this->dateOnly($row['note_date'] ?? $row['encounter_date'] ?? ''),
-                trim((string) ($row['codetext'] ?? 'Last plan')) ?: 'Last plan',
+                EvidenceRowValue::dateOnly($row, 'note_date', 'encounter_date'),
+                EvidenceRowValue::string($row, 'codetext') ?: 'Last plan',
                 EvidenceText::bounded($note, $this->maxNoteLength),
             );
         }
@@ -55,20 +55,6 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function sourceId(array $row): string
     {
-        return trim((string) ($row['external_id'] ?? '')) !== ''
-            ? (string) $row['external_id']
-            : (string) $row['id'];
-    }
-
-    private function dateOnly(mixed $value): string
-    {
-        $date = trim((string) $value);
-
-        return $date === '' ? 'unknown' : substr($date, 0, 10);
-    }
-
-    private function truthy(mixed $value): bool
-    {
-        return in_array($value, [1, '1', true], true);
+        return EvidenceRowValue::firstString($row, 'external_id', 'id');
     }
 }

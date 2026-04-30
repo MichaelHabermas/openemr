@@ -27,18 +27,18 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->recentLabs($patientId, $this->limit) as $row) {
-            $label = trim((string) ($row['result_text'] ?? ''));
-            $result = trim((string) ($row['result'] ?? ''));
+            $label = EvidenceRowValue::string($row, 'result_text');
+            $result = EvidenceRowValue::string($row, 'result');
             if ($label === '' || $result === '') {
                 continue;
             }
 
-            $units = trim((string) ($row['units'] ?? ''));
+            $units = EvidenceRowValue::string($row, 'units');
             $items[] = new EvidenceItem(
                 'lab',
                 'procedure_result',
                 $this->sourceId($row),
-                $this->dateOnly($row['date'] ?? ''),
+                EvidenceRowValue::dateOnly($row, 'date'),
                 $label,
                 trim($result . ' ' . $units),
             );
@@ -50,15 +50,6 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function sourceId(array $row): string
     {
-        return trim((string) ($row['comments'] ?? '')) !== ''
-            ? (string) $row['comments']
-            : (string) $row['procedure_result_id'];
-    }
-
-    private function dateOnly(mixed $value): string
-    {
-        $date = trim((string) $value);
-
-        return $date === '' ? 'unknown' : substr($date, 0, 10);
+        return EvidenceRowValue::firstString($row, 'comments', 'procedure_result_id');
     }
 }

@@ -30,9 +30,9 @@ final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
             return EvidenceResult::missing($this->section(), 'Demographics not found in the chart.');
         }
 
-        $name = trim((string) ($row['fname'] ?? '') . ' ' . (string) ($row['lname'] ?? ''));
-        $dob = trim((string) ($row['DOB'] ?? ''));
-        $sex = trim((string) ($row['sex'] ?? ''));
+        $name = trim(EvidenceRowValue::string($row, 'fname') . ' ' . EvidenceRowValue::string($row, 'lname'));
+        $dob = EvidenceRowValue::string($row, 'DOB');
+        $sex = EvidenceRowValue::string($row, 'sex');
         $missing = [];
         foreach (['name' => $name, 'date of birth' => $dob, 'sex' => $sex] as $label => $value) {
             if ($value === '') {
@@ -61,8 +61,8 @@ final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
                 new EvidenceItem(
                     'demographic',
                     'patient_data',
-                    (string) ($row['pid'] ?? $patientId->value),
-                    $this->dateOnly($row['date'] ?? $dob),
+                    EvidenceRowValue::firstString($row, 'pid') ?: (string) $patientId->value,
+                    EvidenceRowValue::dateOnly($row, 'date', 'DOB'),
                     'Patient',
                     implode(', ', $parts),
                 ),
@@ -71,13 +71,4 @@ final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
         );
     }
 
-    private function dateOnly(mixed $value): string
-    {
-        $date = trim((string) $value);
-        if ($date === '') {
-            return 'unknown';
-        }
-
-        return substr($date, 0, 10);
-    }
 }

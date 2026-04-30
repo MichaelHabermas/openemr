@@ -15,7 +15,7 @@ namespace OpenEMR\AgentForge;
 use DomainException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Throwable;
+use RuntimeException;
 
 final readonly class AgentRequestHandler
 {
@@ -54,7 +54,7 @@ final readonly class AgentRequestHandler
                 'refused_invalid_request',
                 $sessionPatientId,
             );
-        } catch (Throwable $exception) {
+        } catch (RuntimeException $exception) {
             $this->logger->error(
                 'AgentForge request parsing failed unexpectedly.',
                 [

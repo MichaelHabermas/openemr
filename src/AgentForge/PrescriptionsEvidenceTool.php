@@ -30,22 +30,22 @@ final readonly class PrescriptionsEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->activePrescriptions($patientId, $this->limit) as $row) {
-            if (!$this->truthy($row['active'] ?? null)) {
+            if (!EvidenceRowValue::truthy($row, 'active')) {
                 continue;
             }
 
-            $drug = trim((string) ($row['drug'] ?? ''));
+            $drug = EvidenceRowValue::string($row, 'drug');
             if ($drug === '') {
                 continue;
             }
 
-            $instructions = trim((string) ($row['drug_dosage_instructions'] ?? ''));
+            $instructions = EvidenceRowValue::string($row, 'drug_dosage_instructions');
             $value = $instructions !== '' ? $instructions : 'Active prescription; instructions not found in the chart.';
             $items[] = new EvidenceItem(
                 'medication',
                 'prescriptions',
                 $this->sourceId($row),
-                $this->dateOnly($row['start_date'] ?? $row['date_added'] ?? ''),
+                EvidenceRowValue::dateOnly($row, 'start_date', 'date_added'),
                 EvidenceText::bounded($drug, 120),
                 EvidenceText::bounded($value, $this->maxValueLength),
             );
@@ -57,20 +57,6 @@ final readonly class PrescriptionsEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function sourceId(array $row): string
     {
-        return trim((string) ($row['external_id'] ?? '')) !== ''
-            ? (string) $row['external_id']
-            : (string) $row['id'];
-    }
-
-    private function dateOnly(mixed $value): string
-    {
-        $date = trim((string) $value);
-
-        return $date === '' ? 'unknown' : substr($date, 0, 10);
-    }
-
-    private function truthy(mixed $value): bool
-    {
-        return in_array($value, [1, '1', true], true);
+        return EvidenceRowValue::firstString($row, 'external_id', 'id');
     }
 }
