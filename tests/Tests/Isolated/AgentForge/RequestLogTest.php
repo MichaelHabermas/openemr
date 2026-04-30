@@ -92,7 +92,7 @@ final class RequestLogTest extends TestCase
         $this->assertArrayNotHasKey('full_prompt', $context);
     }
 
-    public function testPsrRequestLoggerWritesSingleInfoEvent(): void
+    public function testPsrRequestLoggerWritesSingleDefaultVisibleEvent(): void
     {
         $logger = new RecordingLogger();
         $entry = new RequestLog(
@@ -107,7 +107,7 @@ final class RequestLogTest extends TestCase
         (new PsrRequestLogger($logger))->record($entry);
 
         $this->assertCount(1, $logger->records);
-        $this->assertSame('info', $logger->records[0]['level']);
+        $this->assertSame('warning', $logger->records[0]['level']);
         $this->assertSame('agent_forge_request', $logger->records[0]['message']);
         $this->assertSame('refused_bad_csrf', $logger->records[0]['context']['decision']);
         $this->assertArrayNotHasKey('question', $logger->records[0]['context']);

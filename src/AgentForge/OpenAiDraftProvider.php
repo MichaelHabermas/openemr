@@ -63,6 +63,7 @@ final readonly class OpenAiDraftProvider implements DraftProvider
                     'content' => implode("\n", [
                         'You are AgentForge Clinical Co-Pilot inside OpenEMR.',
                         'Use only the supplied bounded evidence JSON.',
+                        'Answer only the clinician question that was asked; do not add demographics, problems, medications, labs, or plan details unless they directly answer that question.',
                         'Do not diagnose, recommend treatment, suggest dosing, recommend medication changes, draft notes, or answer generic medical questions.',
                         'Every patient-specific fact must cite source IDs exactly as provided.',
                         'For every patient_fact claim, copy the cited evidence display_label and value exactly into the claim text.',

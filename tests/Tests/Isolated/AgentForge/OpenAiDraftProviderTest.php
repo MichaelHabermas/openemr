@@ -57,6 +57,10 @@ final class OpenAiDraftProviderTest extends TestCase
             'copy the cited evidence display_label and value exactly',
             $this->stringPath($payload, ['messages', 0, 'content']),
         );
+        $this->assertStringContainsString(
+            'Answer only the clinician question',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
         $this->assertStringNotContainsString(
             'full chart',
             strtolower($this->stringPath($payload, ['messages', 1, 'content'])),

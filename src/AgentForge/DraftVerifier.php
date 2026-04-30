@@ -48,7 +48,7 @@ final class DraftVerifier
             if ($claim->type === DraftClaim::TYPE_PATIENT_FACT) {
                 if (!$this->claimMatchesAllSources($claim, $itemsBySourceId)) {
                     $rejectedSentenceIds[] = $claim->sentenceId;
-                    $warnings[] = sprintf('A draft claim could not be verified: %s', $claim->text);
+                    $warnings[] = 'Some draft content was omitted because it could not be verified against the chart evidence.';
                     continue;
                 }
                 $verifiedSentenceIds[] = $claim->sentenceId;

@@ -45,6 +45,7 @@ final class DraftVerifierTest extends TestCase
         $this->assertFalse($result->passed);
         $this->assertSame([], $result->verifiedSentenceIds);
         $this->assertStringContainsString('could not be verified', $result->refusalsOrWarnings[0]);
+        $this->assertStringNotContainsString('Urine microalbumin', $result->refusalsOrWarnings[0]);
     }
 
     public function testFabricatedMedicationFactIsBlocked(): void
