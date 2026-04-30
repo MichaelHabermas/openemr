@@ -6,8 +6,18 @@ SET @demo_pubpid := 'AF-DEMO-900001';
 SET @demo_user := 'admin';
 SET @demo_group := 'Default';
 SET @encounter_id := 900415;
+SET @unrelated_user_id := 900004;
+SET @unrelated_aro_id := 900004;
+SET @unrelated_username := 'af_demo_unrelated';
+SET @admin_acl_group_id := 11;
 
 START TRANSACTION;
+
+DELETE FROM gacl_groups_aro_map WHERE aro_id = @unrelated_aro_id;
+DELETE FROM gacl_aro WHERE id = @unrelated_aro_id OR (section_value = 'users' AND value = @unrelated_username);
+DELETE FROM groups WHERE user = @unrelated_username;
+DELETE FROM users_secure WHERE id = @unrelated_user_id OR username = @unrelated_username;
+DELETE FROM users WHERE id = @unrelated_user_id OR username = @unrelated_username;
 
 DELETE pr
 FROM procedure_result pr
@@ -69,6 +79,80 @@ INSERT INTO patient_data (
     '10001',
     '555-0100',
     'alex.testpatient@example.invalid'
+);
+
+INSERT INTO users (
+    id,
+    uuid,
+    username,
+    password,
+    authorized,
+    fname,
+    lname,
+    facility_id,
+    active,
+    calendar
+)
+SELECT
+    @unrelated_user_id,
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000901', '-', '')),
+    @unrelated_username,
+    password,
+    1,
+    'AgentForge',
+    'Unrelated',
+    facility_id,
+    1,
+    0
+FROM users
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO users_secure (
+    id,
+    username,
+    password,
+    last_update_password
+)
+SELECT
+    @unrelated_user_id,
+    @unrelated_username,
+    password,
+    NOW()
+FROM users_secure
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO groups (
+    name,
+    user
+) VALUES (
+    @demo_group,
+    @unrelated_username
+);
+
+INSERT INTO gacl_aro (
+    id,
+    section_value,
+    value,
+    order_value,
+    name,
+    hidden
+) VALUES (
+    @unrelated_aro_id,
+    'users',
+    @unrelated_username,
+    @unrelated_aro_id,
+    'AgentForge Unrelated',
+    0
+);
+
+INSERT INTO gacl_groups_aro_map (
+    group_id,
+    aro_id
+) VALUES (
+    @admin_acl_group_id,
+    @unrelated_aro_id
 );
 
 INSERT INTO lists (

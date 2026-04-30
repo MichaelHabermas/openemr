@@ -44,7 +44,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 
 | Boundary or constraint | Audit source | Required design response |
 | --- | --- | --- |
-| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. |
+| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. Epic 4's demo gate is intentionally narrow; see `EPIC4-AGENT-REQUEST-SHELL.md` for included and deferred relationship shapes. |
 | Session-bound identity binding | Security S2 | The OpenEMR server endpoint binds each request to the active session user before agent handling. |
 | Browser treated as untrusted surface | Security S3 | The browser only sends input and displays output; it does not hold model credentials or make access decisions. |
 | Narrow OpenEMR integration | Architecture A1 and A2 | The first version uses a small chart-embedded endpoint instead of broad OpenEMR rewrites. |
@@ -118,6 +118,8 @@ The browser is only a display and input surface. It does not decide access. It d
 - Logs are sensitive and must avoid raw PHI where possible.
 
 If any boundary is unclear, the agent refuses or degrades visibly.
+
+Epic 4 proves only a narrow patient-specific authorization gate: `patient_data.providerID`, `form_encounter.provider_id`, and `form_encounter.supervisor_id`. Care-team membership, facility-scoped access, group-based patient assignment, scheduling-based access, and broader delegation rules are deferred and fail closed until explicitly designed.
 
 ## Data Access
 

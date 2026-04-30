@@ -37,6 +37,20 @@ The first-principles constraint is trust: a browser panel is useful only after t
 
 ---
 
+## Known Authorization Scope Limitations
+
+Epic 4 intentionally implements the narrowest demonstrable patient-specific gate. It checks coarse `patients/med` ACL first, then requires the active OpenEMR user to have a direct patient relationship through one of these relationship shapes:
+
+- `patient_data.providerID = active_user_id`
+- `form_encounter.provider_id = active_user_id`
+- `form_encounter.supervisor_id = active_user_id`
+
+The following relationship surfaces are deliberately deferred to later epics: care-team membership through `care_teams` or `care_team_member`, facility-scoped access through `users_facility`, group-based patient assignment, scheduling-based access, and delegation outside `form_encounter.supervisor_id`. In Epic 4, each deferred shape fails closed with `Patient-specific access could not be verified for this user.` rather than allowing chart evidence reads.
+
+This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks are capability-oriented and do not answer the patient-resource question, "may this user access this patient?"
+
+---
+
 ## Acceptance Traceability
 
 | Requirement | Proof |
@@ -73,9 +87,11 @@ The first-principles constraint is trust: a browser panel is useful only after t
 - [x] Post a mismatched `patient_id` to `interface/patient_file/summary/agent_request.php` and confirm a structured refusal.
   - Browser console `fetch` to `patient_id=900002` returned HTTP `403`.
   - Observed JSON refusal: `The requested patient does not match the active chart.`
-- [ ] Use a user without a direct `patient_data.providerID` or encounter relationship and confirm authorization refuses before any answer.
-  - Blocked: no known seeded `patients/med` user without a direct relationship was available during manual verification.
-  - Seed review shows `agent-forge/sql/seed-demo-data.sql` links patient id `900001` to user id `1` via `patient_data.providerID` and `form_encounter.provider_id`.
+- [x] Use a user without a direct `patient_data.providerID` or encounter relationship and confirm authorization refuses before any answer.
+  - Observed with seeded user `af_demo_unrelated`.
+  - Seed verification: `af_demo_unrelated` is active, authorized, in OpenEMR group `Default`, and mapped to phpGACL group `11`.
+  - Relationship verification: patient id `900001` remains linked to provider id `1` through `patient_data.providerID` and `form_encounter.provider_id`; `form_encounter.supervisor_id` is `0`.
+  - Observed refusal text: `Patient-specific access could not be verified for this user.`
 
 ---
 
