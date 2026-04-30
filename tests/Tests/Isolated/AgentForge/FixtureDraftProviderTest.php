@@ -56,4 +56,25 @@ final class FixtureDraftProviderTest extends TestCase
         $this->assertSame(DraftClaim::TYPE_REFUSAL, $draft->claims[0]->type);
         $this->assertStringContainsString('cannot provide diagnosis', $draft->sentences[0]->text);
     }
+
+    public function testKnownMissingMicroalbuminQuestionIsMarkedNotFound(): void
+    {
+        $draft = (new FixtureDraftProvider())->draft(
+            new AgentRequest(
+                new PatientId(900001),
+                new AgentQuestion('Has Alex had a urine microalbumin result in the chart?'),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'lab',
+                    'lab:procedure_result/agentforge-a1c-2026-04@2026-04-10',
+                    '2026-04-10',
+                    'Hemoglobin A1c',
+                    '7.4 %',
+                ),
+            ]),
+        );
+
+        $this->assertContains('Urine microalbumin result not found in the chart.', $draft->missingSections);
+    }
 }

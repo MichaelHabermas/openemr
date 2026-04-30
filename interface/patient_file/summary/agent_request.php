@@ -32,9 +32,9 @@ use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\HttpFoundation\Request;
 
-function agent_forge_json_response(AgentResponse $response, int $statusCode = 200): never
-{
+$agentForgeJsonResponse = static function (AgentResponse $response, int $statusCode = 200): never {
     if (ob_get_level() > 0) {
         ob_clean();
     }
@@ -43,39 +43,40 @@ function agent_forge_json_response(AgentResponse $response, int $statusCode = 20
     header('Content-Type: application/json');
     echo json_encode($response->toArray(), JSON_THROW_ON_ERROR);
     exit;
-}
+};
 
-function agent_forge_elapsed_ms(int $startTime): int
-{
+$agentForgeElapsedMs = static function (int $startTime): int {
     return max(0, (int) floor((hrtime(true) - $startTime) / 1_000_000));
-}
+};
 
-function agent_forge_log_and_respond(
+$agentForgeLogAndRespond = static function (
     AgentResponse $response,
     int $statusCode,
     RequestLogger $logger,
     string $requestId,
     int $startTime,
     string $decision,
-    ?int $userId = null,
-    ?int $patientId = null,
-): never {
+    ?int $userId,
+    ?int $patientId,
+) use ($agentForgeElapsedMs, $agentForgeJsonResponse): never {
     $logger->record(new RequestLog(
         requestId: $requestId,
         userId: $userId,
         patientId: $patientId,
         decision: $decision,
-        latencyMs: agent_forge_elapsed_ms($startTime),
+        latencyMs: $agentForgeElapsedMs($startTime),
         timestamp: new DateTimeImmutable(),
     ));
-    agent_forge_json_response($response, $statusCode);
-}
+    $agentForgeJsonResponse($response, $statusCode);
+};
 
 $agentForgeStartTime = hrtime(true);
 $agentForgeRequestId = Uuid::uuid4()->toString();
 $agentForgeLogger = new PsrRequestLogger(ServiceContainer::getLogger());
+$request = Request::createFromGlobals();
+$post = $request->request->all();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if ($request->getMethod() !== 'POST') {
     $session = null;
 } else {
     $session = SessionWrapperFactory::getInstance()->getActiveSession();
@@ -85,7 +86,7 @@ $sessionPatientId = filter_var($session?->get('pid'), FILTER_VALIDATE_INT);
 $sessionPatientId = $sessionPatientId === false ? null : (int) $sessionPatientId;
 $sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
 $sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
-$csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($_POST['csrf_token_form'] ?? '', session: $session);
+$csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($request->request->getString('csrf_token_form'), session: $session);
 $chartEvidenceRepository = new SqlChartEvidenceRepository();
 $handler = new AgentRequestHandler(
     new AgentRequestParser(),
@@ -99,8 +100,8 @@ $handler = new AgentRequestHandler(
     ServiceContainer::getLogger(),
 );
 $result = $handler->handle(
-    $_SERVER['REQUEST_METHOD'] ?? '',
-    $_POST,
+    $request->getMethod(),
+    $post,
     $sessionUserId,
     $sessionPatientId,
     AclMain::aclCheckCore('patients', 'med'),
@@ -108,7 +109,7 @@ $result = $handler->handle(
     $agentForgeRequestId,
 );
 
-agent_forge_log_and_respond(
+$agentForgeLogAndRespond(
     $result->response,
     $result->statusCode,
     $agentForgeLogger,

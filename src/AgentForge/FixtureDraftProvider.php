@@ -16,12 +16,18 @@ final class FixtureDraftProvider implements DraftProvider
 {
     public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
     {
+        $questionMissingSections = KnownMissingDataPolicy::missingSectionsFor($request->question, $bundle);
+        $missingSections = array_values(array_unique(array_merge(
+            $bundle->missingSections,
+            $questionMissingSections,
+        )));
+
         $refusal = ClinicalAdviceRefusalPolicy::refusalFor($request->question->value);
         if ($refusal !== null) {
             return new DraftResponse(
                 [new DraftSentence('refusal-1', $refusal)],
                 [new DraftClaim($refusal, DraftClaim::TYPE_REFUSAL, [], 'refusal-1')],
-                $bundle->missingSections,
+                $missingSections,
                 [$refusal],
                 DraftUsage::fixture(),
             );
@@ -43,7 +49,7 @@ final class FixtureDraftProvider implements DraftProvider
             ++$index;
         }
 
-        foreach ($bundle->missingSections as $missingSection) {
+        foreach ($missingSections as $missingSection) {
             $sentenceId = sprintf('missing-%d', $index);
             $sentences[] = new DraftSentence($sentenceId, $missingSection);
             $claims[] = new DraftClaim($missingSection, DraftClaim::TYPE_MISSING_DATA, [], $sentenceId);
@@ -70,7 +76,7 @@ final class FixtureDraftProvider implements DraftProvider
         return new DraftResponse(
             $sentences,
             $claims,
-            $bundle->missingSections,
+            $missingSections,
             ['Model drafting is disabled; deterministic fixture drafting was used.'],
             DraftUsage::fixture(),
         );

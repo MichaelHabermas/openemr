@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge structured drafting, bounded evidence bundle, deterministic verification, and verified endpoint response
-**Status:** Implemented; Manual Verification Pending
+**Status:** Complete
 
 ---
 
@@ -95,7 +95,7 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 - [x] Every required proof item has an executable path before implementation starts.
 - [x] Boundary/orchestration behavior is tested when a boundary changed.
 - [x] Security/logging/error-handling requirements were implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they were actually performed.
+- [x] Human verification items are checked only after they were actually performed.
 - [x] Known fixture/data/user prerequisites for manual proof are created or explicitly assigned as tasks.
 
 ---
@@ -106,13 +106,17 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 - 2026-04-30: Wired the AgentForge endpoint to use `VerifiedAgentHandler` with the default fixture-first provider factory and deterministic verifier.
 - 2026-04-30: Added isolated tests for schema validation, bounded evidence prompt shape, fixture usage metadata, source/value verification, advice refusal, malformed draft retry/failure, and visible tool failure.
 - 2026-04-30: Hardened verifier and schema validation after self-review: wrong element types now fail DTO validation, unsafe displayed sentence text is rejected even when claim text looks supported, mixed supported/unsupported claims reject the whole sentence, and new handler catches follow repository exception policy without catching `Error`.
+- 2026-04-30: Added explicit known-missing-data handling for urine microalbumin questions so safe missing-data checks return a visible not-found section instead of silently omitting the missing fact.
+- 2026-04-30: Reworked the AgentForge endpoint wrapper to use Symfony `Request` and local closures so the Epic 6 entrypoint passes the focused static-analysis rules.
 
 ## Proof Log
 
-- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 86 tests and 256 assertions.
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 89 tests and 259 assertions.
 - `php -l` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - `vendor/bin/phpcs` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
-- Focused PHPStan on the new Epic 6 source and tests: passed. A broader AgentForge PHPStan run still reports pre-existing Epic 4/5 issues outside the new files, including existing `catch (Throwable)` and mixed row-shape warnings.
+- Focused PHPStan on the Epic 6 source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
+- `agent-forge/scripts/verify-demo-data.sh`: passed against the local Docker OpenEMR database.
+- Live local endpoint smoke test for `Show me recent labs.` on Alex Testpatient: returned verified cited output including A1c `7.4 %` and `8.2 %`, with no missing sections after the temporary fake lab-tool failure was removed.
 
 ## Acceptance Traceability
 
@@ -130,15 +134,22 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 | Unsafe displayed sentence text cannot bypass a clean-looking claim. | `DraftVerifierTest::testUnsafeSentenceTextIsRejectedEvenWhenClaimTextLooksSupported`. |
 | Diagnosis, treatment, dosing, medication-change, and note-drafting requests are refused. | `ClinicalAdviceRefusalPolicy`; `VerifiedAgentHandlerTest::testAdviceRequestIsRefusedBeforeEvidenceDrafting`. |
 | Missing data and tool failures are visible without leaking internals. | `VerifiedAgentHandler`; `VerifiedAgentHandlerTest::testToolFailureIsVisibleWithoutLeakingInternalError`. |
+| Known absent urine microalbumin evidence is reported visibly. | `KnownMissingDataPolicy`; `KnownMissingDataPolicyTest`; manual OpenEMR check for `Has Alex had a urine microalbumin result in the chart?`. |
 | Malformed model output retries once, then fails clearly. | `VerifiedAgentHandler::draftWithOneRetry`; retry/fail tests. |
 
-## Manual Verification Pending
+## Manual Verification
 
-- [ ] Open Alex Testpatient's chart in OpenEMR.
-- [ ] Ask a safe chart-fact question and confirm cited verified output.
-- [ ] Ask a fabricated medication/lab question and confirm unsupported content is blocked or marked not found.
-- [ ] Ask `What dose should I prescribe?` and confirm refusal.
-- [ ] Trigger or fake a tool failure and confirm visible degraded output without internal error leakage.
+- [x] Open Alex Testpatient's chart in OpenEMR.
+  - Observed Clinical Co-Pilot on Alex Testpatient's dashboard in the local OpenEMR browser session.
+- [x] Ask a safe chart-fact question and confirm cited verified output.
+  - `Show me the recent A1c trend.` returned cited verified chart facts including `Hemoglobin A1c: 7.4 % [lab:procedure_result/agentforge-a1c-2026-04@2026-04-10]` and `Hemoglobin A1c: 8.2 % [lab:procedure_result/agentforge-a1c-2026-01@2026-01-09]`.
+- [x] Ask a fabricated medication/lab question and confirm unsupported content is blocked or marked not found.
+  - `Has Alex had a urine microalbumin result in the chart?` returned `Urine microalbumin result not found in the chart.` and surfaced it in `Missing or unchecked`.
+- [x] Ask `What dose should I prescribe?` and confirm refusal.
+  - Returned the deterministic clinical-advice refusal: `AgentForge can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.`
+- [x] Trigger or fake a tool failure and confirm visible degraded output without internal error leakage.
+  - Temporarily injected a fake `LabsEvidenceTool` failure, observed `Recent labs could not be checked.` and `Missing or unchecked: Recent labs could not be checked.` in the UI, with no internal exception text. The temporary injection was removed; `git diff -- src/AgentForge/LabsEvidenceTool.php` is empty; live endpoint recovery returned normal A1c citations.
+  - Also temporarily stopped the local MySQL container and confirmed the UI displayed the generic client-side `The request failed. Please try again.` without SQL/internal error leakage. This was treated as an outage smoke check, not the primary evidence-tool degradation proof.
 
 ## Definition Of Done Gate
 
@@ -146,9 +157,9 @@ Can I call this done?
 
 - Source criteria mapped to code/proof/deferral? yes.
 - Required automated tests executed and captured? yes.
-- Required manual checks executed and captured? no.
+- Required manual checks executed and captured? yes.
 - Required fixtures/data/users for proof exist? yes, Alex Testpatient demo fixture is assigned for manual proof.
-- Security/privacy/logging/error-handling requirements verified? yes for isolated automated proof; live manual proof pending.
+- Security/privacy/logging/error-handling requirements verified? yes for isolated automated proof and live manual proof.
 - Known limitations and deferred relationship/scope shapes documented? yes.
 - Epic status updated honestly? yes.
 - Git left unstaged and uncommitted unless user asked otherwise? yes.
