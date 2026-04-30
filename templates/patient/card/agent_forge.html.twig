@@ -59,14 +59,22 @@
             if (payload.status === 'ok') {
                 const details = [];
                 if (payload.missing_or_unchecked_sections && payload.missing_or_unchecked_sections.length > 0) {
-                    details.push({{ "Missing or unchecked:"|xlj }} + ' ' + payload.missing_or_unchecked_sections.join(' '));
+                    details.push(
+                        {{ "Missing or unchecked:"|xlj }} + ' ' + payload.missing_or_unchecked_sections.join(' ')
+                    );
                 }
                 if (payload.refusals_or_warnings && payload.refusals_or_warnings.length > 0) {
                     details.push(payload.refusals_or_warnings.join(' '));
                 }
-                showMessage(payload.answer + (details.length > 0 ? '\n' + details.join('\n') : ''), 'info');
+                showMessage(
+                    payload.answer + (details.length > 0 ? '\n' + details.join('\n') : ''),
+                    'info'
+                );
             } else {
-                showMessage((payload.refusals_or_warnings || [{{ "The request was refused."|xlj }}]).join(' '), 'warning');
+                showMessage(
+                    (payload.refusals_or_warnings || [{{ "The request was refused."|xlj }}]).join(' '),
+                    'warning'
+                );
             }
         }).catch(function () {
             showMessage({{ "The request failed. Please try again."|xlj }}, 'danger');

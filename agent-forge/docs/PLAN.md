@@ -120,6 +120,20 @@ Exit criteria:
 - Only demo data is allowed.
 - If a task cannot name automated proof, human proof, and the `SPECS.txt` requirement it satisfies, it is too vague.
 
+### AgentForge Proof Discipline
+
+For any task that reads chart data, authorizes chart access, calls a model, verifies model output, logs PHI-adjacent activity, or wires the endpoint/UI path, "works for the demo patient" is not sufficient proof.
+
+Required pre-close checks:
+
+- Unit proof: value objects and mappers reject malformed, missing, inactive, unauthorized, or oversized inputs.
+- Boundary proof: SQL/query, endpoint, authorization, logging, or model seams are exercised by tests or an explicitly named manual proof.
+- Adversarial proof: current-patient scoping, cross-patient leakage, inactive/unauthorized source promotion, tool omission, prompt injection, unsupported clinical advice, and unexpected exception leakage are tested when relevant.
+- Composition proof: default tool/model/verifier wiring is covered so removing a required component fails a test.
+- Traceability proof: each global safety requirement from this plan is copied into the epic acceptance matrix when it applies, not only the task-local subsection.
+
+If any safety-critical proof is missing, the status is `implemented but not acceptance-complete`, even when the UI demo works.
+
 ## Source Of Truth
 
 - `agent-forge/docs/SPECS.txt`

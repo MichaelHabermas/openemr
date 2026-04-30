@@ -17,13 +17,9 @@ require_once("../../globals.php");
 use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentResponse;
-use OpenEMR\AgentForge\DemographicsEvidenceTool;
-use OpenEMR\AgentForge\EncountersNotesEvidenceTool;
 use OpenEMR\AgentForge\EvidenceAgentHandler;
-use OpenEMR\AgentForge\LabsEvidenceTool;
+use OpenEMR\AgentForge\EvidenceToolFactory;
 use OpenEMR\AgentForge\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PrescriptionsEvidenceTool;
-use OpenEMR\AgentForge\ProblemsEvidenceTool;
 use OpenEMR\AgentForge\PsrRequestLogger;
 use OpenEMR\AgentForge\RequestLog;
 use OpenEMR\AgentForge\RequestLogger;
@@ -93,13 +89,7 @@ $handler = new AgentRequestHandler(
     new AgentRequestParser(),
     new PatientAuthorizationGate(new SqlPatientAccessRepository()),
     new EvidenceAgentHandler(
-        [
-            new DemographicsEvidenceTool($chartEvidenceRepository),
-            new ProblemsEvidenceTool($chartEvidenceRepository),
-            new PrescriptionsEvidenceTool($chartEvidenceRepository),
-            new LabsEvidenceTool($chartEvidenceRepository),
-            new EncountersNotesEvidenceTool($chartEvidenceRepository),
-        ],
+        EvidenceToolFactory::createDefault($chartEvidenceRepository),
         ServiceContainer::getLogger(),
     ),
     ServiceContainer::getLogger(),

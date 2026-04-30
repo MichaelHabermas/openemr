@@ -28,6 +28,7 @@ final readonly class EvidenceItem
         $this->assertPresent($sourceTable, 'source table');
         $this->assertPresent($sourceId, 'source row id');
         $this->assertPresent($sourceDate, 'source date');
+        $this->assertValidSourceDate($sourceDate);
         $this->assertPresent($displayLabel, 'display label');
         $this->assertPresent($value, 'value');
     }
@@ -69,6 +70,18 @@ final readonly class EvidenceItem
     {
         if (trim($value) === '') {
             throw new DomainException(sprintf('Evidence %s is required.', $label));
+        }
+    }
+
+    private function assertValidSourceDate(string $sourceDate): void
+    {
+        if ($sourceDate === 'unknown') {
+            return;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $sourceDate);
+        if ($date === false || $date->format('Y-m-d') !== $sourceDate) {
+            throw new DomainException('Evidence source date must be Y-m-d or "unknown".');
         }
     }
 }

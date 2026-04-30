@@ -76,6 +76,38 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame(['Active problems not found in the chart.'], $result->missingSections);
     }
 
+    public function testProblemsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
+    {
+        $result = (new ProblemsEvidenceTool($this->repository(problems: [
+            [
+                'id' => 1,
+                'external_id' => 'af-prob-inactive',
+                'title' => 'Inactive problem',
+                'begdate' => '2025-09-10 00:00:00',
+                'activity' => 0,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Active problems not found in the chart.'], $result->missingSections);
+    }
+
+    public function testProblemsToolBoundsLongProblemTitles(): void
+    {
+        $result = (new ProblemsEvidenceTool($this->repository(problems: [
+            [
+                'id' => 1,
+                'external_id' => 'af-prob-long',
+                'title' => str_repeat('p', 500),
+                'begdate' => '2025-09-10 00:00:00',
+                'activity' => 1,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame(123, strlen($result->items[0]->displayLabel));
+        $this->assertStringEndsWith('...', $result->items[0]->displayLabel);
+    }
+
     public function testPrescriptionsToolReturnsActivePrescriptionEvidence(): void
     {
         $result = (new PrescriptionsEvidenceTool($this->repository()))->collect(new PatientId(900001));
@@ -95,10 +127,45 @@ final class EvidenceToolsTest extends TestCase
                 'start_date' => '2026-03-15',
                 'drug' => 'Medication Without Instructions',
                 'drug_dosage_instructions' => '',
+                'active' => 1,
             ],
         ])))->collect(new PatientId(900001));
 
         $this->assertSame('Active prescription; instructions not found in the chart.', $result->items[0]->value);
+    }
+
+    public function testPrescriptionsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
+    {
+        $result = (new PrescriptionsEvidenceTool($this->repository(prescriptions: [
+            [
+                'id' => 1,
+                'external_id' => 'af-rx-inactive',
+                'start_date' => '2026-03-15',
+                'drug' => 'Inactive medication',
+                'drug_dosage_instructions' => 'Do not surface this.',
+                'active' => 0,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Active prescriptions not found in the chart.'], $result->missingSections);
+    }
+
+    public function testPrescriptionsToolBoundsLongInstructions(): void
+    {
+        $result = (new PrescriptionsEvidenceTool($this->repository(prescriptions: [
+            [
+                'id' => 1,
+                'external_id' => 'af-rx-long',
+                'start_date' => '2026-03-15',
+                'drug' => 'Long Instruction Medication',
+                'drug_dosage_instructions' => str_repeat('a', 1000),
+                'active' => 1,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame(303, strlen($result->items[0]->value));
+        $this->assertStringEndsWith('...', $result->items[0]->value);
     }
 
     public function testLabsToolReturnsRecentLabEvidence(): void
@@ -136,6 +203,24 @@ final class EvidenceToolsTest extends TestCase
     {
         $result = (new EncountersNotesEvidenceTool($this->repository(notes: [])))->collect(new PatientId(900001));
 
+        $this->assertSame(['Recent notes and last plan not found in the chart.'], $result->missingSections);
+    }
+
+    public function testNotesToolDoesNotSurfaceUnauthorizedRows(): void
+    {
+        $result = (new EncountersNotesEvidenceTool($this->repository(notes: [
+            [
+                'id' => 1,
+                'external_id' => 'af-note-unauthorized',
+                'note_date' => '2026-04-15',
+                'codetext' => 'Last plan',
+                'description' => 'Do not surface this note.',
+                'activity' => 1,
+                'authorized' => 0,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
         $this->assertSame(['Recent notes and last plan not found in the chart.'], $result->missingSections);
     }
 
@@ -177,6 +262,7 @@ final class EvidenceToolsTest extends TestCase
                         'title' => 'Type 2 diabetes mellitus',
                         'begdate' => '2025-09-10 00:00:00',
                         'date' => '2025-09-10 09:00:00',
+                        'activity' => 1,
                     ],
                     [
                         'id' => 2,
@@ -184,6 +270,7 @@ final class EvidenceToolsTest extends TestCase
                         'title' => 'Essential hypertension',
                         'begdate' => '2024-02-18 00:00:00',
                         'date' => '2024-02-18 09:00:00',
+                        'activity' => 1,
                     ],
                 ];
             }
@@ -197,6 +284,7 @@ final class EvidenceToolsTest extends TestCase
                         'start_date' => '2026-03-15',
                         'drug' => 'Metformin ER 500 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily with evening meal',
+                        'active' => 1,
                     ],
                     [
                         'id' => 2,
@@ -204,6 +292,7 @@ final class EvidenceToolsTest extends TestCase
                         'start_date' => '2026-03-15',
                         'drug' => 'Lisinopril 10 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily',
+                        'active' => 1,
                     ],
                 ];
             }
@@ -240,6 +329,8 @@ final class EvidenceToolsTest extends TestCase
                         'codetext' => 'Last plan',
                         'description' => 'Continue metformin ER and lisinopril. '
                             . 'Review home blood pressure log at next visit. Recheck A1c in 3 months.',
+                        'activity' => 1,
+                        'authorized' => 1,
                     ],
                 ];
             }

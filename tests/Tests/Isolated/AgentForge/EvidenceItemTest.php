@@ -79,4 +79,47 @@ final class EvidenceItemTest extends TestCase
 
         new EvidenceItem(...$values);
     }
+
+    /**
+     * @return array<string, array{string}>
+     *
+     * @codeCoverageIgnore Data providers run before coverage instrumentation starts.
+     */
+    public static function invalidSourceDateProvider(): array
+    {
+        return [
+            'natural language' => ['not-a-date'],
+            'invalid month and day' => ['2026-13-99'],
+            'datetime instead of date' => ['2026-04-10 12:00:00'],
+        ];
+    }
+
+    #[DataProvider('invalidSourceDateProvider')]
+    public function testSourceDateMustBeYmdOrUnknown(string $sourceDate): void
+    {
+        $this->expectException(DomainException::class);
+
+        new EvidenceItem(
+            'lab',
+            'procedure_result',
+            'agentforge-a1c-2026-04',
+            $sourceDate,
+            'Hemoglobin A1c',
+            '7.4 %',
+        );
+    }
+
+    public function testUnknownSourceDateIsExplicitlyAllowed(): void
+    {
+        $item = new EvidenceItem(
+            'lab',
+            'procedure_result',
+            'agentforge-a1c-2026-04',
+            'unknown',
+            'Hemoglobin A1c',
+            '7.4 %',
+        );
+
+        $this->assertSame('unknown', $item->sourceDate);
+    }
 }

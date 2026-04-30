@@ -30,6 +30,10 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->recentNotes($patientId, $this->limit) as $row) {
+            if (!$this->truthy($row['activity'] ?? null) || !$this->truthy($row['authorized'] ?? null)) {
+                continue;
+            }
+
             $note = trim((string) ($row['description'] ?? ''));
             if ($note === '') {
                 continue;
@@ -41,7 +45,7 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
                 $this->sourceId($row),
                 $this->dateOnly($row['note_date'] ?? $row['encounter_date'] ?? ''),
                 trim((string) ($row['codetext'] ?? 'Last plan')) ?: 'Last plan',
-                $this->bounded($note),
+                EvidenceText::bounded($note, $this->maxNoteLength),
             );
         }
 
@@ -63,12 +67,8 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
         return $date === '' ? 'unknown' : substr($date, 0, 10);
     }
 
-    private function bounded(string $value): string
+    private function truthy(mixed $value): bool
     {
-        if (strlen($value) <= $this->maxNoteLength) {
-            return $value;
-        }
-
-        return rtrim(substr($value, 0, $this->maxNoteLength)) . '...';
+        return in_array($value, [1, '1', true], true);
     }
 }

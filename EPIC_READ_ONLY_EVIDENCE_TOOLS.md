@@ -130,6 +130,8 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 ## Deferred Scope
 
 - `lists` medication rows are deferred; Epic 5 reads active records from `prescriptions` only.
+- Unauthorized clinical notes (`form_clinical_notes.authorized = 0`) and standalone `form_encounter` rows without linked clinical notes are not surfaced. Reason: Epic 5 only cites authorized last-plan text that can be traced to a clinical note row.
+- OpenEMR `procedure_result` does not have a stable `external_id` column. Epic 5 uses the seeded demo lab `comments` value as the source id when present and falls back to `procedure_result_id`; broader source-id normalization is deferred to verifier/eval work.
 - Model drafting, deterministic verification, eval runner, broad chart search, vector database, background workers, and note drafting are out of scope.
 
 ---
@@ -143,10 +145,13 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 - 2026-04-30: Updated the patient chart card to display missing/unchecked evidence sections alongside the non-model warning.
 - 2026-04-30: Added isolated tests for evidence contract, tool mapping/missing behavior, post-authorization execution, and unexpected tool failure handling.
 - 2026-04-30: Extended `agent-forge/scripts/verify-demo-data.sh` with evidence-contract source-row checks for demographics, problems, prescriptions, labs, and last plan.
+- 2026-04-30: Review hardening added defensive active/authorized row guards, bounded problem/prescription text, strict evidence date validation, query-executor scoping tests, and default evidence tool factory tests.
+- 2026-04-30: Added AgentForge proof-discipline rules to `agent-forge/docs/PLAN.md` so future safety-boundary work requires unit, boundary, adversarial, composition, and traceability proof before being marked complete.
+- 2026-04-30: Re-ran manual hardening verification after the review patch: authorized evidence response, medication-change safety wording, missing microalbumin non-invention, empty-question validation, and unrelated-user refusal all behaved as expected.
 
 ## Proof Log
 
-- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 49 tests and 153 assertions.
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 60 tests and 190 assertions.
 - `composer phpunit-isolated -- --filter TwigTemplateCompilationTest`: passed, 269 tests and 538 assertions.
 - `rg --files src/AgentForge tests/Tests/Isolated/AgentForge | xargs -n 1 php -l`: passed for AgentForge source and isolated tests.
 - `bash -n agent-forge/scripts/verify-demo-data.sh`: passed.
@@ -158,13 +163,16 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 | --- | --- |
 | Every evidence item carries source type, table, row id, date, display label, and value. | `EvidenceItem`; `EvidenceItemTest`; AgentForge isolated PHPUnit. |
 | Invalid or incomplete evidence metadata cannot silently pass. | `EvidenceItem` constructor validation; `testMissingSourceMetadataCannotPass`. |
+| Invalid evidence source dates cannot silently pass. | `EvidenceItem` source-date validation; `testSourceDateMustBeYmdOrUnknown`; `unknown` remains explicit. |
 | Demographics return active patient evidence and empty fields are explicit. | `DemographicsEvidenceTool`; `EvidenceToolsTest`; verifier demographics source-row check. |
-| Active problems return with citations; missing problems are not invented. | `ProblemsEvidenceTool`; `EvidenceToolsTest`; verifier problem source-row check. |
-| Active medications use prescriptions only and defer `lists` medications. | `PrescriptionsEvidenceTool`; deferred scope section; verifier prescription source-row check. |
-| Labs are bounded to the active patient through order/report/result chain. | `LabsEvidenceTool`; `SqlChartEvidenceRepository::recentLabs`; verifier A1c chain and lab source-row checks. |
-| Recent notes/last plan are bounded and cited. | `EncountersNotesEvidenceTool`; verifier last-plan source-row check. |
+| Active problems return with citations; missing/inactive problems are not invented. | `ProblemsEvidenceTool`; `testProblemsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow`; verifier problem source-row check. |
+| Problem and prescription text is bounded before display. | `EvidenceText`; `testProblemsToolBoundsLongProblemTitles`; `testPrescriptionsToolBoundsLongInstructions`; note bounding test. |
+| Active medications use prescriptions only and defer `lists` medications. | `PrescriptionsEvidenceTool`; `testPrescriptionsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow`; deferred scope section; verifier prescription source-row check. |
+| Labs are bounded to the active patient through order/report/result chain. | `LabsEvidenceTool`; `SqlChartEvidenceRepository::recentLabs`; `SqlChartEvidenceRepositoryIsolationTest`; verifier A1c chain and lab source-row checks. |
+| Recent notes/last plan are bounded, authorized, active, and cited. | `EncountersNotesEvidenceTool`; `testNotesToolDoesNotSurfaceUnauthorizedRows`; verifier last-plan source-row check. |
 | Evidence tools run only after authorization passes. | `AgentRequestHandlerTest::testAllowedRequestRunsEvidenceHandlerAfterAuthorization` and `testAuthorizationFailureDoesNotRunEvidenceTools`. |
 | Tool failures disclose the chart area without leaking internals. | `ChartEvidenceTool::section()`; `EvidenceAgentHandler`; `testUnexpectedEvidenceToolFailureReturnsGenericUncheckedSectionAndLogsInternally`. |
+| Default endpoint tool composition is protected against omission. | `EvidenceToolFactory`; `EvidenceToolFactoryTest` asserts all five Epic 5 tools and sections. |
 
 ## Manual Verification Pending
 
@@ -182,6 +190,12 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
   - Observed response did not invent or display any urine microalbumin result.
 - [x] Submit an empty question.
   - Observed UI validation message: `Enter a question before sending.`
+- [x] Re-run the manual checks after the review hardening patch.
+  - Authorized admin request still returned cited evidence for patient `900001`.
+  - Medication-change question still returned evidence only plus the non-model safety warning.
+  - Missing microalbumin question still did not invent or display a urine microalbumin result.
+  - Empty question validation still showed `Enter a question before sending.`
+  - User `af_demo_unrelated` was refused before evidence display with `Patient-specific access could not be verified for this user.`
 
 ## Definition Of Done Gate
 

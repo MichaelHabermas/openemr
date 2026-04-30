@@ -14,8 +14,11 @@ namespace OpenEMR\AgentForge;
 
 final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
 {
-    public function __construct(private ChartEvidenceRepository $repository, private int $limit = 10)
-    {
+    public function __construct(
+        private ChartEvidenceRepository $repository,
+        private int $limit = 10,
+        private int $maxValueLength = 300,
+    ) {
     }
 
     public function section(): string
@@ -27,6 +30,10 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->activeProblems($patientId, $this->limit) as $row) {
+            if (!$this->truthy($row['activity'] ?? null)) {
+                continue;
+            }
+
             $title = trim((string) ($row['title'] ?? ''));
             if ($title === '') {
                 continue;
@@ -38,8 +45,8 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
                 'lists',
                 $this->sourceId($row),
                 $date,
-                $title,
-                sprintf('Active problem since %s', $date),
+                EvidenceText::bounded($title, 120),
+                EvidenceText::bounded(sprintf('Active problem since %s', $date), $this->maxValueLength),
             );
         }
 
@@ -59,5 +66,10 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
         $date = trim((string) $value);
 
         return $date === '' ? 'unknown' : substr($date, 0, 10);
+    }
+
+    private function truthy(mixed $value): bool
+    {
+        return in_array($value, [1, '1', true], true);
     }
 }

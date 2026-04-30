@@ -72,7 +72,8 @@ final readonly class AgentResponse
         $citations = [];
         $missing = [];
         $warnings = [
-            'This is a non-model evidence response. Diagnosis, treatment, dosing, medication-change advice, and note drafting are not enabled.',
+            'This is a non-model evidence response. Diagnosis, treatment, dosing, '
+            . 'medication-change advice, and note drafting are not enabled.',
         ];
 
         foreach ($results as $result) {
