@@ -63,11 +63,19 @@ The first-principles constraint is trust: a browser panel is useful only after t
 
 ## Manual Verification Checklist
 
-- [ ] Open a fake patient chart and confirm the Clinical Co-Pilot panel renders in the dashboard.
-- [ ] Submit an empty question and confirm the UI shows a visible warning without sending a useful request.
-- [ ] Submit "What changed since last visit?" on an authorized chart and confirm a placeholder response names the active patient id.
-- [ ] Post a mismatched `patient_id` to `interface/patient_file/summary/agent_request.php` and confirm a structured refusal.
+- [x] Open a fake patient chart and confirm the Clinical Co-Pilot panel renders in the dashboard.
+  - Observed in local OpenEMR on Alex Testpatient, `AF-DEMO-900001`, patient id `900001`.
+  - The `Clinical Co-Pilot` card rendered on the Medical Record Dashboard below the prescriptions card.
+- [x] Submit an empty question and confirm the UI shows a visible warning without sending a useful request.
+  - Observed warning text: `Enter a question before sending.`
+- [x] Submit "What changed since last visit?" on an authorized chart and confirm a placeholder response names the active patient id.
+  - Observed response: `AgentForge request shell received your question for patient 900001. Model behavior and chart evidence retrieval are intentionally disabled in Epic 4. This is a non-model placeholder response.`
+- [x] Post a mismatched `patient_id` to `interface/patient_file/summary/agent_request.php` and confirm a structured refusal.
+  - Browser console `fetch` to `patient_id=900002` returned HTTP `403`.
+  - Observed JSON refusal: `The requested patient does not match the active chart.`
 - [ ] Use a user without a direct `patient_data.providerID` or encounter relationship and confirm authorization refuses before any answer.
+  - Blocked: no known seeded `patients/med` user without a direct relationship was available during manual verification.
+  - Seed review shows `agent-forge/sql/seed-demo-data.sql` links patient id `900001` to user id `1` via `patient_data.providerID` and `form_encounter.provider_id`.
 
 ---
 
