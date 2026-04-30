@@ -19,6 +19,8 @@ use RuntimeException;
 
 final readonly class VerifiedAgentHandler implements AgentHandler
 {
+    private AgentForgeClock $clock;
+
     /**
      * @param list<ChartEvidenceTool> $tools
      */
@@ -27,7 +29,10 @@ final readonly class VerifiedAgentHandler implements AgentHandler
         private DraftProvider $draftProvider,
         private DraftVerifier $verifier,
         private LoggerInterface $logger = new NullLogger(),
+        ?AgentForgeClock $clock = null,
+        private int $deadlineMs = 8000,
     ) {
+        $this->clock = $clock ?? new SystemAgentForgeClock();
     }
 
     public function handle(AgentRequest $request): AgentResponse
@@ -38,7 +43,7 @@ final readonly class VerifiedAgentHandler implements AgentHandler
         }
 
         try {
-            $bundle = EvidenceBundle::fromEvidenceResults($this->collectEvidence($request));
+            $bundle = EvidenceBundle::fromEvidenceResults($this->collectEvidence($request, $this->clock->nowMs()));
             $draft = $this->draftWithOneRetry($request, $bundle);
             $result = $this->verifier->verify($draft, $bundle);
         } catch (DomainException | RuntimeException $exception) {
@@ -61,7 +66,7 @@ final readonly class VerifiedAgentHandler implements AgentHandler
     }
 
     /** @return list<EvidenceResult> */
-    private function collectEvidence(AgentRequest $request): array
+    private function collectEvidence(AgentRequest $request, int $startMs): array
     {
         $results = [];
         foreach ($this->tools as $tool) {
@@ -81,9 +86,22 @@ final readonly class VerifiedAgentHandler implements AgentHandler
                     sprintf('%s could not be checked.', $tool->section()),
                 );
             }
+
+            if ($this->deadlineExceeded($startMs)) {
+                $results[] = EvidenceResult::failure(
+                    'Deadline',
+                    'Some chart sections could not be checked before the deadline.',
+                );
+                break;
+            }
         }
 
         return $results;
+    }
+
+    private function deadlineExceeded(int $startMs): bool
+    {
+        return $this->deadlineMs >= 0 && ($this->clock->nowMs() - $startMs) > $this->deadlineMs;
     }
 
     private function draftWithOneRetry(AgentRequest $request, EvidenceBundle $bundle): DraftResponse

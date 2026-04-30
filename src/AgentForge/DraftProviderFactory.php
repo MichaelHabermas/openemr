@@ -16,6 +16,18 @@ final class DraftProviderFactory
 {
     public static function createDefault(): DraftProvider
     {
-        return new FixtureDraftProvider();
+        return self::create(DraftProviderConfig::fixture());
+    }
+
+    public static function create(DraftProviderConfig $config): DraftProvider
+    {
+        return match ($config->mode) {
+            DraftProviderConfig::MODE_FIXTURE => new FixtureDraftProvider(),
+            DraftProviderConfig::MODE_DISABLED => new DisabledDraftProvider(),
+            default => throw new \RuntimeException(sprintf(
+                'AgentForge draft provider mode "%s" is not configured.',
+                $config->mode,
+            )),
+        };
     }
 }

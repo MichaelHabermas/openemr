@@ -2,13 +2,15 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge structured drafting, bounded evidence bundle, deterministic verification, and verified endpoint response
-**Status:** Complete
+**Status:** Complete For Fixture-First Epic 6; Real External Model Provider Deferred
 
 ---
 
 ## Overview
 
-Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epic 4 authorization gate and Epic 5 read-only evidence tools. The default path does not call an external LLM; it proves the contract, source matching, refusal behavior, malformed draft handling, visible missing-data behavior, and endpoint composition before any real provider is introduced.
+Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epic 4 authorization gate and Epic 5 read-only evidence tools. The default path does not call an external LLM; it proves the contract, source matching, refusal behavior, malformed draft handling, visible missing-data behavior, deadline behavior, and endpoint composition before any real provider is introduced.
+
+Real external model calls, vendor-specific adapters, and production token/cost capture for those calls are intentionally deferred until the logging, cost, and model-provider work is ready. Epic 6 exposes an explicit draft-provider mode boundary, but unsupported external provider modes fail closed instead of silently falling back to fixture output.
 
 ---
 
@@ -109,10 +111,12 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 - 2026-04-30: Added explicit known-missing-data handling for urine microalbumin questions so safe missing-data checks return a visible not-found section instead of silently omitting the missing fact.
 - 2026-04-30: Reworked the AgentForge endpoint wrapper to use Symfony `Request` and local closures so the Epic 6 entrypoint passes the focused static-analysis rules.
 - 2026-04-30: Verified Epic 6 on the deployed VM after `agent-forge/scripts/deploy-vm.sh` restarted the stack and re-seeded demo data.
+- 2026-04-30: Added explicit draft-provider mode selection with fixture and disabled modes; unsupported external modes fail closed pending real provider work.
+- 2026-04-30: Added deterministic deadline handling and handler-level proof that missing last-plan and timeout/deadline states surface visibly.
 
 ## Proof Log
 
-- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 89 tests and 259 assertions.
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: passed, 94 tests and 271 assertions.
 - `php -l` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - `vendor/bin/phpcs` across touched AgentForge source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - Focused PHPStan on the Epic 6 source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
@@ -132,6 +136,7 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 | Patient-specific claims without source ids are invalid. | `DraftClaim`; `DraftResponseTest::testPatientSpecificClaimsWithoutSourceIdsAreInvalid`. |
 | Full chart dumps and unrelated patient evidence are invalid prompt inputs. | `EvidenceBundleItem`; `EvidenceBundle::toPromptArray`; `EvidenceBundleTest` proves only bounded fields cross the model boundary. |
 | Model-off mode returns deterministic fixture draft. | `FixtureDraftProvider`; `FixtureDraftProviderTest`; `DraftProviderFactoryTest`; endpoint wiring uses the fixture-first provider factory. |
+| Draft provider selection is explicit and fail-closed. | `DraftProviderConfig`; `DraftProviderFactory`; `DisabledDraftProvider`; `DraftProviderFactoryTest`. |
 | Token usage and cost fields are captured for fixture mode. | `DraftUsage::fixture`; `FixtureDraftProviderTest`; real provider token/cost is deferred. |
 | Supported claims pass with citations. | `DraftVerifier`; `DraftVerifierTest::testSupportedClaimPassesWithCitation`. |
 | Unsupported, fabricated, mismatched, or partially supported patient claims are blocked. | `DraftVerifierTest`; `VerifiedAgentHandlerTest::testUnverifiableDraftIsBlocked`. |
@@ -139,8 +144,17 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 | Unsafe displayed sentence text cannot bypass a clean-looking claim. | `DraftVerifierTest::testUnsafeSentenceTextIsRejectedEvenWhenClaimTextLooksSupported`. |
 | Diagnosis, treatment, dosing, medication-change, and note-drafting requests are refused. | `ClinicalAdviceRefusalPolicy`; `VerifiedAgentHandlerTest::testAdviceRequestIsRefusedBeforeEvidenceDrafting`. |
 | Missing data and tool failures are visible without leaking internals. | `VerifiedAgentHandler`; `VerifiedAgentHandlerTest::testToolFailureIsVisibleWithoutLeakingInternalError`. |
+| Missing last-plan state is visible through final verified response. | `VerifiedAgentHandlerTest::testMissingLastPlanIsVisibleThroughVerifiedResponse`; tool-level coverage in `EvidenceToolsTest`. |
 | Known absent urine microalbumin evidence is reported visibly. | `KnownMissingDataPolicy`; `KnownMissingDataPolicyTest`; manual OpenEMR check for `Has Alex had a urine microalbumin result in the chart?`. |
+| Deadline expiry returns verified partial findings plus visible warning. | `AgentForgeClock`; `SystemAgentForgeClock`; `VerifiedAgentHandlerTest::testDeadlineStopsLaterToolsAndSurfacesVisibleWarning`. |
 | Malformed model output retries once, then fails clearly. | `VerifiedAgentHandler::draftWithOneRetry`; retry/fail tests. |
+
+## Explicit Deferred Scope
+
+- Real external LLM provider adapters are not implemented in Epic 6.
+- Provider-specific prompt-shape and usage/cost tests for real model calls are deferred until the selected model provider and logging/cost contract are implemented.
+- The default production/demo path remains deterministic fixture drafting.
+- Unsupported external draft-provider modes fail closed instead of making a model call or silently falling back.
 
 ## Manual Verification
 

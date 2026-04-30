@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
+use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\AgentQuestion;
 use OpenEMR\AgentForge\AgentRequest;
 use OpenEMR\AgentForge\ChartEvidenceTool;
@@ -78,6 +79,47 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertStringContainsString('Recent labs could not be checked.', $response->answer);
         $this->assertStringNotContainsString('SQLSTATE', $json);
         $this->assertCount(1, $logger->records);
+    }
+
+    public function testMissingLastPlanIsVisibleThroughVerifiedResponse(): void
+    {
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedMissingLastPlanEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        ))->handle($this->request('What was the last plan documented for Alex?'));
+
+        $this->assertSame('ok', $response->status);
+        $this->assertSame(['Recent notes and last plan not found in the chart.'], $response->missingOrUncheckedSections);
+        $this->assertStringContainsString('Recent notes and last plan not found in the chart.', $response->answer);
+    }
+
+    public function testDeadlineStopsLaterToolsAndSurfacesVisibleWarning(): void
+    {
+        $clock = new VerifiedManualClock([0, 50]);
+        $secondTool = new VerifiedRecordingEvidenceTool();
+        $response = (new VerifiedAgentHandler(
+            [
+                new VerifiedRecordingEvidenceTool(),
+                $secondTool,
+            ],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+            clock: $clock,
+            deadlineMs: 10,
+        ))->handle($this->request('Show me recent labs.'));
+
+        $this->assertSame('ok', $response->status);
+        $this->assertFalse($secondTool->called);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+        $this->assertContains(
+            'Some chart sections could not be checked before the deadline.',
+            $response->missingOrUncheckedSections,
+        );
+        $this->assertStringContainsString(
+            'Some chart sections could not be checked before the deadline.',
+            $response->answer,
+        );
     }
 
     public function testMalformedDraftRetriesOnceThenSucceeds(): void
@@ -169,6 +211,22 @@ final class VerifiedThrowingEvidenceTool implements ChartEvidenceTool
     }
 }
 
+final class VerifiedMissingLastPlanEvidenceTool implements ChartEvidenceTool
+{
+    public function section(): string
+    {
+        return 'Recent notes and last plan';
+    }
+
+    public function collect(PatientId $patientId): EvidenceResult
+    {
+        return EvidenceResult::missing(
+            'Recent notes and last plan',
+            'Recent notes and last plan not found in the chart.',
+        );
+    }
+}
+
 final class RetryThenFixtureDraftProvider implements DraftProvider
 {
     public int $calls = 0;
@@ -226,5 +284,26 @@ final class VerifiedRecordingLogger extends AbstractLogger
             'message' => $message,
             'context' => $context,
         ];
+    }
+}
+
+final class VerifiedManualClock implements AgentForgeClock
+{
+    /** @var list<int> */
+    private array $ticks;
+
+    /** @param list<int> $ticks */
+    public function __construct(array $ticks)
+    {
+        $this->ticks = $ticks;
+    }
+
+    public function nowMs(): int
+    {
+        if ($this->ticks === []) {
+            return 0;
+        }
+
+        return array_shift($this->ticks);
     }
 }
