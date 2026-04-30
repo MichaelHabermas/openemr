@@ -57,7 +57,7 @@ The first-principles constraint is trust: a browser panel is useful only after t
 - [x] Direct PHP smoke assertion confirmed `AgentResponse::unexpectedFailure()` does not expose an internal SQL-style message.
 - [x] PHP syntax check passed for `AgentRequestHandler`, `AgentRequestResult`, `AgentRequestParserInterface`, and `AgentRequestHandlerTest`.
 - [x] Direct PHP smoke assertion confirmed `AgentRequestHandler` allows an authorized POST and returns the placeholder patient response.
-- [ ] PHPUnit proof pending. Attempted `composer phpunit-isolated -- tests/Tests/Isolated/AgentForge/RequestLogTest.php` and `composer phpunit-isolated -- tests/Tests/Isolated/AgentForge/AgentRequestHandlerTest.php`; both failed with `phpunit: command not found`.
+- [x] PHPUnit proof captured in `agent-forge/docs/epic4-phpunit-output.txt`: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` passed with 28 tests and 100 assertions.
 
 ---
 

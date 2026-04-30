@@ -1,0 +1,14 @@
+Command:
+composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+
+Output:
+PHPUnit 11.5.55 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.5
+Configuration: /Users/michaelhabermas/repos/GAI/openemr/phpunit-isolated.xml
+
+............................                                      28 / 28 (100%)
+
+Time: 00:00.038, Memory: 38.00 MB
+
+OK (28 tests, 100 assertions)
