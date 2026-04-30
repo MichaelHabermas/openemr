@@ -17,6 +17,26 @@ use PHPUnit\Framework\TestCase;
 
 final class AgentResponseTest extends TestCase
 {
+    public function testResponseFactoriesAreJsonEncodable(): void
+    {
+        $request = new \OpenEMR\AgentForge\AgentRequest(
+            new \OpenEMR\AgentForge\PatientId(900001),
+            new \OpenEMR\AgentForge\AgentQuestion('What changed since last visit?'),
+        );
+
+        $responses = [
+            AgentResponse::placeholder($request),
+            AgentResponse::refusal('Patient-specific access could not be verified for this user.'),
+            AgentResponse::unexpectedFailure(),
+        ];
+
+        foreach ($responses as $response) {
+            $json = json_encode($response->toArray(), JSON_THROW_ON_ERROR);
+
+            $this->assertJson($json);
+        }
+    }
+
     public function testUnexpectedFailureDoesNotExposeInternalMessage(): void
     {
         $internalMessage = 'SQLSTATE[HY000] table patient_data connection failed';

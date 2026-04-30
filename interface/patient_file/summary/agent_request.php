@@ -10,6 +10,8 @@
 
 declare(strict_types=1);
 
+ob_start();
+
 require_once("../../globals.php");
 
 use OpenEMR\AgentForge\AgentRequestHandler;
@@ -29,6 +31,10 @@ use Ramsey\Uuid\Uuid;
 
 function agent_forge_json_response(AgentResponse $response, int $statusCode = 200): never
 {
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+
     http_response_code($statusCode);
     header('Content-Type: application/json');
     echo json_encode($response->toArray(), JSON_THROW_ON_ERROR);

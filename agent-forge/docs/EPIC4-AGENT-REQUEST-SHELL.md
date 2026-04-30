@@ -71,7 +71,8 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 - [x] Direct PHP smoke assertion confirmed `AgentResponse::unexpectedFailure()` does not expose an internal SQL-style message.
 - [x] PHP syntax check passed for `AgentRequestHandler`, `AgentRequestResult`, `AgentRequestParserInterface`, and `AgentRequestHandlerTest`.
 - [x] Direct PHP smoke assertion confirmed `AgentRequestHandler` allows an authorized POST and returns the placeholder patient response.
-- [x] PHPUnit proof captured in `agent-forge/docs/epic4-phpunit-output.txt`: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` passed with 28 tests and 100 assertions.
+- [x] PHPUnit proof captured in `agent-forge/docs/epic4-phpunit-output.txt`: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` passed with 29 tests and 103 assertions.
+- [x] Endpoint JSON output is protected from accidental prior output by buffering before `globals.php` and cleaning before emitting the JSON response.
 
 ---
 
