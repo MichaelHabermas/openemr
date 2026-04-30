@@ -1,0 +1,230 @@
+<?php
+
+/**
+ * Isolated tests for AgentForge verified handler orchestration.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\Tests\Isolated\AgentForge;
+
+use DomainException;
+use OpenEMR\AgentForge\AgentQuestion;
+use OpenEMR\AgentForge\AgentRequest;
+use OpenEMR\AgentForge\ChartEvidenceTool;
+use OpenEMR\AgentForge\DraftClaim;
+use OpenEMR\AgentForge\DraftProvider;
+use OpenEMR\AgentForge\DraftResponse;
+use OpenEMR\AgentForge\DraftSentence;
+use OpenEMR\AgentForge\DraftUsage;
+use OpenEMR\AgentForge\DraftVerifier;
+use OpenEMR\AgentForge\EvidenceBundle;
+use OpenEMR\AgentForge\EvidenceItem;
+use OpenEMR\AgentForge\EvidenceResult;
+use OpenEMR\AgentForge\FixtureDraftProvider;
+use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\VerifiedAgentHandler;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
+use RuntimeException;
+
+final class VerifiedAgentHandlerTest extends TestCase
+{
+    public function testSafeChartQuestionReturnsVerifiedCitedOutput(): void
+    {
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        ))->handle($this->request('Show me recent A1c.'));
+
+        $this->assertSame('ok', $response->status);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $response->citations);
+    }
+
+    public function testAdviceRequestIsRefusedBeforeEvidenceDrafting(): void
+    {
+        $tool = new VerifiedRecordingEvidenceTool();
+        $response = (new VerifiedAgentHandler(
+            [$tool],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        ))->handle($this->request('What dose should I prescribe?'));
+
+        $this->assertSame('refused', $response->status);
+        $this->assertFalse($tool->called);
+        $this->assertStringContainsString('cannot provide diagnosis', $response->refusalsOrWarnings[0]);
+    }
+
+    public function testToolFailureIsVisibleWithoutLeakingInternalError(): void
+    {
+        $logger = new VerifiedRecordingLogger();
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedThrowingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+            $logger,
+        ))->handle($this->request('Show me recent labs.'));
+
+        $json = json_encode($response->toArray(), JSON_THROW_ON_ERROR);
+
+        $this->assertSame('ok', $response->status);
+        $this->assertSame(['Recent labs could not be checked.'], $response->missingOrUncheckedSections);
+        $this->assertStringContainsString('Recent labs could not be checked.', $response->answer);
+        $this->assertStringNotContainsString('SQLSTATE', $json);
+        $this->assertCount(1, $logger->records);
+    }
+
+    public function testMalformedDraftRetriesOnceThenSucceeds(): void
+    {
+        $provider = new RetryThenFixtureDraftProvider();
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            $provider,
+            new DraftVerifier(),
+        ))->handle($this->request('Show me recent labs.'));
+
+        $this->assertSame('ok', $response->status);
+        $this->assertSame(2, $provider->calls);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+    }
+
+    public function testMalformedDraftFailsClearlyAfterRetry(): void
+    {
+        $logger = new VerifiedRecordingLogger();
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new AlwaysMalformedDraftProvider(),
+            new DraftVerifier(),
+            $logger,
+        ))->handle($this->request('Show me recent labs.'));
+
+        $json = json_encode($response->toArray(), JSON_THROW_ON_ERROR);
+
+        $this->assertSame('refused', $response->status);
+        $this->assertSame(['The request could not be processed.'], $response->refusalsOrWarnings);
+        $this->assertStringNotContainsString('malformed internals', $json);
+        $this->assertCount(1, $logger->records);
+    }
+
+    public function testUnverifiableDraftIsBlocked(): void
+    {
+        $response = (new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FabricatingDraftProvider(),
+            new DraftVerifier(),
+        ))->handle($this->request('Show me recent labs.'));
+
+        $this->assertSame('refused', $response->status);
+        $this->assertSame(['The draft answer could not be verified.'], $response->refusalsOrWarnings);
+    }
+
+    private function request(string $question): AgentRequest
+    {
+        return new AgentRequest(new PatientId(900001), new AgentQuestion($question));
+    }
+}
+
+final class VerifiedRecordingEvidenceTool implements ChartEvidenceTool
+{
+    public bool $called = false;
+
+    public function section(): string
+    {
+        return 'Recent labs';
+    }
+
+    public function collect(PatientId $patientId): EvidenceResult
+    {
+        $this->called = true;
+
+        return EvidenceResult::found('Recent labs', [
+            new EvidenceItem(
+                'lab',
+                'procedure_result',
+                'agentforge-a1c-2026-04',
+                '2026-04-10',
+                'Hemoglobin A1c',
+                '7.4 %',
+            ),
+        ]);
+    }
+}
+
+final class VerifiedThrowingEvidenceTool implements ChartEvidenceTool
+{
+    public function section(): string
+    {
+        return 'Recent labs';
+    }
+
+    public function collect(PatientId $patientId): EvidenceResult
+    {
+        throw new RuntimeException('SQLSTATE private database internals');
+    }
+}
+
+final class RetryThenFixtureDraftProvider implements DraftProvider
+{
+    public int $calls = 0;
+
+    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    {
+        ++$this->calls;
+        if ($this->calls === 1) {
+            throw new DomainException('malformed draft');
+        }
+
+        return (new FixtureDraftProvider())->draft($request, $bundle);
+    }
+}
+
+final class AlwaysMalformedDraftProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    {
+        throw new DomainException('malformed internals');
+    }
+}
+
+final class FabricatingDraftProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    {
+        return new DraftResponse(
+            [new DraftSentence('s1', 'Hemoglobin A1c: 8.2 %')],
+            [
+                new DraftClaim(
+                    'Hemoglobin A1c: 8.2 %',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'],
+                    's1',
+                ),
+            ],
+            [],
+            [],
+            DraftUsage::fixture(),
+        );
+    }
+}
+
+final class VerifiedRecordingLogger extends AbstractLogger
+{
+    /** @var list<array{level: mixed, message: string|\Stringable, context: array<mixed>}> */
+    public array $records = [];
+
+    /** @param array<mixed> $context */
+    public function log($level, string|\Stringable $message, array $context = []): void
+    {
+        $this->records[] = [
+            'level' => $level,
+            'message' => $message,
+            'context' => $context,
+        ];
+    }
+}

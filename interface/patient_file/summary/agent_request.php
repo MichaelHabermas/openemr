@@ -17,7 +17,8 @@ require_once("../../globals.php");
 use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentResponse;
-use OpenEMR\AgentForge\EvidenceAgentHandler;
+use OpenEMR\AgentForge\DraftProviderFactory;
+use OpenEMR\AgentForge\DraftVerifier;
 use OpenEMR\AgentForge\EvidenceToolFactory;
 use OpenEMR\AgentForge\PatientAuthorizationGate;
 use OpenEMR\AgentForge\PsrRequestLogger;
@@ -25,6 +26,7 @@ use OpenEMR\AgentForge\RequestLog;
 use OpenEMR\AgentForge\RequestLogger;
 use OpenEMR\AgentForge\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\SqlPatientAccessRepository;
+use OpenEMR\AgentForge\VerifiedAgentHandler;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -88,8 +90,10 @@ $chartEvidenceRepository = new SqlChartEvidenceRepository();
 $handler = new AgentRequestHandler(
     new AgentRequestParser(),
     new PatientAuthorizationGate(new SqlPatientAccessRepository()),
-    new EvidenceAgentHandler(
+    new VerifiedAgentHandler(
         EvidenceToolFactory::createDefault($chartEvidenceRepository),
+        DraftProviderFactory::createDefault(),
+        new DraftVerifier(),
         ServiceContainer::getLogger(),
     ),
     ServiceContainer::getLogger(),

@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * Isolated tests for AgentForge fixture drafting.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\Tests\Isolated\AgentForge;
+
+use OpenEMR\AgentForge\AgentQuestion;
+use OpenEMR\AgentForge\AgentRequest;
+use OpenEMR\AgentForge\DraftClaim;
+use OpenEMR\AgentForge\EvidenceBundle;
+use OpenEMR\AgentForge\EvidenceBundleItem;
+use OpenEMR\AgentForge\FixtureDraftProvider;
+use OpenEMR\AgentForge\PatientId;
+use PHPUnit\Framework\TestCase;
+
+final class FixtureDraftProviderTest extends TestCase
+{
+    public function testModelOffModeDraftsOnlyFromBoundedEvidence(): void
+    {
+        $draft = (new FixtureDraftProvider())->draft(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'lab',
+                    'lab:procedure_result/agentforge-a1c-2026-04@2026-04-10',
+                    '2026-04-10',
+                    'Hemoglobin A1c',
+                    '7.4 %',
+                ),
+            ]),
+        );
+
+        $this->assertSame('Hemoglobin A1c: 7.4 % [lab:procedure_result/agentforge-a1c-2026-04@2026-04-10]', $draft->sentences[0]->text);
+        $this->assertSame(DraftClaim::TYPE_PATIENT_FACT, $draft->claims[0]->type);
+        $this->assertSame('fixture-draft-provider', $draft->usage->model);
+        $this->assertSame(0, $draft->usage->inputTokens);
+        $this->assertSame(0, $draft->usage->outputTokens);
+        $this->assertNull($draft->usage->estimatedCost);
+    }
+
+    public function testAdviceQuestionProducesRefusalDraft(): void
+    {
+        $draft = (new FixtureDraftProvider())->draft(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('What dose should I prescribe?')),
+            new EvidenceBundle([]),
+        );
+
+        $this->assertSame(DraftClaim::TYPE_REFUSAL, $draft->claims[0]->type);
+        $this->assertStringContainsString('cannot provide diagnosis', $draft->sentences[0]->text);
+    }
+}
