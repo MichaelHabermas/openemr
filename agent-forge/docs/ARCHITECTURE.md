@@ -4,7 +4,7 @@
 
 This architecture exists for one deadline: the 24-hour Architecture Defense for the Clinical Co-Pilot. The goal is not to design the final hospital system. The goal is to define the smallest defensible agent that can be built inside OpenEMR without pretending trust exists where it does not.
 
-The first version serves one user: a primary care physician opening a scheduled outpatient chart before walking into the room. The agent's job is chart orientation. It answers only the questions documented in `USERS.bare-bones.md`: who the patient is, why they are here, what changed since the last visit, what chart facts matter now, and focused follow-up questions about the same patient chart. It does not diagnose. It does not recommend treatment. It does not change medications. It does not draft notes. It does not answer open-ended medical questions.
+The first version serves one user: a primary care physician opening a scheduled outpatient chart before walking into the room. The agent's job is chart orientation. It answers only the questions documented in `USERS.md`: who the patient is, why they are here, what changed since the last visit, what chart facts matter now, and focused follow-up questions about the same patient chart. It does not diagnose. It does not recommend treatment. It does not change medications. It does not draft notes. It does not answer open-ended medical questions.
 
 The agent lives inside the OpenEMR patient chart. A small browser panel sends the physician's question and the current `patient_id` to a server-side OpenEMR endpoint. The server, not the browser, owns trust decisions. The endpoint binds the request to the active OpenEMR session user, the current patient, and the current chart context. If the user is missing, the patient is missing, or patient-specific authorization is unclear, the request is refused.
 
@@ -16,7 +16,46 @@ The LLM is not trusted. It receives only the evidence bundle and must produce a 
 
 The system favors trust over completeness. A slower complete answer is less useful than a fast, cited, bounded answer that says what it could and could not check. Every request is logged with request metadata, tool calls, failures, latency, token use, estimated cost, verifier result, and source row ids. Logs should avoid raw PHI where possible.
 
-The first-principles rule is simple: read narrowly, cite everything, log every read, fail closed, and do not build anything that is not required for the documented physician workflow.
+The first-principles rule is simple: read narrowly, cite everything, log every read, fail closed, and do not build anything that is not required for the documented physician workflow in `USERS.md`, constrained by `AUDIT.md`.
+
+## Traceability To Users And Audit
+
+### Capability -> User Use Case Mapping (`USERS.md`)
+
+| Agent capability | User source | Why it exists |
+| --- | --- | --- |
+| Visit briefing summary | Use Case 1 - Visit Briefing | The physician needs fast chart orientation before entering the room. |
+| Multi-turn follow-up drill-down | Use Case 2 - Follow-Up Drill-Down | The next useful question depends on what the first answer reveals. |
+| Missing or unclear data reporting | Use Case 3 - Missing Or Unclear Data | Incomplete records must be surfaced explicitly instead of inferred away. |
+| Unsupported request refusal | Use Case 1 boundary, Use Case 2 boundary, Use Case 3 boundary, Non-Goals | The agent must remain a chart-orientation aid, not a diagnosis or treatment engine. |
+| Patient demographics tool | Workflow questions 1 and 4; Use Case 1 | The physician needs to know who the current patient is and what basic chart facts matter. |
+| Active problems tool | Use Case 1; Use Case 2 | Problems are part of the visit briefing and common follow-up context. |
+| Active medications and prescriptions tool | Use Case 1; Use Case 2 | Current medications are explicitly part of the briefing and follow-up examples. |
+| Recent labs tool | Use Case 1; Use Case 2 | Recent labs support "what changed" and the A1c-trend example. |
+| Recent encounters and notes tool | Use Case 1; Use Case 2 | The last note and recent encounters support last-plan and change-since-last-visit questions. |
+| Last plan extraction | Use Case 1; Use Case 2 | The last plan is named in the briefing need and follow-up examples. |
+| Source-cited answer display | Use Case 2 boundary; Success Standard | Every factual answer must be traceable to the patient's chart. |
+| Structured draft plus deterministic verifier | Use Case 2 boundary; Use Case 3 boundary; Success Standard | Draft text is useful only if unsupported chart claims are blocked before display. |
+| Agent request log | Success Standard; Use Case 3 boundary | Trust requires explaining what was checked, what failed, and which source rows supported the answer. |
+| Public request and response contracts | Workflow; Use Case 2 | The interface must support a current-chart question, citations, missing sections, and warnings. |
+| Evaluation cases | Success Standard; Non-Goals | The project needs proof that cited answers, missing-data behavior, refusals, and authorization failures behave as designed. |
+
+### Trust Boundary -> Audit Finding Mapping (`AUDIT.md`)
+
+| Boundary or constraint | Audit source | Required design response |
+| --- | --- | --- |
+| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. |
+| Session-bound identity binding | Security S2 | The OpenEMR server endpoint binds each request to the active session user before agent handling. |
+| Browser treated as untrusted surface | Security S3 | The browser only sends input and displays output; it does not hold model credentials or make access decisions. |
+| Narrow OpenEMR integration | Architecture A1 and A2 | The first version uses a small chart-embedded endpoint instead of broad OpenEMR rewrites. |
+| Bounded patient reads | Performance P1 and P2 | Tools read only the current patient's required rows and latency remains a measured implementation concern. |
+| Source-carrying evidence bundle | Data Quality D1, D2, D3, D4, D5 | Every returned fact carries source metadata; missing or weakly coded data is not treated as clean truth. |
+| Medication evidence caution | Data Quality D3 and D4 | Medication answers must define which medication sources were checked and avoid unsupported coded-rule claims. |
+| Missing-data behavior | Data Quality D1 and D5 | Empty or absent fields produce "not found in the chart" rather than negative clinical conclusions. |
+| Deterministic verification | Security S1; Data Quality D1-D5 | The model does not grade itself; unsupported patient-specific claims are blocked or rewritten as missing. |
+| Agent-specific logging | Compliance C1 and C2 | Agent reads, source ids, failures, verifier result, latency, tokens, and cost are logged even if OpenEMR query audit is disabled. |
+| PHI minimization in prompts and logs | Compliance C1 and C3; Security S3 | The LLM receives only the minimum evidence bundle; logs avoid full prompts, full chart text, and raw PHI unless explicitly justified. |
+| Failure and timeout handling | `SPECS.txt` Failure Modes; Performance P2 | Tool failure, malformed model output, verification failure, and timeout return visible failures or cited partial results only. |
 
 ## First Principles
 
@@ -250,8 +289,8 @@ The architecture may feel small. That is the point. If this version cannot be tr
 ## Assumptions
 
 - Architecture Defense is the immediate priority.
-- The first version serves only the primary care physician workflow in `USERS.bare-bones.md`.
+- The first version serves only the primary care physician workflow in `USERS.md`.
 - Only demo data is used.
 - The deployment remains based on the existing Docker Compose setup documented in `KNOWN-FACTS-AND-NEEDS.md`.
-- `AUDIT.bare-bones.md` is treated as the current source of security and data-quality constraints.
+- `AUDIT.md` is treated as the current source of security and data-quality constraints.
 - The agent must be read-only, cited, logged, narrow, and fail-closed.

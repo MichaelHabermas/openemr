@@ -32,7 +32,6 @@ Run these tracks in parallel if more than one worker is available.
 Track A - submission files:
 
 - Verify `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md`, `PRD.md`, `PLAN.md`, and `COST-ANALYSIS.md` exist.
-- Resolve `USER.md` vs `USERS.md` submission ambiguity.
 - Add or update release checklist.
 
 Track B - deployment proof:
@@ -174,33 +173,33 @@ The entire system follows **SOLID** and **modular design** so each piece can be 
 
 Goal: make the required submission artifacts exist under the required names before building anything else.
 
-### Feature 1.1 - Required File Names
+### Feature 1.1 - Required Submission Documents
 
-#### Task 1.1.1 - Verify Required Submission Filenames
+#### Task 1.1.1 - Verify Required Submission Documents
 
-Why: `SPECS.txt` requires `AUDIT.md`, a user document, and `ARCHITECTURE.md`. It references both `USERS.md` and `USER.md`, so filename ambiguity is a gate risk.
+Why: `SPECS.txt` requires `AUDIT.md`, a user document, and `ARCHITECTURE.md` before agent implementation begins.
 
 Start with eval/test:
 
-- Run a file-existence check for `agent-forge/docs/AUDIT.md`, `agent-forge/docs/USERS.md`, `agent-forge/docs/USER.md`, and `agent-forge/docs/ARCHITECTURE.md`.
-- Record which required files are present, missing, or ambiguous.
+- Run a file-existence check for `agent-forge/docs/AUDIT.md`, `agent-forge/docs/USERS.md`, and `agent-forge/docs/ARCHITECTURE.md`.
+- Record which required files are present or missing.
 
 Implementation:
 
 - Do not edit content in this task.
-- Produce the smallest filename remediation needed after the check.
+- Produce the smallest remediation needed after the check.
 
 Definition of done:
 
-- Required document filenames are known.
-- Missing required filenames are listed explicitly.
-- No content is duplicated or renamed without a follow-up task.
+- Required documents are present under the expected submission names.
+- Missing required documents are listed explicitly.
+- No content is changed without a follow-up task.
 
 Human verification:
 
-- A reviewer can open the docs folder and see which submission filenames still need action.
+- A reviewer can open the docs folder and see the required submission documents.
 
-#### Task 1.1.2 - Promote Audit Document To Submission Filename
+#### Task 1.1.2 - Verify Audit Document
 
 Why: `SPECS.txt` hard-gates `AUDIT.md`.
 
@@ -224,7 +223,7 @@ Human verification:
 
 - A reviewer can read the first page and explain the most important audit finding and how it changes the agent plan.
 
-#### Task 1.1.3 - Promote User Document To Submission Filename
+#### Task 1.1.3 - Verify User Document
 
 Why: `SPECS.txt` hard-gates a user document defining target user, workflow, use cases, and why an agent is the right solution.
 
@@ -235,7 +234,6 @@ Start with eval/test:
 Implementation:
 
 - If `USERS.md` satisfies the check, keep it as the submission file.
-- If the submission form expects `USER.md`, create a minimal pointer or duplicate only after that expectation is verified.
 
 Definition of done:
 
@@ -1113,7 +1111,7 @@ The 48-hour critical path at the top overrides the linear backlog order.
 
 Do not submit as complete if any of these are true:
 
-- Required docs are missing under expected filenames.
+- Required docs are missing.
 - Public deployment cannot be reached.
 - Fake demo data cannot be verified.
 - P0 runtime, LLM, verification, PHI-to-LLM, and latency decisions are not recorded.

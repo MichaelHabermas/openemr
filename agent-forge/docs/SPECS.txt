@@ -366,7 +366,7 @@ inputs that attempt to extract information the requester is not authorized to se
                               overview, and deployed link.
      Audit Document           All audit findings with a 1-page (~500 word) summary detailing key
      (./AUDIT.md)             findings.
-     User Doc (./USER.md)     The user you’re focusing on with a list of use cases that your agent
+     User Doc (./USERS.md)     The user you’re focusing on with a list of use cases that your agent
                               will address.
      Agent Architecture Doc   Your plan to integrate AI with technical details such as (but not
      (./ARCHITECTURE.md)      limited to) framework choices, verification strategy, and known

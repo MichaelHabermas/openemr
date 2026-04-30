@@ -190,8 +190,6 @@ To complete `SPECS.txt`, the project must contain:
 - Three-to-five-minute demo video for each submission.
 - Final social post on X or LinkedIn tagging `@GauntletAI`.
 
-Filename risk: `SPECS.txt` references both `USERS.md` and `USER.md`. To avoid submission ambiguity, the required user document should be available under the expected submitted filename before delivery.
-
 ## 5. Risks & Roadmap
 
 ### Phased Rollout
@@ -201,7 +199,7 @@ Filename risk: `SPECS.txt` references both `USERS.md` and `USER.md`. To avoid su
 - Confirm OpenEMR runs locally or document current runnable state.
 - Confirm public deployment URL and readiness endpoint.
 - Convert bare-bones audit into required `AUDIT.md`.
-- Convert bare-bones users doc into required `USERS.md` or required submission filename.
+- Confirm `USERS.md` defines the target user, workflow, use cases, and agent justification.
 - Ensure `ARCHITECTURE.md` traces every capability to `USERS.md` and every constraint to `AUDIT.md`.
 - Add deploy script only if VM unknowns are verified enough to avoid unsafe volume or environment assumptions.
 - Define fake sample patient data needed for the demo and eval suite.
