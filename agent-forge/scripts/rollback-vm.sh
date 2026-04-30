@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Code rollback. Switches to a prior commit, recreates the stack, runs health
-# checks, and re-seeds fake demo data. Data is reset by design — there is no
-# database rollback in this project. See
-# agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
+# checks, and re-seeds the idempotent fake demo data. Volumes are preserved
+# across rollbacks; the seed script restores known demo state for pid=900001.
+# There is no point-in-time database rollback in this project.
+# See agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
 set -Eeuo pipefail
 
 REPO_DIR="${AGENTFORGE_REPO_DIR:-${HOME}/repos/openemr}"
@@ -26,7 +27,7 @@ git fetch --all --prune
 git switch --detach "${TARGET_COMMIT}"
 
 cd "${COMPOSE_DIR}"
-docker compose down -v
+docker compose down
 docker compose up -d
 
 "${SCRIPT_DIR}/health-check.sh"

@@ -147,7 +147,7 @@ Verified facts (no longer unknown):
 - Deploy user runs `docker compose` without sudo.
 - Repo path on the VM: `~/repos/openemr`.
 - Compose directory: `docker/development-easy/`.
-- Volume behavior: reset on every deploy by design (`down -v`); fake data is re-seeded.
+- Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script. See `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility".
 
 ## Definition Of Done For Any Task
 
@@ -326,16 +326,16 @@ Human verification:
 
 #### Task 2.1.3 - Demo Deploy Script (Reset-And-Seed Model)
 
-Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so the deploy is destructive by design — the database is reset on every deploy and fake data is re-seeded.
+Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM (see "Known VM Bootstrap Fragility" in `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
 
 Start with eval/test:
 
-- Write the deploy success criteria before implementation: show branch, old commit, and new commit; pull latest code first so a merge failure does not take the app offline; reset the stack with `docker compose down -v` and `up -d`; wait for the public URL to return 2xx/3xx; re-seed fake demo data; print rollback target.
+- Write the deploy success criteria before implementation: show branch, old commit, and new commit; pull latest code first so a merge failure does not take the app offline; recreate containers with `docker compose down` and `up -d` (volumes preserved); wait for the public URL to return 2xx/3xx; re-seed fake demo data; print rollback target.
 
 Implementation:
 
 - Pull `--ff-only` before bringing the stack down.
-- Use `docker compose down -v` from `docker/development-easy/`. Volumes are reset on every deploy by design.
+- Use `docker compose down` (no `-v`) from `docker/development-easy/`. Volumes are preserved; demo state is restored by the idempotent seed.
 - Invoke the demo data seed script after health passes; warn loudly if the seed script is absent.
 
 Definition of done:
@@ -360,7 +360,7 @@ Start with eval/test:
 Implementation:
 
 - Code rollback target is the pre-deploy commit printed by `deploy-vm.sh`.
-- Rollback resets the stack (`down -v`), brings it back up, runs health checks, and re-seeds fake data.
+- Rollback recreates the stack (`docker compose down`, then `up -d`; volumes preserved), runs health checks, and re-seeds fake data via the idempotent seed.
 - Document explicitly that database rollback to a prior point in time is not implemented.
 
 Definition of done:

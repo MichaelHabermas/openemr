@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Demo deploy: pulls latest code, resets the stack and DB volumes, runs health
-# checks. Data is NOT preserved by design — fake demo data must be re-seeded
-# after deploy. See agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
+# Demo deploy: pulls latest code, recreates the stack, runs health checks, and
+# re-seeds the idempotent fake demo data. Volumes are preserved across deploys
+# because the upstream MariaDB image's first-init is fragile on the demo VM;
+# the seed script alone is sufficient to restore known demo state.
+# See agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
 set -Eeuo pipefail
 
 REPO_DIR="${AGENTFORGE_REPO_DIR:-${HOME}/repos/openemr}"
@@ -77,9 +79,10 @@ main() {
     cd "${COMPOSE_DIR}"
     printf 'Compose dir: %s\n' "${COMPOSE_DIR}"
 
-    # Destructive by design: -v wipes named volumes (incl. MySQL data).
-    # Demo data is fake and re-seeded below.
-    docker compose down -v
+    # Volumes are preserved (no -v): the upstream MariaDB image's first-init
+    # is fragile on the demo VM; the idempotent seed script below is what
+    # guarantees known demo state.
+    docker compose down
     docker compose up -d
 
     wait_for_health
