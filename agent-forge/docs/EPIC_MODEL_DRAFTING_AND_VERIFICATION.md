@@ -108,6 +108,7 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 - 2026-04-30: Hardened verifier and schema validation after self-review: wrong element types now fail DTO validation, unsafe displayed sentence text is rejected even when claim text looks supported, mixed supported/unsupported claims reject the whole sentence, and new handler catches follow repository exception policy without catching `Error`.
 - 2026-04-30: Added explicit known-missing-data handling for urine microalbumin questions so safe missing-data checks return a visible not-found section instead of silently omitting the missing fact.
 - 2026-04-30: Reworked the AgentForge endpoint wrapper to use Symfony `Request` and local closures so the Epic 6 entrypoint passes the focused static-analysis rules.
+- 2026-04-30: Verified Epic 6 on the deployed VM after `agent-forge/scripts/deploy-vm.sh` restarted the stack and re-seeded demo data.
 
 ## Proof Log
 
@@ -117,6 +118,10 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
 - Focused PHPStan on the Epic 6 source, tests, and `interface/patient_file/summary/agent_request.php`: passed.
 - `agent-forge/scripts/verify-demo-data.sh`: passed against the local Docker OpenEMR database.
 - Live local endpoint smoke test for `Show me recent labs.` on Alex Testpatient: returned verified cited output including A1c `7.4 %` and `8.2 %`, with no missing sections after the temporary fake lab-tool failure was removed.
+- VM deploy: `agent-forge/scripts/deploy-vm.sh` passed on `gauntlet-mgh` at commit `a2a16a61163c301cb7f02c5ea3d529c6a342345d`; public app and readiness endpoint returned HTTP 200; demo seed passed.
+- VM demo data: `agent-forge/scripts/verify-demo-data.sh` passed, including Epic 5 evidence contract source-row checks for demographics, problems, prescriptions, labs, and last plan.
+- VM host PHPUnit: blocked because host PHP is missing `dom`, `xml`, and `xmlwriter`; no Epic 6 test failure was observed. Local PHPUnit remains the automated proof source.
+- VM browser manual checks: safe A1c request, known missing microalbumin request, dosing refusal, and unsupported Ozempic question all matched expected Epic 6 behavior.
 
 ## Acceptance Traceability
 
@@ -151,6 +156,23 @@ Epic 6 adds a fixture-first drafting and verification pipeline on top of the Epi
   - Temporarily injected a fake `LabsEvidenceTool` failure, observed `Recent labs could not be checked.` and `Missing or unchecked: Recent labs could not be checked.` in the UI, with no internal exception text. The temporary injection was removed; `git diff -- src/AgentForge/LabsEvidenceTool.php` is empty; live endpoint recovery returned normal A1c citations.
   - Also temporarily stopped the local MySQL container and confirmed the UI displayed the generic client-side `The request failed. Please try again.` without SQL/internal error leakage. This was treated as an outage smoke check, not the primary evidence-tool degradation proof.
 
+## VM Verification
+
+- [x] Deploy script executed on the VM.
+  - `agent-forge/scripts/deploy-vm.sh` ran on `gauntlet-mgh`, restarted `docker/development-easy`, waited through transient HTTP 521 responses, reached `PASS public app: HTTP 200`, reached `PASS readiness endpoint: HTTP 200`, seeded demo data, and printed `Deploy succeeded.`
+- [x] VM demo data and Epic 5 evidence contract verified.
+  - `agent-forge/scripts/verify-demo-data.sh` passed all checks, including active problems, active medications, A1c trend, known missing microalbumin, and evidence contract source rows.
+- [x] VM safe chart-fact request verified.
+  - Deployed Clinical Co-Pilot returned cited Alex Testpatient facts and A1c values `7.4 %` and `8.2 %`.
+- [x] VM known missing microalbumin verified.
+  - Deployed response included `Urine microalbumin result not found in the chart.` and surfaced it in `Missing or unchecked`.
+- [x] VM clinical-advice refusal verified.
+  - `What dose should I prescribe?` returned the deterministic diagnosis/treatment/dosing/medication-change/note-drafting refusal.
+- [x] VM unsupported medication check verified.
+  - `Is Alex taking Ozempic?` did not invent or cite Ozempic and returned only verified chart facts.
+- [x] VM exact tool-failure injection intentionally not performed.
+  - We chose not to mutate deployed public demo code for a fake `LabsEvidenceTool` failure. Exact tool-failure behavior is covered by isolated tests and local manual injection; VM coverage verifies deployed happy-path, missing-data, refusal, and unsupported-claim behavior.
+
 ## Definition Of Done Gate
 
 Can I call this done?
@@ -160,6 +182,7 @@ Can I call this done?
 - Required manual checks executed and captured? yes.
 - Required fixtures/data/users for proof exist? yes, Alex Testpatient demo fixture is assigned for manual proof.
 - Security/privacy/logging/error-handling requirements verified? yes for isolated automated proof and live manual proof.
+- Deployed VM checked through project deploy, seed, health, and browser verification? yes.
 - Known limitations and deferred relationship/scope shapes documented? yes.
 - Epic status updated honestly? yes.
 - Git left unstaged and uncommitted unless user asked otherwise? yes.
