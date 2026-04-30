@@ -1,7 +1,7 @@
 # Epic: Agent Request Shell
 
 **Scope:** patient-chart request shell and fail-closed authorization
-**Status:** Local Proof Complete - Deployed VM Verification Pending
+**Status:** Done
 
 ---
 
@@ -96,12 +96,31 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 
 ---
 
+## Deployed VM Verification
+
+- [x] VM deploy and seed completed on `master` at commit `95bf383a7c453c3d6538b7be85ef43123d41840a`.
+  - Public readiness endpoint returned HTTP `200`.
+  - Deploy ran `agent-forge/scripts/seed-demo-data.sh`.
+  - Seed output: `PASS seed: fake demo patient pid=900001 loaded.`
+  - Deploy output: `Deploy succeeded.`
+- [x] Deployed authorized request shell path returned the Epic 4 placeholder response.
+  - User: `admin`.
+  - Patient: `AF-DEMO-900001`, patient id `900001`.
+  - Observed response: `AgentForge request shell received your question for patient 900001. Model behavior and chart evidence retrieval are intentionally disabled in Epic 4. This is a non-model placeholder response.`
+- [x] Deployed no-relationship refusal path failed closed.
+  - User: `af_demo_unrelated`.
+  - Patient: `AF-DEMO-900001`, patient id `900001`.
+  - Observed refusal: `Patient-specific access could not be verified for this user.`
+
+---
+
 ## Change Log
 
 - Request logging contract added: `RequestLog`, `RequestLogger`, `PsrRequestLogger`, endpoint log-and-respond helper, and isolated logger tests.
 - Exception handling tightened: expected parser validation failures return safe domain messages; unexpected failures are logged and return a generic refusal.
 - Endpoint orchestration extracted into `AgentRequestHandler` so refusal/status-code behavior can be covered by isolated tests.
 - Local proof blockers closed: AgentForge isolated PHPUnit suite passed, JSON output path hardened, seeded no-relationship user verified, and all local manual checks passed.
+- Deployed VM proof closed: deploy, seed, authorized placeholder response, and no-relationship refusal were verified on the public VM.
 
 ---
 
@@ -115,8 +134,8 @@ Can I call this DONE-done?
 - Required fixtures/data/users for local proof exist? yes, `af_demo_unrelated` is seeded for the no-relationship refusal path.
 - Security/privacy/logging/error-handling requirements verified locally? yes.
 - Known limitations and deferred relationship/scope shapes documented? yes.
-- Epic status updated honestly? yes, local proof is complete but deployed VM verification is pending.
+- Epic status updated honestly? yes.
 - Git left unstaged and uncommitted unless user asked otherwise? yes.
-- Deployed VM verification executed and captured? no.
+- Deployed VM verification executed and captured? yes.
 
-Epic 4 is not DONE-done until the same request shell checks pass against the deployed VM after deployment and re-seeding.
+Epic 4 is DONE-done: local proof and deployed VM proof are both captured.
