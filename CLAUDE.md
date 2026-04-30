@@ -38,6 +38,23 @@ docker compose up --detach --wait
 - **Login:** `admin` / `pass`
 - **phpMyAdmin:** http://localhost:8310/
 
+### AgentForge Deployment Guardrail
+
+Do not give generic VM, deploy, rollback, public URL, Docker restart, seed-data,
+or `git pull` instructions for AgentForge work. First inspect the current repo
+state and the project-owned deployment sources:
+
+- `agent-forge/scripts/deploy-vm.sh`
+- `agent-forge/scripts/rollback-vm.sh`
+- `agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`
+- `agent-forge/docs/PRD.md`
+
+Before instructing a VM/deploy step, state what script or doc supports it, what
+branch/status/remote state was observed, and what rollback or recovery path is
+available. Manual verification should proceed gate by gate: local UI checks,
+local automated proof, git status/diff review, explicit commit/push decision,
+VM deploy script, VM seed/verify, VM UI checks, then proof-file update.
+
 ## Testing
 
 Tests run inside Docker via devtools. Run from `docker/development-easy/`:
