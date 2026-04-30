@@ -1,0 +1,73 @@
+{% extends "patient/card/card_base.html.twig" %}
+
+{% block content %}
+<form id="agent-forge-form" class="agent-forge-panel" data-endpoint="{{ endpoint|attr }}" data-patient-id="{{ patientId|attr }}" data-csrf-token="{{ csrfToken|attr }}">
+    <div class="form-group mb-2">
+        <label for="agent-forge-question" class="sr-only">{{ "Question"|xlt }}</label>
+        <textarea id="agent-forge-question" class="form-control form-control-sm" rows="3" maxlength="1000" placeholder="{{ "Ask about this chart"|xla }}"></textarea>
+    </div>
+    <div class="d-flex align-items-center justify-content-between">
+        <button type="submit" class="btn btn-primary btn-sm">{{ "Send"|xlt }}</button>
+        <span id="agent-forge-status" class="small text-muted" aria-live="polite"></span>
+    </div>
+    <div id="agent-forge-response" class="alert mt-2 mb-0 d-none" role="status"></div>
+</form>
+
+<script>
+(function () {
+    const form = document.getElementById('agent-forge-form');
+    if (!form) {
+        return;
+    }
+
+    const question = document.getElementById('agent-forge-question');
+    const status = document.getElementById('agent-forge-status');
+    const response = document.getElementById('agent-forge-response');
+    const submit = form.querySelector('button[type="submit"]');
+
+    function showMessage(message, level) {
+        response.textContent = message;
+        response.className = 'alert mt-2 mb-0 alert-' + level;
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const value = question.value.trim();
+        if (value === '') {
+            showMessage({{ "Enter a question before sending."|xlj }}, 'warning');
+            return;
+        }
+
+        top.restoreSession();
+        status.textContent = {{ "Sending..."|xlj }};
+        response.className = 'alert mt-2 mb-0 d-none';
+        submit.disabled = true;
+
+        const body = new FormData();
+        body.append('csrf_token_form', form.dataset.csrfToken);
+        body.append('patient_id', form.dataset.patientId);
+        body.append('question', value);
+
+        fetch(form.dataset.endpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        }).then(function (result) {
+            return result.json();
+        }).then(function (payload) {
+            if (payload.status === 'ok') {
+                const warnings = (payload.refusals_or_warnings || []).join(' ');
+                showMessage(payload.answer + (warnings ? ' ' + warnings : ''), 'info');
+            } else {
+                showMessage((payload.refusals_or_warnings || [{{ "The request was refused."|xlj }}]).join(' '), 'warning');
+            }
+        }).catch(function () {
+            showMessage({{ "The request failed. Please try again."|xlj }}, 'danger');
+        }).finally(function () {
+            status.textContent = '';
+            submit.disabled = false;
+        });
+    });
+}());
+</script>
+{% endblock %}

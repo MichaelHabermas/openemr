@@ -51,6 +51,7 @@ use OpenEMR\Events\PatientDemographics\ViewEvent;
 use OpenEMR\FHIR\SMART\SmartLaunchController;
 use OpenEMR\Menu\PatientMenuRole;
 use OpenEMR\OeUI\OemrUI;
+use OpenEMR\Patient\Cards\AgentForgeViewCard;
 use OpenEMR\Patient\Cards\BillingViewCard;
 use OpenEMR\Patient\Cards\CareExperiencePreferenceViewCard;
 use OpenEMR\Patient\Cards\CareTeamViewCard;
@@ -1245,6 +1246,13 @@ $oemr_ui = new OemrUI($arrOeUiSettings);
             </div>
             <div class="row">
                 <?php
+                if (!in_array('card_agent_forge', $hiddenCards) && AclMain::aclCheckCore('patients', 'med')) {
+                    $card = new AgentForgeViewCard((int) $pid, ['dispatcher' => $ed]);
+                    echo "<div class='col-12 m-0 p-0 px-2'>";
+                    echo $t->render($card->getTemplateFile(), $card->getTemplateVariables());
+                    echo "</div>";
+                }
+
                 if (!in_array('card_care_team', $hiddenCards)) {
                     $card = new CareTeamViewCard($pid, ['dispatcher' => $ed]);
                     $btnLabel = false;
