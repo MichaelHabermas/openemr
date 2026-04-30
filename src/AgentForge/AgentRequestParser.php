@@ -14,7 +14,7 @@ namespace OpenEMR\AgentForge;
 
 use DomainException;
 
-final class AgentRequestParser
+final class AgentRequestParser implements AgentRequestParserInterface
 {
     /** @param array<string, mixed> $input */
     public function parse(array $input): AgentRequest

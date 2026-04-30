@@ -73,4 +73,9 @@ final readonly class AgentResponse
             [$message],
         );
     }
+
+    public static function unexpectedFailure(): self
+    {
+        return self::refusal('The request could not be processed.');
+    }
 }

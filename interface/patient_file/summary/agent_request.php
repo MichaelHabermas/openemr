@@ -12,14 +12,20 @@ declare(strict_types=1);
 
 require_once("../../globals.php");
 
+use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentResponse;
 use OpenEMR\AgentForge\PatientAuthorizationGate;
 use OpenEMR\AgentForge\PlaceholderAgentHandler;
+use OpenEMR\AgentForge\PsrRequestLogger;
+use OpenEMR\AgentForge\RequestLog;
+use OpenEMR\AgentForge\RequestLogger;
 use OpenEMR\AgentForge\SqlPatientAccessRepository;
+use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
+use Ramsey\Uuid\Uuid;
 
 function agent_forge_json_response(AgentResponse $response, int $statusCode = 200): never
 {
@@ -29,33 +35,70 @@ function agent_forge_json_response(AgentResponse $response, int $statusCode = 20
     exit;
 }
 
+function agent_forge_elapsed_ms(int $startTime): int
+{
+    return max(0, (int) floor((hrtime(true) - $startTime) / 1_000_000));
+}
+
+function agent_forge_log_and_respond(
+    AgentResponse $response,
+    int $statusCode,
+    RequestLogger $logger,
+    string $requestId,
+    int $startTime,
+    string $decision,
+    ?int $userId = null,
+    ?int $patientId = null,
+): never {
+    $logger->record(new RequestLog(
+        requestId: $requestId,
+        userId: $userId,
+        patientId: $patientId,
+        decision: $decision,
+        latencyMs: agent_forge_elapsed_ms($startTime),
+        timestamp: new DateTimeImmutable(),
+    ));
+    agent_forge_json_response($response, $statusCode);
+}
+
+$agentForgeStartTime = hrtime(true);
+$agentForgeRequestId = Uuid::uuid4()->toString();
+$agentForgeLogger = new PsrRequestLogger(ServiceContainer::getLogger());
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    agent_forge_json_response(AgentResponse::refusal('AgentForge requests must use POST.'), 405);
+    $session = null;
+} else {
+    $session = SessionWrapperFactory::getInstance()->getActiveSession();
 }
 
-$session = SessionWrapperFactory::getInstance()->getActiveSession();
-if (!CsrfUtils::verifyCsrfToken($_POST['csrf_token_form'] ?? '', session: $session)) {
-    agent_forge_json_response(AgentResponse::refusal('The request could not be verified.'), 403);
-}
-
-try {
-    $request = (new AgentRequestParser())->parse($_POST);
-} catch (Throwable $exception) {
-    agent_forge_json_response(AgentResponse::refusal($exception->getMessage()), 400);
-}
-
-$sessionPatientId = filter_var($session->get('pid'), FILTER_VALIDATE_INT);
-$sessionUserId = filter_var($session->get('authUserID'), FILTER_VALIDATE_INT);
-$gate = new PatientAuthorizationGate(new SqlPatientAccessRepository());
-$decision = $gate->decide(
-    $request,
-    $sessionPatientId === false ? null : (int) $sessionPatientId,
-    $sessionUserId === false ? null : (int) $sessionUserId,
+$sessionPatientId = filter_var($session?->get('pid'), FILTER_VALIDATE_INT);
+$sessionPatientId = $sessionPatientId === false ? null : (int) $sessionPatientId;
+$sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
+$sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
+$csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($_POST['csrf_token_form'] ?? '', session: $session);
+$handler = new AgentRequestHandler(
+    new AgentRequestParser(),
+    new PatientAuthorizationGate(new SqlPatientAccessRepository()),
+    new PlaceholderAgentHandler(),
+    ServiceContainer::getLogger(),
+);
+$result = $handler->handle(
+    $_SERVER['REQUEST_METHOD'] ?? '',
+    $_POST,
+    $sessionUserId,
+    $sessionPatientId,
     AclMain::aclCheckCore('patients', 'med'),
+    $csrfValid,
+    $agentForgeRequestId,
 );
 
-if (!$decision->allowed) {
-    agent_forge_json_response(AgentResponse::refusal($decision->reason), 403);
-}
-
-agent_forge_json_response((new PlaceholderAgentHandler())->handle($request));
+agent_forge_log_and_respond(
+    $result->response,
+    $result->statusCode,
+    $agentForgeLogger,
+    $agentForgeRequestId,
+    $agentForgeStartTime,
+    $result->decision,
+    $sessionUserId,
+    $result->logPatientId,
+);
