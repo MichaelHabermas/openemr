@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Orchestrates AgentForge request validation, authorization, and placeholder handling.
+ * Orchestrates AgentForge request validation, authorization, and authorized handling.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -22,7 +22,7 @@ final readonly class AgentRequestHandler
     public function __construct(
         private AgentRequestParserInterface $parser,
         private PatientAuthorizationGate $authorizationGate,
-        private PlaceholderAgentHandler $placeholderHandler,
+        private AgentHandler $agentHandler,
         private LoggerInterface $logger = new NullLogger(),
     ) {
     }
@@ -88,7 +88,7 @@ final readonly class AgentRequestHandler
         }
 
         return new AgentRequestResult(
-            response: $this->placeholderHandler->handle($request),
+            response: $this->agentHandler->handle($request),
             statusCode: 200,
             decision: 'allowed',
             logPatientId: $request->patientId->value,

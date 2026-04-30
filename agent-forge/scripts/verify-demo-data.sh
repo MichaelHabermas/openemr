@@ -95,6 +95,31 @@ main() {
         "2"
 
     expect_count \
+        "evidence contract demographics source row" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${DEMO_PID} AND DATE(date) = '2026-04-15' AND CONCAT(fname, ' ', lname) = 'Alex Testpatient';" \
+        "1"
+
+    expect_count \
+        "evidence contract problem source rows" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${DEMO_PID} AND type = 'medical_problem' AND activity = 1 AND external_id <> '' AND title <> '' AND begdate IS NOT NULL;" \
+        "2"
+
+    expect_count \
+        "evidence contract prescription source rows" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${DEMO_PID} AND active = 1 AND external_id <> '' AND drug <> '' AND start_date IS NOT NULL;" \
+        "2"
+
+    expect_count \
+        "evidence contract lab source rows" \
+        "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${DEMO_PID} AND pr.comments <> '' AND pr.result_text <> '' AND pr.date IS NOT NULL AND pr.result <> '';" \
+        "2"
+
+    expect_count \
+        "evidence contract last-plan source row" \
+        "SELECT COUNT(*) FROM form_clinical_notes WHERE pid = ${DEMO_PID} AND activity = 1 AND authorized = 1 AND external_id = 'af-note-20260415' AND date IS NOT NULL AND codetext <> '' AND description <> '';" \
+        "1"
+
+    expect_count \
         "no contradicting metformin titration" \
         "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${DEMO_PID} AND drug LIKE 'Metformin%' AND active = 1 AND dosage <> '500 mg';" \
         "0"

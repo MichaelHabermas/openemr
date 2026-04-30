@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Non-model AgentForge handler used by Epic 4.
+ * Handles an authorized AgentForge request.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -12,10 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge;
 
-final class PlaceholderAgentHandler implements AgentHandler
+interface AgentHandler
 {
-    public function handle(AgentRequest $request): AgentResponse
-    {
-        return AgentResponse::placeholder($request);
-    }
+    public function handle(AgentRequest $request): AgentResponse;
 }

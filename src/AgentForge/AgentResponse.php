@@ -63,6 +63,44 @@ final readonly class AgentResponse
         );
     }
 
+    /** @param list<EvidenceResult> $results */
+    public static function fromEvidence(AgentRequest $request, array $results): self
+    {
+        $lines = [
+            sprintf('Chart evidence checked for patient %d.', $request->patientId->value),
+        ];
+        $citations = [];
+        $missing = [];
+        $warnings = [
+            'This is a non-model evidence response. Diagnosis, treatment, dosing, medication-change advice, and note drafting are not enabled.',
+        ];
+
+        foreach ($results as $result) {
+            foreach ($result->items as $item) {
+                $lines[] = sprintf(
+                    '- %s: %s [%s]',
+                    $item->displayLabel,
+                    $item->value,
+                    $item->citation(),
+                );
+            }
+            $citations = array_merge($citations, $result->citations());
+            $missing = array_merge($missing, $result->missingSections, $result->failedSections);
+        }
+
+        if (count($lines) === 1) {
+            $lines[] = 'No chart evidence was found for the checked sections.';
+        }
+
+        return new self(
+            'ok',
+            implode("\n", $lines),
+            array_values(array_unique($citations)),
+            array_values(array_unique($missing)),
+            $warnings,
+        );
+    }
+
     public static function refusal(string $message): self
     {
         return new self(

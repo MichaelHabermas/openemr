@@ -18,6 +18,10 @@ use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentRequestParserInterface;
 use OpenEMR\AgentForge\AgentRequestResult;
 use OpenEMR\AgentForge\AgentQuestion;
+use OpenEMR\AgentForge\ChartEvidenceTool;
+use OpenEMR\AgentForge\EvidenceAgentHandler;
+use OpenEMR\AgentForge\EvidenceItem;
+use OpenEMR\AgentForge\EvidenceResult;
 use OpenEMR\AgentForge\PatientAccessRepository;
 use OpenEMR\AgentForge\PatientAuthorizationGate;
 use OpenEMR\AgentForge\PatientId;
@@ -184,6 +188,45 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertStringContainsString('patient 900001', $result->response->answer);
     }
 
+    public function testAllowedRequestRunsEvidenceHandlerAfterAuthorization(): void
+    {
+        $tool = new RecordingEvidenceTool();
+        $result = $this->handler(agentHandler: new EvidenceAgentHandler([$tool]))
+            ->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+
+        $this->assertSame(200, $result->statusCode);
+        $this->assertSame('allowed', $result->decision);
+        $this->assertTrue($tool->called);
+        $this->assertStringContainsString('Chart evidence checked for patient 900001.', $result->response->answer);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $result->response->citations);
+    }
+
+    public function testAuthorizationFailureDoesNotRunEvidenceTools(): void
+    {
+        $tool = new RecordingEvidenceTool();
+        $result = $this->handler(hasRelationship: false, agentHandler: new EvidenceAgentHandler([$tool]))
+            ->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+
+        $this->assertSame(403, $result->statusCode);
+        $this->assertFalse($tool->called);
+    }
+
+    public function testUnexpectedEvidenceToolFailureReturnsGenericUncheckedSectionAndLogsInternally(): void
+    {
+        $logger = new HandlerRecordingLogger();
+        $result = $this->handler(
+            agentHandler: new EvidenceAgentHandler([new ThrowingEvidenceTool()], $logger),
+        )->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+
+        $responseJson = json_encode($result->response->toArray(), JSON_THROW_ON_ERROR);
+
+        $this->assertSame(200, $result->statusCode);
+        $this->assertSame(['Recent labs could not be checked.'], $result->response->missingOrUncheckedSections);
+        $this->assertStringNotContainsString('SQLSTATE', $responseJson);
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+    }
+
     /** @return array{patient_id: string, question: string} */
     private function validPost(): array
     {
@@ -199,11 +242,12 @@ final class AgentRequestHandlerTest extends TestCase
         bool $repositoryThrows = false,
         ?AgentRequestParserInterface $parser = null,
         ?HandlerRecordingLogger $logger = null,
+        ?\OpenEMR\AgentForge\AgentHandler $agentHandler = null,
     ): AgentRequestHandler {
         return new AgentRequestHandler(
             $parser ?? new AgentRequestParser(),
             new PatientAuthorizationGate($this->repository($patientExists, $hasRelationship, $repositoryThrows)),
-            new PlaceholderAgentHandler(),
+            $agentHandler ?? new PlaceholderAgentHandler(),
             $logger ?? new HandlerRecordingLogger(),
         );
     }
@@ -248,6 +292,48 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame($decision, $result->decision);
         $this->assertSame('refused', $result->response->status);
         $this->assertSame([$message], $result->response->refusalsOrWarnings);
+    }
+}
+
+final class RecordingEvidenceTool implements ChartEvidenceTool
+{
+    public bool $called = false;
+
+    public function section(): string
+    {
+        return 'Recent labs';
+    }
+
+    public function collect(PatientId $patientId): EvidenceResult
+    {
+        $this->called = true;
+
+        return EvidenceResult::found(
+            'Recent labs',
+            [
+                new EvidenceItem(
+                    'lab',
+                    'procedure_result',
+                    'agentforge-a1c-2026-04',
+                    '2026-04-10',
+                    'Hemoglobin A1c',
+                    '7.4 %',
+                ),
+            ],
+        );
+    }
+}
+
+final class ThrowingEvidenceTool implements ChartEvidenceTool
+{
+    public function section(): string
+    {
+        return 'Recent labs';
+    }
+
+    public function collect(PatientId $patientId): EvidenceResult
+    {
+        throw new RuntimeException('SQLSTATE internal chart evidence failure');
     }
 }
 

@@ -17,11 +17,17 @@ require_once("../../globals.php");
 use OpenEMR\AgentForge\AgentRequestHandler;
 use OpenEMR\AgentForge\AgentRequestParser;
 use OpenEMR\AgentForge\AgentResponse;
+use OpenEMR\AgentForge\DemographicsEvidenceTool;
+use OpenEMR\AgentForge\EncountersNotesEvidenceTool;
+use OpenEMR\AgentForge\EvidenceAgentHandler;
+use OpenEMR\AgentForge\LabsEvidenceTool;
 use OpenEMR\AgentForge\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PlaceholderAgentHandler;
+use OpenEMR\AgentForge\PrescriptionsEvidenceTool;
+use OpenEMR\AgentForge\ProblemsEvidenceTool;
 use OpenEMR\AgentForge\PsrRequestLogger;
 use OpenEMR\AgentForge\RequestLog;
 use OpenEMR\AgentForge\RequestLogger;
+use OpenEMR\AgentForge\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\SqlPatientAccessRepository;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AclMain;
@@ -82,10 +88,20 @@ $sessionPatientId = $sessionPatientId === false ? null : (int) $sessionPatientId
 $sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
 $sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
 $csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($_POST['csrf_token_form'] ?? '', session: $session);
+$chartEvidenceRepository = new SqlChartEvidenceRepository();
 $handler = new AgentRequestHandler(
     new AgentRequestParser(),
     new PatientAuthorizationGate(new SqlPatientAccessRepository()),
-    new PlaceholderAgentHandler(),
+    new EvidenceAgentHandler(
+        [
+            new DemographicsEvidenceTool($chartEvidenceRepository),
+            new ProblemsEvidenceTool($chartEvidenceRepository),
+            new PrescriptionsEvidenceTool($chartEvidenceRepository),
+            new LabsEvidenceTool($chartEvidenceRepository),
+            new EncountersNotesEvidenceTool($chartEvidenceRepository),
+        ],
+        ServiceContainer::getLogger(),
+    ),
     ServiceContainer::getLogger(),
 );
 $result = $handler->handle(

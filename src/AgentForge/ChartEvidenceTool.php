@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Non-model AgentForge handler used by Epic 4.
+ * Read-only evidence tool contract for one active patient chart.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -12,10 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge;
 
-final class PlaceholderAgentHandler implements AgentHandler
+interface ChartEvidenceTool
 {
-    public function handle(AgentRequest $request): AgentResponse
-    {
-        return AgentResponse::placeholder($request);
-    }
+    public function section(): string;
+
+    public function collect(PatientId $patientId): EvidenceResult;
 }
