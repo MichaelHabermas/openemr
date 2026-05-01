@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This is a documentation-only remediation plan for making AgentForge reviewable from the repository root. It does not claim the packaging work is complete today.
+This is a documentation-only remediation record for making AgentForge reviewable from the repository root. Epic 8 completed the root packaging layer; later epics still own cost, live-eval, and runtime production-readiness remediation.
 
-`SPECS.txt` expects required submission artifacts at the repository root, including `./AUDIT.md`, `./USERS.md`, and `./ARCHITECTURE.md`. The current canonical docs live under `agent-forge/docs/`, and the root `README.md` remains the generic OpenEMR README. Instructor reviews identified this as a gating submission risk.
+`SPECS.txt` expects required submission artifacts at the repository root, including `./AUDIT.md`, `./USERS.md`, and `./ARCHITECTURE.md`. The canonical docs live under `agent-forge/docs/`, and the root `README.md` now points reviewers to the AgentForge reviewer guide. Instructor reviews identified root packaging as a gating submission risk.
 
 ## Current State
 
@@ -19,19 +19,33 @@ Already present under `agent-forge/docs/`:
 - `GAUNTLET-INSTRUCTOR-REVIEWS.md`
 - Epic proof notes for deployment, demo data, evidence tools, model verification, and observability/evals
 
-Not yet complete:
+Completed in Epic 8:
 
-- Root-level `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` expected by the spec.
-- Root reviewer landing page or README section that points to AgentForge artifacts.
-- One obvious reviewer map for deployed URL, fake patient, demo flow, seed verification, eval commands, cost analysis, and known limitations.
+- Root-level `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` expected by the spec are present.
+- Root docs were verified as byte-for-byte identical to their canonical `agent-forge/docs/` versions during the Epic 8 packaging pass.
+- Root `README.md` points reviewers to `AGENTFORGE-REVIEWER-GUIDE.md`.
+- `AGENTFORGE-REVIEWER-GUIDE.md` maps documented deployed URL, fake patient, demo flow, seed verification, eval commands, cost analysis, implemented proof, current health-check command, and known limitations.
+
+Still intentionally pending:
+
+- Epic 9 production user-tier cost rewrite.
+- Epic 10 live-path eval tiers.
+- Epic 11+ runtime remediation items listed in the reviewer guide.
 
 ## Packaging Remediation Checklist
 
 ### Root-Level Required Docs
 
-- Decide whether root-level required docs are copies, symlinks, or short root stubs that link to canonical docs.
-- Ensure root-level docs cannot drift from canonical `agent-forge/docs/` content.
-- Keep root-level content reviewer-facing and free of implementation claims that are not already proven.
+- Packaging choice: root copies are used for `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md`, while `agent-forge/docs/` remains the canonical documentation workspace.
+- Drift check:
+
+```sh
+cmp AUDIT.md agent-forge/docs/AUDIT.md
+cmp USERS.md agent-forge/docs/USERS.md
+cmp ARCHITECTURE.md agent-forge/docs/ARCHITECTURE.md
+```
+
+- Root-level content remains reviewer-facing and free of implementation claims that are not already proven.
 
 Definition of done:
 
@@ -39,10 +53,11 @@ Definition of done:
 
 ### Reviewer Landing Page
 
-- Add an AgentForge reviewer section to the root `README.md` or create a root-level reviewer guide linked from the README.
-- Include:
+- Done: root `README.md` includes an AgentForge reviewer section that links to `AGENTFORGE-REVIEWER-GUIDE.md`.
+- Done: the reviewer guide includes:
   - Deployed app URL.
-  - Demo user and fake patient identifiers.
+  - Current public health-check command and the requirement to verify availability before a live demo.
+  - Fake patient identifiers and demo credential handling.
   - Demo path through the OpenEMR UI.
   - Seed command and seed verification command.
   - Eval command and explanation of eval tiers.
