@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-01 19:06:29 EDT
 **Scope:** backend
-**Status:** Implemented, Pending Manual Browser Smoke
+**Status:** Local Browser And Log Verification Complete
 
 ---
 
@@ -69,27 +69,34 @@ First-principles constraint: the cheapest and safest PHI is the PHI never retrie
 - [x] Every required proof item has an executable path before implementation starts.
 - [x] Boundary/orchestration behavior is tested when a boundary changed.
 - [x] Security/logging/error-handling requirements were implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they were actually performed.
+- [x] Human verification items are checked only after they were actually performed.
 - [x] Known fixture/data/user prerequisites for manual proof are created or explicitly assigned as tasks.
 
 ---
 
 ## Proof
 
-- Automated proof: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` passed 132 tests / 527 assertions on 2026-05-01.
-- Eval proof: `php agent-forge/scripts/run-evals.php` passed 13/13 on 2026-05-01 and wrote `agent-forge/eval-results/eval-results-20260501-231527.json`.
+- Automated proof: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` passed 134 tests / 531 assertions on 2026-05-01.
+- Eval proof: `php agent-forge/scripts/run-evals.php` passed 13/13 on 2026-05-01 and wrote `agent-forge/eval-results/eval-results-20260501-233730.json`.
 - Full local proof: `agent-forge/scripts/check-local.sh` passed on 2026-05-01 after syntax checks, isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
 - Verifier proof: `DraftVerifierTest` now blocks mislabeled patient facts without citations, verifies mislabeled facts with correct citations, blocks wrong source values, and blocks unsupported factual tails.
 - Routing proof: `ChartQuestionPlannerTest` covers medication, prescription, labs, last-plan, visit briefing, ambiguous refusal before evidence access, and unsafe refusal before evidence access.
 - Observability proof: telemetry and request-log tests cover `skipped_chart_sections` as PHI-minimized metadata.
+- Local browser/log proof:
+  - Lab question `Show me the recent A1c trend.` logged `request_id=57da1e1a-0ab4-44ed-800c-6ae296cff37d`, `question_type=lab`, `tools_called=["Recent labs"]`, skipped demographics/problems/prescriptions/notes, A1c source IDs only, `model=gpt-4o-mini`, token/cost telemetry, and `verifier_result=passed`.
+  - Medication question `What medications are active?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with visible prescription source IDs only. Log `request_id=598c4569-204a-405a-9c7a-4255972cd37d` showed `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication prescription source IDs only, and `verifier_result=passed`.
+  - Clinical-advice refusal logged `request_id=8d1d8eb6-d24f-4795-8f62-8a7c35c3e6e6`, `question_type=clinical_advice_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, `failure_reason=clinical_advice_refusal`, and `verifier_result=not_run`.
+  - Ambiguous question refusal logged `request_id=2e35a40d-a58f-47fa-9f7a-03b6ff904ca1`, `question_type=ambiguous_question`, `tools_called=[]`, all chart sections skipped, `source_ids=[]`, `model=not_run`, `failure_reason=ambiguous_question`, and `verifier_result=not_run`.
 
 ## Known Limitations
 
 - Semantic paraphrase verification remains conservative and mostly lexical. Unsupported tails are blocked, exact source values are enforced, multiple grounded claims can cover one displayed sentence, and broader semantic grounding is deferred rather than claimed.
-- Manual reviewer comparison of live medication and lab logs remains unperformed in this local task; the automated request-log path proves the field shape.
+- Deployed browser/log comparison remains unperformed in this local task; local browser/log proof is captured above.
 
 ---
 
 ## Change Log
 
 - 2026-05-01: Implemented verifier label distrust, unsupported-tail blocking, selective routing telemetry, and focused automated proof. Git commits are left to the user unless explicitly requested.
+- 2026-05-01: Local browser proof exposed and fixed the `Active medications` versus `Active prescriptions` route mismatch and the medication-name verifier false negative; full local AgentForge check passed after both fixes.
+- 2026-05-01: Local lab, medication, clinical-advice refusal, and ambiguous-question logs were manually inspected and recorded as local proof.

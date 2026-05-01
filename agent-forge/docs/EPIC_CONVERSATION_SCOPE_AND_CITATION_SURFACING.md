@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-01 18:53:59 EDT
 **Scope:** AgentForge docs, chart-panel UI, fixture eval metadata, isolated tests
-**Status:** Implemented, Pending Manual Browser Smoke
+**Status:** Local Browser Verification Complete
 
 ---
 
@@ -76,7 +76,7 @@ Epic 11 corrects the single-turn versus multi-turn mismatch and surfaces citatio
 - [x] Every required proof item has an executable path before implementation starts.
 - [x] Boundary/orchestration behavior is tested when a boundary changed.
 - [x] Security/logging/error-handling requirements were implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they were actually performed.
+- [x] Human verification items are checked only after they were actually performed.
 - [x] Known fixture/data/user prerequisites for manual proof are created or explicitly assigned as tasks.
 
 ---
@@ -91,4 +91,9 @@ Epic 11 corrects the single-turn versus multi-turn mismatch and surfaces citatio
   - `composer phpunit-isolated -- --filter AgentForge`
   - `composer phpunit-isolated -- --filter TwigTemplateCompilationTest --group twig`
   - `php agent-forge/scripts/run-evals.php`
-- Manual browser smoke is not checked because it was not performed in this turn. Exact action: open fake patient `900001`, ask `Show me the recent A1c trend.`, confirm answer values and visible Sources list, then run the missing-data and refusal questions described in the plan.
+- 2026-05-01 23:25-23:41 UTC: Local browser smoke was performed against fake patient `900001`.
+  - A1c question: `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09`.
+  - Visible Sources list contained `lab:procedure_result/agentforge-a1c-2026-04@2026-04-10` and `lab:procedure_result/agentforge-a1c-2026-01@2026-01-09`.
+  - Missing-data question: `Has a urine microalbumin been checked recently?` returned `Urine microalbumin not found in the chart.` and rendered the same value under `Missing or unchecked`.
+  - Clinical-advice question: `Should I increase the metformin dose?` returned the expected dosing/medication-change refusal with no sources.
+  - Ambiguous question: `What should I know?` returned `Please ask a specific chart question, such as recent labs, active medications, or the last plan.` with no sources.

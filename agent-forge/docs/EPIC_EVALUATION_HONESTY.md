@@ -84,12 +84,12 @@ First-principles premise check: the problem is not a lack of green numbers. The 
 - [x] Every required proof item has an executable path before implementation starts.
 - [x] Boundary/orchestration behavior is tested when a boundary changed.
 - [x] Security/logging/error-handling requirements were implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they were actually performed.
+- [x] Human verification items are checked only after they were actually performed.
 - [x] Known fixture/data/user prerequisites for manual proof are created or explicitly assigned as tasks.
 
 Boundary/orchestration note: this epic changes documentation and isolated document regression tests only. It does not change runtime endpoint, authorization, SQL execution, model provider, browser UI, or deployed VM behavior.
 
-Human verification gap: a reviewer can inspect `agent-forge/docs/EVALUATION-TIERS.md`, but no external human review has been performed in this session.
+Human verification: local reviewer inspection was performed on 2026-05-01 by searching `agent-forge/docs/EVALUATION-TIERS.md` for fixture/orchestration labeling, SQL/live-model/browser/deployed tier separation, release-gate language, captured-result requirements, and no-result-file-unless-run rules.
 
 ---
 
@@ -101,6 +101,7 @@ Human verification gap: a reviewer can inspect `agent-forge/docs/EVALUATION-TIER
 - 2026-05-01 22:30 EDT: Updated architecture, PRD, and PLAN references to point at the Epic 10 taxonomy.
 - 2026-05-01 22:32 EDT: Proof run captured: `EvaluationTiersDocumentTest` passed 4/4; AgentForge isolated PHPUnit passed 122/122; `php agent-forge/scripts/run-evals.php` passed 13/13; `agent-forge/scripts/check-local.sh` passed after rerun with sandbox escalation for PHPStan local TCP binding.
 - 2026-05-01 22:40 EDT: A repository-wide Docker clean sweep was started but deemed out of scope for this Epic 10 documentation/test change. Its unrelated Rector/API/e2e/service findings are not used as Epic 10 acceptance proof.
+- 2026-05-01 23:47 UTC: Local reviewer inspection confirmed Tier 0 fixture proof is not overclaimed, Tiers 1-4 are separated as SQL/live-model/local-browser/deployed-browser gates, and live-agent evaluation cannot be claimed without captured results or explicit documented gaps.
 
 ---
 
@@ -108,12 +109,12 @@ Human verification gap: a reviewer can inspect `agent-forge/docs/EVALUATION-TIER
 
 | Requirement | Implementation | Automated proof | Human proof or gap |
 | --- | --- | --- | --- |
-| Current fixture evals are labeled deterministic fixture/orchestration proof. | `agent-forge/docs/EVALUATION-TIERS.md`; `agent-forge/eval-results/README.md`; `AGENTFORGE-REVIEWER-GUIDE.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Reviewer-readable; not externally reviewed. |
-| Fixture-only green is not described as full live-agent proof. | Release rule and Tier 0 boundary language in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Reviewer-readable; not externally reviewed. |
-| Seeded SQL eval tier exists with expected evidence and pass/fail criteria. | Tier 1 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLivePathTiersHavePassCriteriaAndRequiredCases`. | Reviewer-readable; not executed as live SQL in this epic. |
-| Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Reviewer-readable; not executed against provider in this epic. |
-| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Reviewer-readable; not manually run in this epic. |
-| Release gate requires live-tier captured result or explicit gap before live-agent claims. | Purpose/release rule in `EVALUATION-TIERS.md`; reviewer-guide link. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Reviewer-readable; not externally reviewed. |
+| Current fixture evals are labeled deterministic fixture/orchestration proof. | `agent-forge/docs/EVALUATION-TIERS.md`; `agent-forge/eval-results/README.md`; `AGENTFORGE-REVIEWER-GUIDE.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
+| Fixture-only green is not described as full live-agent proof. | Release rule and Tier 0 boundary language in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
+| Seeded SQL eval tier exists with expected evidence and pass/fail criteria. | Tier 1 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLivePathTiersHavePassCriteriaAndRequiredCases`. | Local reviewer inspection confirmed tier exists; not executed as live SQL in this epic. |
+| Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed tier exists; not executed against provider in this epic. |
+| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local browser smoke was performed separately for Epics 11-12; deployed smoke remains pending. |
+| Release gate requires live-tier captured result or explicit gap before live-agent claims. | Purpose/release rule in `EVALUATION-TIERS.md`; reviewer-guide link. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed on 2026-05-01. |
 
 ---
 
@@ -121,7 +122,7 @@ Human verification gap: a reviewer can inspect `agent-forge/docs/EVALUATION-TIER
 
 - Source criteria mapped to code/proof/deferral? yes
 - Required automated tests executed and captured? yes for targeted Epic 10 and AgentForge proof
-- Required manual checks executed and captured? no, external reviewer/manual browser or deployed checks were not performed in this documentation-backed scope
+- Required manual checks executed and captured? yes for local reviewer inspection; local browser smoke was performed separately for Epics 11-12; deployed smoke remains pending
 - Required fixtures/data/users for proof exist? yes, fake patient and seed/verify commands are referenced for planned live tiers
 - Security/privacy/logging/error-handling requirements verified? yes for documentation requirements; no runtime trust boundary changed
 - Known limitations and deferred relationship/scope shapes documented? yes

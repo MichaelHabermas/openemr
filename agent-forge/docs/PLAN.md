@@ -1311,6 +1311,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can ask the A1c trend question and see citations outside the answer prose.
+- Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data, clinical-advice refusal, and ambiguous-question UI states were also verified locally.
 
 ## Epic 12 - Verifier Hardening And PHI-Minimizing Tool Routing
 
@@ -1372,7 +1373,7 @@ Human verification:
 
 #### Task 12.2.1 - Plan Selective Evidence Tool Routing
 
-Status: implemented, automated proof complete; manual browser log comparison remains pending.
+Status: implemented, automated and local browser/log proof complete; deployed browser log comparison remains pending.
 
 Why: Reviews identify over-broad evidence retrieval: the handler calls every configured tool too often, weakening PHI minimization, speed, and the agent-tool story.
 
@@ -1396,6 +1397,7 @@ Human verification:
 
 - A reviewer can compare logs for medication and lab questions and see different, minimal tool sets.
 - Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, ambiguous refusal before evidence access, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
+- Local browser/log proof recorded: A1c question logged `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs, token/cost telemetry, and `verifier_result=passed`. Medication question returned only active prescription names and prescription source IDs, then logged `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication source IDs, and `verifier_result=passed`. Clinical-advice and ambiguous questions refused before tools with `model=not_run`.
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 
