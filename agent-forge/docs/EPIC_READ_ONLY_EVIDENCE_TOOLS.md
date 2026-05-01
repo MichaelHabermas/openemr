@@ -141,8 +141,8 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 - 2026-04-30: Added `EvidenceItem`, `EvidenceResult`, tool interfaces, and required metadata validation.
 - 2026-04-30: Added demographics, active problems, active prescriptions, recent labs, and recent notes/last-plan evidence tools.
 - 2026-04-30: Added SQL-backed chart evidence repository with bounded, parameterized current-patient queries.
-- 2026-04-30: Replaced the request-shell placeholder dependency with an authorized `AgentHandler` seam and wired `EvidenceAgentHandler` into `agent_request.php`.
-- 2026-04-30: Updated the patient chart card to display missing/unchecked evidence sections alongside the non-model warning.
+- 2026-04-30: Replaced the request-shell placeholder dependency with an authorized `AgentHandler` seam; evidence-only handling lives in `EvidenceAgentHandler`; the chart endpoint now composes `VerifiedAgentHandler` (Epic 6) in `agent_request.php`.
+- 2026-04-30: Updated the patient chart card to display missing/unchecked evidence sections in the response UI path.
 - 2026-04-30: Added isolated tests for evidence contract, tool mapping/missing behavior, post-authorization execution, and unexpected tool failure handling.
 - 2026-04-30: Extended `agent-forge/scripts/verify-demo-data.sh` with evidence-contract source-row checks for demographics, problems, prescriptions, labs, and last plan.
 - 2026-04-30: Review hardening added defensive active/authorized row guards, bounded problem/prescription text, strict evidence date validation, query-executor scoping tests, and default evidence tool factory tests.

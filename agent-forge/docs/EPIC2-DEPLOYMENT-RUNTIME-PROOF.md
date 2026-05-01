@@ -114,6 +114,9 @@ What this epic does NOT do:
 | Environment variables | Verified 2026-04-30 | `cat ~/repos/openemr/docker/development-easy/.env` | No `.env` file; compose defaults only |
 | Public app health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30 |
 | Public readiness health | Verified 2026-04-30 | `agent-forge/scripts/health-check.sh` | HTTP 200 (informational; deploy does not block on it) |
+| Deploy branch reattach | Implemented in `deploy-vm.sh` | After `rollback-vm.sh` leaves a detached HEAD, deploy runs `git switch` to `AGENTFORGE_DEPLOY_BRANCH` (default `master`) before `git pull --ff-only` | Avoids deploying from the wrong commit |
+| OpenAI key for default provider | Implemented in `deploy-vm.sh` | When `AGENTFORGE_DRAFT_PROVIDER` is `openai` (default), `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` must be set in the shell or in `docker/development-easy/.env` | Deploy fails fast with a clear message if missing |
+| Post-`up` health polling | Implemented in `deploy-vm.sh` | `AGENTFORGE_HEALTH_TIMEOUT_SECONDS` (default 300) and `AGENTFORGE_HEALTH_INTERVAL_SECONDS` (default 5) bound the wait for the public app URL | Tunable when Cloudflare origin recovery is slow |
 
 The deploy script accepts these optional overrides; defaults are correct for the standard VM:
 
@@ -123,7 +126,23 @@ export AGENTFORGE_COMPOSE_DIR="docker/development-easy"
 export AGENTFORGE_APP_URL="https://openemr.titleredacted.cc/"
 export AGENTFORGE_READYZ_URL="https://openemr.titleredacted.cc/meta/health/readyz"
 export AGENTFORGE_SEED_SCRIPT="agent-forge/scripts/seed-demo-data.sh"
+export AGENTFORGE_DEPLOY_BRANCH="master"
+export AGENTFORGE_HEALTH_TIMEOUT_SECONDS="300"
+export AGENTFORGE_HEALTH_INTERVAL_SECONDS="5"
+export AGENTFORGE_DRAFT_PROVIDER="openai"
+# export AGENTFORGE_OPENAI_API_KEY="..."   # or OPENAI_API_KEY; or set in docker/development-easy/.env
 ```
+
+### Deploy script behavior (aligned with `deploy-vm.sh`)
+
+- **Compose `.env`:** If `docker/development-easy/.env` exists, the deploy script sources it before validating model config, so keys and provider can live in that file.
+- **Model config gate:** With `AGENTFORGE_DRAFT_PROVIDER=openai`, deploy exits with an error unless an API key is available (env or loaded `.env`). Override the provider only if the stack is intentionally fixture-only.
+- **Branch:** If the current branch name is not `AGENTFORGE_DEPLOY_BRANCH`, deploy prints a switch message and runs `git switch` to that branch before pulling.
+
+### `health-check.sh` vs `deploy-vm.sh`
+
+- **`health-check.sh`** requires the public app URL to return 2xx/3xx. The readiness URL is **optional** in the sense that **HTTP 404** is treated as a warning success; other non-success codes still fail the script.
+- **`deploy-vm.sh`** waits in a loop until the public app is healthy, then calls the readiness URL once with `|| true`, so **deploy does not fail** if readiness is temporarily down or returns a non-2xx code after the app is already up.
 
 ---
 

@@ -38,19 +38,19 @@ Track B - deployment proof:
 
 - Verify public app URL and readiness endpoint.
 - Verify VM branch, remote, compose command, Docker permissions, TLS termination, environment variables, and volume safety.
-- Add rollback/snapshot step before deploy restart.
+- Record a **git rollback target** before taking the stack offline (e.g. pre-deploy commit printed by `deploy-vm.sh`, or explicit commit for `rollback-vm.sh`). This is **not** a database or Docker volume snapshot — recovery of demo DB state is by re-seed; see `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`.
 
 Track C - agent skeleton:
 
 - Locate patient chart UI entry point and server route pattern.
-- Add panel -> endpoint -> fail-closed placeholder path.
+- Add panel -> endpoint -> fail-closed request path (originally a placeholder handler; current tree uses the verified agent pipeline after the same gate).
 - Add request log contract before any model call.
 
 Exit criteria:
 
 - Deployed app health can be checked.
-- Placeholder request reaches server and logs request id, user context result, patient context result, latency, and failure/pass status.
-- No model call exists before logging and PHI policy are in place.
+- An authorized request reaches the server and logs request id, user context result, patient context result, latency, and failure/pass status.
+- No model call exists before logging and PHI policy are in place (sequencing requirement for the initial milestone; current code adds the model only after logging and gate).
 
 ### P0 - Hours 8-20: Evidence, Verification, And Smoke Test
 
@@ -450,6 +450,8 @@ Human verification:
 
 Goal: build the thinnest server-owned request path before adding model behavior.
 
+**Current tree note:** Epic 4’s shell and gate remain the outer boundary; Epics 5–6 added evidence tools and `VerifiedAgentHandler` behind the same endpoint. Historical task text below describes the original slice-and-sequence; smoke expectations for “placeholder only” are **superseded** — see `EPIC4-AGENT-REQUEST-SHELL.md` and Epic 6 for today’s definition of done.
+
 ### Feature 4.1 - Embedded Chart Entry Point
 
 #### Task 4.1.1 - Locate The Correct OpenEMR Integration Point
@@ -482,23 +484,24 @@ Why: the physician needs a conversational surface inside the chart.
 
 Start with eval/test:
 
-- Define a smoke test before implementation: open a patient chart, see the agent panel, enter a question, receive a non-model placeholder response from the server.
+- Originally: smoke test was a non-model placeholder response after authorization.
+- **Superseded:** open a patient chart, see the agent panel, enter a question, receive a **verified** JSON answer (or refusal) tied to the active patient; see Epic 6 and `EPIC_MODEL_DRAFTING_AND_VERIFICATION.md`.
 
 Implementation:
 
 - Add only the panel, input, send action, loading state, and response display.
-- Do not add model calls in this task.
+- Original milestone: no model calls in this UI task alone; model wiring followed in later epics.
 
 Definition of done:
 
 - Panel renders only in patient chart context.
 - Request includes current patient id and question.
-- Server returns placeholder response.
+- Server returns a structured response for authorized requests (placeholder in the original milestone; verified answer path in the current repository).
 - UI handles empty question and request failure visibly.
 
 Human verification:
 
-- A reviewer can open a fake patient chart, ask "What changed since last visit?", and see the placeholder response tied to that patient context.
+- A reviewer can open a fake patient chart, ask "What changed since last visit?", and see a response tied to that patient context (historically the placeholder string; currently the verified agent answer when the stack is configured).
 
 ### Feature 4.2 - Server Request Boundary
 
@@ -521,7 +524,7 @@ Definition of done:
 - Missing session user refuses.
 - Missing patient id refuses.
 - Empty question refuses.
-- Valid request reaches placeholder handler.
+- Valid request reaches the authorized downstream handler (placeholder in the original milestone; `VerifiedAgentHandler` in the current repository).
 
 Human verification:
 

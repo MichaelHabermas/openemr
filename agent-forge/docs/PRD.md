@@ -220,13 +220,13 @@ To complete `SPECS.txt`, the project must contain:
 
 - Deployed agent works in the live environment.
 - Eval framework is wired and repeatable.
-- Observability is real and used.
+- **Structured request logging** (and inspectable eval outputs) is in place and used for demo defense — not full production observability (dashboards, SLOs, per-step tracing); see `ARCHITECTURE.md` and Epic 14.
 - Cost analysis contains measured development spend and projected production scenarios.
-- Demo video shows product behavior, architecture decisions, verification, failure handling, and observability.
+- Demo video shows product behavior, architecture decisions, verification, failure handling, and structured logging (or other inspectable audit evidence).
 
-**Final submission:**
+**Final submission (target milestones for the program — not a claim that the repo is production-ready before remediation epics in `PLAN.md`):**
 
-- Production-ready demo version of the narrow agent.
+- **Target:** demo version of the narrow agent that meets submission gates; hospital-grade production readiness remains gated on `PLAN.md` remediation or explicit scope-out (see `ARCHITECTURE.md` and `GAUNTLET-INSTRUCTOR-REVIEWS.md`).
 - Complete repository docs and setup guide.
 - Final eval results.
 - Final cost analysis.
@@ -256,6 +256,6 @@ The agent is not shippable if any of these are true:
 - It returns unsupported patient-specific claims.
 - It gives diagnosis, treatment, dosing, medication-change, or unsupported clinical-rule advice.
 - It hides tool failures or missing data.
-- It cannot show source citations for factual claims.
+- It cannot **surface** source citations for factual claims in a **reviewable** way: citations must exist on the API response (and in structured logs / evals) so every supported claim is traceable; **physician-visible citation UI** in the chart panel is a separate Epic 11 requirement (see `ARCHITECTURE.md`). Until Epic 11 lands, treat “show” here as payload and audit trail, not as “rendered in the Twig panel.”
 - It logs raw PHI unnecessarily.
 - It cannot be demonstrated in the deployed environment.

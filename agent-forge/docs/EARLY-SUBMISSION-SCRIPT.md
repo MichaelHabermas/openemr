@@ -41,6 +41,7 @@ Has Alex had a urine microalbumin result in the chart?
 The answer returns chart-supported values.
 Those values come from seeded lab evidence, not model memory.
 The system pulled current-patient evidence, drafted, verified, and returned the answer.
+The panel shows the answer text (and missing-data or warning strings); structured citations are on the JSON response and in request logs—visible citation UI in the chart is planned (Epic 11).
 
 Now I will show a failure-safe behavior.
 
@@ -76,7 +77,7 @@ There are real limitations:
 - Also, the current experience is single-shot constrained RAG, without a grounded multi-turn transcript.
 
 Those limits are deliberate.
-If the system cannot prove one patient-specific answer with citations and logs, it should not pretend to be production-ready.
+If the system cannot prove one patient-specific answer with citations in the payload or audit trail and logs, it should not pretend to be production-ready.
 
 ### **Final Submission Preview**
 
