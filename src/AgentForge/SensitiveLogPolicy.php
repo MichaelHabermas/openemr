@@ -69,27 +69,11 @@ final class SensitiveLogPolicy
             if (isset(self::FORBIDDEN_KEYS[$key])) {
                 return true;
             }
-            if (is_array($value) && self::containsForbiddenKey(self::stringKeyed($value))) {
+            if (is_array($value) && self::containsForbiddenKey(StringKeyedArray::filter($value))) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * @param array<mixed> $source
-     * @return array<string, mixed>
-     */
-    private static function stringKeyed(array $source): array
-    {
-        $result = [];
-        foreach ($source as $key => $value) {
-            if (is_string($key)) {
-                $result[$key] = $value;
-            }
-        }
-
-        return $result;
     }
 }

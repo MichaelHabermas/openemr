@@ -40,20 +40,8 @@ final readonly class EvidenceBundle
             }
             $validatedItems[] = $item;
         }
-        $validatedMissingSections = [];
-        $validatedFailedSections = [];
-        foreach ($missingSections as $section) {
-            if (!is_string($section) || trim($section) === '') {
-                throw new \DomainException('Evidence bundle section messages must be non-empty strings.');
-            }
-            $validatedMissingSections[] = $section;
-        }
-        foreach ($failedSections as $section) {
-            if (!is_string($section) || trim($section) === '') {
-                throw new \DomainException('Evidence bundle section messages must be non-empty strings.');
-            }
-            $validatedFailedSections[] = $section;
-        }
+        $validatedMissingSections = self::validatedNonEmptySectionLabels($missingSections);
+        $validatedFailedSections = self::validatedNonEmptySectionLabels($failedSections);
 
         $this->items = $validatedItems;
         $this->missingSections = $validatedMissingSections;
@@ -136,5 +124,22 @@ final readonly class EvidenceBundle
             'missing_sections' => $this->missingSections,
             'failed_sections' => $this->failedSections,
         ];
+    }
+
+    /**
+     * @param list<mixed> $sections
+     * @return list<string>
+     */
+    private static function validatedNonEmptySectionLabels(array $sections): array
+    {
+        $out = [];
+        foreach ($sections as $section) {
+            if (!is_string($section) || trim($section) === '') {
+                throw new \DomainException('Evidence bundle section messages must be non-empty strings.');
+            }
+            $out[] = $section;
+        }
+
+        return $out;
     }
 }

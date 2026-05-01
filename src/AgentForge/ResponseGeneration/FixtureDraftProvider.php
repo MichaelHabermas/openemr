@@ -29,13 +29,7 @@ final class FixtureDraftProvider implements DraftProvider
 
         $refusal = ClinicalAdviceRefusalPolicy::refusalFor($request->question->value);
         if ($refusal !== null) {
-            return new DraftResponse(
-                [new DraftSentence('refusal-1', $refusal)],
-                [new DraftClaim($refusal, DraftClaim::TYPE_REFUSAL, [], 'refusal-1')],
-                $missingSections,
-                [$refusal],
-                DraftUsage::fixture(),
-            );
+            return DraftResponse::singleRefusal($refusal, DraftUsage::fixture(), $missingSections);
         }
 
         if ($questionMissingSections !== []) {

@@ -16,6 +16,8 @@ use DomainException;
 
 final readonly class DraftResponse
 {
+    private const REFUSAL_SENTENCE_ID = 'refusal-1';
+
     /** @var list<DraftSentence> */
     public array $sentences;
 
@@ -27,6 +29,25 @@ final readonly class DraftResponse
 
     /** @var list<string> */
     public array $refusalsOrWarnings;
+
+    /**
+     * Single-sentence refusal draft used when the model or fixture rejects the question outright.
+     *
+     * @param list<string> $missingSections
+     */
+    public static function singleRefusal(
+        string $refusalText,
+        DraftUsage $usage,
+        array $missingSections = [],
+    ): self {
+        return new self(
+            [new DraftSentence(self::REFUSAL_SENTENCE_ID, $refusalText)],
+            [new DraftClaim($refusalText, DraftClaim::TYPE_REFUSAL, [], self::REFUSAL_SENTENCE_ID)],
+            $missingSections,
+            [$refusalText],
+            $usage,
+        );
+    }
 
     /**
      * @param list<mixed> $sentences
@@ -65,23 +86,34 @@ final readonly class DraftResponse
             $validatedClaims[] = $claim;
         }
 
-        $validatedMissingSections = [];
-        $validatedRefusalsOrWarnings = [];
-        foreach ($missingSections as $message) {
-            if (!is_string($message) || trim($message) === '') {
-                throw new DomainException('Draft section and warning messages must be non-empty strings.');
-            }
-            $validatedMissingSections[] = $message;
-        }
-        foreach ($refusalsOrWarnings as $message) {
-            if (!is_string($message) || trim($message) === '') {
-                throw new DomainException('Draft section and warning messages must be non-empty strings.');
-            }
-            $validatedRefusalsOrWarnings[] = $message;
-        }
+        $validatedMissingSections = self::validatedNonEmptyStringList(
+            $missingSections,
+            'Draft section and warning messages must be non-empty strings.',
+        );
+        $validatedRefusalsOrWarnings = self::validatedNonEmptyStringList(
+            $refusalsOrWarnings,
+            'Draft section and warning messages must be non-empty strings.',
+        );
         $this->sentences = $validatedSentences;
         $this->claims = $validatedClaims;
         $this->missingSections = $validatedMissingSections;
         $this->refusalsOrWarnings = $validatedRefusalsOrWarnings;
+    }
+
+    /**
+     * @param array<mixed> $items
+     * @return list<string>
+     */
+    private static function validatedNonEmptyStringList(array $items, string $message): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if (!is_string($item) || trim($item) === '') {
+                throw new DomainException($message);
+            }
+            $out[] = $item;
+        }
+
+        return $out;
     }
 }

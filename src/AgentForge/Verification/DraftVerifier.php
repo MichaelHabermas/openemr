@@ -88,13 +88,13 @@ final class DraftVerifier
     /** @param array<string, EvidenceBundleItem> $itemsBySourceId */
     private function claimMatchesAllSources(DraftClaim $claim, array $itemsBySourceId): bool
     {
+        $claimText = $this->normalize($claim->text);
         foreach ($claim->citedSourceIds as $sourceId) {
             if (!isset($itemsBySourceId[$sourceId])) {
                 return false;
             }
 
             $item = $itemsBySourceId[$sourceId];
-            $claimText = $this->normalize($claim->text);
             if (
                 !str_contains($claimText, $this->normalize($item->displayLabel))
                 || !str_contains($claimText, $this->normalize($item->value))

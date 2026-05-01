@@ -48,44 +48,26 @@ final readonly class VerifiedDraftingPipeline
             $draft = $this->draftWithOneRetry($request, $bundle);
             $result = $this->verifier->verify($draft, $bundle);
         } catch (DraftProviderException $exception) {
-            $this->logger->error(
+            return $this->loggedDraftFailure(
+                $request,
+                $questionType,
+                $toolsCalled,
+                $bundle,
                 'AgentForge draft provider failed unexpectedly.',
-                [
-                    'failure_class' => $exception::class,
-                    'patient_id' => $request->patientId->value,
-                ],
-            );
-
-            return new VerifiedDraftingResult(
+                $exception,
                 AgentResponse::refusal('The model draft provider could not be reached. Please try again.'),
-                $this->telemetry(
-                    $questionType,
-                    $toolsCalled,
-                    $bundle,
-                    DraftUsage::notRun(),
-                    'draft_provider_unavailable',
-                    'not_run',
-                ),
+                'draft_provider_unavailable',
             );
         } catch (DomainException | RuntimeException $exception) {
-            $this->logger->error(
+            return $this->loggedDraftFailure(
+                $request,
+                $questionType,
+                $toolsCalled,
+                $bundle,
                 'AgentForge verified drafting failed unexpectedly.',
-                [
-                    'failure_class' => $exception::class,
-                    'patient_id' => $request->patientId->value,
-                ],
-            );
-
-            return new VerifiedDraftingResult(
+                $exception,
                 AgentResponse::unexpectedFailure(),
-                $this->telemetry(
-                    $questionType,
-                    $toolsCalled,
-                    $bundle,
-                    DraftUsage::notRun(),
-                    'verified_drafting_failed',
-                    'not_run',
-                ),
+                'verified_drafting_failed',
             );
         }
 
@@ -128,8 +110,40 @@ final readonly class VerifiedDraftingPipeline
         try {
             return $this->draftProvider->draft($request, $bundle);
         } catch (DomainException) {
+            // One retry: transient validation gaps from the provider should not immediately fail the visit.
             return $this->draftProvider->draft($request, $bundle);
         }
+    }
+
+    /**
+     * @param list<string> $toolsCalled
+     */
+    private function loggedDraftFailure(
+        AgentRequest $request,
+        string $questionType,
+        array $toolsCalled,
+        EvidenceBundle $bundle,
+        string $logMessage,
+        object $exception,
+        AgentResponse $response,
+        string $failureReason,
+    ): VerifiedDraftingResult {
+        $this->logger->error($logMessage, [
+            'failure_class' => $exception::class,
+            'patient_id' => $request->patientId->value,
+        ]);
+
+        return new VerifiedDraftingResult(
+            $response,
+            $this->telemetry(
+                $questionType,
+                $toolsCalled,
+                $bundle,
+                DraftUsage::notRun(),
+                $failureReason,
+                'not_run',
+            ),
+        );
     }
 
     /** @param list<string> $toolsCalled */

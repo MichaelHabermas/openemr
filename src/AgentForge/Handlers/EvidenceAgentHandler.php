@@ -12,12 +12,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Handlers;
 
-use DomainException;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceToolInvoker;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
-use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
-use OpenEMR\AgentForge\Evidence\EvidenceResult;
 
 final readonly class EvidenceAgentHandler implements AgentHandler
 {
@@ -32,22 +30,11 @@ final readonly class EvidenceAgentHandler implements AgentHandler
     {
         $results = [];
         foreach ($this->tools as $tool) {
-            try {
-                $results[] = $tool->collect($request->patientId);
-            } catch (DomainException | RuntimeException $exception) {
-                $this->logger->error(
-                    'AgentForge evidence tool failed unexpectedly.',
-                    [
-                        'exception' => $exception,
-                        'tool' => $tool::class,
-                        'patient_id' => $request->patientId->value,
-                    ],
-                );
-                $results[] = EvidenceResult::failure(
-                    $tool->section(),
-                    sprintf('%s could not be checked.', $tool->section()),
-                );
-            }
+            $results[] = ChartEvidenceToolInvoker::collectOrFailure(
+                $tool,
+                $request->patientId,
+                $this->logger,
+            );
         }
 
         return AgentResponse::fromEvidence($request, $results);

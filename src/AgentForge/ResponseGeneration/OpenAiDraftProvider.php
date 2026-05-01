@@ -15,10 +15,10 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 use DomainException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
-use Psr\Http\Message\ResponseInterface;
-use SensitiveParameter;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
+use Psr\Http\Message\ResponseInterface;
+use SensitiveParameter;
 
 final readonly class OpenAiDraftProvider implements DraftProvider
 {
@@ -168,13 +168,7 @@ final readonly class OpenAiDraftProvider implements DraftProvider
 
         $refusal = $message['refusal'] ?? null;
         if (is_string($refusal) && trim($refusal) !== '') {
-            return new DraftResponse(
-                [new DraftSentence('refusal-1', $refusal)],
-                [new DraftClaim($refusal, DraftClaim::TYPE_REFUSAL, [], 'refusal-1')],
-                [],
-                [$refusal],
-                $this->usageFromResponse($body),
-            );
+            return DraftResponse::singleRefusal($refusal, $this->usageFromResponse($body), []);
         }
 
         $content = $message['content'] ?? null;

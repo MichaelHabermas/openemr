@@ -21,6 +21,13 @@ final readonly class DraftClaim
     public const TYPE_REFUSAL = 'refusal';
     public const TYPE_WARNING = 'warning';
 
+    private const ALLOWED_TYPES = [
+        self::TYPE_PATIENT_FACT,
+        self::TYPE_MISSING_DATA,
+        self::TYPE_REFUSAL,
+        self::TYPE_WARNING,
+    ];
+
     /** @var list<string> */
     public array $citedSourceIds;
 
@@ -37,7 +44,7 @@ final readonly class DraftClaim
         if (trim($sentenceId) === '') {
             throw new DomainException('Draft claim sentence id is required.');
         }
-        if (!in_array($type, $this->allowedTypes(), true)) {
+        if (!in_array($type, self::ALLOWED_TYPES, true)) {
             throw new DomainException('Draft claim type is not supported.');
         }
         $validatedSourceIds = [];
@@ -55,16 +62,5 @@ final readonly class DraftClaim
         }
 
         $this->citedSourceIds = $validatedSourceIds;
-    }
-
-    /** @return list<string> */
-    private function allowedTypes(): array
-    {
-        return [
-            self::TYPE_PATIENT_FACT,
-            self::TYPE_MISSING_DATA,
-            self::TYPE_REFUSAL,
-            self::TYPE_WARNING,
-        ];
     }
 }

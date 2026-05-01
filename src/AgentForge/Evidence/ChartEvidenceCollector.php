@@ -12,13 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
-use DomainException;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
 
 final class ChartEvidenceCollector
 {
@@ -53,22 +51,7 @@ final class ChartEvidenceCollector
             }
 
             $toolsCalled[] = $tool->section();
-            try {
-                $results[] = $tool->collect($patientId);
-            } catch (DomainException | RuntimeException $exception) {
-                $this->logger->error(
-                    'AgentForge evidence tool failed unexpectedly.',
-                    [
-                        'failure_class' => $exception::class,
-                        'tool' => $tool::class,
-                        'patient_id' => $patientId->value,
-                    ],
-                );
-                $results[] = EvidenceResult::failure(
-                    $tool->section(),
-                    sprintf('%s could not be checked.', $tool->section()),
-                );
-            }
+            $results[] = ChartEvidenceToolInvoker::collectOrFailure($tool, $patientId, $this->logger);
 
             if ($this->deadlineExceeded($startMs, $plan->deadlineMs)) {
                 $results[] = EvidenceResult::failure(
