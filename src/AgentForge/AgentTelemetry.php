@@ -16,11 +16,13 @@ final readonly class AgentTelemetry
 {
     /**
      * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
      * @param list<string> $sourceIds
      */
     public function __construct(
         public string $questionType,
         public array $toolsCalled,
+        public array $skippedChartSections,
         public array $sourceIds,
         public string $model,
         public int $inputTokens,
@@ -35,6 +37,7 @@ final readonly class AgentTelemetry
      * @return array{
      *     question_type: string,
      *     tools_called: list<string>,
+     *     skipped_chart_sections: list<string>,
      *     source_ids: list<string>,
      *     model: string,
      *     input_tokens: int,
@@ -49,6 +52,7 @@ final readonly class AgentTelemetry
         return [
             'question_type' => $this->questionType,
             'tools_called' => $this->toolsCalled,
+            'skipped_chart_sections' => $this->skippedChartSections,
             'source_ids' => $this->sourceIds,
             'model' => $this->model,
             'input_tokens' => $this->inputTokens,
@@ -65,6 +69,7 @@ final readonly class AgentTelemetry
             'not_classified',
             [],
             [],
+            [],
             'not_run',
             0,
             0,
@@ -79,15 +84,26 @@ final readonly class AgentTelemetry
      */
     public static function clinicalAdviceRefusal(string $questionType): self
     {
+        return self::plannedRefusal($questionType, 'clinical_advice_refusal');
+    }
+
+    /** @param list<string> $skippedChartSections */
+    public static function plannedRefusal(
+        string $questionType,
+        string $failureReason,
+        array $skippedChartSections = [],
+    ): self
+    {
         return new self(
             $questionType,
             [],
+            $skippedChartSections,
             [],
             'not_run',
             0,
             0,
             null,
-            'clinical_advice_refusal',
+            $failureReason,
             'not_run',
         );
     }

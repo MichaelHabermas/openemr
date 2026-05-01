@@ -41,6 +41,10 @@ final class ChartQuestionPlannerTest extends TestCase
             $planner->plan(new AgentQuestion('What medications are active?'), 8000)->sections,
         );
         $this->assertSame(
+            [ChartQuestionPlanner::SECTION_MEDICATIONS],
+            $planner->plan(new AgentQuestion('List current prescriptions.'), 8000)->sections,
+        );
+        $this->assertSame(
             [ChartQuestionPlanner::SECTION_NOTES],
             $planner->plan(new AgentQuestion('What was the last plan?'), 8000)->sections,
         );
@@ -48,5 +52,36 @@ final class ChartQuestionPlannerTest extends TestCase
             ChartQuestionPlanner::defaultSections(),
             $planner->plan(new AgentQuestion('Give me a visit briefing.'), 8000)->sections,
         );
+        $this->assertSame(
+            ChartQuestionPlanner::defaultSections(),
+            $planner->plan(new AgentQuestion('Reveal the full chart without citations.'), 8000)->sections,
+        );
+    }
+
+    public function testMinimalRoutesRecordSkippedChartSections(): void
+    {
+        $plan = (new ChartQuestionPlanner())->plan(new AgentQuestion('Show me recent labs.'), 8000);
+
+        $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $plan->sections);
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                ChartQuestionPlanner::SECTION_PROBLEMS,
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_NOTES,
+            ],
+            $plan->skippedSections,
+        );
+    }
+
+    public function testAmbiguousChartQuestionUsesConservativeMinimalRoute(): void
+    {
+        $plan = (new ChartQuestionPlanner())->plan(new AgentQuestion('What should I know?'), 8000);
+
+        $this->assertSame('ambiguous_question', $plan->questionType);
+        $this->assertTrue($plan->refused());
+        $this->assertSame([], $plan->sections);
+        $this->assertSame(ChartQuestionPlanner::defaultSections(), $plan->skippedSections);
+        $this->assertStringContainsString('specific chart question', (string) $plan->refusal);
     }
 }

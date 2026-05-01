@@ -24,6 +24,7 @@ final class SensitiveLogPolicy
         'timestamp' => true,
         'question_type' => true,
         'tools_called' => true,
+        'skipped_chart_sections' => true,
         'source_ids' => true,
         'model' => true,
         'input_tokens' => true,

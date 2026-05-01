@@ -53,7 +53,11 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         $this->lastTelemetry = null;
         $plan = $this->planner->plan($request->question, $this->deadlineMs);
         if ($plan->refused()) {
-            $this->lastTelemetry = AgentTelemetry::clinicalAdviceRefusal($plan->questionType);
+            $this->lastTelemetry = AgentTelemetry::plannedRefusal(
+                $plan->questionType,
+                $plan->questionType,
+                $plan->skippedSections,
+            );
             return AgentResponse::refusal((string) $plan->refusal);
         }
 
@@ -63,6 +67,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             $evidenceRun->bundle,
             $plan->questionType,
             $evidenceRun->toolsCalled,
+            $evidenceRun->skippedSections,
         );
         $this->lastTelemetry = $draftingResult->telemetry;
 

@@ -1320,6 +1320,8 @@ Goal: strengthen the trust boundary by making verification distrust model-suppli
 
 #### Task 12.1.1 - Require Verification For Factual Content Regardless Of Model Label
 
+Status: implemented, automated proof complete.
+
 Why: Review 2 identifies a bypass risk where a patient fact labeled `warning`, `missing_data`, or `refusal` can avoid source checking because the model controls claim type.
 
 Start with eval/test or documentation proof:
@@ -1339,8 +1341,11 @@ Definition of done:
 Human verification:
 
 - A reviewer can inspect the regression case and see that label manipulation no longer bypasses grounding.
+- Local proof recorded: `DraftVerifierTest` blocks mislabeled patient facts without citations across `warning`, `missing_data`, and `refusal`, and verifies a mislabeled claim only when the displayed content is source-grounded.
 
 #### Task 12.1.2 - Reduce Substring-Match Brittleness And Unsupported-Tail Risk
+
+Status: implemented, automated proof complete; semantic paraphrase verification remains a documented conservative limitation.
 
 Why: Review 3 flags both false negatives on paraphrase and false positives when unsupported text is appended to a grounded substring.
 
@@ -1361,10 +1366,13 @@ Definition of done:
 Human verification:
 
 - A reviewer can explain what the verifier catches and what remains out of scope.
+- Local proof recorded: `DraftVerifierTest` blocks wrong source values, unsupported multi-fact claims, and displayed sentences where a grounded claim is followed by an unsupported factual tail. It also permits multiple source-grounded claims to cover one displayed sentence when no unsupported tail remains.
 
 ### Feature 12.2 - PHI-Minimizing Tool Routing
 
 #### Task 12.2.1 - Plan Selective Evidence Tool Routing
+
+Status: implemented, automated proof complete; manual browser log comparison remains pending.
 
 Why: Reviews identify over-broad evidence retrieval: the handler calls every configured tool too often, weakening PHI minimization, speed, and the agent-tool story.
 
@@ -1387,6 +1395,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can compare logs for medication and lab questions and see different, minimal tool sets.
+- Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, ambiguous refusal before evidence access, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 

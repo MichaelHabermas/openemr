@@ -17,11 +17,13 @@ final readonly class EvidenceRun
     /**
      * @param list<EvidenceResult> $results
      * @param list<string> $toolsCalled
+     * @param list<string> $skippedSections
      */
     public function __construct(
         public EvidenceBundle $bundle,
         public array $results,
         public array $toolsCalled,
+        public array $skippedSections = [],
     ) {
     }
 }

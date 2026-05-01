@@ -14,22 +14,22 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
 use OpenEMR\AgentForge\AgentForgeClock;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
-use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
-use OpenEMR\AgentForge\Verification\DraftVerifier;
-use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Evidence\EvidenceItem;
-use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
-use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
+use OpenEMR\AgentForge\Verification\DraftVerifier;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -63,6 +63,10 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertNotNull($telemetry);
         $this->assertSame('lab', $telemetry->questionType);
         $this->assertSame(['Recent labs'], $telemetry->toolsCalled);
+        $this->assertSame(
+            ['Demographics', 'Active problems', 'Active medications', 'Recent notes and last plan'],
+            $telemetry->skippedChartSections,
+        );
         $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $telemetry->sourceIds);
         $this->assertSame('fixture-draft-provider', $telemetry->model);
         $this->assertSame(0, $telemetry->inputTokens);
@@ -101,9 +105,37 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('clinical_advice_refusal', $telemetry->questionType);
         $this->assertSame([], $telemetry->toolsCalled);
         $this->assertSame([], $telemetry->sourceIds);
+        $this->assertSame(
+            ['Demographics', 'Active problems', 'Active medications', 'Recent labs', 'Recent notes and last plan'],
+            $telemetry->skippedChartSections,
+        );
         $this->assertSame('not_run', $telemetry->model);
         $this->assertSame('clinical_advice_refusal', $telemetry->failureReason);
         $this->assertSame('not_run', $telemetry->verifierResult);
+    }
+
+    public function testAmbiguousQuestionIsRefusedBeforeEvidenceAccess(): void
+    {
+        $tool = new VerifiedRecordingEvidenceTool();
+        $handler = new VerifiedAgentHandler(
+            [$tool],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $response = $handler->handle($this->request('What should I know?'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertSame('refused', $response->status);
+        $this->assertFalse($tool->called);
+        $this->assertStringContainsString('specific chart question', $response->refusalsOrWarnings[0]);
+        $this->assertNotNull($telemetry);
+        $this->assertSame('ambiguous_question', $telemetry->questionType);
+        $this->assertSame('ambiguous_question', $telemetry->failureReason);
+        $this->assertSame(
+            ['Demographics', 'Active problems', 'Active medications', 'Recent labs', 'Recent notes and last plan'],
+            $telemetry->skippedChartSections,
+        );
     }
 
     public function testToolFailureIsVisibleWithoutLeakingInternalError(): void

@@ -50,8 +50,11 @@ final class DraftVerifier
                 continue;
             }
 
-            if ($claim->type === DraftClaim::TYPE_PATIENT_FACT) {
-                if (!$this->claimMatchesAllSources($claim, $itemsBySourceId)) {
+            if ($this->claimRequiresGrounding($claim, $itemsBySourceId)) {
+                if (
+                    !$this->claimMatchesAllSources($claim, $itemsBySourceId)
+                    || !$this->groundedClaimsCoverDisplayedSentence($claim->sentenceId, $draft, $itemsBySourceId)
+                ) {
                     $rejectedSentenceIds[] = $claim->sentenceId;
                     $warnings[] = 'Some draft content was omitted because it could not be verified against the chart evidence.';
                     continue;
@@ -88,6 +91,10 @@ final class DraftVerifier
     /** @param array<string, EvidenceBundleItem> $itemsBySourceId */
     private function claimMatchesAllSources(DraftClaim $claim, array $itemsBySourceId): bool
     {
+        if ($claim->citedSourceIds === []) {
+            return false;
+        }
+
         $claimText = $this->normalize($claim->text);
         foreach ($claim->citedSourceIds as $sourceId) {
             if (!isset($itemsBySourceId[$sourceId])) {
@@ -104,6 +111,97 @@ final class DraftVerifier
         }
 
         return true;
+    }
+
+    /** @param array<string, EvidenceBundleItem> $itemsBySourceId */
+    private function claimRequiresGrounding(DraftClaim $claim, array $itemsBySourceId): bool
+    {
+        if ($claim->type === DraftClaim::TYPE_PATIENT_FACT || $claim->citedSourceIds !== []) {
+            return true;
+        }
+
+        $claimText = $this->normalize($claim->text);
+        if ($this->isAllowedNonPatientBoilerplate($claimText)) {
+            return false;
+        }
+
+        foreach ($itemsBySourceId as $item) {
+            if (
+                str_contains($claimText, $this->normalize($item->displayLabel))
+                || str_contains($claimText, $this->normalize($item->value))
+            ) {
+                return true;
+            }
+        }
+
+        return (bool) preg_match(
+            '/\b(a1c|hemoglobin|lab|labs|medication|medications|metformin|dose|mg|diagnosis|problem|problems|demographic|dob)\b/',
+            $claimText,
+        );
+    }
+
+    private function isAllowedNonPatientBoilerplate(string $claimText): bool
+    {
+        if (
+            str_contains($claimText, 'could not be checked')
+            || str_contains($claimText, 'not found in the chart')
+            || str_contains($claimText, 'no chart evidence was found')
+            || str_contains($claimText, 'cannot provide diagnosis')
+            || str_contains($claimText, 'model drafting is disabled')
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /** @param array<string, EvidenceBundleItem> $itemsBySourceId */
+    private function groundedClaimsCoverDisplayedSentence(
+        string $sentenceId,
+        DraftResponse $draft,
+        array $itemsBySourceId,
+    ): bool {
+        $sentenceText = $this->sentenceText($sentenceId, $draft);
+        if ($sentenceText === null) {
+            return false;
+        }
+
+        $uncovered = $this->normalize($this->stripCitationBrackets($sentenceText));
+        foreach ($draft->claims as $candidate) {
+            if ($candidate->sentenceId !== $sentenceId || !$this->claimRequiresGrounding($candidate, $itemsBySourceId)) {
+                continue;
+            }
+            if (!$this->claimMatchesAllSources($candidate, $itemsBySourceId)) {
+                return false;
+            }
+            $uncovered = str_replace($this->normalize($candidate->text), ' ', $uncovered);
+        }
+
+        return $this->containsOnlyConnectiveText($uncovered);
+    }
+
+    private function containsOnlyConnectiveText(string $text): bool
+    {
+        $text = preg_replace('/\b(and|or|with|plus)\b/', ' ', $text) ?? $text;
+        $text = preg_replace('/[[:punct:]\s]+/', '', $text) ?? $text;
+
+        return $text === '';
+    }
+
+    private function sentenceText(string $sentenceId, DraftResponse $draft): ?string
+    {
+        foreach ($draft->sentences as $sentence) {
+            if ($sentence->id === $sentenceId) {
+                return $sentence->text;
+            }
+        }
+
+        return null;
+    }
+
+    private function stripCitationBrackets(string $text): string
+    {
+        return preg_replace('/\s*\[[^\]]+\]/', '', $text) ?? $text;
     }
 
     private function normalize(string $value): string

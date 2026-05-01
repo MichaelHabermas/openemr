@@ -35,12 +35,13 @@ final class ChartEvidenceCollectorTest extends TestCase
 
         $run = (new ChartEvidenceCollector([$labs, $meds]))->collect(
             new PatientId(900001),
-            new ChartQuestionPlan('lab', ['Recent labs'], 8000),
+            new ChartQuestionPlan('lab', ['Recent labs'], 8000, skippedSections: ['Active medications']),
         );
 
         $this->assertTrue($labs->called);
         $this->assertFalse($meds->called);
         $this->assertSame(['Recent labs'], $run->toolsCalled);
+        $this->assertSame(['Active medications'], $run->skippedSections);
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $run->bundle->sourceIds());
         $this->assertArrayNotHasKey('source_table', $run->bundle->toPromptArray()['evidence'][0]);
     }

@@ -35,12 +35,16 @@ final readonly class VerifiedDraftingPipeline
     ) {
     }
 
-    /** @param list<string> $toolsCalled */
+    /**
+     * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
+     */
     public function run(
         AgentRequest $request,
         EvidenceBundle $bundle,
         string $questionType,
         array $toolsCalled,
+        array $skippedChartSections = [],
     ): VerifiedDraftingResult {
         $bundle = $this->bundleWithKnownMissingSections($request, $bundle);
 
@@ -52,6 +56,7 @@ final readonly class VerifiedDraftingPipeline
                 $request,
                 $questionType,
                 $toolsCalled,
+                $skippedChartSections,
                 $bundle,
                 'AgentForge draft provider failed unexpectedly.',
                 $exception,
@@ -63,6 +68,7 @@ final readonly class VerifiedDraftingPipeline
                 $request,
                 $questionType,
                 $toolsCalled,
+                $skippedChartSections,
                 $bundle,
                 'AgentForge verified drafting failed unexpectedly.',
                 $exception,
@@ -77,6 +83,7 @@ final readonly class VerifiedDraftingPipeline
                 $this->telemetry(
                     $questionType,
                     $toolsCalled,
+                    $skippedChartSections,
                     $bundle,
                     $draft->usage,
                     'verification_failed',
@@ -87,7 +94,15 @@ final readonly class VerifiedDraftingPipeline
 
         return new VerifiedDraftingResult(
             $this->toAgentResponse($draft, $result),
-            $this->telemetry($questionType, $toolsCalled, $bundle, $draft->usage, null, 'passed'),
+            $this->telemetry(
+                $questionType,
+                $toolsCalled,
+                $skippedChartSections,
+                $bundle,
+                $draft->usage,
+                null,
+                'passed',
+            ),
         );
     }
 
@@ -117,11 +132,13 @@ final readonly class VerifiedDraftingPipeline
 
     /**
      * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
      */
     private function loggedDraftFailure(
         AgentRequest $request,
         string $questionType,
         array $toolsCalled,
+        array $skippedChartSections,
         EvidenceBundle $bundle,
         string $logMessage,
         object $exception,
@@ -138,6 +155,7 @@ final readonly class VerifiedDraftingPipeline
             $this->telemetry(
                 $questionType,
                 $toolsCalled,
+                $skippedChartSections,
                 $bundle,
                 DraftUsage::notRun(),
                 $failureReason,
@@ -146,10 +164,14 @@ final readonly class VerifiedDraftingPipeline
         );
     }
 
-    /** @param list<string> $toolsCalled */
+    /**
+     * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
+     */
     private function telemetry(
         string $questionType,
         array $toolsCalled,
+        array $skippedChartSections,
         EvidenceBundle $bundle,
         DraftUsage $usage,
         ?string $failureReason,
@@ -158,6 +180,7 @@ final readonly class VerifiedDraftingPipeline
         return new AgentTelemetry(
             questionType: $questionType,
             toolsCalled: array_values(array_unique($toolsCalled)),
+            skippedChartSections: array_values(array_unique($skippedChartSections)),
             sourceIds: $bundle->sourceIds(),
             model: $usage->model,
             inputTokens: $usage->inputTokens,

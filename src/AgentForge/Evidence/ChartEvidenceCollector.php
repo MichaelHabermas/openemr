@@ -66,6 +66,7 @@ final class ChartEvidenceCollector
             EvidenceBundle::fromEvidenceResults($results),
             $results,
             array_values(array_unique($toolsCalled)),
+            $plan->skippedSections,
         );
     }
 

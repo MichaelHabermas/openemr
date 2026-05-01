@@ -14,12 +14,16 @@ namespace OpenEMR\AgentForge\Evidence;
 
 final readonly class ChartQuestionPlan
 {
-    /** @param list<string> $sections */
+    /**
+     * @param list<string> $sections
+     * @param list<string> $skippedSections
+     */
     public function __construct(
         public string $questionType,
         public array $sections,
         public int $deadlineMs,
         public ?string $refusal = null,
+        public array $skippedSections = [],
     ) {
     }
 

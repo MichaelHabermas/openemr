@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
-use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use PHPUnit\Framework\TestCase;
 
 final class DraftVerifierTest extends TestCase
@@ -66,10 +66,75 @@ final class DraftVerifierTest extends TestCase
         $this->assertFalse($result->passed);
     }
 
+    public function testMislabeledPatientFactWithoutCitationIsBlocked(): void
+    {
+        foreach ([DraftClaim::TYPE_WARNING, DraftClaim::TYPE_MISSING_DATA, DraftClaim::TYPE_REFUSAL] as $type) {
+            $result = (new DraftVerifier())->verify(
+                new DraftResponse(
+                    [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 %')],
+                    [new DraftClaim('Hemoglobin A1c: 7.4 %', $type, [], 's1')],
+                    [],
+                    [],
+                    DraftUsage::fixture(),
+                ),
+                $this->bundle(),
+            );
+
+            $this->assertFalse($result->passed, sprintf('Expected %s claim to be grounded.', $type));
+        }
+    }
+
+    public function testMislabeledPatientFactWithCorrectCitationIsVerified(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 % [lab:procedure_result/a1c@2026-04-10]')],
+                [
+                    new DraftClaim(
+                        'Hemoglobin A1c: 7.4 %',
+                        DraftClaim::TYPE_WARNING,
+                        ['lab:procedure_result/a1c@2026-04-10'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            $this->bundle(),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->citations);
+    }
+
     public function testSourceIdWithMismatchedValueIsBlocked(): void
     {
         $result = (new DraftVerifier())->verify(
             $this->draft('Hemoglobin A1c: 8.2 %', ['lab:procedure_result/a1c@2026-04-10']),
+            $this->bundle(),
+        );
+
+        $this->assertFalse($result->passed);
+    }
+
+    public function testUnsupportedTailIsBlockedEvenWhenClaimTextIsGrounded(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 %. Kidney function is stable.')],
+                [
+                    new DraftClaim(
+                        'Hemoglobin A1c: 7.4 %',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['lab:procedure_result/a1c@2026-04-10'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
             $this->bundle(),
         );
 
@@ -120,6 +185,51 @@ final class DraftVerifierTest extends TestCase
 
         $this->assertFalse($result->passed);
         $this->assertSame([], $result->verifiedSentenceIds);
+    }
+
+    public function testMultipleGroundedClaimsMayCoverOneDisplayedSentence(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 % and Glucose: 126 mg/dL.')],
+                [
+                    new DraftClaim(
+                        'Hemoglobin A1c: 7.4 %',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['lab:procedure_result/a1c@2026-04-10'],
+                        's1',
+                    ),
+                    new DraftClaim(
+                        'Glucose: 126 mg/dL',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['lab:procedure_result/glucose@2026-04-10'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'lab',
+                    'lab:procedure_result/a1c@2026-04-10',
+                    '2026-04-10',
+                    'Hemoglobin A1c',
+                    '7.4 %',
+                ),
+                new EvidenceBundleItem(
+                    'lab',
+                    'lab:procedure_result/glucose@2026-04-10',
+                    '2026-04-10',
+                    'Glucose',
+                    '126 mg/dL',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
     }
 
     public function testClinicalAdviceClaimIsRefusedEvenWithEvidenceSource(): void
