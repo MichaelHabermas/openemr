@@ -1141,6 +1141,8 @@ Human verification:
 
 Goal: preserve deterministic fixture evals while adding planned live-path eval tiers that prove the real model, SQL evidence path, browser UI, deployed endpoint, and session behavior.
 
+Current implementation note: Epic 10 is implemented as a documentation-backed evaluation taxonomy in `agent-forge/docs/EVALUATION-TIERS.md` with isolated regression proof. Tier 0 remains the current deterministic fixture/orchestration runner; seeded SQL, live model, local browser/session, and deployed browser/session tiers are gated/manual until actually run and captured.
+
 ### Feature 10.1 - Eval Tier Taxonomy
 
 #### Task 10.1.1 - Label Existing Fixture Evals Honestly

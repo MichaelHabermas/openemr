@@ -22,10 +22,11 @@ Demo credentials are intentionally not published in this repository-root guide. 
 2. Read the implementation source map in `agent-forge/docs/PRD.md` and the remediation plan in `agent-forge/docs/PLAN.md`.
 3. Check deployment proof in `agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`.
 4. Check demo-data ground truth in `agent-forge/docs/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
-5. Run deterministic evals with `php agent-forge/scripts/run-evals.php`.
-6. Inspect the committed fixture snapshot at `agent-forge/eval-results/canonical.json`, or run `php agent-forge/scripts/run-evals.php` and open the printed timestamped path under `agent-forge/eval-results/`.
-7. Review measured cost and latency baselines in `agent-forge/docs/COST-ANALYSIS.md`.
-8. Review the honest limitation list below before evaluating production readiness.
+5. Read the evaluation taxonomy in `agent-forge/docs/EVALUATION-TIERS.md`.
+6. Run deterministic evals with `php agent-forge/scripts/run-evals.php`.
+7. Inspect the committed fixture snapshot at `agent-forge/eval-results/canonical.json`, or run `php agent-forge/scripts/run-evals.php` and open the printed timestamped path under `agent-forge/eval-results/`.
+8. Review measured cost and latency baselines in `agent-forge/docs/COST-ANALYSIS.md`.
+9. Review the honest limitation list below before evaluating production readiness.
 
 ## Commands
 
@@ -72,6 +73,7 @@ php agent-forge/scripts/run-evals.php
 | Plan | `agent-forge/docs/PLAN.md` | Epic-by-epic remediation plan and acceptance criteria. |
 | Reviewer packaging proof | `agent-forge/docs/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md` | Epic 8 implementation plan, traceability, proof commands, and claim checklist. |
 | Cost analysis | `agent-forge/docs/COST-ANALYSIS.md` | Measured local/VM A1c request cost and the planned user-tier rewrite. |
+| Evaluation tiers | `agent-forge/docs/EVALUATION-TIERS.md` | Tiered proof taxonomy, release rule, planned live SQL/model/browser/deployed smoke checks, and fixture-proof boundaries. |
 | Deployment proof | `agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` | Public URL, deploy/rollback workflow, health checks, and VM seed proof. |
 | Demo-data proof | `agent-forge/docs/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md` | Fake patient facts, expected demo answers, seed command, and verifier contract. |
 | Eval cases | `agent-forge/fixtures/eval-cases.json` | Deterministic fixture cases for supported behavior and safety-critical failures. |
@@ -96,7 +98,7 @@ The answer should cite or trace to the seeded `procedure_result` evidence for `8
 - Evidence tools use bounded, read-only, patient-scoped SQL.
 - The LLM draft is verified deterministically before display.
 - Structured request logs capture request id, user id, patient id, decision, total latency, question type, tools, source ids, model, token counts, estimated cost, failure reason, and verifier result.
-- Fixture evals currently pass for safety-critical and demo-path cases; see `agent-forge/eval-results/canonical.json` for a checked-in snapshot.
+- Tier 0 fixture/orchestration evals currently pass for safety-critical and demo-path cases; see `agent-forge/eval-results/canonical.json` for a checked-in snapshot. This is not full live-agent proof; see `agent-forge/docs/EVALUATION-TIERS.md`.
 - Local and VM browser proof exists for the A1c trend path with real OpenAI drafting. The latest Epic 8 deployed verification on 2026-05-01 passed public health, readiness, demo-data verification, browser A1c answer, and request-log inspection.
 
 ## Planned Remediation

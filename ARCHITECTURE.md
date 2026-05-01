@@ -322,7 +322,7 @@ Minimum target eval set:
 - Tool failure is disclosed in the answer.
 - Hallucinated claim is blocked by the verifier.
 
-Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Epic 10 plans seeded SQL, live model, browser UI, deployed endpoint, and real session tiers.
+Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Epic 10 defines the proof boundary and live-path gates in `EVALUATION-TIERS.md`: Tier 0 is implemented fixture/orchestration proof, while seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Pass condition:
 
