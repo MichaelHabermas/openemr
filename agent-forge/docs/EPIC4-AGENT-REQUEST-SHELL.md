@@ -33,7 +33,7 @@ The first-principles constraint is trust: a browser panel is useful only after t
 - [x] Request parsing converts untrusted input into typed `PatientId` and `AgentQuestion` objects.
 - [x] Empty questions, invalid patient ids, missing session users, missing chart context, patient mismatches, missing medical ACL, missing patient rows, and missing/unclear patient relationships all return structured JSON refusals.
 - [x] The placeholder handler returns a non-model response only after authorization passes.
-- [x] Every endpoint exit records a PHI-free AgentForge request log entry with request id, user id when known, patient id when known, decision, latency, and timestamp.
+- [x] Every endpoint exit records a PHI-minimized sensitive AgentForge request log entry with request id, user id when known, patient id when known, decision, latency, and timestamp.
 
 ---
 
@@ -67,7 +67,7 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 ## Verification Notes
 
 - [x] PHP syntax check passed for `RequestLog`, `RequestLogger`, `PsrRequestLogger`, `RequestLogTest`, and `agent_request.php`.
-- [x] Direct PHP smoke assertion confirmed `PsrRequestLogger` emits one PHI-free context without `question`.
+- [x] Direct PHP smoke assertion confirmed `PsrRequestLogger` emits one PHI-minimized sensitive context without `question`.
 - [x] Direct PHP smoke assertion confirmed `AgentResponse::unexpectedFailure()` does not expose an internal SQL-style message.
 - [x] PHP syntax check passed for `AgentRequestHandler`, `AgentRequestResult`, `AgentRequestParserInterface`, and `AgentRequestHandlerTest`.
 - [x] Direct PHP smoke assertion confirmed `AgentRequestHandler` allows an authorized POST and returns the placeholder patient response.

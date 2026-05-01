@@ -27,6 +27,28 @@ Only these evidence types are accepted:
 
 Anything else is treated as unverified.
 
+## Remediation Status From Instructor Reviews
+
+This audit remains the source of record for the risks that drove the first AgentForge implementation, but several findings are not closed.
+
+Already implemented:
+
+- The agent uses a narrow fail-closed patient authorization gate before evidence reads.
+- Evidence tools use server-controlled, parameterized, patient-scoped reads.
+- The demo path records request metadata, total latency, source IDs, token usage, estimated cost, and verifier result.
+
+Accepted v1 limitations:
+
+- Authorization currently covers direct provider, encounter provider, and supervisor relationships only. Care-team membership, facility scope, schedule-derived access, group assignment, and broader delegation are deferred and must fail closed.
+- Medication evidence currently covers active prescriptions for the demo path. Complete "current medications" support still needs `lists` and `lists_medication` coverage.
+- Performance P1 is identified but not remediated; composite-index work is planned, not closed.
+- Observability is structured logging, not full observability. Per-step timing, aggregation, SLOs, and alerting remain planned work.
+
+Planned remediation:
+
+- `PLAN.md` Epic 13 covers medication evidence completeness, authorization-scope expansion, and composite-index remediation.
+- `PLAN.md` Epic 14 covers sensitive audit-log policy, per-step timing, SLOs, alerting, and latency budget.
+
 ## Security
 
 ### S1. Authorization is coarse and does not receive a patient resource
@@ -106,6 +128,8 @@ Anything else is treated as unverified.
 
 **Risk for the agent:** The first implementation should use a small number of bounded, patient-specific queries. Broad chart scans, panel-wide precomputation, and open-ended search should be deferred.
 
+**Remediation status:** Open. The audit finding is not closed by documentation or implementation. Future work must list the exact agent query predicates, propose OpenEMR-compatible composite indexes where justified, capture before/after query evidence, and include rollback considerations. No migration is created as part of the documentation-only remediation plan.
+
 ### P2. No runtime latency benchmark has been established
 
 **Finding:** This audit verifies schema shape, not production latency.
@@ -113,6 +137,8 @@ Anything else is treated as unverified.
 **Evidence:** No benchmark output or deployed telemetry is included in this bare-bones audit.
 
 **Risk for the agent:** Any response-time target must be treated as an implementation goal, not an observed fact, until measured.
+
+**Remediation status:** Partially updated after implementation. A single local A1c request and a single public VM A1c request have been measured in `COST-ANALYSIS.md`, with the VM path around 10.693 seconds. These are baseline observations, not a production latency benchmark. Epic 14 must define a latency budget, per-step timing, aggregation, and optimization plan before production-readiness claims.
 
 ## Data Quality
 
@@ -150,6 +176,8 @@ Anything else is treated as unverified.
 - `sql/database.sql:8698-8750` defines `prescriptions`.
 
 **Risk for the agent:** "Current medications" is not a single trivial table read. The agent must define exactly which medication sources it reads and cite the rows used.
+
+**Remediation status:** Open for complete medication coverage. The current demo path reads active prescriptions, but complete medication evidence must also cover medication rows in `lists` and extension rows in `lists_medication`, with explicit handling for inactive, uncoded, duplicate, and conflicting records.
 
 ### D4. Coded fields are optional
 

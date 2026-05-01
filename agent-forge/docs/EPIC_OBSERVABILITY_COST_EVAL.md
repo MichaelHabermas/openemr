@@ -8,7 +8,7 @@
 
 ## Overview
 
-Epic 7 makes the AgentForge path measurable. The implementation extends the existing PHI-free PSR request log with sanitized telemetry, records draft provider usage and unknown cost explicitly when pricing is not configured, and adds a deterministic in-process eval runner for safety and demo-path cases.
+Epic 7 makes the AgentForge path measurable. The implementation extends the existing PHI-minimized sensitive PSR request log with sanitized telemetry, records draft provider usage and unknown cost explicitly when pricing is not configured, and adds a deterministic in-process eval runner for safety and demo-path cases.
 
 The clinician-facing response contract is unchanged. Observability remains internal: request logs include ids, decisions, latency, question type, tools called, source ids, model usage, failure reason, and verifier result, but not raw questions, full answers, full prompts, patient names, or full chart text.
 
@@ -85,7 +85,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 
 **Proof:**
 
-- The eval runner covers the local composition path: request parse -> auth gate -> evidence tools -> fixture draft -> verifier -> response citations -> PHI-free log context -> latency captured.
+- The eval runner covers the local composition path: request parse -> auth gate -> evidence tools -> fixture draft -> verifier -> response citations -> PHI-minimized sensitive log context -> latency captured.
 - The result artifact includes `log_context` for each case with `verifier_result`, `source_ids`, `tools_called`, model usage, latency, and no forbidden PHI-bearing keys.
 - Local browser/UI verification was performed against fake patient `900001`.
 - VM browser/UI verification was performed against fake patient `900001`.

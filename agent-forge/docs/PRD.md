@@ -4,7 +4,7 @@
 
 **Problem Statement:** `SPECS.txt` requires a trustworthy AI agent inside OpenEMR for a physician who has about 90 seconds to understand a patient chart before a visit. The hard problem is not generating text; it is producing fast, patient-specific answers that are authorized, source-grounded, auditable, and safe under failure.
 
-**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only, multi-turn chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The agent reads only the active patient's chart through server-controlled tools, verifies every patient-specific claim against source rows, logs every request, and refuses when identity, authorization, evidence, or safety constraints are unclear.
+**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The target product supports safe multi-turn follow-up, but the current implemented path is single-shot constrained RAG until the conversation-state remediation in `PLAN.md` Epic 11 is completed. The agent reads only the active patient's chart through server-controlled tools, verifies patient-specific claims against source rows, logs every request, and refuses when identity, authorization, evidence, or safety constraints are unclear.
 
 **Success Criteria:**
 
@@ -38,7 +38,8 @@ Acceptance criteria:
 
 Acceptance criteria:
 
-- The agent supports multi-turn follow-up within the same patient context.
+- The target agent supports multi-turn follow-up within the same patient context.
+- Current v1 treats each question as an independent single-shot request until `conversation_id`, server-side turn state, transcript display, retention policy, and follow-up evals are implemented.
 - Each follow-up query is bound to the active OpenEMR session user and active patient.
 - The agent can answer supported questions such as recent A1c trend, active medications, last plan, and changes since last visit.
 - The model cannot call arbitrary SQL or access patients outside the active chart.
@@ -104,6 +105,8 @@ Verification must enforce:
 ### Evaluation Strategy
 
 The eval suite must prove the agent fails safely, not only that it can demo well.
+
+Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. `PLAN.md` Epic 10 adds those live-path eval tiers.
 
 Minimum eval cases:
 
@@ -236,8 +239,9 @@ To complete `SPECS.txt`, the project must contain:
 - Session-bound identity may not carry into any sidecar, worker, or external service unless passed deliberately.
 - PHI read auditing is configurable, so agent-specific logging is required.
 - Medication facts span more than one table shape and may contain optional coded fields.
+- Current medication evidence covers the demo prescription path; complete `lists` and `lists_medication` coverage is planned.
 - Missing, stale, duplicate, or weakly constrained chart data can cause unsafe inferred answers.
-- Response latency is not measured yet, so speed targets must be validated with live telemetry.
+- Response latency has limited local/VM baseline measurements only; the VM A1c path is around 10.693 seconds and needs a latency budget plus per-step timing before production-readiness claims.
 - VM deployment details are not fully known, so deploy automation must avoid destructive assumptions.
 
 ### Critical Bottleneck

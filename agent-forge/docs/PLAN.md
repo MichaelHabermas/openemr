@@ -18,7 +18,7 @@ These are not implementation tasks. They are blockers that must be decided befor
 2. LLM decision: choose one provider/model and record model name, structured-output support, token usage fields, and pricing source. If pricing cannot be verified, cost fields must be marked unknown until measured.
 3. Verification mechanism: use structured draft output with explicit claim objects and required source IDs. The verifier rejects any patient-specific claim when the cited source ID is absent from the evidence bundle or the claim text cannot be matched to source labels/values. No model grades its own truth.
 4. PHI-to-LLM policy: send only the minimum evidence bundle required for the active question. Do not send full chart text, full prompts containing raw chart dumps, unrelated patient data, browser credentials, or OpenEMR session material.
-5. Latency budget: record `latency_ms` for every request. V1 target is a verified answer or clear failure within 10 seconds for the demo path. Partial verified output is allowed only when citations remain intact.
+5. Latency budget: record `latency_ms` for every request. The original V1 target is a verified answer or clear failure within 10 seconds for the demo path; the measured VM A1c path is about 10.693 seconds, so Epic 14 must define the accepted budget and optimization plan before production-readiness claims. Partial verified output is allowed only when citations remain intact.
 
 Exit criteria:
 
@@ -86,7 +86,7 @@ Exit criteria:
 
 Exit criteria:
 
-- Live app demonstrates visit briefing, follow-up, citations, missing data, refusal, and log inspection.
+- Live app demonstrates supported chart-orientation questions, citation payloads, missing data, refusal, and log inspection. True multi-turn follow-up and visible citation UI are planned remediation items.
 - Eval suite pass threshold is met: all safety-critical evals must pass; non-safety failures must be documented with mitigation or removed from demo scope.
 
 ### P1 - Hours 32-44: Packaging And Defense
@@ -143,6 +143,7 @@ If any safety-critical proof is missing, the status is `implemented but not acce
 - `agent-forge/docs/KNOWN-FACTS-AND-NEEDS.md`
 - `agent-forge/docs/ARCHITECTURE.md`
 - `agent-forge/docs/COST-ANALYSIS.md`
+- `agent-forge/docs/REVIEWER-PACKAGING-PLAN.md`
 
 ## Unknowns That Must Not Be Assumed
 
@@ -950,7 +951,7 @@ Why: isolated tests do not prove the full clinical path works.
 
 Start with eval/test:
 
-- Define one smoke path before implementation: patient chart panel sends question, endpoint binds session and patient, authorization gate runs, evidence tools return source rows, model or fixture draft is verified, final response displays citations, and log row is inspectable.
+- Define one smoke path before implementation: patient chart panel sends question, endpoint binds session and patient, authorization gate runs, evidence tools return source rows, model or fixture draft is verified, response payload includes citations, and log row is inspectable. Visible UI citation rendering is a separate Epic 11 remediation item.
 
 Implementation:
 
@@ -968,13 +969,590 @@ Human verification:
 - Local proof recorded: admin opened fake patient `900001`, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 - VM proof recorded: admin opened fake patient `900001` on the public VM, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
+## Instructor Review Remediation Backlog
+
+The following epics are planned remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. They do not claim the current product is complete. They separate four states:
+
+- Already implemented: the current safety-first foundation, including chart embedding, narrow authorization, bounded evidence tools, structured drafting, deterministic verification, request logging, demo data, deployment proof, and fixture evals.
+- Accepted v1 limitation: the current product is a single-shot constrained RAG path with narrow authorization, fixture-heavy evals, partial medication evidence, structured logs, and no reviewer-grade root packaging.
+- Planned remediation: Epics 8-14 below.
+- Production-readiness blocker: any remediation item that maps to `SPECS.txt` production readiness, source attribution, observability, evaluation, authorization, cost, or submission deliverables must be completed or explicitly scoped out before claiming production readiness.
+
+## Epic 8 - Reviewer Submission Packaging And Root Artifact Map
+
+Goal: make the submission easy to grade from the repository root without hiding required deliverables under `agent-forge/docs/`.
+
+### Feature 8.1 - Required Root-Level Submission Artifacts
+
+#### Task 8.1.1 - Plan Root-Level Submission Document Placement
+
+Why: `SPECS.txt` requires `./AUDIT.md`, `./USERS.md`, and `./ARCHITECTURE.md`; Review 3 flags the current `agent-forge/docs/` location as a gating packaging shortfall.
+
+Start with eval/test or documentation proof:
+
+- Create a reviewer packaging checklist that names every root-level artifact required by `SPECS.txt`.
+- Record whether the remediation will use root copies, symlinks, or a root reviewer landing page that links directly to canonical docs.
+
+Implementation notes:
+
+- Do not move canonical docs until the repository packaging decision is made.
+- Preserve `agent-forge/docs/` as the working documentation home unless a later packaging task explicitly changes that.
+- Root artifacts must not drift from the canonical docs.
+
+Definition of done:
+
+- Root-level `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` are present or an explicit, reviewer-visible packaging decision explains how a grader finds them.
+- The root `README.md` or reviewer landing page links to the canonical docs.
+- The packaging choice is documented as a submission artifact, not an implementation feature.
+
+Human verification:
+
+- A reviewer starting at the repository root can find the audit, user doc, architecture doc, deployed URL, eval command, seed command, cost analysis, and demo path without asking for directions.
+
+#### Task 8.1.2 - Add Reviewer Landing Page And Artifact Map
+
+Why: the root `README.md` is still generic OpenEMR, and the reviews identify weak external-reviewer packaging.
+
+Start with eval/test or documentation proof:
+
+- Draft the artifact map before changing README content: deployed URL, fake patient, demo path, seed verification command, eval command, cost analysis, architecture, audit, user doc, implementation notes, and known limitations.
+
+Implementation notes:
+
+- The landing page must distinguish "implemented proof" from "planned remediation."
+- Do not imply production readiness.
+- Do not include secrets, PHI, private credentials, or unverified links.
+
+Definition of done:
+
+- The reviewer landing page exists and links to all required artifacts.
+- The root README either points to the landing page or includes a short AgentForge reviewer section.
+- The landing page includes grading instructions aligned with `SPECS.txt`.
+
+Human verification:
+
+- A reviewer can follow the landing page from a fresh clone and understand how to inspect the submission.
+
+### Feature 8.2 - Submission Honesty Gate
+
+#### Task 8.2.1 - Add Claim-Level Packaging Checklist
+
+Why: the instructor reviews reward the safety foundation but warn that some docs overstate current capability.
+
+Start with eval/test or documentation proof:
+
+- Search docs for claims of root completeness, production readiness, multi-turn implementation, full observability, PHI-free logging, complete medication evidence, and deployed/live eval coverage.
+
+Implementation notes:
+
+- Correct claims that are not currently true.
+- Keep valid current proof, but label it as fixture, manual, local, VM, or deployed proof as appropriate.
+
+Definition of done:
+
+- Submission docs clearly separate implemented state, accepted limitation, planned remediation, and production-readiness blocker.
+- No unsupported capability claim remains in reviewer-facing docs.
+
+Human verification:
+
+- A reviewer can read the packaging checklist and see that the team understood the reviews instead of papering over them.
+
+## Epic 9 - Cost Analysis Rewrite And Scale-Tier Architecture
+
+Goal: replace request-scale token math with a reviewer-grade cost analysis for 100, 1K, 10K, and 100K users, including architecture changes and non-token assumptions.
+
+### Feature 9.1 - User-Tier Cost Model
+
+#### Task 9.1.1 - Define Cost Assumptions Before Projection
+
+Why: `SPECS.txt` explicitly says cost analysis is not simply cost-per-token times users; Reviews 1-3 identify the current request-count projection as a severe shortfall.
+
+Start with eval/test or documentation proof:
+
+- Define assumptions for users, clinicians per practice, requests per clinician per day, work days per month, question mix, average chart evidence size, model input/output tokens, retries, cache hit rate, and live-provider pricing source.
+
+Implementation notes:
+
+- Use measured local and VM A1c request data only as one baseline.
+- Label each assumption as measured, estimated, or unknown.
+- Provide low/base/high scenarios when exact values are unavailable.
+
+Definition of done:
+
+- `COST-ANALYSIS.md` includes a clear assumptions table.
+- The measured A1c request is identified as a baseline, not a production forecast.
+- Unknowns are not filled with false precision.
+
+Human verification:
+
+- A reviewer can trace every cost input to measured telemetry, a cited pricing source, or an explicit assumption.
+
+#### Task 9.1.2 - Project Costs At Required User Levels
+
+Why: `SPECS.txt` requires projected production costs at 100, 1K, 10K, and 100K users.
+
+Start with eval/test or documentation proof:
+
+- Create the table shape before calculating: users, request volume, model spend, hosting, storage/log retention, monitoring, backup, support/on-call, compliance/admin overhead, and total range.
+
+Implementation notes:
+
+- Include non-token infrastructure and support costs even if they are rough scenario ranges.
+- Call out what changes when moving from demo VM to production infrastructure.
+
+Definition of done:
+
+- `COST-ANALYSIS.md` covers 100, 1K, 10K, and 100K users.
+- Each tier includes model cost and non-token cost assumptions.
+- Each tier includes architectural changes needed at that scale.
+
+Human verification:
+
+- A reviewer can answer how the system changes before 300 concurrent clinical users or 100K total users.
+
+### Feature 9.2 - Scale-Tier Architecture Changes
+
+#### Task 9.2.1 - Document Architecture Changes Per Tier
+
+Why: the cost deliverable must include production thinking, not only arithmetic.
+
+Start with eval/test or documentation proof:
+
+- For each tier, define expected architecture posture: demo VM, production single-region, horizontally scaled app, managed logging/metrics, model rate-limit strategy, queue/caching policy, and support staffing.
+
+Implementation notes:
+
+- Do not claim these changes are implemented.
+- Tie cost drivers to concrete operational needs: latency, concurrency, audit retention, alerting, backups, support, and compliance review.
+
+Definition of done:
+
+- The cost doc states which architecture can support each tier and which tier requires redesign.
+- Any unmeasured tier is clearly scenario planning, not observed cost.
+
+Human verification:
+
+- A reviewer can explain why 100K users is a different architecture problem from 100 users.
+
+## Epic 10 - Evaluation Honesty And Live-Path Eval Tiers
+
+Goal: preserve deterministic fixture evals while adding planned live-path eval tiers that prove the real model, SQL evidence path, browser UI, deployed endpoint, and session behavior.
+
+### Feature 10.1 - Eval Tier Taxonomy
+
+#### Task 10.1.1 - Label Existing Fixture Evals Honestly
+
+Why: Reviews 1-3 agree that the fixture eval suite is useful, but it proves verifier and orchestration behavior rather than the full deployed agent.
+
+Start with eval/test or documentation proof:
+
+- Update evaluation docs to classify current evals as deterministic fixture/orchestration evals.
+- Add a release rule that fixture-only green results cannot be described as full live-agent proof.
+
+Implementation notes:
+
+- Keep current fixture evals because they are valuable regression checks.
+- State exactly what they do not exercise: real LLM, live SQL, browser display, deployed endpoint, and real session authorization.
+
+Definition of done:
+
+- Eval docs describe the current 13/13 fixture run without overstating it.
+- The release checklist requires separate proof for live paths.
+
+Human verification:
+
+- A reviewer can read the eval section and understand the difference between fixture proof and product proof.
+
+#### Task 10.1.2 - Plan Seeded SQL Evidence Evals
+
+Why: `SPECS.txt` asks for evaluation of failure modes, missing data, ambiguous queries, and unauthorized access; live SQL evidence is part of the system under test.
+
+Start with eval/test or documentation proof:
+
+- Define cases for visit briefing, active medications, A1c trend, missing microalbumin, last plan, sparse chart, dense chart, unauthorized patient, and cross-patient leakage against seeded demo data.
+
+Implementation notes:
+
+- Evals must hit the real evidence repositories and fake seeded OpenEMR data.
+- Do not create eval result files until the evals are actually implemented and run.
+
+Definition of done:
+
+- A planned SQL eval tier exists with deterministic expected evidence and pass/fail criteria.
+- Each case maps to `SPECS.txt`, `USERS.md`, and a review shortfall where applicable.
+
+Human verification:
+
+- A reviewer can compare expected eval facts to the seeded chart data.
+
+### Feature 10.2 - Live Model, Browser, And Deployment Evals
+
+#### Task 10.2.1 - Plan Live Model Contract Evals
+
+Why: model prompts, structured-output behavior, token usage, and verifier interactions can regress even when fixture evals pass.
+
+Start with eval/test or documentation proof:
+
+- Define a small live-provider eval set for supported chart questions, missing data, refusal, hallucination pressure, prompt injection, and malformed/unsupported output handling.
+
+Implementation notes:
+
+- Live evals must record model name, token usage, estimated cost, latency, verifier result, and whether the answer was fully cited.
+- Live-provider failures must be reported separately from fixture failures.
+
+Definition of done:
+
+- The eval plan includes a live model tier with cost/latency capture.
+- A model-off fixture pass cannot substitute for live-provider proof.
+
+Human verification:
+
+- A reviewer can see which cases use the real provider and what safety behavior they prove.
+
+#### Task 10.2.2 - Plan Browser UI And Deployed Session Smoke Evals
+
+Why: the reviews identify missing proof for citation display, deployed endpoint behavior, browser UI, and real session behavior.
+
+Start with eval/test or documentation proof:
+
+- Define smoke paths for local browser, deployed browser, real OpenEMR session, active chart binding, unauthorized chart mismatch, citation rendering, missing-data rendering, and sensitive audit-log inspection.
+
+Implementation notes:
+
+- Browser/deployed smoke proof must not create eval result files in this documentation-only pass.
+- The smoke plan must include the deployed URL and fake patient only when verified.
+
+Definition of done:
+
+- The eval plan includes browser and deployed smoke tiers.
+- The release gate states which tiers must pass before final submission.
+
+Human verification:
+
+- A reviewer can follow the smoke checklist and see the real UI, endpoint, session, citations, and logs.
+
+## Epic 11 - Conversation Scope And Citation Surfacing
+
+Goal: correct the current single-turn/multi-turn mismatch and ensure source citations are visible to the physician, not only present in the response payload.
+
+### Feature 11.1 - Conversation Scope Correction
+
+#### Task 11.1.1 - Document Current V1 As Single-Shot Constrained RAG
+
+Why: `SPECS.txt` asks for follow-up questions and conversation context, while the current request model and UI are single-turn.
+
+Start with eval/test or documentation proof:
+
+- Update `USERS.md`, `ARCHITECTURE.md`, and release notes to state that current v1 answers independent single-shot questions.
+- Preserve Follow-Up Drill-Down as a valid target use case, but mark it planned until conversation state is implemented.
+
+Implementation notes:
+
+- Do not pretend the current system has `conversation_id`, transcript state, or turn grounding.
+- State that single-shot constrained RAG is safer for v1 but incomplete against the spec's multi-turn agent requirement.
+
+Definition of done:
+
+- Reviewer-facing docs do not claim implemented multi-turn behavior.
+- Multi-turn remains a planned remediation item with acceptance criteria.
+
+Human verification:
+
+- A reviewer can explain what happens if a physician asks a follow-up today and what future epic closes the gap.
+
+#### Task 11.1.2 - Plan Minimum Multi-Turn Conversation State
+
+Why: Use Case 2 requires follow-up drill-down within the same patient context.
+
+Start with eval/test or documentation proof:
+
+- Define minimum contract changes before implementation: `conversation_id`, server-side turn log or summary, current-patient binding, transcript display, turn limit, expiration, and no cross-patient carryover.
+
+Implementation notes:
+
+- Conversation state must be server-owned and scoped to the session user plus active patient.
+- Follow-up grounding must cite current evidence, not rely on uncited prior answer text.
+- PHI retention policy for turn state must be documented before storing transcripts.
+
+Definition of done:
+
+- Multi-turn design exists with security, retention, and verification rules.
+- Follow-up eval cases exist before implementation.
+
+Human verification:
+
+- A reviewer can see how the future conversation state avoids cross-patient leakage and stale-context errors.
+
+### Feature 11.2 - Citation UI Surfacing
+
+#### Task 11.2.1 - Plan Citation Display From Response Payload
+
+Why: `SPECS.txt` requires source attribution, and reviews note that `payload.citations` exists but is not reliably rendered in the UI.
+
+Start with eval/test or documentation proof:
+
+- Define citation display acceptance before UI implementation: every patient-specific answer shows compact source labels, dates, source types, and missing/unchecked sections.
+
+Implementation notes:
+
+- Render citations from the structured response payload, not only from model-authored answer text.
+- Citation display must handle zero citations by showing a refusal or missing-data state, not a silent answer.
+
+Definition of done:
+
+- UI acceptance criteria require visible citations for factual claims.
+- Browser smoke eval includes citation rendering.
+
+Human verification:
+
+- A reviewer can ask the A1c trend question and see citations outside the answer prose.
+
+## Epic 12 - Verifier Hardening And PHI-Minimizing Tool Routing
+
+Goal: strengthen the trust boundary by making verification distrust model-supplied claim types and by selecting only the evidence tools needed for the question.
+
+### Feature 12.1 - Verifier Claim-Type Distrust
+
+#### Task 12.1.1 - Require Verification For Factual Content Regardless Of Model Label
+
+Why: Review 2 identifies a bypass risk where a patient fact labeled `warning`, `missing_data`, or `refusal` can avoid source checking because the model controls claim type.
+
+Start with eval/test or documentation proof:
+
+- Add planned regression cases where a patient-specific medication, lab, problem, or demographic fact is mislabeled as `warning`, `missing_data`, or `refusal`.
+
+Implementation notes:
+
+- The verifier, not the model, decides whether displayed content is patient-specific factual content.
+- Non-patient boilerplate may pass only through a tightly defined allowlist.
+
+Definition of done:
+
+- Every displayed patient-specific factual sentence is source-supported or blocked regardless of model-supplied claim type.
+- Mislabelled patient facts fail verification.
+
+Human verification:
+
+- A reviewer can inspect the regression case and see that label manipulation no longer bypasses grounding.
+
+#### Task 12.1.2 - Reduce Substring-Match Brittleness And Unsupported-Tail Risk
+
+Why: Review 3 flags both false negatives on paraphrase and false positives when unsupported text is appended to a grounded substring.
+
+Start with eval/test or documentation proof:
+
+- Define cases for paraphrased supported facts, exact-value supported facts, supported facts with unsupported clinical advice appended, and claims citing the wrong source value.
+
+Implementation notes:
+
+- Verification should validate the full factual assertion, not merely the presence of label and value substrings.
+- If semantic verification is deferred, document the limitation and keep conservative rejection.
+
+Definition of done:
+
+- The verifier hardening plan names the chosen grounding strategy and its known limits.
+- Unsupported tails do not pass because a source label and value appear somewhere in the sentence.
+
+Human verification:
+
+- A reviewer can explain what the verifier catches and what remains out of scope.
+
+### Feature 12.2 - PHI-Minimizing Tool Routing
+
+#### Task 12.2.1 - Plan Selective Evidence Tool Routing
+
+Why: Reviews identify over-broad evidence retrieval: the handler calls every configured tool too often, weakening PHI minimization, speed, and the agent-tool story.
+
+Start with eval/test or documentation proof:
+
+- Define routing cases before implementation: medications-only, labs-only, last-plan-only, visit briefing, missing-data lookup, ambiguous query, and unsafe request refusal before tools.
+
+Implementation notes:
+
+- The server remains responsible for allowed tool selection; the model must not receive arbitrary SQL access.
+- Tool routing must log selected tools and skipped chart areas.
+- Ambiguous requests should ask for narrowing or use a conservative minimal route.
+
+Definition of done:
+
+- Medication-only requests do not retrieve unrelated demographics, labs, notes, and microalbumin evidence unless needed for the answer.
+- Tool selection is testable and logged.
+- PHI sent to the LLM is minimized to the active question.
+
+Human verification:
+
+- A reviewer can compare logs for medication and lab questions and see different, minimal tool sets.
+
+## Epic 13 - Medication, Authorization, And Data/Index Remediation
+
+Goal: close known data-model and access-control gaps identified by the audit and reviews before expanding beyond the demo path.
+
+### Feature 13.1 - Medication Evidence Completeness
+
+#### Task 13.1.1 - Plan Medication Evidence Across OpenEMR Table Shapes
+
+Why: `AUDIT.md` says medication data spans `prescriptions`, `lists`, and `lists_medication`, but the current evidence path is limited to active prescriptions.
+
+Start with eval/test or documentation proof:
+
+- Define seeded cases for prescription-only medication, list-only medication, linked `lists_medication` row, inactive medication, uncoded medication, and duplicate medication across sources.
+
+Implementation notes:
+
+- Medication evidence must cite the source table and row used.
+- Duplicates and conflicts must be displayed as chart evidence, not reconciled into unsupported clinical truth.
+- Interaction, dosing, and medication-change advice remain out of scope unless a later clinical-rule system supports them.
+
+Definition of done:
+
+- "Current medications" states exactly which sources were checked.
+- Active medication evidence covers `prescriptions`, `lists`, and `lists_medication` where available.
+- Missing or conflicting medication records are surfaced without inference.
+
+Human verification:
+
+- A reviewer can compare medication output to all relevant OpenEMR medication surfaces.
+
+### Feature 13.2 - Authorization Scope Expansion
+
+#### Task 13.2.1 - Plan Care-Team, Facility, Schedule, And Delegation Authorization
+
+Why: the current gate is intentionally narrow and fail-closed, but real clinical workflows include shared coverage, facility scope, schedules, teams, and delegation.
+
+Start with eval/test or documentation proof:
+
+- Inventory candidate OpenEMR data sources for care-team membership, facility assignment, schedule relationship, group-based patient assignment, and delegation/supervision.
+
+Implementation notes:
+
+- Do not loosen authorization without explicit source evidence and tests.
+- Keep fail-closed behavior for unclear relationships.
+- Document deployment disclosure if only direct provider/encounter/supervisor access is supported.
+
+Definition of done:
+
+- A future authorization model is documented with included and excluded relationship shapes.
+- Each allowed relationship has proof and a negative test.
+- Production deployments disclose any unsupported access model.
+
+Human verification:
+
+- A reviewer can see why the current narrow gate is safer for v1 and insufficient for production.
+
+### Feature 13.3 - Audit P1 Composite-Index Remediation
+
+#### Task 13.3.1 - Plan Agent Query Indexes And Data-Access Performance Proof
+
+Why: `AUDIT.md` P1 identifies missing composite indexes for agent query shapes, but the remediation is not planned or closed.
+
+Start with eval/test or documentation proof:
+
+- List current agent query shapes and expected predicates before proposing indexes.
+- Record which indexes are missing for active prescriptions, active list entries by patient/type/activity, and recent encounter/note lookups.
+
+Implementation notes:
+
+- Any future migration must be reviewed against OpenEMR conventions.
+- No migration is created in this documentation-only remediation pass.
+- Index plans must include before/after query evidence when implemented.
+
+Definition of done:
+
+- `AUDIT.md` P1 has an explicit remediation plan or a documented deferral with risk.
+- Future index work includes query plans, migration review, and rollback considerations.
+
+Human verification:
+
+- A reviewer can explain which audited performance finding remains open and what work will close it.
+
+## Epic 14 - Observability, Latency Budget, And Sensitive Audit Logs
+
+Goal: reframe current logging honestly and plan the timing, aggregation, retention, SLO, and alerting work needed for production readiness.
+
+### Feature 14.1 - Sensitive Audit-Log Policy
+
+#### Task 14.1.1 - Rename PHI-Free Claims To PHI-Minimized Sensitive Audit Logging
+
+Why: reviews note that request logs include user IDs, patient IDs, and source IDs; that can be appropriate, but it is not PHI-free.
+
+Start with eval/test or documentation proof:
+
+- Search docs for `PHI-free`, `sanitized`, and logging claims that imply de-identification.
+- Define the sensitive audit-log policy before implementation changes: fields allowed, fields forbidden, retention, access controls, and review responsibility.
+
+Implementation notes:
+
+- Continue forbidding raw prompt, full chart text, full answer text, credentials, and unnecessary identifiers.
+- Treat user ID, patient ID, and source IDs as sensitive operational audit metadata.
+
+Definition of done:
+
+- Docs describe logs as PHI-minimized sensitive audit logs.
+- Retention and access-control expectations are documented.
+- Any remaining `PHI-free` wording is either removed or explicitly scoped to "no full prompt/full chart text" rather than de-identification.
+
+Human verification:
+
+- A reviewer can inspect the log policy and understand what sensitive data is present and why.
+
+### Feature 14.2 - Per-Step Timing And Observability Maturity
+
+#### Task 14.2.1 - Plan Per-Step Timing, Aggregation, SLOs, And Alerts
+
+Why: `SPECS.txt` asks how long each step took, while current logs primarily prove total request latency and structured request metadata.
+
+Start with eval/test or documentation proof:
+
+- Define required spans before implementation: authorization, routing, each tool, evidence assembly, model call, verifier, response serialization, and total request.
+
+Implementation notes:
+
+- Structured logs remain the v1 foundation.
+- Full observability requires aggregation, dashboards or queries, SLOs, alerting, and failure-rate tracking.
+- Do not claim dashboards or alerts until they exist.
+
+Definition of done:
+
+- The observability plan distinguishes structured logging from full observability.
+- Per-step timing fields and aggregation targets are documented.
+- SLO and alert thresholds are proposed before production readiness.
+
+Human verification:
+
+- A reviewer can answer which step is slow in a request, or see that the current system cannot yet answer that fully.
+
+### Feature 14.3 - Latency Budget And Optimization Plan
+
+#### Task 14.3.1 - Define Latency Budget Against Measured VM Baseline
+
+Why: the measured VM A1c path is about 10.693 seconds, which is borderline for a physician with seconds between rooms.
+
+Start with eval/test or documentation proof:
+
+- Record current local and VM latency baselines and define target budgets for demo, v1, and production readiness.
+
+Implementation notes:
+
+- State whether the current VM measurement is accepted for demo only or blocks production readiness.
+- Tie optimization work to selective routing, per-step timing, model timeout, evidence size, caching, and infrastructure.
+
+Definition of done:
+
+- Docs include a clear latency budget and current measured baseline.
+- The release gate says what latency level blocks production-readiness claims.
+- Optimization work is tied to measurable steps rather than vague performance promises.
+
+Human verification:
+
+- A reviewer can see the current 10.693s VM result and the plan to reduce or justify it.
+
 ## Epic Final - Demo, Cost Analysis, And Final Packaging
 
 Goal: produce the artifacts needed to defend the system, not just run it.
 
-### Feature 8.1 - Cost Analysis
+### Feature Final.1 - Cost Analysis
 
-#### Task 8.1.1 - Capture Actual Development Spend
+#### Task Final.1.1 - Capture Actual Development Spend
 
 Why: `SPECS.txt` requires actual dev spend.
 
@@ -996,7 +1574,7 @@ Human verification:
 
 - A reviewer can trace every cost number to usage data or see that it is unknown.
 
-#### Task 8.1.2 - Project Production Cost At Required User Levels
+#### Task Final.1.2 - Project Production Cost At Required User Levels
 
 Why: `SPECS.txt` requires projections at 100, 1K, 10K, and 100K users plus architecture changes.
 
@@ -1019,9 +1597,9 @@ Human verification:
 
 - A reviewer can explain what would need to change before 300 concurrent clinical users.
 
-### Feature 8.2 - Demo Video
+### Feature Final.2 - Demo Video
 
-#### Task 8.2.1 - Write Demo Script From Evals
+#### Task Final.2.1 - Write Demo Script From Evals
 
 Why: the demo should prove safety behavior, not just show a happy path.
 
@@ -1043,7 +1621,7 @@ Human verification:
 
 - A reviewer can rehearse the script and see each proof point in the live app.
 
-#### Task 8.2.2 - Record Submission Demo
+#### Task Final.2.2 - Record Submission Demo
 
 Why: every submission requires a demo video.
 
@@ -1065,9 +1643,9 @@ Human verification:
 
 - A reviewer can watch the video and understand what was built, why it is trustworthy, and what is still limited.
 
-### Feature 8.3 - Final Submission Checklist
+### Feature Final.3 - Final Submission Checklist
 
-#### Task 8.3.1 - Run Release Gate
+#### Task Final.3.1 - Run Release Gate
 
 Why: final delivery fails if any required artifact is missing.
 
@@ -1088,7 +1666,7 @@ Human verification:
 
 - A reviewer can follow the checklist and submit without guessing.
 
-#### Task 8.3.2 - Prepare Interview Defense Notes
+#### Task Final.3.2 - Prepare Interview Defense Notes
 
 Why: Austin admission requires interviews after major deliverables.
 
@@ -1109,7 +1687,7 @@ Human verification:
 
 - A reviewer can ask the interview questions and get direct, evidence-backed answers.
 
-#### Task 8.3.3 - Draft Final Social Post
+#### Task Final.3.3 - Draft Final Social Post
 
 Why: `SPECS.txt` requires a final X or LinkedIn post tagging `@GauntletAI`.
 
