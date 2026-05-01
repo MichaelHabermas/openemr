@@ -11,26 +11,26 @@
 
 declare(strict_types=1);
 
-use OpenEMR\AgentForge\AgentHandler;
-use OpenEMR\AgentForge\AgentRequest;
-use OpenEMR\AgentForge\AgentRequestHandler;
-use OpenEMR\AgentForge\AgentRequestParser;
-use OpenEMR\AgentForge\ChartEvidenceTool;
-use OpenEMR\AgentForge\DraftClaim;
-use OpenEMR\AgentForge\DraftProvider;
-use OpenEMR\AgentForge\DraftResponse;
-use OpenEMR\AgentForge\DraftSentence;
-use OpenEMR\AgentForge\DraftUsage;
-use OpenEMR\AgentForge\DraftVerifier;
-use OpenEMR\AgentForge\EvidenceBundle;
-use OpenEMR\AgentForge\EvidenceItem;
-use OpenEMR\AgentForge\EvidenceResult;
-use OpenEMR\AgentForge\FixtureDraftProvider;
-use OpenEMR\AgentForge\PatientAccessRepository;
-use OpenEMR\AgentForge\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\Handlers\AgentHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequestParser;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
+use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
+use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
+use OpenEMR\AgentForge\Verification\DraftVerifier;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceResult;
+use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\Auth\PatientAccessRepository;
+use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\RequestLog;
-use OpenEMR\AgentForge\VerifiedAgentHandler;
+use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
@@ -95,7 +95,7 @@ function main(): int
 
 /**
  * @param array<string, mixed> $case
- * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry}
+ * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry}
  */
 function runAgentForgeEvalCase(array $case): array
 {
@@ -195,7 +195,7 @@ function evalTools(string $scenario): array
 
 /**
  * @param array<string, mixed> $case
- * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry} $result
+ * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry} $result
  * @param array<string, mixed> $logContext
  * @return array<string, mixed>
  */

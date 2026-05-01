@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentQuestion;
-use OpenEMR\AgentForge\AgentRequest;
-use OpenEMR\AgentForge\DraftClaim;
-use OpenEMR\AgentForge\EvidenceBundle;
-use OpenEMR\AgentForge\EvidenceBundleItem;
-use OpenEMR\AgentForge\FixtureDraftProvider;
-use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
+use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\Auth\PatientId;
 use PHPUnit\Framework\TestCase;
 
 final class FixtureDraftProviderTest extends TestCase

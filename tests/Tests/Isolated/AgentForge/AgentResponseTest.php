@@ -12,16 +12,19 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentResponse;
+use OpenEMR\AgentForge\Handlers\AgentResponse;
 use PHPUnit\Framework\TestCase;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
 
 final class AgentResponseTest extends TestCase
 {
     public function testResponseFactoriesAreJsonEncodable(): void
     {
-        $request = new \OpenEMR\AgentForge\AgentRequest(
-            new \OpenEMR\AgentForge\PatientId(900001),
-            new \OpenEMR\AgentForge\AgentQuestion('What changed since last visit?'),
+        $request = new \OpenEMR\AgentForge\Handlers\AgentRequest(
+            new \OpenEMR\AgentForge\Auth\PatientId(900001),
+            new \OpenEMR\AgentForge\Handlers\AgentQuestion('What changed since last visit?'),
         );
 
         $responses = [

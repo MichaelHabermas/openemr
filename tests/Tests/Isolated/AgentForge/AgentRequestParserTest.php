@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
-use OpenEMR\AgentForge\AgentRequestParser;
+use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use PHPUnit\Framework\TestCase;
 
 final class AgentRequestParserTest extends TestCase

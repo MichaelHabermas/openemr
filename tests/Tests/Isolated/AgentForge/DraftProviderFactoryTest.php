@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\DisabledDraftProvider;
-use OpenEMR\AgentForge\DraftProviderConfig;
-use OpenEMR\AgentForge\DraftProviderFactory;
-use OpenEMR\AgentForge\FixtureDraftProvider;
-use OpenEMR\AgentForge\OpenAiDraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\DisabledDraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
+use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\OpenAiDraftProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

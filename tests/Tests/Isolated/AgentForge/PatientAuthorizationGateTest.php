@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentQuestion;
-use OpenEMR\AgentForge\AgentRequest;
-use OpenEMR\AgentForge\PatientAccessRepository;
-use OpenEMR\AgentForge\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Auth\PatientAccessRepository;
+use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Auth\PatientId;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

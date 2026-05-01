@@ -13,10 +13,10 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
-use OpenEMR\AgentForge\DraftClaim;
-use OpenEMR\AgentForge\DraftResponse;
-use OpenEMR\AgentForge\DraftSentence;
-use OpenEMR\AgentForge\DraftUsage;
+use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
+use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
+use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
+use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use PHPUnit\Framework\TestCase;
 
 final class DraftResponseTest extends TestCase

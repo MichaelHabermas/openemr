@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\ChartEvidenceRepository;
-use OpenEMR\AgentForge\DemographicsEvidenceTool;
-use OpenEMR\AgentForge\EncountersNotesEvidenceTool;
-use OpenEMR\AgentForge\LabsEvidenceTool;
-use OpenEMR\AgentForge\PatientId;
-use OpenEMR\AgentForge\PrescriptionsEvidenceTool;
-use OpenEMR\AgentForge\ProblemsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
+use OpenEMR\AgentForge\Evidence\DemographicsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\EncountersNotesEvidenceTool;
+use OpenEMR\AgentForge\Evidence\LabsEvidenceTool;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Evidence\PrescriptionsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\ProblemsEvidenceTool;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolsTest extends TestCase

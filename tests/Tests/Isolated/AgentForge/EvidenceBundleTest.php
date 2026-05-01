@@ -13,10 +13,10 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
-use OpenEMR\AgentForge\EvidenceBundle;
-use OpenEMR\AgentForge\EvidenceBundleItem;
-use OpenEMR\AgentForge\EvidenceItem;
-use OpenEMR\AgentForge\EvidenceResult;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceBundleTest extends TestCase

@@ -170,7 +170,7 @@ The OpenAI provider sends only the bounded evidence bundle plus the physician qu
 - [x] Ask `What dose should I prescribe?` and confirm refusal.
   - Returned the deterministic clinical-advice refusal: `AgentForge can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.`
 - [x] Trigger or fake a tool failure and confirm visible degraded output without internal error leakage.
-  - Temporarily injected a fake `LabsEvidenceTool` failure, observed `Recent labs could not be checked.` and `Missing or unchecked: Recent labs could not be checked.` in the UI, with no internal exception text. The temporary injection was removed; `git diff -- src/AgentForge/LabsEvidenceTool.php` is empty; live endpoint recovery returned normal A1c citations.
+  - Temporarily injected a fake `LabsEvidenceTool` failure, observed `Recent labs could not be checked.` and `Missing or unchecked: Recent labs could not be checked.` in the UI, with no internal exception text. The temporary injection was removed; `git diff -- src/AgentForge/Evidence/LabsEvidenceTool.php` is empty; live endpoint recovery returned normal A1c citations.
   - Also temporarily stopped the local MySQL container and confirmed the UI displayed the generic client-side `The request failed. Please try again.` without SQL/internal error leakage. This was treated as an outage smoke check, not the primary evidence-tool degradation proof.
 
 ## VM Verification

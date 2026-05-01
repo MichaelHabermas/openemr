@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\ChartEvidenceRepository;
-use OpenEMR\AgentForge\EvidenceToolFactory;
-use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
+use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
+use OpenEMR\AgentForge\Auth\PatientId;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolFactoryTest extends TestCase

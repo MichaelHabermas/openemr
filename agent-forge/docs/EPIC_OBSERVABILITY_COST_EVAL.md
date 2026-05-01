@@ -163,9 +163,9 @@ The clinician-facing response contract is unchanged. Observability remains inter
 
 ```bash
 php -l src/AgentForge/AgentTelemetry.php
-php -l src/AgentForge/VerifiedAgentHandler.php
-php -l src/AgentForge/AgentRequestHandler.php
-php -l src/AgentForge/OpenAiDraftProvider.php
+php -l src/AgentForge/Handlers/VerifiedAgentHandler.php
+php -l src/AgentForge/Handlers/AgentRequestHandler.php
+php -l src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php
 php -l agent-forge/scripts/run-evals.php
 composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
 php agent-forge/scripts/run-evals.php

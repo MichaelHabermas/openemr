@@ -19,11 +19,11 @@ I verified:
 
 1. The chatbot is not actually multi-turn.
 
-The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
+The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
 
 2. Evidence retrieval is over-broad and not really tool-routed.
 
-The architecture promises a “tool router” [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin [eval-results-20260501-001258.json](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/eval-results/eval-results-20260501-001258.json:70). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
+The architecture promises a “tool router” [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin [eval-results-20260501-001258.json](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/eval-results/eval-results-20260501-001258.json:70). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
 
 3. Citations are not properly surfaced in the UI.
 
@@ -31,15 +31,15 @@ The spec makes source attribution non-negotiable [SPECS.txt](/Users/michaelhaber
 
 4. Verification is useful, but shallow.
 
-The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
+The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
 
 5. Authorization is intentionally narrow, which is safer than loose but too brittle for real use.
 
-The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
+The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
 
 6. Medication evidence is incomplete against the project’s own audit.
 
-The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
+The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
@@ -76,17 +76,17 @@ The project earns credit for embedding in OpenEMR, using server-side authorizati
 **Highest-Risk Shortfalls**
 
 1. Verification trusts the model’s claim label  
-[DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
+[DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
 
 Why it matters: `SPECS.txt` requires every claim to be traceable to the patient record. The verifier should classify or validate factuality itself, not rely on model-provided claim type.
 
 2. The agent is single-turn, not multi-turn  
-[AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
+[AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
 
 Why it matters: the spec explicitly calls for a conversational agent that receives follow-up questions and maintains context. Current follow-ups are just independent single-turn queries.
 
 3. Citations are not visible to the physician  
-[AgentResponse.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
+[AgentResponse.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
 
 Why it matters: internal verification is not enough. The physician must see why the answer is trustworthy. The architecture promises source-cited answer display, but the UI currently hides the evidence trail.
 
@@ -105,11 +105,11 @@ Why it matters: the eval suite tests the architecture shape more than the deploy
 
 **What Is Strong**
 
-The authorization posture is thoughtful. [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
+The authorization posture is thoughtful. [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
 
-The evidence boundary is good. [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
+The evidence boundary is good. [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Evidence/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
 
-The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
+The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
 
 **Priority Fixes**
 
@@ -195,7 +195,7 @@ The single real measurement (gpt-4o-mini, 836 in / 173 out, $0.0002292, 10,693 m
 
 ### 2.1 "Agentic chatbot" (multi-turn, follow-ups, tool chaining)
 
-**Submitted:** [src/AgentForge/VerifiedAgentHandler.php](src/AgentForge/VerifiedAgentHandler.php), [interface/patient_file/summary/agent_request.php](interface/patient_file/summary/agent_request.php), [templates/patient/card/agent_forge.html.twig](templates/patient/card/agent_forge.html.twig).
+**Submitted:** [src/AgentForge/Handlers/VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php), [interface/patient_file/summary/agent_request.php](interface/patient_file/summary/agent_request.php), [templates/patient/card/agent_forge.html.twig](templates/patient/card/agent_forge.html.twig).
 
 **Shortfall (S-5, severe):** Calling this "agentic" is generous. It is a fixed-pipeline single-shot RAG system:
 
@@ -209,11 +209,11 @@ To be clear: a single-shot constrained-RAG design is *defensible* for a clinical
 
 ### 2.2 Verification (source attribution + domain constraints)
 
-**Submitted:** [src/AgentForge/DraftVerifier.php](src/AgentForge/DraftVerifier.php), [src/AgentForge/ClinicalAdviceRefusalPolicy.php](src/AgentForge/ClinicalAdviceRefusalPolicy.php), [src/AgentForge/OpenAiDraftProvider.php](src/AgentForge/OpenAiDraftProvider.php).
+**Submitted:** [src/AgentForge/Verification/DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php), [src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php](src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php), [src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php](src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php).
 
 **Strength:** The domain-constraint side is genuinely well done. The OpenAI provider uses `response_format: json_schema` with `strict: true`, temperature 0, `#[SensitiveParameter]` on the API key, and a system prompt that explicitly forbids diagnosis/dosing/notes. The `ClinicalAdviceRefusalPolicy` is applied to both sentences and claims. Refusals are wired through to the evidence layer (`refusalSentences` map) so the policy and the model agree. This is solid boundary discipline.
 
-**Shortfall (S-7, moderate):** Source attribution is implemented as substring matching — [DraftVerifier.php:93-98](src/AgentForge/DraftVerifier.php:93):
+**Shortfall (S-7, moderate):** Source attribution is implemented as substring matching — [DraftVerifier.php:93-98](src/AgentForge/Verification/DraftVerifier.php:93):
 
 ```php
 if (
@@ -251,7 +251,7 @@ Mostly addressed under §1.2. Restating the structural gap because it is the mos
 
 ### 3.1 Authorization
 
-[src/AgentForge/PatientAuthorizationGate.php](src/AgentForge/PatientAuthorizationGate.php), [src/AgentForge/SqlPatientAccessRepository.php](src/AgentForge/SqlPatientAccessRepository.php).
+[src/AgentForge/Auth/PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php), [src/AgentForge/Auth/SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php).
 
 **Strength:** Fail-closed end-to-end. Session user > 0, session patient > 0, requested patient matches active chart, ACL check, patient exists, direct relationship check. RuntimeException → refusal. This is correct.
 
@@ -259,7 +259,7 @@ Mostly addressed under §1.2. Restating the structural gap because it is the mos
 
 ### 3.2 Data layer
 
-[src/AgentForge/SqlChartEvidenceRepository.php](src/AgentForge/SqlChartEvidenceRepository.php).
+[src/AgentForge/Evidence/SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php).
 
 **Strength:** Parameterized queries throughout, bounded `LIMIT` clauses (max 50), explicit handling of OpenEMR's quirks (the `CAST` workaround for `form_clinical_notes.encounter` being VARCHAR is the right call given the legacy schema).
 
@@ -295,15 +295,15 @@ These are not the focus of the review but they should be on the record:
 |---|---|---|---|
 | S-4 | Severe | COST-ANALYSIS measures requests not users, is `cost × n` (the spec explicitly forbids this), no architectural-tier discussion, no infra cost. | [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md) |
 | S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](agent-forge/scripts/run-evals.php), [eval-results-20260501-000551.json](agent-forge/eval-results/eval-results-20260501-000551.json) |
-| S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](src/AgentForge/VerifiedAgentHandler.php), [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig) |
+| S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php), [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig) |
 | S-1 | Gating | AUDIT/USERS/ARCHITECTURE are at `agent-forge/docs/`, not repo root as the spec specifies. | [agent-forge/docs/](agent-forge/docs/) |
-| S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](src/AgentForge/DraftVerifier.php:93) |
+| S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](src/AgentForge/Verification/DraftVerifier.php:93) |
 | S-9 | Moderate | Measured VM latency 10,693 ms vs. a "seconds" use case. No defined latency budget. | [COST-ANALYSIS.md:62](agent-forge/docs/COST-ANALYSIS.md:62) |
 | S-3 | Moderate | Eval coverage thin on ambiguous queries; no eval for the multi-turn use case USERS.md defines. | [eval-cases.json](agent-forge/fixtures/eval-cases.json) |
-| S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](src/AgentForge/VerifiedAgentHandler.php) |
+| S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php) |
 | S-8 | Moderate | "Observability" is structured log lines to apache error.log — no aggregation, no SLO, no alerts. | [PsrRequestLogger.php](src/AgentForge/PsrRequestLogger.php) |
 | S-11 | Moderate | AUDIT P1 (missing composite indexes) identified but not remediated. | [AUDIT.md](agent-forge/docs/AUDIT.md) |
-| S-10 | Acknowledged | Authorization scope: direct provider/encounter relationship only — no care-team / facility / scheduling derivation. | [SqlPatientAccessRepository.php](src/AgentForge/SqlPatientAccessRepository.php) |
+| S-10 | Acknowledged | Authorization scope: direct provider/encounter relationship only — no care-team / facility / scheduling derivation. | [SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php) |
 
 ---
 

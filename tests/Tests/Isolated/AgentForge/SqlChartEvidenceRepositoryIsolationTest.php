@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\PatientId;
+use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\QueryExecutor;
-use OpenEMR\AgentForge\SqlChartEvidenceRepository;
+use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use PHPUnit\Framework\TestCase;
 
 final class SqlChartEvidenceRepositoryIsolationTest extends TestCase

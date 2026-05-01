@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
-use OpenEMR\AgentForge\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

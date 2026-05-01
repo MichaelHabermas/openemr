@@ -12,22 +12,23 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentRequest;
-use OpenEMR\AgentForge\AgentRequestHandler;
-use OpenEMR\AgentForge\AgentRequestParser;
-use OpenEMR\AgentForge\AgentRequestParserInterface;
-use OpenEMR\AgentForge\AgentRequestResult;
-use OpenEMR\AgentForge\ChartEvidenceTool;
-use OpenEMR\AgentForge\EvidenceAgentHandler;
-use OpenEMR\AgentForge\EvidenceItem;
-use OpenEMR\AgentForge\EvidenceResult;
-use OpenEMR\AgentForge\PatientAccessRepository;
-use OpenEMR\AgentForge\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PatientId;
-use OpenEMR\AgentForge\PlaceholderAgentHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequestParser;
+use OpenEMR\AgentForge\Handlers\AgentRequestParserInterface;
+use OpenEMR\AgentForge\Handlers\AgentRequestResult;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Handlers\EvidenceAgentHandler;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceResult;
+use OpenEMR\AgentForge\Auth\PatientAccessRepository;
+use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
+use OpenEMR\AgentForge\Handlers\AgentHandler;
 
 final class AgentRequestHandlerTest extends TestCase
 {
@@ -241,7 +242,7 @@ final class AgentRequestHandlerTest extends TestCase
         bool $repositoryThrows = false,
         ?AgentRequestParserInterface $parser = null,
         ?HandlerRecordingLogger $logger = null,
-        ?\OpenEMR\AgentForge\AgentHandler $agentHandler = null,
+        ?\OpenEMR\AgentForge\Handlers\AgentHandler $agentHandler = null,
     ): AgentRequestHandler {
         return new AgentRequestHandler(
             $parser ?? new AgentRequestParser(),

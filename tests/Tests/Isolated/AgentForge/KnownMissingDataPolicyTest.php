@@ -12,10 +12,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentQuestion;
-use OpenEMR\AgentForge\EvidenceBundle;
-use OpenEMR\AgentForge\EvidenceBundleItem;
-use OpenEMR\AgentForge\KnownMissingDataPolicy;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
+use OpenEMR\AgentForge\Verification\KnownMissingDataPolicy;
 use PHPUnit\Framework\TestCase;
 
 final class KnownMissingDataPolicyTest extends TestCase
