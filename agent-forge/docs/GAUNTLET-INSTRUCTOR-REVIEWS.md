@@ -6,7 +6,7 @@
 
 Tough but fair: this is a strong narrow prototype and a credible one-week engineering effort. It has real OpenEMR integration, a patient-chart card, a server-side endpoint, an authorization gate, evidence tools, structured drafting, a verifier, logs, seeded demo data, and passing tests.
 
-But I would not accept it as “production-ready” under the standard in [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
+But I would not accept it as “production-ready” under the standard in [SPECS.txt](agent-forge/docs/SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
 
 I verified:
 
@@ -19,43 +19,43 @@ I verified:
 
 1. The chatbot is not actually multi-turn.
 
-The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
+The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](agent-forge/docs/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
 
 2. Evidence retrieval is over-broad and not really tool-routed.
 
-The architecture promises a “tool router” [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin in the saved eval telemetry (`tools_called`). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
+The architecture promises a “tool router” [ARCHITECTURE.md](agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin in the saved eval telemetry (`tools_called`). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
 
 3. Citations are not properly surfaced in the UI.
 
-The spec makes source attribution non-negotiable [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
+The spec makes source attribution non-negotiable [SPECS.txt](agent-forge/docs/SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
 
 4. Verification is useful, but shallow.
 
-The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
+The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](agent-forge/docs/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
 
 5. Authorization is intentionally narrow, which is safer than loose but too brittle for real use.
 
-The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
+The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](agent-forge/docs/ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
 
 6. Medication evidence is incomplete against the project’s own audit.
 
-The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
+The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](agent-forge/docs/AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
-The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases ([run-evals.php](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/scripts/run-evals.php), harness types under `src/AgentForge/Eval/`). A typical saved result shows `model: fixture-draft-provider`, zero tokens, and null cost in the JSON written under `agent-forge/eval-results/`. This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
+The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases ([run-evals.php](agent-forge/scripts/run-evals.php), harness types under `src/AgentForge/Eval/`). A typical saved result shows `model: fixture-draft-provider`, zero tokens, and null cost in the JSON written under `agent-forge/eval-results/`. This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
 
 8. Observability lacks per-step timing.
 
-The spec says logs should answer “How long did each step take?” [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
+The spec says logs should answer “How long did each step take?” [SPECS.txt](agent-forge/docs/SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](src/AgentForge/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
 
 9. Cost analysis does not meet the spec.
 
-The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/COST-ANALYSIS.md:75).
+The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](agent-forge/docs/SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:75).
 
 10. Packaging is weak for an external reviewer.
 
-The root [README.md](/Users/michaelhabermas/repos/GAI/openemr/README.md:19) is still the generic OpenEMR README. The AgentForge docs are substantial, but there is no obvious top-level setup guide, deployed link, demo path, seed/eval command list, and “how to grade this” landing page. For a submission, that hurts.
+The root [README.md](README.md:19) is still the generic OpenEMR README. The AgentForge docs are substantial, but there is no obvious top-level setup guide, deployed link, demo path, seed/eval command list, and “how to grade this” landing page. For a submission, that hurts.
 
 **What Is Strong**
 
@@ -76,40 +76,40 @@ The project earns credit for embedding in OpenEMR, using server-side authorizati
 **Highest-Risk Shortfalls**
 
 1. Verification trusts the model’s claim label  
-[DraftVerifier.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Verification/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
+[DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
 
 Why it matters: `SPECS.txt` requires every claim to be traceable to the patient record. The verifier should classify or validate factuality itself, not rely on model-provided claim type.
 
 2. The agent is single-turn, not multi-turn  
-[AgentRequest.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
+[AgentRequest.php](src/AgentForge/Handlers/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](src/AgentForge/Handlers/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
 
 Why it matters: the spec explicitly calls for a conversational agent that receives follow-up questions and maintains context. Current follow-ups are just independent single-turn queries.
 
 3. Citations are not visible to the physician  
-[AgentResponse.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](/Users/michaelhabermas/repos/GAI/openemr/templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
+[AgentResponse.php](src/AgentForge/Handlers/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
 
 Why it matters: internal verification is not enough. The physician must see why the answer is trustworthy. The architecture promises source-cited answer display, but the UI currently hides the evidence trail.
 
 4. Observability is useful but overstated  
-[RequestLog.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
+[RequestLog.php](src/AgentForge/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](src/AgentForge/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
 
 Why it matters: this may be acceptable as a sensitive audit log, but it is not PHI-free. The fix is mostly honesty and controls: rename the concept, document retention/access policy, and avoid implying de-identification.
 
 5. Evals are too synthetic for the claims being made  
-[run-evals.php](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/scripts/run-evals.php:104) wires fake authorization, fake tools, and mostly `FixtureDraftProvider`. That is good for deterministic regression testing, but it does not prove the live SQL evidence path, live OpenAI provider, browser UI, deployed endpoint, or real session behavior.
+[run-evals.php](agent-forge/scripts/run-evals.php:104) wires fake authorization, fake tools, and mostly `FixtureDraftProvider`. That is good for deterministic regression testing, but it does not prove the live SQL evidence path, live OpenAI provider, browser UI, deployed endpoint, or real session behavior.
 
 Why it matters: the eval suite tests the architecture shape more than the deployed product. For clinical trust, you need at least a small live-path eval tier.
 
 6. Cost analysis is request-scale, not user-scale  
-[COST-ANALYSIS.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/COST-ANALYSIS.md:64) projects monthly requests, while the spec asks for 100, 1K, 10K, and 100K users with architectural changes. This is less important than verifier/auth correctness, but it is still a production-thinking gap.
+[COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:64) projects monthly requests, while the spec asks for 100, 1K, 10K, and 100K users with architectural changes. This is less important than verifier/auth correctness, but it is still a production-thinking gap.
 
 **What Is Strong**
 
-The authorization posture is thoughtful. [PatientAuthorizationGate.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Auth/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
+The authorization posture is thoughtful. [PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
 
-The evidence boundary is good. [SqlChartEvidenceRepository.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Evidence/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
+The evidence boundary is good. [SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
 
-The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
+The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
 
 **Priority Fixes**
 

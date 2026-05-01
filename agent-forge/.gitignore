@@ -1,2 +1,3 @@
-# Timestamped output from agent-forge/scripts/run-evals.php
+# Timestamped output from agent-forge/scripts/run-evals.php (canonical snapshot is tracked)
 eval-results/*.json
+!eval-results/canonical.json

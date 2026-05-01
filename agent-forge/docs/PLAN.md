@@ -143,7 +143,7 @@ If any safety-critical proof is missing, the status is `implemented but not acce
 - `agent-forge/docs/KNOWN-FACTS-AND-NEEDS.md`
 - `agent-forge/docs/ARCHITECTURE.md`
 - `agent-forge/docs/COST-ANALYSIS.md`
-- `agent-forge/docs/REVIEWER-PACKAGING-PLAN.md`
+- `agent-forge/docs/REVIEWER-PACKAGING-PLAN.md` (short pointer; canonical Epic 8 narrative in `agent-forge/docs/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md`)
 
 ## Unknowns That Must Not Be Assumed
 
@@ -944,7 +944,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can run the eval command and inspect saved results.
-- Local proof recorded: `php agent-forge/scripts/run-evals.php` passed 13/13; the runner writes a timestamped JSON file under `agent-forge/eval-results/` (gitignored; see `agent-forge/eval-results/README.md`).
+- Local proof recorded: `php agent-forge/scripts/run-evals.php` passed 13/13; the runner writes a timestamped JSON file under `agent-forge/eval-results/` (gitignored). Committed reference output: `agent-forge/eval-results/canonical.json` (see `agent-forge/eval-results/README.md`).
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
 

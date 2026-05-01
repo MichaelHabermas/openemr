@@ -122,7 +122,7 @@ Eval-command proof:
 php agent-forge/scripts/run-evals.php
 ```
 
-Result on 2026-05-01: `13 passed, 0 failed`; the runner prints the path to a timestamped JSON file under `agent-forge/eval-results/` (outputs are gitignored; see `agent-forge/eval-results/README.md`).
+Result on 2026-05-01: `13 passed, 0 failed`; the runner prints the path to a timestamped JSON file under `agent-forge/eval-results/` (gitignored). A committed snapshot lives at `agent-forge/eval-results/canonical.json` (see `agent-forge/eval-results/README.md`).
 
 ### Task 8.2.1: Add Claim-Level Packaging Checklist
 

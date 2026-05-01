@@ -73,7 +73,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 - Runner executes AgentForge in process through parser, authorization gate, verified handler, fixture draft provider, verifier, response checks, telemetry logging context, and latency capture.
 - Runner saves timestamped JSON summaries under `agent-forge/eval-results/` (gitignored; see `agent-forge/eval-results/README.md`). Override with `AGENTFORGE_EVAL_RESULTS_DIR`.
 - Local run passed: 13 passed, 0 failed.
-- Example saved path from a local run: `agent-forge/eval-results/eval-results-20260430-233329.json` (not committed).
+- Committed reference snapshot: `agent-forge/eval-results/canonical.json` (full passing fixture run; refresh when eval fixtures change).
 
 **Suggested Commit:** `test(agent-forge): add eval runner`
 
@@ -154,7 +154,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 | Estimated cost appears only when known; unknown pricing is labeled unknown. | Fixture path records `estimated_cost: null`; no guessed pricing. |
 | Eval dataset exists with deterministic pass/fail criteria. | `agent-forge/fixtures/eval-cases.json`. |
 | Safety-critical cases block release. | `agent-forge/scripts/run-evals.php` exits non-zero on failed safety-critical cases. |
-| Results are saved with timestamp and code version. | Runner writes `eval-results-<timestamp>.json` under `agent-forge/eval-results/` (gitignored). |
+| Results are saved with timestamp and code version. | Runner writes `eval-results-<timestamp>.json` under `agent-forge/eval-results/` (gitignored); committed example: `agent-forge/eval-results/canonical.json`. |
 | Smoke proof records latency and proves verifier runs. | Eval result log contexts include `latency_ms` and `verifier_result`. |
 
 ---

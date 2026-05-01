@@ -12,13 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\Auth\PatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class PatientAuthorizationGateTest extends TestCase
 {
@@ -106,33 +104,6 @@ final class PatientAuthorizationGateTest extends TestCase
         bool $hasRelationship = true,
         bool $throws = false,
     ): PatientAuthorizationGate {
-        $repository = new class ($patientExists, $hasRelationship, $throws) implements PatientAccessRepository {
-            public function __construct(
-                private readonly bool $patientExists,
-                private readonly bool $hasRelationship,
-                private readonly bool $throws,
-            ) {
-            }
-
-            public function patientExists(PatientId $patientId): bool
-            {
-                if ($this->throws) {
-                    throw new RuntimeException('database unavailable');
-                }
-
-                return $this->patientExists;
-            }
-
-            public function userHasDirectRelationship(PatientId $patientId, int $userId): bool
-            {
-                if ($this->throws) {
-                    throw new RuntimeException('database unavailable');
-                }
-
-                return $this->hasRelationship;
-            }
-        };
-
-        return new PatientAuthorizationGate($repository);
+        return new PatientAuthorizationGate(new ConfigurablePatientAccessRepository($patientExists, $hasRelationship, $throws));
     }
 }

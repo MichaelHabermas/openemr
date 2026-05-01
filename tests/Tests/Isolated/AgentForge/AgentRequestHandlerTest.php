@@ -21,7 +21,6 @@ use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Handlers\EvidenceAgentHandler;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
-use OpenEMR\AgentForge\Auth\PatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
@@ -246,40 +245,10 @@ final class AgentRequestHandlerTest extends TestCase
     ): AgentRequestHandler {
         return new AgentRequestHandler(
             $parser ?? new AgentRequestParser(),
-            new PatientAuthorizationGate($this->repository($patientExists, $hasRelationship, $repositoryThrows)),
+            new PatientAuthorizationGate(new ConfigurablePatientAccessRepository($patientExists, $hasRelationship, $repositoryThrows)),
             $agentHandler ?? new PlaceholderAgentHandler(),
             $logger ?? new HandlerRecordingLogger(),
         );
-    }
-
-    private function repository(bool $patientExists, bool $hasRelationship, bool $throws): PatientAccessRepository
-    {
-        return new class ($patientExists, $hasRelationship, $throws) implements PatientAccessRepository {
-            public function __construct(
-                private readonly bool $patientExists,
-                private readonly bool $hasRelationship,
-                private readonly bool $throws,
-            ) {
-            }
-
-            public function patientExists(PatientId $patientId): bool
-            {
-                if ($this->throws) {
-                    throw new RuntimeException('database unavailable');
-                }
-
-                return $this->patientExists;
-            }
-
-            public function userHasDirectRelationship(PatientId $patientId, int $userId): bool
-            {
-                if ($this->throws) {
-                    throw new RuntimeException('database unavailable');
-                }
-
-                return $this->hasRelationship;
-            }
-        };
     }
 
     private function assertResult(
