@@ -968,7 +968,7 @@ Human verification:
 - Local proof recorded: admin opened fake patient `900001`, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 - VM proof recorded: admin opened fake patient `900001` on the public VM, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
-## Epic 8 - Demo, Cost Analysis, And Final Packaging
+## Epic Final - Demo, Cost Analysis, And Final Packaging
 
 Goal: produce the artifacts needed to defend the system, not just run it.
 
