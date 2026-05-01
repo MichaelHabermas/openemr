@@ -166,6 +166,7 @@ Verified facts (no longer unknown):
 - Structured-output support: `gpt-4o-mini` supports structured outputs and is called from the server-side OpenAI draft provider.
 - Pricing source for `gpt-4o-mini`: OpenAI model documentation records $0.15 input and $0.60 output per 1M text tokens. See `COST-ANALYSIS.md`.
 - Local measured manual request: A1c trend browser test on patient `900001` logged `latency_ms=2989`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
+- VM measured manual request: A1c trend browser test on patient `900001` logged `latency_ms=10693`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
 
 ## Definition Of Done For Any Task
 
@@ -943,7 +944,7 @@ Human verification:
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
 
-Status: complete for local browser; VM verification remains pending. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete for local and VM browser. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: isolated tests do not prove the full clinical path works.
 
@@ -965,6 +966,7 @@ Human verification:
 
 - A reviewer can run or follow one smoke path and see the whole chain work.
 - Local proof recorded: admin opened fake patient `900001`, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
+- VM proof recorded: admin opened fake patient `900001` on the public VM, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
 ## Epic 8 - Demo, Cost Analysis, And Final Packaging
 

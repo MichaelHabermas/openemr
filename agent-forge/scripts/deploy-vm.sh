@@ -16,6 +16,17 @@ SEED_SCRIPT="${AGENTFORGE_SEED_SCRIPT:-agent-forge/scripts/seed-demo-data.sh}"
 DEPLOY_BRANCH="${AGENTFORGE_DEPLOY_BRANCH:-master}"
 DRAFT_PROVIDER="${AGENTFORGE_DRAFT_PROVIDER:-openai}"
 
+load_compose_env() {
+    local env_file="${REPO_DIR}/${COMPOSE_DIR}/.env"
+    if [[ -f "${env_file}" ]]; then
+        set -a
+        # shellcheck source=/dev/null
+        source "${env_file}"
+        set +a
+        DRAFT_PROVIDER="${AGENTFORGE_DRAFT_PROVIDER:-openai}"
+    fi
+}
+
 check_url() {
     local label="$1"
     local url="$2"
@@ -79,6 +90,7 @@ main() {
     printf 'Repo: %s\n' "${REPO_DIR}"
     printf 'Branch: %s\n' "${current_branch}"
     printf 'Old commit: %s\n' "${old_commit}"
+    load_compose_env
     verify_agentforge_model_config
 
     # Reattach to the deploy branch if a prior rollback left HEAD detached.

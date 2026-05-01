@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge observability, model usage/cost tracking, deterministic evals, and local smoke proof
-**Status:** Implemented; Local Browser Verification Complete; VM Verification Pending
+**Status:** Implemented; Local And VM Browser Verification Complete
 
 ---
 
@@ -79,7 +79,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 
 ### Task 7.2.3: Add End-To-End Smoke Proof
 
-**Status:** [x] Complete For Local In-Process And Local Browser Smoke; VM Verification Pending
+**Status:** [x] Complete For Local In-Process, Local Browser, And VM Browser Smoke
 **Acceptance Map:** `PLAN.md` Epic 7.2.3; full path proof requirement.
 **Proof Required:** Local smoke proof and precise browser verification step.
 
@@ -88,6 +88,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 - The eval runner covers the local composition path: request parse -> auth gate -> evidence tools -> fixture draft -> verifier -> response citations -> PHI-free log context -> latency captured.
 - The result artifact includes `log_context` for each case with `verifier_result`, `source_ids`, `tools_called`, model usage, latency, and no forbidden PHI-bearing keys.
 - Local browser/UI verification was performed against fake patient `900001`.
+- VM browser/UI verification was performed against fake patient `900001`.
 - Live OpenAI API-key verification passed inside the recreated OpenEMR container.
 - The PSR request telemetry is emitted at warning level so it is visible under OpenEMR's default Docker logger threshold.
 
@@ -107,16 +108,18 @@ The clinician-facing response contract is unchanged. Observability remains inter
 10. Observed sanitized log fields: `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `user_id=1`, `patient_id=900001`, `decision=allowed`, `latency_ms=2989`, `question_type=lab`, `tools_called`, `source_ids`, `model=gpt-4o-mini`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, `failure_reason=""`, and `verifier_result=passed`.
 11. Confirmed log context did not include raw question text, full answer text, full prompt, patient name, or full chart text.
 
-**VM Manual Browser Verification Step:**
+**VM Manual Browser Verification:**
 
-1. Deploy or recreate the VM OpenEMR container after setting `docker/development-easy/.env`.
-2. Open the VM OpenEMR app as the demo physician user.
-3. Open fake patient `900001`.
-4. In the AgentForge panel, ask: `Show me the recent A1c trend.`
-5. Expected response: status is successful and answer includes `8.2 %` and `7.4 %`.
-6. Inspect the VM application log for `agent_forge_request`.
-7. Expected log fields: `request_id`, `user_id`, `patient_id`, `decision`, `latency_ms`, `question_type`, `tools_called`, `source_ids`, `model`, `input_tokens`, `output_tokens`, `estimated_cost`, `failure_reason`, and `verifier_result`.
-8. Expected absence: no raw question, full answer, full prompt, patient name, or full chart text.
+1. Confirmed the VM repo was clean on commit `5fcd3e847`.
+2. Created `docker/development-easy/.env` on the VM with OpenAI provider settings and `chmod 600`.
+3. Initial deploy attempt exposed a deploy-script defect: `deploy-vm.sh` checked only shell env before Docker Compose loaded `.env`. Workaround for the successful VM proof was `set -a; source docker/development-easy/.env; set +a`; the script has since been updated to load the Compose `.env` itself before validating model config.
+4. Ran `agent-forge/scripts/deploy-vm.sh`; public app returned HTTP 200, readiness endpoint returned HTTP 200, fake demo data was seeded, and deploy printed `Deploy succeeded.`
+5. Confirmed the running VM OpenEMR container saw `AGENTFORGE_OPENAI_API_KEY`, `AGENTFORGE_DRAFT_PROVIDER=openai`, `AGENTFORGE_OPENAI_MODEL=gpt-4o-mini`, `AGENTFORGE_OPENAI_TIMEOUT_SECONDS=15`, and `AGENTFORGE_OPENAI_CONNECT_TIMEOUT_SECONDS=5` without printing the secret.
+6. Opened the public VM app at `https://openemr.titleredacted.cc/`, opened fake patient `900001`, and asked: `Show me the recent A1c trend.`
+7. Observed final VM browser response: `The recent Hemoglobin A1c results are as follows: 7.4 % on 2026-04-10 and 8.2 % on 2026-01-09.`
+8. Inspected the VM OpenEMR container log with `grep -n "agent_forge_request" /var/log/apache2/error.log | tail -n 3`.
+9. Observed sanitized VM log fields: `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `user_id=1`, `patient_id=900001`, `decision=allowed`, `latency_ms=10693`, `question_type=lab`, `tools_called`, `source_ids`, `model=gpt-4o-mini`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, `failure_reason=""`, and `verifier_result=passed`.
+10. Confirmed log context did not include raw question text, full answer text, full prompt, patient name, or full chart text.
 
 **Live LLM Verification:**
 
@@ -178,7 +181,8 @@ vendor/bin/phpstan analyse src/AgentForge interface/patient_file/summary/agent_r
 - 2026-04-30: Added deterministic eval fixture and in-process runner with saved JSON results.
 - 2026-04-30: Captured local smoke proof through the eval runner.
 - 2026-04-30: Added OpenAI structured-output provider support and usage/cost parsing tests; live API-key verification passed locally.
-- 2026-04-30: Completed local browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`; VM verification remains pending.
+- 2026-04-30: Completed local browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
+- 2026-04-30: Completed VM browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
 
 ---
 
@@ -188,7 +192,7 @@ Can I call this done?
 
 - Source criteria mapped to code/proof/deferral? yes
 - Required automated tests executed and captured? yes
-- Required manual checks executed and captured? partial; local live OpenAI provider and browser/UI verification passed, VM verification is pending
+- Required manual checks executed and captured? yes; local and VM live OpenAI browser/UI verification passed
 - Required fixtures/data/users for proof exist? yes for local in-process proof
 - Security/privacy/logging/error-handling requirements verified? yes for automated/local proof
 - Known limitations and deferred relationship/scope shapes documented? yes

@@ -2,7 +2,7 @@
 
 **Updated:** 2026-04-30
 **Scope:** AgentForge local manual Epic 7 proof
-**Status:** Local measured request recorded; VM/deployed cost proof pending
+**Status:** Local and VM measured requests recorded
 
 ## Pricing Source
 
@@ -46,6 +46,21 @@ For the measured request:
 (836 / 1,000,000 * 0.15) + (173 / 1,000,000 * 0.60) = 0.0002292
 ```
 
+## VM Manual Measurement
+
+Manual browser test:
+
+- Environment: public VM OpenEMR at `https://openemr.titleredacted.cc/`, fake patient `900001`.
+- Prompt: `Show me the recent A1c trend.`
+- Final observed answer: `The recent Hemoglobin A1c results are as follows: 7.4 % on 2026-04-10 and 8.2 % on 2026-01-09.`
+- Log entry: `agent_forge_request` in `/var/log/apache2/error.log` inside the VM OpenEMR container.
+- Model: `gpt-4o-mini`.
+- Input tokens: `836`.
+- Output tokens: `173`.
+- Estimated cost: `$0.0002292`.
+- Latency: `10693 ms`.
+- Verifier result: `passed`.
+
 ## Projection Placeholder
 
 These projections use the measured A1c request as a single-request baseline. They are not production forecasts because real physician workflows will vary by question type, chart size, cache behavior, rate limits, and model choice.
@@ -59,7 +74,6 @@ These projections use the measured A1c request as a single-request baseline. The
 
 ## Known Unknowns
 
-- VM/deployed manual cost proof is pending.
 - Production hosting, storage, logging retention, monitoring, backup, and support costs are not measured yet.
 - Broader question mix is not measured yet.
 - Prompt caching savings are not assumed.
