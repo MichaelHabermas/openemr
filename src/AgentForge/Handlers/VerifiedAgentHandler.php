@@ -53,17 +53,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         $this->lastTelemetry = null;
         $plan = $this->planner->plan($request->question, $this->deadlineMs);
         if ($plan->refused()) {
-            $this->lastTelemetry = new AgentTelemetry(
-                questionType: $plan->questionType,
-                toolsCalled: [],
-                sourceIds: [],
-                model: 'not_run',
-                inputTokens: 0,
-                outputTokens: 0,
-                estimatedCost: null,
-                failureReason: 'clinical_advice_refusal',
-                verifierResult: 'not_run',
-            );
+            $this->lastTelemetry = AgentTelemetry::clinicalAdviceRefusal($plan->questionType);
             return AgentResponse::refusal((string) $plan->refusal);
         }
 

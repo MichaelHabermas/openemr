@@ -13,7 +13,7 @@ I verified:
 - `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: 103 tests, 344 assertions, passing.
 - `php agent-forge/scripts/run-evals.php`: 13/13 passing.
 - `agent-forge/scripts/health-check.sh`: public app and readiness endpoint both HTTP 200.
-- Running evals created [eval-results-20260501-001258.json](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/eval-results/eval-results-20260501-001258.json:1). There was already another untracked eval result present.
+- Running evals wrote a timestamped JSON summary under `agent-forge/eval-results/` (gitignored; see `agent-forge/eval-results/README.md`).
 
 **Major Shortfalls**
 
@@ -23,7 +23,7 @@ The spec requires an agent that can “receive follow-up questions” and “mai
 
 2. Evidence retrieval is over-broad and not really tool-routed.
 
-The architecture promises a “tool router” [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin [eval-results-20260501-001258.json](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/eval-results/eval-results-20260501-001258.json:70). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
+The architecture promises a “tool router” [ARCHITECTURE.md](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](/Users/michaelhabermas/repos/GAI/openemr/src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin in the saved eval telemetry (`tools_called`). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
 
 3. Citations are not properly surfaced in the UI.
 
@@ -43,7 +43,7 @@ The audit correctly says medication data spans `lists`, `lists_medication`, and 
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
-The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases [run-evals.php](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/scripts/run-evals.php:128). The latest result shows `model: fixture-draft-provider`, zero tokens, and null cost [eval-results-20260501-001258.json](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/eval-results/eval-results-20260501-001258.json:45). This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
+The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases ([run-evals.php](/Users/michaelhabermas/repos/GAI/openemr/agent-forge/scripts/run-evals.php), harness types under `src/AgentForge/Eval/`). A typical saved result shows `model: fixture-draft-provider`, zero tokens, and null cost in the JSON written under `agent-forge/eval-results/`. This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
 
 8. Observability lacks per-step timing.
 
@@ -294,7 +294,7 @@ These are not the focus of the review but they should be on the record:
 | # | Severity | Shortfall | Where |
 |---|---|---|---|
 | S-4 | Severe | COST-ANALYSIS measures requests not users, is `cost × n` (the spec explicitly forbids this), no architectural-tier discussion, no infra cost. | [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md) |
-| S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](agent-forge/scripts/run-evals.php), [eval-results-20260501-000551.json](agent-forge/eval-results/eval-results-20260501-000551.json) |
+| S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](agent-forge/scripts/run-evals.php), `src/AgentForge/Eval/` |
 | S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php), [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig) |
 | S-1 | Gating | AUDIT/USERS/ARCHITECTURE are at `agent-forge/docs/`, not repo root as the spec specifies. | [agent-forge/docs/](agent-forge/docs/) |
 | S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](src/AgentForge/Verification/DraftVerifier.php:93) |

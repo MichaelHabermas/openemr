@@ -944,7 +944,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can run the eval command and inspect saved results.
-- Local proof recorded: `php agent-forge/scripts/run-evals.php` passed 13/13 and saved `agent-forge/eval-results/eval-results-20260430-233329.json`.
+- Local proof recorded: `php agent-forge/scripts/run-evals.php` passed 13/13; the runner writes a timestamped JSON file under `agent-forge/eval-results/` (gitignored; see `agent-forge/eval-results/README.md`).
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
 

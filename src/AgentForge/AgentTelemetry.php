@@ -73,4 +73,22 @@ final readonly class AgentTelemetry
             'not_run',
         );
     }
+
+    /**
+     * Telemetry when the chart question planner refuses before evidence collection or drafting.
+     */
+    public static function clinicalAdviceRefusal(string $questionType): self
+    {
+        return new self(
+            $questionType,
+            [],
+            [],
+            'not_run',
+            0,
+            0,
+            null,
+            'clinical_advice_refusal',
+            'not_run',
+        );
+    }
 }
