@@ -1247,7 +1247,14 @@ $oemr_ui = new OemrUI($arrOeUiSettings);
             <div class="row">
                 <?php
                 if (!in_array('card_agent_forge', $hiddenCards) && AclMain::aclCheckCore('patients', 'med')) {
-                    $card = new AgentForgeViewCard((int) $pid, ['dispatcher' => $ed]);
+                    if (is_int($pid)) {
+                        $agentForgePatientId = $pid;
+                    } elseif (is_string($pid) && ctype_digit($pid)) {
+                        $agentForgePatientId = (int) $pid;
+                    } else {
+                        $agentForgePatientId = 0;
+                    }
+                    $card = new AgentForgeViewCard($agentForgePatientId, ['dispatcher' => $ed]);
                     echo "<div class='col-12 m-0 p-0 px-2'>";
                     echo $t->render($card->getTemplateFile(), $card->getTemplateVariables());
                     echo "</div>";

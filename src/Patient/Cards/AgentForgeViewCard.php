@@ -16,6 +16,7 @@ use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Events\Patient\Summary\Card\CardModel;
+use OpenEMR\Services\Globals\UserSettingsService;
 
 final class AgentForgeViewCard extends CardModel
 {
@@ -23,11 +24,12 @@ final class AgentForgeViewCard extends CardModel
     private const CARD_ID = 'agent_forge';
     private const CARD_ID_EXPAND = 'agent_forge_ps_expand';
 
+    /** @param array<string, mixed> $opts */
     public function __construct(private readonly int $pid, array $opts = [])
     {
         parent::__construct(array_merge($opts, [
             'acl' => ['patients', 'med'],
-            'initiallyCollapsed' => getUserSetting(self::CARD_ID_EXPAND) == 0,
+            'initiallyCollapsed' => UserSettingsService::getUserSetting(self::CARD_ID_EXPAND) == 0,
             'add' => false,
             'edit' => false,
             'collapse' => true,
@@ -38,6 +40,7 @@ final class AgentForgeViewCard extends CardModel
         ]));
     }
 
+    /** @return array<string, mixed> */
     public function getTemplateVariables(): array
     {
         $session = SessionWrapperFactory::getInstance()->getActiveSession();
@@ -45,7 +48,7 @@ final class AgentForgeViewCard extends CardModel
         return array_merge(parent::getTemplateVariables(), [
             'title' => xl('Clinical Co-Pilot'),
             'id' => self::CARD_ID_EXPAND,
-            'initiallyCollapsed' => getUserSetting(self::CARD_ID_EXPAND) == 0,
+            'initiallyCollapsed' => UserSettingsService::getUserSetting(self::CARD_ID_EXPAND) == 0,
             'auth' => AclMain::aclCheckCore('patients', 'med'),
             'patientId' => $this->pid,
             'csrfToken' => CsrfUtils::collectCsrfToken(session: $session),

@@ -1,57 +1,47 @@
 # Cost Analysis
 
-**Updated:** 2026-04-30
-**Scope:** AgentForge measured baseline plus remediation plan
-**Status:** Local and VM measured requests recorded; production user-tier rewrite is planned in `PLAN.md` Epic 9
+**Updated:** 2026-05-01
+**Scope:** AgentForge measured baseline, user-tier production scenarios, and scale-tier architecture plan
+**Status:** Reviewer-grade scenario analysis complete; production numbers remain estimates until broader live telemetry exists
 
-## Reviewer Status
+## Executive Summary
 
-This document does not yet satisfy the full `SPECS.txt` production-cost deliverable.
+The single measured AgentForge request proves instrumentation, not production economics. The current live path records model name, token usage, estimated model cost, latency, verifier result, and source ids, but one A1c question on one fake patient is not a forecast for a clinical deployment.
 
-Already implemented:
+This analysis therefore separates measured facts from assumptions. The measured A1c request is retained as a baseline; projections are built from active clinical users, requests per clinician per day, work days, question mix, token shape, retry rate, cache assumptions, non-token operating costs, and architecture changes at 100, 1,000, 10,000, and 100,000 users.
 
-- One local manual A1c request measurement.
-- One public VM manual A1c request measurement.
-- Model name, token usage, estimated model cost, latency, and verifier result for those requests.
-
-Accepted limitation:
-
-- The measurements below are single-request baselines. They are not a production forecast.
-- The old monthly-request projection was token arithmetic only and did not address users, infrastructure, retention, monitoring, support, compliance work, or architecture changes.
-
-Planned remediation:
-
-- Epic 9 rewrites this document around 100 / 1K / 10K / 100K users, including non-token costs and architecture changes at each tier.
+Conclusion: at the current `gpt-4o-mini` price, model tokens are not the main cost driver until very large scale. The real bottlenecks are reliability, audit-log retention, support/on-call, observability, compliance administration, model-provider rate limits, and the engineering work needed to move from a demo VM to a production clinical system.
 
 ## Pricing Source
 
 Current AgentForge manual testing uses OpenAI `gpt-4o-mini` through the server-side draft provider.
 
-Pricing recorded from the OpenAI model documentation on 2026-04-30:
+Pricing verified from the OpenAI model documentation on 2026-05-01:
 
 - Source: https://developers.openai.com/api/docs/models/gpt-4o-mini
 - Input text tokens: $0.15 per 1M tokens.
+- Cached input text tokens: $0.075 per 1M tokens.
 - Output text tokens: $0.60 per 1M tokens.
-- The same source also states `gpt-4o-mini` supports structured outputs.
+- The same model page states that `gpt-4o-mini` supports structured outputs.
 
 If the model changes, do not reuse these numbers. Update `AGENTFORGE_OPENAI_INPUT_COST_PER_1M` and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M` from the exact model pricing source, or leave them blank so `estimated_cost` is logged as unknown.
 
-## Local Manual Measurement
+## Measured Baseline
 
-Manual browser test:
+The single measured request is a baseline, not a production forecast.
 
-- Environment: local Docker OpenEMR, fake patient `900001`.
-- Prompt: `Show me the recent A1c trend.`
-- Final observed answer: `The recent Hemoglobin A1c levels are as follows: 7.4 % on 2026-04-10 and 8.2 % on 2026-01-09.`
-- Log entry: `agent_forge_request` in `/var/log/apache2/error.log`.
-- Model: `gpt-4o-mini`.
-- Input tokens: `836`.
-- Output tokens: `173`.
-- Estimated cost: `$0.0002292`.
-- Latency: `2989 ms`.
-- Verifier result: `passed`.
+| Measurement | Local Docker | Public VM |
+| --- | ---: | ---: |
+| Fake patient | `900001` | `900001` |
+| Prompt | `Show me the recent A1c trend.` | `Show me the recent A1c trend.` |
+| Model | `gpt-4o-mini` | `gpt-4o-mini` |
+| Input tokens | 836 input tokens | 836 input tokens |
+| Output tokens | 173 output tokens | 173 output tokens |
+| Estimated model cost | $0.0002292 | $0.0002292 |
+| Latency | 2,989 ms | 10,693 ms |
+| Verifier result | passed | passed |
 
-Cost formula:
+Measured request formula:
 
 ```text
 estimated_cost =
@@ -59,73 +49,130 @@ estimated_cost =
   + (output_tokens / 1,000,000 * output_cost_per_1m)
 ```
 
-For the measured request:
+Measured A1c request:
 
 ```text
 (836 / 1,000,000 * 0.15) + (173 / 1,000,000 * 0.60) = 0.0002292
 ```
 
-## VM Manual Measurement
+The VM latency is also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. The current VM measurement is acceptable as demo evidence only; production readiness needs the latency-budget work in `PLAN.md` Epic 14.
 
-Manual browser test:
+## Assumptions Table
 
-- Environment: public VM OpenEMR at `https://openemr.titleredacted.cc/`, fake patient `900001`.
-- Prompt: `Show me the recent A1c trend.`
-- Final observed answer: `The recent Hemoglobin A1c results are as follows: 7.4 % on 2026-04-10 and 8.2 % on 2026-01-09.`
-- Log entry: `agent_forge_request` in `/var/log/apache2/error.log` inside the VM OpenEMR container.
-- Model: `gpt-4o-mini`.
-- Input tokens: `836`.
-- Output tokens: `173`.
-- Estimated cost: `$0.0002292`.
-- Latency: `10693 ms`.
-- Verifier result: `passed`.
+| Input | Low scenario | Base scenario | High scenario | Evidence quality |
+| --- | ---: | ---: | ---: | --- |
+| User definition | Active clinician user | Active clinician user | Active clinician user | Assumption; `USERS.md` targets physicians |
+| Clinicians per practice | 5 | 10 | 25 | Estimated operating assumption |
+| requests per clinician per workday | 6 | 8 | 24 | Estimated; broader telemetry unknown |
+| work days per month | 21 | 21 | 21 | Explicit planning assumption |
+| question mix | 60% short lookup / 30% briefing / 10% missing-data or refusal | 40% short lookup / 40% briefing / 20% follow-up or missing-data | 25% short lookup / 50% briefing / 25% complex chart review | Estimated; live question mix unknown |
+| average chart evidence size | 1,000 input tokens | 1,800 input tokens | 3,500 input tokens | Estimated from measured 836-token A1c prompt plus broader chart context |
+| model output size | 200 output tokens | 300 output tokens | 600 output tokens | Estimated from measured 173-token A1c output |
+| model input/output tokens | 1,000 / 200 | 1,800 / 300 | 3,500 / 600 | Estimated; must be replaced by live tier telemetry |
+| retry rate | 0% | 5% | 10% | Estimated; malformed-output and provider-retry rates unmeasured |
+| cache hit rate | 25% input-token reduction | 15% input-token reduction | 0% input-token reduction | Estimated; prompt caching not yet implemented as a product guarantee |
+| live-provider pricing source | OpenAI `gpt-4o-mini` model page | OpenAI `gpt-4o-mini` model page | OpenAI `gpt-4o-mini` model page | Measured source, verified 2026-05-01 |
+| hosting | Scenario range by tier | Scenario range by tier | Scenario range by tier | Estimated until vendor bills exist |
+| storage | Sensitive audit-log volume by tier | Sensitive audit-log volume by tier | Sensitive audit-log volume by tier | Estimated until retention policy and log volume are measured |
+| monitoring | Managed logs, metrics, alerts | Managed logs, metrics, alerts | Managed logs, metrics, alerts plus incident tooling | Estimated |
+| backup | Database and audit-log backup | Backup plus restore tests | DR-grade backup and restore tests | Estimated |
+| support/on-call | Part-time support | Business-hours support and on-call | Dedicated support/SRE coverage | Estimated |
+| compliance/admin | Security/privacy review and access governance | Security/privacy review, vendor review, periodic audit | Formal governance, retention, vendor, and incident programs | Estimated |
 
-## Baseline-Only Projection
+Unknowns are deliberately not filled with false precision. The first production pilot must replace the estimated rows with telemetry for question mix, token distributions, retry rates, cache behavior, latency percentiles, log volume, and support load.
 
-These projections use the measured A1c request as a single-request baseline. They are not production forecasts because real physician workflows will vary by question type, chart size, cache behavior, rate limits, and model choice.
+## Low / Base / High Usage Scenarios
 
-| Monthly requests | Estimated model cost at measured request shape |
-| ---: | ---: |
-| 100 | $0.02292 |
-| 1,000 | $0.22920 |
-| 10,000 | $2.29200 |
-| 100,000 | $22.92000 |
+Model-cost formula for scenario projections:
 
-This table is intentionally retained only to show request-shape math. It must not be used as the final user-scale cost analysis.
+```text
+effective_input_tokens = input_tokens * (1 - cache_hit_rate)
+cost_per_request =
+  ((effective_input_tokens / 1,000,000 * 0.15)
+  + (output_tokens / 1,000,000 * 0.60))
+  * (1 + retry_rate)
+monthly_requests = users * requests_per_clinician_per_workday * 21
+```
 
-## Required User-Tier Rewrite Structure
+| Scenario | Requests per user per month | Effective tokens per request | Estimated model cost per request |
+| --- | ---: | ---: | ---: |
+| Low | 126 | 750 input / 200 output | $0.0002325 |
+| Base | 168 | 1,530 input / 300 output | $0.0004300 |
+| High | 504 | 3,500 input / 600 output | $0.0009735 |
 
-Epic 9 must replace the baseline-only projection with scenario tables at the required user levels:
+These are model-provider costs only. They exclude hosting, storage, logging, monitoring, backup, support/on-call, compliance/admin, engineering labor, and any negotiated enterprise pricing changes.
 
-| User tier | Required projection inputs | Required architecture discussion |
-| ---: | --- | --- |
-| 100 users | Clinicians per practice, requests per clinician per workday, token mix, live-provider pricing, demo-to-production hosting delta, log volume, backup, monitoring, and support assumptions. | Whether a hardened single-region app/database plus managed logging is enough; rate-limit and backup posture. |
-| 1,000 users | Same inputs plus concurrency estimate, model retry rate, cache hit assumptions, alerting coverage, retention volume, and support/on-call staffing. | Horizontal app scaling, database read/index review, centralized log aggregation, SLOs, and model-provider quota management. |
-| 10,000 users | Same inputs plus multi-tenant operations, regional latency, compliance/admin overhead, incident response, and vendor capacity planning. | Dedicated queues or workers where justified, stronger caching/routing, model tiering or fallback provider strategy, and capacity testing. |
-| 100,000 users | Same inputs plus enterprise support, audit retention at scale, disaster recovery, privacy/security review, and possible dedicated model capacity. | Multi-region or high-availability architecture, formal SRE/observability program, dedicated capacity or negotiated pricing, and mature access-control governance. |
+## User-Tier Monthly Projection
 
-The rewrite must include low/base/high scenarios instead of one false exact number whenever assumptions are not measured.
+| User tier | Monthly request range | Model spend range | Non-token operating range | Estimated total monthly range | Base model spend |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 users | 12,600 - 50,400 | $2.93 - $49.06 | $2,050 - $7,300 | $2,053 - $7,349 | $7.22 |
+| 1,000 users | 126,000 - 504,000 | $29.30 - $490.64 | $8,500 - $29,000 | $8,529 - $29,491 | $72.24 |
+| 10,000 users | 1,260,000 - 5,040,000 | $292.95 - $4,906.44 | $52,000 - $190,000 | $52,293 - $194,906 | $722.36 |
+| 100,000 users | 12,600,000 - 50,400,000 | $2,929.50 - $49,064.40 | $350,000 - $1,350,000+ | $352,930 - $1,399,064+ | $7,223.58 |
 
-## Non-Token Cost Categories To Include
+Non-token cost ranges are scenario estimates, not measured invoices:
+
+| User tier | hosting | storage | monitoring | backup | support/on-call | compliance/admin |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 users | $400 - $1,500 | $50 - $300 | $50 - $300 | $50 - $200 | $1,000 - $3,000 | $500 - $2,000 |
+| 1,000 users | $2,000 - $7,500 | $500 - $2,000 | $500 - $2,000 | $500 - $1,500 | $4,000 - $10,000 | $1,000 - $6,000 |
+| 10,000 users | $12,000 - $45,000 | $4,000 - $15,000 | $4,000 - $15,000 | $2,000 - $10,000 | $20,000 - $75,000 | $10,000 - $30,000 |
+| 100,000 users | $80,000 - $300,000 | $30,000 - $150,000 | $30,000 - $125,000 | $20,000 - $100,000 | $150,000 - $500,000 | $40,000 - $175,000+ |
+
+The absolute numbers are less important than the shape: token cost is cheap enough that deleting verifier, logging, authorization, or audit controls to save model spend would be the wrong optimization. The expensive parts are the systems that make a clinical agent defensible.
+
+## Architecture Changes By Tier
+
+| User tier | Architecture posture | Rate-limit and model strategy | Logging, retention, and observability | Operational support |
+| ---: | --- | --- | --- | --- |
+| 100 users | Hardened single-region production deployment; managed database; server-side OpenEMR integration; no broad search or background worker unless Epic 11-14 prove need. | One primary provider/model; enforce request timeouts; keep fixture mode for deterministic regression; provider quota monitored manually. | Centralized sensitive audit logs, basic metrics, alerting on endpoint failure, backup and restore test. | Part-time support, documented deploy/rollback, privacy/security review before pilot. |
+| 1,000 users | Horizontally scalable app tier; database index review for evidence tools; centralized config and secrets; separate log storage. | Quota management, circuit breaker, retry budget, possible cheaper model for short lookup questions after verifier proof. | Managed log aggregation, latency dashboards, p50/p95/p99 tracking, alerting for verifier failures, cost anomaly detection. | Business-hours support plus on-call for clinical hours; incident playbooks. |
+| 10,000 users | Multi-tenant production posture; capacity-tested OpenEMR integration; read replicas or query optimization where measured; queue only for non-interactive work. | Model tiering, fallback-provider design, negotiated rate limits, prompt-cache strategy where it preserves citation integrity. | Formal retention policy, audit-log access controls, restore drills, SLOs, incident management, compliance evidence exports. | Dedicated operations and security/privacy administration. |
+| 100,000 users | Redesign required before claiming support: high-availability or multi-region architecture, dedicated observability program, mature access governance, disaster recovery, and enterprise vendor management. | Dedicated capacity or negotiated pricing, provider redundancy, strict traffic shaping, per-tenant quotas, model quality regression gates. | Large-scale sensitive audit-log retention, regional data-governance review, SRE-owned telemetry, compliance reporting automation. | Dedicated SRE/support/security/compliance functions and formal change management. |
+
+The 100,000-user tier is not the same system with a larger bill. It changes the risk profile: patient authorization governance, audit retention, incident response, model-provider capacity, and regional reliability become first-order architecture requirements.
+
+## Non-Token Cost Categories
 
 - Production hosting and database capacity.
 - Storage for sensitive audit logs, retention, backup, and restore testing.
-- Monitoring, metrics, alerting, and incident-management tooling.
-- Support and on-call staffing.
-- Security/privacy review, access-control maintenance, and compliance administration.
-- Deployment, rollback, and disaster-recovery operations.
-- Model-provider quota management, fallback planning, and possible dedicated capacity at high scale.
+- Monitoring, metrics, alerting, incident-management tooling, and cost-anomaly detection.
+- Support/on-call staffing, escalation workflow, and incident playbooks.
+- Security/privacy review, access-control maintenance, vendor review, and compliance/admin work.
+- Deployment, rollback, disaster-recovery operations, and change management.
+- Model-provider quota management, fallback planning, model regression checks, and possible dedicated capacity at high scale.
+- Engineering work to complete Epic 10-14 before production-readiness claims: live-path evals, multi-turn state, citation UI, verifier hardening, PHI-minimizing tool routing, medication completeness, authorization expansion, observability, and latency-budget remediation.
 
-## Unknowns Policy
+## Known Unknowns And Measurement Plan
 
-- Unknown values must remain labeled unknown until measured or explicitly estimated.
-- Estimated values must be marked as assumptions and separated from measured telemetry.
-- Model costs must be tied to the exact model and pricing source in use at the time of projection.
-- Production readiness must not be claimed from the single A1c request baseline.
+Unknowns that must be measured before production pricing is trusted:
 
-## Known Unknowns
+- Question mix by clinician workflow.
+- Token distributions by question type and chart density.
+- Retry, malformed-output, timeout, and verifier-failure rates with the live provider.
+- Prompt-cache hit rate after selective tool routing exists.
+- Log volume per request and retention duration.
+- Hosting, monitoring, backup, and storage invoices.
+- Support/on-call load per practice and per clinician.
+- Provider rate-limit behavior under bursty clinical schedules.
+- Latency percentiles on production-shaped infrastructure.
 
-- Production hosting, storage, logging retention, monitoring, backup, and support costs are not measured yet.
-- Broader question mix is not measured yet.
-- Prompt caching savings are not assumed.
-- Batch pricing is not assumed.
+Measurement plan:
+
+1. Keep recording `model`, `input_tokens`, `output_tokens`, `estimated_cost`, `latency_ms`, `verifier_result`, `tools_called`, and `source_ids` for every request.
+2. Add Epic 10 live-path eval tiers before claiming agent-level evaluation.
+3. Add Epic 12 selective PHI-minimizing tool routing so token and latency projections are based on required evidence, not over-broad tool calls.
+4. Add Epic 14 per-step timing, log-retention policy, SLOs, dashboards, and alerts.
+5. Recompute this cost analysis from real telemetry after a pilot contains enough requests across briefing, medication, lab, missing-data, refusal, and follow-up shapes.
+
+## Epic 9 Acceptance Matrix
+
+| Requirement | Status | Proof |
+| --- | --- | --- |
+| Cost assumptions exist before projection. | Implemented | `Assumptions Table` labels measured, estimated, and unknown inputs. |
+| Measured A1c request is baseline, not forecast. | Implemented | `Measured Baseline` states the single measured request is a baseline, not a production forecast. |
+| Cost projection covers 100, 1K, 10K, and 100K users. | Implemented | `User-Tier Monthly Projection` includes all four required user tiers. |
+| Projection includes non-token costs. | Implemented | `Non-Token Cost Categories` and the non-token operating table include hosting, storage, monitoring, backup, support/on-call, and compliance/admin. |
+| Architecture changes are documented per tier. | Implemented | `Architecture Changes By Tier` maps each tier to operational architecture, model strategy, observability, and support posture. |
+| Unknowns are not guessed as facts. | Implemented | `Known Unknowns And Measurement Plan` names missing measurements and how to replace assumptions. |
