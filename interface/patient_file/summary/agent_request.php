@@ -14,20 +14,18 @@ ob_start();
 
 require_once("../../globals.php");
 
+use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
+use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
+use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\AgentResponse;
-use OpenEMR\AgentForge\AgentTelemetry;
+use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
+use OpenEMR\AgentForge\PsrRequestLogger;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
-use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
-use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
-use OpenEMR\AgentForge\PsrRequestLogger;
-use OpenEMR\AgentForge\RequestLog;
-use OpenEMR\AgentForge\RequestLogger;
-use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
-use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
-use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Csrf\CsrfUtils;
@@ -44,33 +42,6 @@ $agentForgeJsonResponse = static function (AgentResponse $response, int $statusC
     header('Content-Type: application/json');
     echo json_encode($response->toArray(), JSON_THROW_ON_ERROR);
     exit;
-};
-
-$agentForgeElapsedMs = static function (int $startTime): int {
-    return max(0, (int) floor((hrtime(true) - $startTime) / 1_000_000));
-};
-
-$agentForgeLogAndRespond = static function (
-    AgentResponse $response,
-    int $statusCode,
-    RequestLogger $logger,
-    string $requestId,
-    int $startTime,
-    string $decision,
-    ?int $userId,
-    ?int $patientId,
-    ?AgentTelemetry $telemetry,
-) use ($agentForgeElapsedMs, $agentForgeJsonResponse): never {
-    $logger->record(new RequestLog(
-        requestId: $requestId,
-        userId: $userId,
-        patientId: $patientId,
-        decision: $decision,
-        latencyMs: $agentForgeElapsedMs($startTime),
-        timestamp: new DateTimeImmutable(),
-        telemetry: $telemetry,
-    ));
-    $agentForgeJsonResponse($response, $statusCode);
 };
 
 $agentForgeStartTime = hrtime(true);
@@ -91,16 +62,19 @@ $sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
 $sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
 $csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($request->request->getString('csrf_token_form'), session: $session);
 $chartEvidenceRepository = new SqlChartEvidenceRepository();
-$handler = new AgentRequestHandler(
-    new AgentRequestParser(),
-    new PatientAuthorizationGate(new SqlPatientAccessRepository()),
-    new VerifiedAgentHandler(
-        EvidenceToolFactory::createDefault($chartEvidenceRepository),
-        DraftProviderFactory::createDefault(),
-        new DraftVerifier(),
+$handler = new AgentRequestLifecycle(
+    new AgentRequestHandler(
+        new AgentRequestParser(),
+        new PatientAuthorizationGate(new SqlPatientAccessRepository()),
+        new VerifiedAgentHandler(
+            EvidenceToolFactory::createDefault($chartEvidenceRepository),
+            DraftProviderFactory::createDefault(),
+            new DraftVerifier(),
+            ServiceContainer::getLogger(),
+        ),
         ServiceContainer::getLogger(),
     ),
-    ServiceContainer::getLogger(),
+    $agentForgeLogger,
 );
 $result = $handler->handle(
     $request->getMethod(),
@@ -110,16 +84,7 @@ $result = $handler->handle(
     AclMain::aclCheckCore('patients', 'med'),
     $csrfValid,
     $agentForgeRequestId,
+    $agentForgeStartTime,
 );
 
-$agentForgeLogAndRespond(
-    $result->response,
-    $result->statusCode,
-    $agentForgeLogger,
-    $agentForgeRequestId,
-    $agentForgeStartTime,
-    $result->decision,
-    $sessionUserId,
-    $result->logPatientId,
-    $result->telemetry,
-);
+$agentForgeJsonResponse($result->response, $result->statusCode);

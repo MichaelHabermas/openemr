@@ -13,12 +13,12 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
-use RuntimeException;
 use OpenEMR\AgentForge\AgentTelemetry;
 use OpenEMR\AgentForge\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use RuntimeException;
 
 final readonly class AgentRequestHandler
 {
@@ -86,7 +86,7 @@ final readonly class AgentRequestHandler
             return $this->refusal(
                 $decision->reason,
                 403,
-                $this->decisionSlug($decision->reason),
+                'refused_' . $decision->code,
                 $request->patientId->value,
             );
         }
@@ -118,12 +118,5 @@ final readonly class AgentRequestHandler
             logPatientId: $logPatientId,
             telemetry: AgentTelemetry::notRun($decision),
         );
-    }
-
-    private function decisionSlug(string $reason): string
-    {
-        $slug = preg_replace('/[^a-z0-9]+/', '_', strtolower($reason)) ?? 'unknown';
-
-        return 'refused_' . trim($slug, '_');
     }
 }

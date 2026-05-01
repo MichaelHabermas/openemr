@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Verification\KnownMissingDataPolicy;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +35,7 @@ final class KnownMissingDataPolicyTest extends TestCase
             ]),
         );
 
-        $this->assertSame(['Urine microalbumin result not found in the chart.'], $missing);
+        $this->assertSame(['Urine microalbumin not found in the chart.'], $missing);
     }
 
     public function testMicroalbuminQuestionDoesNotReturnMissingWhenEvidenceContainsIt(): void

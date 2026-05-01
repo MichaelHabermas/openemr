@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Auth\PatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Handlers\AgentQuestion;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -29,6 +29,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertTrue($decision->allowed);
         $this->assertSame('allowed', $decision->reason);
+        $this->assertSame('allowed', $decision->code);
     }
 
     public function testRefusesMissingSessionUser(): void
@@ -37,6 +38,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('No active OpenEMR session user was found.', $decision->reason);
+        $this->assertSame('no_active_openemr_session_user_was_found', $decision->code);
     }
 
     public function testRefusesMissingPatientContext(): void
@@ -45,6 +47,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('No active patient chart context was found.', $decision->reason);
+        $this->assertSame('no_active_patient_chart_context_was_found', $decision->code);
     }
 
     public function testRefusesPatientMismatch(): void
@@ -53,6 +56,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The requested patient does not match the active chart.', $decision->reason);
+        $this->assertSame('the_requested_patient_does_not_match_the_active_chart', $decision->code);
     }
 
     public function testRefusesMissingMedicalAcl(): void
@@ -61,6 +65,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The active user does not have medical-record access.', $decision->reason);
+        $this->assertSame('the_active_user_does_not_have_medical_record_access', $decision->code);
     }
 
     public function testRefusesUnverifiedPatient(): void
@@ -69,6 +74,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The requested patient chart could not be verified.', $decision->reason);
+        $this->assertSame('the_requested_patient_chart_could_not_be_verified', $decision->code);
     }
 
     public function testRefusesMissingRelationship(): void
@@ -78,6 +84,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('Patient-specific access could not be verified for this user.', $decision->reason);
+        $this->assertSame('patient_specific_access_could_not_be_verified_for_this_user', $decision->code);
     }
 
     public function testRefusesUnclearRepositoryState(): void
@@ -86,6 +93,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('Patient-specific access is unclear.', $decision->reason);
+        $this->assertSame('patient_specific_access_is_unclear', $decision->code);
     }
 
     private function request(): AgentRequest

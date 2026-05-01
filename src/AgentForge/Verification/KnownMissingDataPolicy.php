@@ -32,6 +32,6 @@ final class KnownMissingDataPolicy
             }
         }
 
-        return ['Urine microalbumin result not found in the chart.'];
+        return ['Urine microalbumin not found in the chart.'];
     }
 }

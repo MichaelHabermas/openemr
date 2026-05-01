@@ -17,16 +17,17 @@ final readonly class AuthorizationDecision
     private function __construct(
         public bool $allowed,
         public string $reason,
+        public string $code,
     ) {
     }
 
     public static function allow(): self
     {
-        return new self(true, 'allowed');
+        return new self(true, 'allowed', 'allowed');
     }
 
-    public static function refuse(string $reason): self
+    public static function refuse(string $reason, string $code = 'refused'): self
     {
-        return new self(false, $reason);
+        return new self(false, $reason, $code);
     }
 }

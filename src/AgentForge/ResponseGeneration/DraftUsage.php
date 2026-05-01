@@ -26,4 +26,9 @@ final readonly class DraftUsage
     {
         return new self('fixture-draft-provider', 0, 0, null);
     }
+
+    public static function notRun(): self
+    {
+        return new self('not_run', 0, 0, null);
+    }
 }

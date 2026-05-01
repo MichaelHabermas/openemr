@@ -38,6 +38,26 @@ final class FixtureDraftProvider implements DraftProvider
             );
         }
 
+        if ($questionMissingSections !== []) {
+            $sentences = [];
+            $claims = [];
+            $index = 1;
+            foreach ($missingSections as $missingSection) {
+                $sentenceId = sprintf('missing-%d', $index);
+                $sentences[] = new DraftSentence($sentenceId, $missingSection);
+                $claims[] = new DraftClaim($missingSection, DraftClaim::TYPE_MISSING_DATA, [], $sentenceId);
+                ++$index;
+            }
+
+            return new DraftResponse(
+                $sentences,
+                $claims,
+                $missingSections,
+                ['Model drafting is disabled; deterministic fixture drafting was used.'],
+                DraftUsage::fixture(),
+            );
+        }
+
         $sentences = [];
         $claims = [];
         $index = 1;

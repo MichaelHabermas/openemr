@@ -1,7 +1,7 @@
 <?php
 
 /**
- * PHI-free AgentForge request log entry.
+ * PHI-minimized sensitive AgentForge request log entry.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -29,23 +29,7 @@ final readonly class RequestLog
     }
 
     /**
-     * @return array{
-     *     request_id: string,
-     *     user_id: ?int,
-     *     patient_id: ?int,
-     *     decision: string,
-     *     latency_ms: int,
-     *     timestamp: string,
-     *     question_type: string,
-     *     tools_called: list<string>,
-     *     source_ids: list<string>,
-     *     model: string,
-     *     input_tokens: int,
-     *     output_tokens: int,
-     *     estimated_cost: ?float,
-     *     failure_reason: ?string,
-     *     verifier_result: string
-     * }
+     * @return array<string, mixed>
      */
     public function toContext(): array
     {
@@ -58,6 +42,9 @@ final readonly class RequestLog
             'timestamp' => $this->timestamp->format(DateTimeInterface::ATOM),
         ];
 
-        return array_merge($context, ($this->telemetry ?? AgentTelemetry::notRun($this->decision))->toContext());
+        return SensitiveLogPolicy::sanitizeContext(array_merge(
+            $context,
+            ($this->telemetry ?? AgentTelemetry::notRun($this->decision))->toContext(),
+        ));
     }
 }

@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
-use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
-use OpenEMR\AgentForge\Auth\PatientId;
 use PHPUnit\Framework\TestCase;
 
 final class FixtureDraftProviderTest extends TestCase
@@ -75,6 +75,6 @@ final class FixtureDraftProviderTest extends TestCase
             ]),
         );
 
-        $this->assertContains('Urine microalbumin result not found in the chart.', $draft->missingSections);
+        $this->assertContains('Urine microalbumin not found in the chart.', $draft->missingSections);
     }
 }

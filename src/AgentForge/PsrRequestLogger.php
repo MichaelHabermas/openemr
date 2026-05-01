@@ -22,6 +22,6 @@ final readonly class PsrRequestLogger implements RequestLogger
 
     public function record(RequestLog $entry): void
     {
-        $this->logger->warning('agent_forge_request', $entry->toContext());
+        $this->logger->warning('agent_forge_request', SensitiveLogPolicy::sanitizeContext($entry->toContext()));
     }
 }
