@@ -40,7 +40,7 @@ Required cases and pass criteria:
 | Case | Seeded-data reference | Pass criteria |
 | --- | --- | --- |
 | Visit briefing | `AF-DEMO-900001`, reason for visit, active problem, active prescriptions, A1c labs, last plan | Evidence contains only patient `900001` facts and includes source metadata for each present chart fact. |
-| Active medications | `prescriptions` rows for metformin and lisinopril | Evidence includes both active prescriptions and excludes unrelated patients. |
+| Active prescriptions | `prescriptions` rows for metformin and lisinopril | Evidence includes both active prescriptions and excludes unrelated patients. |
 | A1c trend | `procedure_result` comments `agentforge-a1c-2026-01` and `agentforge-a1c-2026-04` | Evidence includes `8.2 %` on `2026-01-09` and `7.4 %` on `2026-04-10` with source ids. |
 | Missing microalbumin | Demo fixture intentionally omits urine microalbumin | Result reports not found; it does not infer normal, never ordered, or not clinically needed. |
 | Last plan | `form_clinical_notes` row `af-note-20260415` | Evidence includes the last-plan text and source metadata. |

@@ -66,7 +66,7 @@ final class RequestLogTest extends TestCase
             telemetry: new AgentTelemetry(
                 questionType: 'lab',
                 toolsCalled: ['Recent labs'],
-                skippedChartSections: ['Active medications', 'Recent notes and last plan'],
+                skippedChartSections: ['Active prescriptions', 'Recent notes and last plan'],
                 sourceIds: ['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'],
                 model: 'fixture-draft-provider',
                 inputTokens: 0,
@@ -81,7 +81,7 @@ final class RequestLogTest extends TestCase
 
         $this->assertSame('lab', $context['question_type']);
         $this->assertSame(['Recent labs'], $context['tools_called']);
-        $this->assertSame(['Active medications', 'Recent notes and last plan'], $context['skipped_chart_sections']);
+        $this->assertSame(['Active prescriptions', 'Recent notes and last plan'], $context['skipped_chart_sections']);
         $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $context['source_ids']);
         $this->assertSame('fixture-draft-provider', $context['model']);
         $this->assertSame(0, $context['input_tokens']);

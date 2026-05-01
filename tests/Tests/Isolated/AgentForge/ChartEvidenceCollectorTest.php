@@ -29,19 +29,19 @@ final class ChartEvidenceCollectorTest extends TestCase
         $labs = new CollectorRecordingTool('Recent labs', [
             new EvidenceItem('lab', 'procedure_result', 'a1c', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
         ]);
-        $meds = new CollectorRecordingTool('Active medications', [
+        $meds = new CollectorRecordingTool('Active prescriptions', [
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
 
         $run = (new ChartEvidenceCollector([$labs, $meds]))->collect(
             new PatientId(900001),
-            new ChartQuestionPlan('lab', ['Recent labs'], 8000, skippedSections: ['Active medications']),
+            new ChartQuestionPlan('lab', ['Recent labs'], 8000, skippedSections: ['Active prescriptions']),
         );
 
         $this->assertTrue($labs->called);
         $this->assertFalse($meds->called);
         $this->assertSame(['Recent labs'], $run->toolsCalled);
-        $this->assertSame(['Active medications'], $run->skippedSections);
+        $this->assertSame(['Active prescriptions'], $run->skippedSections);
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $run->bundle->sourceIds());
         $this->assertArrayNotHasKey('source_table', $run->bundle->toPromptArray()['evidence'][0]);
     }
@@ -59,7 +59,7 @@ final class ChartEvidenceCollectorTest extends TestCase
 
     public function testDeadlineStopsLaterSectionsAndPreservesPartialEvidence(): void
     {
-        $later = new CollectorRecordingTool('Active medications', [
+        $later = new CollectorRecordingTool('Active prescriptions', [
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
         $run = (new ChartEvidenceCollector([
@@ -69,7 +69,7 @@ final class ChartEvidenceCollectorTest extends TestCase
             $later,
         ], clock: new CollectorManualClock([0, 50])))->collect(
             new PatientId(900001),
-            new ChartQuestionPlan('visit_briefing', ['Recent labs', 'Active medications'], 10),
+            new ChartQuestionPlan('visit_briefing', ['Recent labs', 'Active prescriptions'], 10),
         );
 
         $this->assertFalse($later->called);

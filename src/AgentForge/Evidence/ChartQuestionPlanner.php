@@ -19,7 +19,7 @@ final readonly class ChartQuestionPlanner
 {
     public const SECTION_DEMOGRAPHICS = 'Demographics';
     public const SECTION_PROBLEMS = 'Active problems';
-    public const SECTION_MEDICATIONS = 'Active medications';
+    public const SECTION_MEDICATIONS = 'Active prescriptions';
     public const SECTION_LABS = 'Recent labs';
     public const SECTION_NOTES = 'Recent notes and last plan';
 

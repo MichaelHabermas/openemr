@@ -232,6 +232,101 @@ final class DraftVerifierTest extends TestCase
         $this->assertSame(['s1'], $result->verifiedSentenceIds);
     }
 
+    public function testGroundedMedicationListMayUseNonFactualLeadIn(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [
+                    new DraftSentence(
+                        's1',
+                        'Active prescriptions include Metformin ER 500 mg: Take 1 tablet by mouth daily with evening meal and Lisinopril 10 mg: Take 1 tablet by mouth daily.',
+                    ),
+                ],
+                [
+                    new DraftClaim(
+                        'Metformin ER 500 mg: Take 1 tablet by mouth daily with evening meal',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['medication:prescriptions/af-rx-metformin@2026-03-15'],
+                        's1',
+                    ),
+                    new DraftClaim(
+                        'Lisinopril 10 mg: Take 1 tablet by mouth daily',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['medication:prescriptions/af-rx-lisinopril@2026-03-15'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'medication',
+                    'medication:prescriptions/af-rx-metformin@2026-03-15',
+                    '2026-03-15',
+                    'Metformin ER 500 mg',
+                    'Take 1 tablet by mouth daily with evening meal',
+                ),
+                new EvidenceBundleItem(
+                    'medication',
+                    'medication:prescriptions/af-rx-lisinopril@2026-03-15',
+                    '2026-03-15',
+                    'Lisinopril 10 mg',
+                    'Take 1 tablet by mouth daily',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
+    }
+
+    public function testGroundedMedicationNameListCanOmitInstructions(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'The active medications are Metformin ER 500 mg and Lisinopril 10 mg.')],
+                [
+                    new DraftClaim(
+                        'The active medication is Metformin ER 500 mg: Take 1 tablet by mouth daily with evening meal.',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['medication:prescriptions/af-rx-metformin@2026-03-15'],
+                        's1',
+                    ),
+                    new DraftClaim(
+                        'The active medication is Lisinopril 10 mg: Take 1 tablet by mouth daily.',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['medication:prescriptions/af-rx-lisinopril@2026-03-15'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'medication',
+                    'medication:prescriptions/af-rx-metformin@2026-03-15',
+                    '2026-03-15',
+                    'Metformin ER 500 mg',
+                    'Take 1 tablet by mouth daily with evening meal',
+                ),
+                new EvidenceBundleItem(
+                    'medication',
+                    'medication:prescriptions/af-rx-lisinopril@2026-03-15',
+                    '2026-03-15',
+                    'Lisinopril 10 mg',
+                    'Take 1 tablet by mouth daily',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
+    }
+
     public function testClinicalAdviceClaimIsRefusedEvenWithEvidenceSource(): void
     {
         $result = (new DraftVerifier())->verify(

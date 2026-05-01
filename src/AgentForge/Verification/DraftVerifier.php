@@ -175,6 +175,12 @@ final class DraftVerifier
                 return false;
             }
             $uncovered = str_replace($this->normalize($candidate->text), ' ', $uncovered);
+            foreach ($candidate->citedSourceIds as $sourceId) {
+                $item = $itemsBySourceId[$sourceId] ?? null;
+                if ($item !== null && $item->sourceType === 'medication') {
+                    $uncovered = str_replace($this->normalize($item->displayLabel), ' ', $uncovered);
+                }
+            }
         }
 
         return $this->containsOnlyConnectiveText($uncovered);
@@ -182,6 +188,16 @@ final class DraftVerifier
 
     private function containsOnlyConnectiveText(string $text): bool
     {
+        $text = preg_replace(
+            '/\b(the\s+)?(active\s+)?(prescriptions|medications|meds)\s+(are|include|includes|listed|found|shown)\b/',
+            ' ',
+            $text,
+        ) ?? $text;
+        $text = preg_replace(
+            '/\b(the\s+)?recent\s+(lab|labs|results|hemoglobin\s+a1c\s+results)\s+(are|include|includes|show|shows|listed|found)\b/',
+            ' ',
+            $text,
+        ) ?? $text;
         $text = preg_replace('/\b(and|or|with|plus)\b/', ' ', $text) ?? $text;
         $text = preg_replace('/[[:punct:]\s]+/', '', $text) ?? $text;
 
