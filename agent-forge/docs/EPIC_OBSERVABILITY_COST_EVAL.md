@@ -172,12 +172,31 @@ php agent-forge/scripts/run-evals.php
 vendor/bin/phpstan analyse src/AgentForge interface/patient_file/summary/agent_request.php tests/Tests/Isolated/AgentForge --configuration=phpstan.neon.dist --no-progress --memory-limit=1G
 ```
 
+## Local AgentForge Check
+
+Use the focused local gate before committing AgentForge changes:
+
+```bash
+agent-forge/scripts/check-local.sh
+```
+
+The script runs these checks in order and stops on the first failure:
+
+- `git diff --check`
+- PHP syntax checks for the AgentForge endpoint, `src/AgentForge`, isolated AgentForge tests, and the eval runner
+- shell syntax checks for AgentForge shell scripts
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`
+- `php agent-forge/scripts/run-evals.php`
+- focused PHPStan over `src/AgentForge`, the endpoint, and isolated AgentForge tests
+- PHPCS over changed AgentForge PHP files, including untracked files
+
 ---
 
 ## Change Log
 
 - 2026-04-30: Added sanitized AgentForge telemetry DTOs and wired telemetry into PSR request logging.
 - 2026-04-30: Added fixture usage/cost telemetry from the verified handler path.
+- 2026-05-01: Added `agent-forge/scripts/check-local.sh` as the one-command local AgentForge quality gate.
 - 2026-04-30: Added deterministic eval fixture and in-process runner with saved JSON results.
 - 2026-04-30: Captured local smoke proof through the eval runner.
 - 2026-04-30: Added OpenAI structured-output provider support and usage/cost parsing tests; live API-key verification passed locally.
