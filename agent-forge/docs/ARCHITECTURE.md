@@ -32,7 +32,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 ### Accepted V1 Limitations
 
 - The current UI and request model are single-turn. They do not preserve transcript, `conversation_id`, turn history, or follow-up grounding.
-- The response payload includes citations, but citation rendering in the browser is not yet accepted as a completed UI requirement.
+- The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is a v1 surfacing fix, not proof of multi-turn state.
 - The handler may call more evidence tools than the question requires; selective PHI-minimizing routing is planned.
 - Medication evidence currently relies on active prescriptions for the demo path and does not cover all OpenEMR medication table shapes.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are deferred.
@@ -146,7 +146,7 @@ Flow:
 8. LLM receives the question and evidence bundle only.
 9. LLM returns a structured draft answer.
 10. Verifier checks every patient-specific claim against the evidence bundle.
-11. Final answer includes citations in the response payload and must display them visibly after Epic 11 remediation.
+11. Final answer includes citations in the response payload and displays them visibly in the chart panel.
 12. Agent audit log records request metadata, tool calls, failures, latency, token use, cost estimate, verifier result, and source ids.
 
 The browser is only a display and input surface. It does not decide access. It does not hold long-lived PHI. It does not hold model credentials.
@@ -282,6 +282,18 @@ Agent request:
   "conversation_id": "planned; not implemented in the current single-shot path"
 }
 ```
+
+### Planned Minimum Multi-Turn Contract
+
+This contract is planned only. The current runtime API remains single-shot and does not accept or return a live `conversation_id`.
+
+- First turn: the server issues a `conversation_id` after session user, active patient, authorization, evidence, and verification succeed.
+- Follow-up turns: the browser sends the server-owned `conversation_id`; the server rejects the request if the conversation is expired, missing, owned by another user, or bound to another patient.
+- Scope: every conversation is bound to exactly one OpenEMR session user and one active patient. Cross-patient carryover is refused before chart tools run.
+- State: store turn metadata, cited source ids, missing/unchecked sections, and a compact server-side summary. Do not store full chart dumps, model prompts, browser-owned transcript state, or raw full-chart text.
+- Safety: prior answer text may help interpret the follow-up, but it is never evidence. Each factual follow-up answer must fetch current patient evidence and cite current source rows again.
+- Limits: enforce a small turn limit, short expiration, explicit PHI retention policy, and a deletion path before enabling stored turn state.
+- Evals before implementation: same-patient follow-up succeeds with fresh citations, cross-patient `conversation_id` reuse fails closed, expired conversations fail closed, and stale-context pressure cannot produce uncited claims.
 
 Tool result:
 

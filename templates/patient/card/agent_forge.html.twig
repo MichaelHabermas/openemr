@@ -25,17 +25,79 @@
     const response = document.getElementById('agent-forge-response');
     const submit = form.querySelector('button[type="submit"]');
 
-    function showMessage(message, level) {
-        response.textContent = message;
+    function appendTextBlock(parent, message, className) {
+        if (message === '') {
+            return;
+        }
+
+        const block = document.createElement('div');
+        block.textContent = message;
+        block.style.whiteSpace = 'pre-wrap';
+        if (className) {
+            block.className = className;
+        }
+        parent.appendChild(block);
+    }
+
+    function appendList(parent, label, items) {
+        if (!items || items.length === 0) {
+            return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mt-2';
+
+        const heading = document.createElement('strong');
+        heading.textContent = label;
+        wrapper.appendChild(heading);
+
+        const list = document.createElement('ul');
+        list.className = 'mb-0 pl-3';
+
+        items.forEach(function (item) {
+            const row = document.createElement('li');
+            row.textContent = item;
+            list.appendChild(row);
+        });
+
+        wrapper.appendChild(list);
+        parent.appendChild(wrapper);
+    }
+
+    function showMessage(message, level, payload) {
+        response.textContent = '';
         response.style.whiteSpace = 'pre-wrap';
         response.className = 'alert mt-2 mb-0 alert-' + level;
+
+        appendTextBlock(response, message, '');
+
+        if (!payload) {
+            return;
+        }
+
+        appendList(response, {{ "Missing or unchecked"|xlj }}, payload.missing_or_unchecked_sections || []);
+        appendList(response, {{ "Warnings"|xlj }}, payload.refusals_or_warnings || []);
+
+        if (payload.status === 'ok' && payload.citations && payload.citations.length > 0) {
+            appendList(response, {{ "Sources"|xlj }}, payload.citations);
+            return;
+        }
+
+        if (
+            payload.status === 'ok'
+            && (!payload.citations || payload.citations.length === 0)
+            && (!payload.missing_or_unchecked_sections || payload.missing_or_unchecked_sections.length === 0)
+            && (!payload.refusals_or_warnings || payload.refusals_or_warnings.length === 0)
+        ) {
+            appendTextBlock(response, {{ "No chart sources were returned."|xlj }}, 'mt-2 font-italic');
+        }
     }
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         const value = question.value.trim();
         if (value === '') {
-            showMessage({{ "Enter a question before sending."|xlj }}, 'warning');
+            showMessage({{ "Enter a question before sending."|xlj }}, 'warning', null);
             return;
         }
 
@@ -57,27 +119,13 @@
             return result.json();
         }).then(function (payload) {
             if (payload.status === 'ok') {
-                const details = [];
-                if (payload.missing_or_unchecked_sections && payload.missing_or_unchecked_sections.length > 0) {
-                    details.push(
-                        {{ "Missing or unchecked:"|xlj }} + ' ' + payload.missing_or_unchecked_sections.join(' ')
-                    );
-                }
-                if (payload.refusals_or_warnings && payload.refusals_or_warnings.length > 0) {
-                    details.push(payload.refusals_or_warnings.join(' '));
-                }
-                showMessage(
-                    payload.answer + (details.length > 0 ? '\n' + details.join('\n') : ''),
-                    'info'
-                );
+                showMessage(payload.answer || '', 'info', payload);
             } else {
-                showMessage(
-                    (payload.refusals_or_warnings || [{{ "The request was refused."|xlj }}]).join(' '),
-                    'warning'
-                );
+                payload.refusals_or_warnings = payload.refusals_or_warnings || [{{ "The request was refused."|xlj }}];
+                showMessage('', 'warning', payload);
             }
         }).catch(function () {
-            showMessage({{ "The request failed. Please try again."|xlj }}, 'danger');
+            showMessage({{ "The request failed. Please try again."|xlj }}, 'danger', null);
         }).finally(function () {
             status.textContent = '';
             submit.disabled = false;

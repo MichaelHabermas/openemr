@@ -40,6 +40,7 @@ Acceptance criteria:
 
 - The target agent supports multi-turn follow-up within the same patient context.
 - Current v1 treats each question as an independent single-shot request until `conversation_id`, server-side turn state, transcript display, retention policy, and follow-up evals are implemented.
+- Current v1 renders structured citations visibly in the chart panel, but that citation surfacing is not conversation memory.
 - Each follow-up query is bound to the active OpenEMR session user and active patient.
 - The agent can answer supported questions such as recent A1c trend, active medications, last plan, and changes since last visit.
 - The model cannot call arbitrary SQL or access patients outside the active chart.
@@ -256,6 +257,6 @@ The agent is not shippable if any of these are true:
 - It returns unsupported patient-specific claims.
 - It gives diagnosis, treatment, dosing, medication-change, or unsupported clinical-rule advice.
 - It hides tool failures or missing data.
-- It cannot **surface** source citations for factual claims in a **reviewable** way: citations must exist on the API response (and in structured logs / evals) so every supported claim is traceable; **physician-visible citation UI** in the chart panel is a separate Epic 11 requirement (see `ARCHITECTURE.md`). Until Epic 11 lands, treat “show” here as payload and audit trail, not as “rendered in the Twig panel.”
+- It cannot **surface** source citations for factual claims in a **reviewable** way in the chart panel from the structured response payload; citations must also remain available in the API response and structured logs / evals so every supported claim is traceable.
 - It logs raw PHI unnecessarily.
 - It cannot be demonstrated in the deployed environment.

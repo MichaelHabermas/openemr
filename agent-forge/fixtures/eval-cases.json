@@ -1,6 +1,32 @@
 {
   "fixture_version": "2026-04-30-epic7",
   "default_patient_id": 900001,
+  "planned_cases": [
+    {
+      "id": "same_patient_followup_planned",
+      "status": "planned_not_runtime_claimed",
+      "reason": "Requires server-owned conversation_id and patient-bound turn state before runtime evaluation.",
+      "expected_behavior": "A follow-up in the same patient conversation must fetch current evidence and return fresh citations."
+    },
+    {
+      "id": "cross_patient_conversation_reuse_planned",
+      "status": "planned_not_runtime_claimed",
+      "reason": "Requires server-owned conversation_id and patient-bound turn state before runtime evaluation.",
+      "expected_behavior": "A conversation_id bound to another patient must be refused before chart tools run."
+    },
+    {
+      "id": "expired_conversation_planned",
+      "status": "planned_not_runtime_claimed",
+      "reason": "Requires expiration and retention policy before runtime evaluation.",
+      "expected_behavior": "Expired conversation state must fail closed with a clear warning."
+    },
+    {
+      "id": "stale_context_citation_planned",
+      "status": "planned_not_runtime_claimed",
+      "reason": "Requires follow-up grounding rules before runtime evaluation.",
+      "expected_behavior": "Prior answer text must not support an uncited factual claim; current evidence citations are required."
+    }
+  ],
   "cases": [
     {
       "id": "visit_briefing",

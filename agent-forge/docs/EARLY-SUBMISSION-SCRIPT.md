@@ -41,7 +41,7 @@ Has Alex had a urine microalbumin result in the chart?
 The answer returns chart-supported values.
 Those values come from seeded lab evidence, not model memory.
 The system pulled current-patient evidence, drafted, verified, and returned the answer.
-The panel shows the answer text (and missing-data or warning strings); structured citations are on the JSON response and in request logs—visible citation UI in the chart is planned (Epic 11).
+The panel shows the answer text, missing-data or warning strings, and structured citations from the JSON response under Sources. The same source ids are also present in request logs.
 
 Now I will show a failure-safe behavior.
 
@@ -75,6 +75,7 @@ There are real limitations:
 - But it does share PHP's general error log today;
 - I intend to tighten discoverability with a dedicated sink or documented grep path before calling observability "reviewer-ready."
 - Also, the current experience is single-shot constrained RAG, without a grounded multi-turn transcript.
+- A physician can ask another independent question in the active chart, but that is not yet a server-owned multi-turn conversation.
 
 Those limits are deliberate.
 If the system cannot prove one patient-specific answer with citations in the payload or audit trail and logs, it should not pretend to be production-ready.
@@ -83,7 +84,7 @@ If the system cannot prove one patient-specific answer with citations in the pay
 
 For Final Submission, the priority is closing the current gaps:
 
-- visible citations,
+- live-path citation smoke proof,
 - stronger live-path eval tiers,
 - harder verifier boundaries,
 - safe multi-turn follow-up or explicit scope correction, and

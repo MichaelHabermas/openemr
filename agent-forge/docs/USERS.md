@@ -44,6 +44,7 @@ Accepted v1 limitation:
 
 - The current product is single-shot constrained RAG. It does not maintain a transcript, `conversation_id`, turn history, or follow-up context.
 - A physician may ask another question, but the system treats it as a new independent request against the active patient, not as a grounded continuation of the prior answer.
+- Source citations are now rendered visibly from the structured response payload; this citation display does not change the single-shot request model.
 - Multi-turn Follow-Up Drill-Down remains a valid target use case because `SPECS.txt` asks for follow-up questions and conversation context. It is planned remediation in `PLAN.md` Epic 11, not a completed capability.
 
 ## Use Case 1 - Visit Briefing
@@ -69,7 +70,7 @@ Accepted v1 limitation:
 
 **Why an agent:** The physician does not know in advance which chart section will matter. The value is multi-turn narrowing: ask a broad question, inspect the answer, then narrow by date, problem, medication, lab, or previous note.
 
-**Current status:** Not complete. Today's implementation accepts independent questions about the active chart but does not persist conversation state or ground follow-ups in prior turns. Epic 11 must add server-owned `conversation_id`, patient-bound turn state, transcript display, retention policy, and follow-up evals before this use case can be claimed as implemented.
+**Current status:** Not complete. Today's implementation accepts independent questions about the active chart and displays structured citations, but it does not persist conversation state or ground follow-ups in prior turns. A future multi-turn implementation must add server-owned `conversation_id`, patient-bound turn state, transcript display, retention policy, and follow-up evals before this use case can be claimed as implemented.
 
 **Boundary:** Every factual answer must be traceable to the patient's chart. If the chart does not support an answer, the agent must say so.
 

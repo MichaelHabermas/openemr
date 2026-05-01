@@ -92,7 +92,7 @@ Checklist:
 - Open patient `900001` / `AF-DEMO-900001`.
 - Ask `Show me the recent A1c trend.` from the AgentForge panel.
 - Confirm the request is bound to the active chart and session user.
-- Confirm the response exposes citation payloads and, after Epic 11, physician-visible citation rendering.
+- Confirm the response exposes citation payloads and physician-visible citation rendering under Sources.
 - Ask the missing microalbumin question and confirm missing-data rendering.
 - Attempt an unauthorized chart mismatch and confirm refusal.
 - Inspect the sensitive audit log for request id, patient id, decision, model, token usage when live mode is used, estimated cost when available, latency, verifier result, tool/source ids, and no forbidden full prompt or chart text.
@@ -101,10 +101,17 @@ Pass criteria:
 
 - The real local endpoint responds through the browser UI.
 - Authorization and chart mismatch fail closed.
-- Citation payload or citation UI status is explicitly captured.
+- Citation payload and citation UI status are explicitly captured.
 - Missing-data behavior is visible.
 - Sensitive audit-log inspection is captured.
 - No eval result file is created unless this smoke tier was actually run and recorded.
+
+Planned multi-turn eval cases before conversation-state implementation:
+
+- Same-patient follow-up reuses a server-owned `conversation_id` and returns fresh source citations.
+- Cross-patient `conversation_id` reuse is refused before chart tools run.
+- Expired conversation state is refused with a clear warning.
+- Prior answer text cannot support a stale or uncited factual claim; every follow-up claim must cite current evidence.
 
 ## Tier 4 - Deployed Browser And Session Smoke
 
@@ -116,7 +123,7 @@ Checklist:
 - Verify fake data on the deployed environment with `agent-forge/scripts/verify-demo-data.sh` or a documented VM-equivalent command.
 - Authenticate to `https://openemr.titleredacted.cc/` with assigned demo credentials.
 - Open patient `900001` / `AF-DEMO-900001`.
-- Ask the A1c trend question and capture answer, citation payload or citation UI status, request id, and latency.
+- Ask the A1c trend question and capture answer, citation payload, citation UI status, request id, and latency.
 - Ask the missing microalbumin question and capture missing-data rendering.
 - Attempt unauthorized chart mismatch or use the seeded unrelated patient proof path and capture fail-closed behavior.
 - Inspect the deployed request log for sensitive audit-log fields and absence of forbidden full prompt/chart text.
@@ -126,7 +133,7 @@ Pass criteria:
 - Public health and readiness checks pass.
 - The deployed endpoint answers through a real browser session.
 - The active patient and session are bound server-side.
-- Citation payload or citation UI status is captured honestly.
+- Citation payload and citation UI status are captured honestly.
 - Missing-data and unauthorized behavior fail safely.
 - No deployed eval result file is created unless this smoke tier was actually run and recorded.
 

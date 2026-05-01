@@ -104,6 +104,35 @@ final class EvaluationTiersDocumentTest extends TestCase
         $this->assertStringContainsString('captured result or an explicit documented gap', $document);
     }
 
+    public function testMultiTurnEvalCasesArePlannedWithoutRuntimeClaim(): void
+    {
+        $document = $this->evaluationDocument();
+        $fixture = $this->readRepoFile('/agent-forge/fixtures/eval-cases.json');
+
+        foreach (
+            [
+                'Same-patient follow-up',
+                'Cross-patient `conversation_id` reuse',
+                'Expired conversation state',
+                'Prior answer text cannot support a stale or uncited factual claim',
+            ] as $plannedEval
+        ) {
+            $this->assertStringContainsString($plannedEval, $document);
+        }
+
+        foreach (
+            [
+                'same_patient_followup_planned',
+                'cross_patient_conversation_reuse_planned',
+                'expired_conversation_planned',
+                'stale_context_citation_planned',
+                'planned_not_runtime_claimed',
+            ] as $plannedFixtureCase
+        ) {
+            $this->assertStringContainsString($plannedFixtureCase, $fixture);
+        }
+    }
+
     public function testReviewerGuideAndEvalReadmePointToTierTaxonomy(): void
     {
         $reviewerGuide = $this->readRepoFile('/AGENTFORGE-REVIEWER-GUIDE.md');
