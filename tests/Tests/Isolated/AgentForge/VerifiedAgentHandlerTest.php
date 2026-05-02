@@ -118,6 +118,52 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('not_run', $telemetry->verifierResult);
     }
 
+    public function testCrossPatientRequestIsRefusedBeforeEvidenceDrafting(): void
+    {
+        $tool = new VerifiedRecordingEvidenceTool();
+        $handler = new VerifiedAgentHandler(
+            [$tool],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $response = $handler->handle($this->request('Show me patient 42\'s labs while I am in this chart.'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertSame('refused', $response->status);
+        $this->assertFalse($tool->called);
+        $this->assertSame(
+            ['I can only answer questions about the currently open patient chart.'],
+            $response->refusalsOrWarnings,
+        );
+        $this->assertNotNull($telemetry);
+        $this->assertSame('cross_patient_refusal', $telemetry->questionType);
+        $this->assertSame([], $telemetry->toolsCalled);
+        $this->assertSame([], $telemetry->sourceIds);
+        $this->assertSame('not_run', $telemetry->model);
+        $this->assertSame('cross_patient_refusal', $telemetry->failureReason);
+        $this->assertSame('not_run', $telemetry->verifierResult);
+    }
+
+    public function testSamePatientNumericReferenceDoesNotTriggerCrossPatientRefusal(): void
+    {
+        $tool = new VerifiedRecordingEvidenceTool();
+        $handler = new VerifiedAgentHandler(
+            [$tool],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $response = $handler->handle($this->request('Show me patient 900001 labs.'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertSame('ok', $response->status);
+        $this->assertTrue($tool->called);
+        $this->assertNotNull($telemetry);
+        $this->assertSame('lab', $telemetry->questionType);
+        $this->assertNull($telemetry->failureReason);
+    }
+
     public function testUnmatchedQuestionFallsBackToVisitBriefingAndCollectsEvidence(): void
     {
         $tool = new VerifiedRecordingEvidenceTool();

@@ -75,6 +75,59 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->telemetry->sourceIds);
     }
 
+    public function testVisitBriefingAppendsMedicationEvidenceWhenVerifiedDraftOmitsIt(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineBriefingWithoutMedicationProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Give me a visit briefing.')),
+            $this->briefingBundle(),
+            'visit_briefing',
+            ['Demographics', 'Active medications'],
+        );
+
+        $this->assertSame('ok', $result->response->status);
+        $this->assertStringContainsString('Patient name: Alex Testpatient', $result->response->answer);
+        $this->assertStringContainsString('Metformin ER 500 mg: 500 mg', $result->response->answer);
+        $this->assertStringContainsString('Lisinopril 10 mg: 10 mg', $result->response->answer);
+        $this->assertContains('medication:prescriptions/af-rx-metformin@2026-03-15', $result->response->citations);
+        $this->assertContains('medication:prescriptions/af-rx-lisinopril@2026-03-15', $result->response->citations);
+        $this->assertSame('passed', $result->telemetry->verifierResult);
+    }
+
+    public function testVisitBriefingDoesNotDuplicateMedicationEvidenceAlreadyPresent(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineBriefingWithMedicationProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Give me a visit briefing.')),
+            $this->briefingBundle(),
+            'visit_briefing',
+            ['Demographics', 'Active medications'],
+        );
+
+        $this->assertSame(1, substr_count($result->response->answer, 'Metformin ER 500 mg: 500 mg'));
+        $this->assertSame(1, substr_count($result->response->answer, 'Lisinopril 10 mg: 10 mg'));
+    }
+
+    public function testNonBriefingAnswerDoesNotAppendMedicationEvidence(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineBriefingWithoutMedicationProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Show me patient demographics.')),
+            $this->briefingBundle(),
+            'demographics',
+            ['Demographics', 'Active medications'],
+        );
+
+        $this->assertStringNotContainsString('Metformin ER 500 mg: 500 mg', $result->response->answer);
+        $this->assertStringNotContainsString('Lisinopril 10 mg: 10 mg', $result->response->answer);
+    }
+
     public function testUnsupportedClaimIsBlockedAtPipelineBoundary(): void
     {
         $result = (new VerifiedDraftingPipeline(
@@ -103,6 +156,33 @@ final class VerifiedDraftingPipelineTest extends TestCase
             ),
         ]);
     }
+
+    private function briefingBundle(): EvidenceBundle
+    {
+        return new EvidenceBundle([
+            new EvidenceBundleItem(
+                'demographic',
+                'demographic:patient_data/900001-name@2026-04-15',
+                '2026-04-15',
+                'Patient name',
+                'Alex Testpatient',
+            ),
+            new EvidenceBundleItem(
+                'medication',
+                'medication:prescriptions/af-rx-metformin@2026-03-15',
+                '2026-03-15',
+                'Metformin ER 500 mg',
+                '500 mg',
+            ),
+            new EvidenceBundleItem(
+                'medication',
+                'medication:prescriptions/af-rx-lisinopril@2026-03-15',
+                '2026-03-15',
+                'Lisinopril 10 mg',
+                '10 mg',
+            ),
+        ]);
+    }
 }
 
 final readonly class PipelineProviderThatMustNotBeCalled implements DraftProvider
@@ -118,6 +198,64 @@ final readonly class PipelineUnavailableProvider implements DraftProvider
     public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('cURL timeout internals');
+    }
+}
+
+final readonly class PipelineBriefingWithoutMedicationProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    {
+        return new DraftResponse(
+            [new DraftSentence('s1', 'Patient name: Alex Testpatient')],
+            [
+                new DraftClaim(
+                    'Patient name: Alex Testpatient',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['demographic:patient_data/900001-name@2026-04-15'],
+                    's1',
+                ),
+            ],
+            [],
+            [],
+            DraftUsage::fixture(),
+        );
+    }
+}
+
+final readonly class PipelineBriefingWithMedicationProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    {
+        return new DraftResponse(
+            [
+                new DraftSentence('s1', 'Patient name: Alex Testpatient'),
+                new DraftSentence('s2', 'Metformin ER 500 mg: 500 mg'),
+                new DraftSentence('s3', 'Lisinopril 10 mg: 10 mg'),
+            ],
+            [
+                new DraftClaim(
+                    'Patient name: Alex Testpatient',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['demographic:patient_data/900001-name@2026-04-15'],
+                    's1',
+                ),
+                new DraftClaim(
+                    'Metformin ER 500 mg: 500 mg',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['medication:prescriptions/af-rx-metformin@2026-03-15'],
+                    's2',
+                ),
+                new DraftClaim(
+                    'Lisinopril 10 mg: 10 mg',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['medication:prescriptions/af-rx-lisinopril@2026-03-15'],
+                    's3',
+                ),
+            ],
+            [],
+            [],
+            DraftUsage::fixture(),
+        );
     }
 }
 

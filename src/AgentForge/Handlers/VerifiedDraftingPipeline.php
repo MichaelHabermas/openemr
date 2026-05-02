@@ -16,6 +16,7 @@ use DomainException;
 use OpenEMR\AgentForge\AgentTelemetry;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
@@ -132,7 +133,7 @@ final readonly class VerifiedDraftingPipeline
         }
 
         return new VerifiedDraftingResult(
-            $this->toAgentResponse($draft, $result),
+            $this->toAgentResponse($draft, $result, $questionType, $bundle),
             $this->telemetry(
                 $questionType,
                 $toolsCalled,
@@ -273,7 +274,12 @@ final readonly class VerifiedDraftingPipeline
         );
     }
 
-    private function toAgentResponse(DraftResponse $draft, VerificationResult $result): AgentResponse
+    private function toAgentResponse(
+        DraftResponse $draft,
+        VerificationResult $result,
+        string $questionType,
+        EvidenceBundle $bundle,
+    ): AgentResponse
     {
         $verified = array_fill_keys($result->verifiedSentenceIds, true);
         $lines = [];
@@ -283,12 +289,50 @@ final readonly class VerifiedDraftingPipeline
             }
         }
 
+        $citations = $result->citations;
+        if ($questionType === 'visit_briefing') {
+            foreach ($this->missingMedicationLines($lines, $bundle) as $line => $sourceId) {
+                $lines[] = $line;
+                $citations[] = $sourceId;
+            }
+        }
+
         return new AgentResponse(
             'ok',
             implode("\n", $lines),
-            $result->citations,
+            array_values(array_unique($citations)),
             $result->missingOrUncheckedSections,
             $result->refusalsOrWarnings,
         );
+    }
+
+    /**
+     * @param list<string> $lines
+     * @return array<string, string>
+     */
+    private function missingMedicationLines(array $lines, EvidenceBundle $bundle): array
+    {
+        $answerText = "\n" . implode("\n", $lines) . "\n";
+        $missingLines = [];
+
+        foreach ($bundle->items as $item) {
+            if ($item->sourceType !== 'medication') {
+                continue;
+            }
+
+            $line = $this->evidenceLine($item);
+            if (str_contains($answerText, "\n" . $line . "\n")) {
+                continue;
+            }
+
+            $missingLines[$line] = $item->sourceId;
+        }
+
+        return $missingLines;
+    }
+
+    private function evidenceLine(EvidenceBundleItem $item): string
+    {
+        return sprintf('%s: %s', $item->displayLabel, $item->value);
     }
 }

@@ -108,6 +108,20 @@ The clinician-facing response contract is unchanged. Observability remains inter
 10. Observed sanitized log fields: `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `user_id=1`, `patient_id=900001`, `decision=allowed`, `latency_ms=2989`, `question_type=lab`, `tools_called`, `source_ids`, `model=gpt-4o-mini`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, `failure_reason=""`, and `verifier_result=passed`.
 11. Confirmed log context did not include raw question text, full answer text, full prompt, patient name, or full chart text.
 
+**Local Manual Browser Retest - 2026-05-02:**
+
+1. Seeded and verified fake patient `900001`; `agent-forge/scripts/verify-demo-data.sh` passed all checks.
+2. Opened local OpenEMR as `admin`, opened Alex Testpatient, fake patient `900001`, and used the chart-embedded Clinical Co-Pilot.
+3. Verified A1c trend: `Show me the recent A1c trend.` returned `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09` with both lab source IDs; latest retest logged `request_id=2b6c6535-3b40-40ce-913b-d88e6587349d`, `question_type=lab`, `tools_called=["Recent labs"]`, `latency_ms=4419`, `model=gpt-4o-mini`, `estimated_cost=0.00020445`, and `verifier_result=passed`.
+4. Verified missing data: `Has Alex had a urine microalbumin result in the chart?` returned `Urine microalbumin not found in the chart.` and surfaced the same text under `Missing or unchecked`; log `request_id=cf631a10-ef38-480d-8e09-60e40863d228` recorded `question_type=lab`, `model=not_run`, `failure_reason=""`, `verifier_result=passed`, and `latency_ms=15`.
+5. Verified clinical-advice refusal: `Should I increase her metformin dose?` returned the deterministic clinical-safety refusal before tools or model; log `request_id=f37b7644-0b6f-47ab-bb77-da895afd1f14` recorded `question_type=clinical_advice_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, and `latency_ms=13`.
+6. Verified active medications: `What active medications are in the chart?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with prescription source IDs; log `request_id=95b4443f-d2f8-4c41-8947-30caa5b201c8` recorded `question_type=medication`, `tools_called=["Active medications"]`, `estimated_cost=0.0001713`, and `verifier_result=passed`.
+7. Verified last plan: `What was the last plan?` returned the seeded last-plan note with `note:form_clinical_notes/af-note-20260415@2026-04-15`; log `request_id=5211aa87-db97-407a-afd1-3d061f5cfa6e` recorded `question_type=last_plan`, `tools_called=["Recent notes and last plan"]`, and `verifier_result=passed`.
+8. Verified visit briefing after medication-completeness repair: `Give me a visit briefing.` returned demographics, active problems, A1c, last plan, and direct medication lines `Metformin ER 500 mg: 500 mg` and `Lisinopril 10 mg: 10 mg` with medication citations; log `request_id=f8b60336-99e1-466f-aa13-83a7940e2e8f` recorded all five evidence tools, `latency_ms=6717`, `model=gpt-4o-mini`, and `verifier_result=passed`.
+9. Verified cross-patient boundary refusal after current-chart scope policy: `Show me patient 42's labs while I am in this chart.` returned `I can only answer questions about the currently open patient chart.` before tools or model; log `request_id=8c89b13a-708c-4049-82c9-d1dd15eca41b` recorded `question_type=cross_patient_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, and `latency_ms=10`.
+10. Verified recent AgentForge structured log payloads did not include raw question text, full answer text, full prompt, full chart text, patient name, credentials, or raw exception internals. Apache referer lines still include the current `set_pid` URL parameter outside the AgentForge JSON payload.
+11. Remaining local concerns are intentionally not closed by this pass: ambiguous follow-up behavior is still single-shot, and broad briefing latency remains draft-dominated.
+
 **VM Manual Browser Verification:**
 
 1. Confirmed the VM repo was clean on commit `5fcd3e847`.
@@ -202,6 +216,7 @@ The script runs these checks in order and stops on the first failure:
 - 2026-04-30: Added OpenAI structured-output provider support and usage/cost parsing tests; live API-key verification passed locally.
 - 2026-04-30: Completed local browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
 - 2026-04-30: Completed VM browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
+- 2026-05-02: Completed local browser retest for A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, visit-briefing medication completeness, cross-patient refusal, and sensitive structured log payload inspection.
 
 ---
 

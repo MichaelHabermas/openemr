@@ -22,6 +22,7 @@ use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -54,6 +55,16 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     public function handle(AgentRequest $request): AgentResponse
     {
         $this->lastTelemetry = null;
+        $scopeRefusal = CurrentChartScopePolicy::refusalFor($request->question, $request->patientId);
+        if ($scopeRefusal !== null) {
+            $this->lastTelemetry = AgentTelemetry::plannedRefusal(
+                'cross_patient_refusal',
+                'cross_patient_refusal',
+                ChartQuestionPlanner::defaultSections(),
+            );
+            return AgentResponse::refusal($scopeRefusal);
+        }
+
         $plan = $this->planner->plan($request->question, $this->deadlineMs);
         if ($plan->refused()) {
             $this->lastTelemetry = AgentTelemetry::plannedRefusal(
