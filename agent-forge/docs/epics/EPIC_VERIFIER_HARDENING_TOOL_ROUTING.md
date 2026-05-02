@@ -97,7 +97,9 @@ First-principles constraint: the cheapest and safest PHI is the PHI never retrie
 
 ## Known Limitations
 
-- Semantic paraphrase verification remains conservative and mostly lexical. Unsupported tails are blocked, exact source values are enforced, multiple grounded claims can cover one displayed sentence, and broader semantic grounding is deferred rather than claimed.
+- Claim grounding is now token-set matching via `EvidenceMatcher` (no longer raw `str_contains` substring matching). All significant tokens of the cited evidence's `display_label` and `value` must appear as whole tokens in the claim text; numeric tokens must match exactly (`5` does not match inside `5.0`).
+- Date paraphrase is canonicalized at the matcher: English-month dates (`April 12, 1976`, `12 Apr 1976`, `Apr 1976`) are rewritten to ISO tokens before comparison so they ground against stored values like `1976-04-12`. Day numbers are zero-padded; ambiguous regional formats (`4/12/1976`) are deliberately left unconverted.
+- Broader semantic paraphrase verification remains deferred. Unsupported tails are still blocked, exact source values are still enforced, and multiple grounded claims can still cover one displayed sentence. Claims that paraphrase the label itself (e.g. "Born on April 12, 1976" against label `Date of birth`) require the prompt to keep the literal label prefix; `PromptComposer` includes explicit examples instructing the model to copy `display_label` verbatim.
 
 ---
 
@@ -107,3 +109,4 @@ First-principles constraint: the cheapest and safest PHI is the PHI never retrie
 - 2026-05-01: Local browser proof exposed and fixed the `Active medications` versus `Active prescriptions` route mismatch and the medication-name verifier false negative; full local AgentForge check passed after both fixes.
 - 2026-05-01: Local lab, medication, clinical-advice refusal, and ambiguous-question logs were manually inspected and recorded as local proof.
 - 2026-05-02: Deployed browser/log proof passed after OpenEMR container recreation cleared stale runtime code; deployed lab, medication, missing-data, clinical-advice refusal, and ambiguous-question checks were manually inspected and recorded.
+- 2026-05-02: Replaced `DraftVerifier::claimMatchesAllSources` substring logic with `EvidenceMatcher` token-set matching. Added English-month → ISO date canonicalization so naturally-phrased dates ground against stored ISO values without weakening exact-value enforcement. Split `DemographicsEvidenceTool` into per-field items (Patient name / Date of birth / Sex) so individual claims can ground against distinct sourceIds. Shrunk `ProblemsEvidenceTool` value to literal `Active` (date preserved in `source_date`). Added `PromptComposer` examples enforcing literal `display_label` copying. Verified live "Tell me about this patient" grounds all 10 demo evidence items with no verifier warnings; isolated tests pass at 178/178.

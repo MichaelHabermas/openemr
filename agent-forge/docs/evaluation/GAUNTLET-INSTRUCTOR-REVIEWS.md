@@ -231,6 +231,8 @@ Two failure modes:
 
 This is the kind of weakness that an instructor review should flag because it directly affects the safety story. The fix is non-trivial (semantic alignment, structural claim parsing, or NLI scoring), but at minimum the limitation should be documented in ARCHITECTURE.md as a known weakness with a planned mitigation.
 
+**Remediation status (2026-05-02):** Substring matching has been replaced by [`EvidenceMatcher`](../../../src/AgentForge/Verification/EvidenceMatcher.php) token-set matching. All significant tokens of the cited evidence's `display_label` and `value` must appear as whole tokens in the claim text; numeric tokens must match exactly (so the false-negative case "HbA1c was 8.2 %" against label `Hemoglobin A1c` is still rejected on the label side, but the false-positive case where a digit substring like "5" matches inside "5.0 %" no longer passes). English-month → ISO date canonicalization closes the date-paraphrase failure mode without weakening exact-value enforcement. The unsupported-tail false-positive cited above is now also blocked by Epic 12 Task 12.1.2's claim-coverage requirement. See [`epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md` § Known Limitations](../epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md) for the remaining deferred semantic-paraphrase scope.
+
 ### 2.3 Observability (request, latency, tool failures, tokens, cost)
 
 **Submitted:** [src/AgentForge/RequestLog.php](../../../src/AgentForge/RequestLog.php), [src/AgentForge/PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php).
@@ -297,7 +299,7 @@ These are not the focus of the review but they should be on the record:
 | S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](../../scripts/run-evals.php), `src/AgentForge/Eval/` |
 | S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php), [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig) |
 | S-1 | Gating | AUDIT/USERS/ARCHITECTURE are at `../`, not repo root as the spec specifies. | [../](../) |
-| S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](../../../src/AgentForge/Verification/DraftVerifier.php:93) |
+| S-7 | Moderate (remediated 2026-05-02) | DraftVerifier substring matching replaced by `EvidenceMatcher` token-set matching with ISO-date canonicalization; unsupported-tail false-positive blocked by Task 12.1.2. | [EvidenceMatcher.php](../../../src/AgentForge/Verification/EvidenceMatcher.php), [EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md](../epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md) |
 | S-9 | Moderate | Measured VM latency 10,693 ms vs. a "seconds" use case. No defined latency budget. | [COST-ANALYSIS.md:62](../operations/COST-ANALYSIS.md:62) |
 | S-3 | Moderate | Eval coverage thin on ambiguous queries; no eval for the multi-turn use case USERS.md defines. | [eval-cases.json](../../fixtures/eval-cases.json) |
 | S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php) |
