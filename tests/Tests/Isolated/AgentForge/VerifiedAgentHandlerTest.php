@@ -87,7 +87,10 @@ final class VerifiedAgentHandlerTest extends TestCase
 
         $this->assertSame('refused', $response->status);
         $this->assertFalse($tool->called);
-        $this->assertStringContainsString('cannot provide diagnosis', $response->refusalsOrWarnings[0]);
+        $this->assertSame(
+            'Clinical Co-Pilot can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.',
+            $response->refusalsOrWarnings[0],
+        );
     }
 
     public function testAdviceRefusalCapturesNoModelNoToolTelemetry(): void

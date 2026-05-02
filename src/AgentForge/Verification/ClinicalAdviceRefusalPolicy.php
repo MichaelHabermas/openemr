@@ -40,7 +40,7 @@ final class ClinicalAdviceRefusalPolicy
 
         foreach ($unsafePatterns as $pattern) {
             if (preg_match($pattern, $normalized) === 1) {
-                return 'AgentForge can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.';
+                return 'Clinical Co-Pilot can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.';
             }
         }
 

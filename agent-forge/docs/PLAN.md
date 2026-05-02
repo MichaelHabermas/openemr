@@ -1373,7 +1373,7 @@ Human verification:
 
 #### Task 12.2.1 - Plan Selective Evidence Tool Routing
 
-Status: implemented, automated and local browser/log proof complete; deployed browser log comparison remains pending.
+Status: implemented, automated, local browser/log, and deployed browser/log proof complete.
 
 Why: Reviews identify over-broad evidence retrieval: the handler calls every configured tool too often, weakening PHI minimization, speed, and the agent-tool story.
 
@@ -1398,6 +1398,7 @@ Human verification:
 - A reviewer can compare logs for medication and lab questions and see different, minimal tool sets.
 - Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, ambiguous refusal before evidence access, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
 - Local browser/log proof recorded: A1c question logged `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs, token/cost telemetry, and `verifier_result=passed`. Medication question returned only active prescription names and prescription source IDs, then logged `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication source IDs, and `verifier_result=passed`. Clinical-advice and ambiguous questions refused before tools with `model=not_run`.
+- Deployed browser/log proof recorded after OpenEMR container recreation cleared stale runtime code: A1c log `request_id=37667cff-a97b-4fef-8259-492a2391c64e` used only `Recent labs`; medication log `request_id=1a758ecd-4612-42ff-b11f-1a5696a85d99` used only `Active prescriptions`; missing microalbumin log `request_id=50fa82b6-559b-4ce5-8c6c-ebd4bada7a9e` used bounded `Recent labs`; clinical-advice refusal log `request_id=fadf7901-64d5-4068-ab92-052ad9c06cf3` and ambiguous-question log `request_id=635cc0b7-29bb-4057-a5ac-ff864adff400` used no tools and no model.
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 

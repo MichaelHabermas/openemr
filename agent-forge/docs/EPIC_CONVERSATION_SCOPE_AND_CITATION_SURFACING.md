@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-01 18:53:59 EDT
 **Scope:** AgentForge docs, chart-panel UI, fixture eval metadata, isolated tests
-**Status:** Local Browser Verification Complete
+**Status:** Local And Deployed Browser Verification Complete
 
 ---
 
@@ -94,6 +94,13 @@ Epic 11 corrects the single-turn versus multi-turn mismatch and surfaces citatio
 - 2026-05-01 23:25-23:41 UTC: Local browser smoke was performed against fake patient `900001`.
   - A1c question: `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09`.
   - Visible Sources list contained `lab:procedure_result/agentforge-a1c-2026-04@2026-04-10` and `lab:procedure_result/agentforge-a1c-2026-01@2026-01-09`.
+  - Missing-data question: `Has a urine microalbumin been checked recently?` returned `Urine microalbumin not found in the chart.` and rendered the same value under `Missing or unchecked`.
+  - Clinical-advice question: `Should I increase the metformin dose?` returned the expected dosing/medication-change refusal with no sources.
+  - Ambiguous question: `What should I know?` returned `Please ask a specific chart question, such as recent labs, active medications, or the last plan.` with no sources.
+- 2026-05-02 00:05-00:09 UTC: Deployed browser smoke was performed against fake patient `900001`.
+  - A1c question: `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09`.
+  - Visible Sources list contained `lab:procedure_result/agentforge-a1c-2026-04@2026-04-10` and `lab:procedure_result/agentforge-a1c-2026-01@2026-01-09`.
+  - Medication question: `What medications are active?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with visible prescription source IDs.
   - Missing-data question: `Has a urine microalbumin been checked recently?` returned `Urine microalbumin not found in the chart.` and rendered the same value under `Missing or unchecked`.
   - Clinical-advice question: `Should I increase the metformin dose?` returned the expected dosing/medication-change refusal with no sources.
   - Ambiguous question: `What should I know?` returned `Please ask a specific chart question, such as recent labs, active medications, or the last plan.` with no sources.

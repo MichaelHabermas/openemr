@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-01 19:06:29 EDT
 **Scope:** backend
-**Status:** Local Browser And Log Verification Complete
+**Status:** Local And Deployed Browser/Log Verification Complete
 
 ---
 
@@ -87,11 +87,17 @@ First-principles constraint: the cheapest and safest PHI is the PHI never retrie
   - Medication question `What medications are active?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with visible prescription source IDs only. Log `request_id=598c4569-204a-405a-9c7a-4255972cd37d` showed `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication prescription source IDs only, and `verifier_result=passed`.
   - Clinical-advice refusal logged `request_id=8d1d8eb6-d24f-4795-8f62-8a7c35c3e6e6`, `question_type=clinical_advice_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, `failure_reason=clinical_advice_refusal`, and `verifier_result=not_run`.
   - Ambiguous question refusal logged `request_id=2e35a40d-a58f-47fa-9f7a-03b6ff904ca1`, `question_type=ambiguous_question`, `tools_called=[]`, all chart sections skipped, `source_ids=[]`, `model=not_run`, `failure_reason=ambiguous_question`, and `verifier_result=not_run`.
+- Deployed browser/log proof:
+  - Health and seeded demo data passed on the deployed VM before browser smoke.
+  - Lab question `Show me the recent A1c trend.` returned the expected A1c values and visible lab source IDs. After recreating the OpenEMR container to clear stale runtime code, log `request_id=37667cff-a97b-4fef-8259-492a2391c64e` showed `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs only, token/cost telemetry, and `verifier_result=passed`.
+  - Medication question `What medications are active?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with visible prescription source IDs only. Log `request_id=1a758ecd-4612-42ff-b11f-1a5696a85d99` showed `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication prescription source IDs only, and `verifier_result=passed`.
+  - Missing-data question `Has a urine microalbumin been checked recently?` returned `Urine microalbumin not found in the chart.` with the same text under `Missing or unchecked`. Log `request_id=50fa82b6-559b-4ce5-8c6c-ebd4bada7a9e` showed the bounded `Recent labs` route, existing A1c lab source IDs as checked evidence, and `verifier_result=passed`.
+  - Clinical-advice refusal logged `request_id=fadf7901-64d5-4068-ab92-052ad9c06cf3`, `question_type=clinical_advice_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, `failure_reason=clinical_advice_refusal`, and `verifier_result=not_run`.
+  - Ambiguous question refusal logged `request_id=635cc0b7-29bb-4057-a5ac-ff864adff400`, `question_type=ambiguous_question`, `tools_called=[]`, all chart sections skipped, `source_ids=[]`, `model=not_run`, `failure_reason=ambiguous_question`, and `verifier_result=not_run`.
 
 ## Known Limitations
 
 - Semantic paraphrase verification remains conservative and mostly lexical. Unsupported tails are blocked, exact source values are enforced, multiple grounded claims can cover one displayed sentence, and broader semantic grounding is deferred rather than claimed.
-- Deployed browser/log comparison remains unperformed in this local task; local browser/log proof is captured above.
 
 ---
 
@@ -100,3 +106,4 @@ First-principles constraint: the cheapest and safest PHI is the PHI never retrie
 - 2026-05-01: Implemented verifier label distrust, unsupported-tail blocking, selective routing telemetry, and focused automated proof. Git commits are left to the user unless explicitly requested.
 - 2026-05-01: Local browser proof exposed and fixed the `Active medications` versus `Active prescriptions` route mismatch and the medication-name verifier false negative; full local AgentForge check passed after both fixes.
 - 2026-05-01: Local lab, medication, clinical-advice refusal, and ambiguous-question logs were manually inspected and recorded as local proof.
+- 2026-05-02: Deployed browser/log proof passed after OpenEMR container recreation cleared stale runtime code; deployed lab, medication, missing-data, clinical-advice refusal, and ambiguous-question checks were manually inspected and recorded.

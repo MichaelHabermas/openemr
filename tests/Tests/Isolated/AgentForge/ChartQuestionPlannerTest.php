@@ -25,7 +25,10 @@ final class ChartQuestionPlannerTest extends TestCase
         $this->assertTrue($plan->refused());
         $this->assertSame('clinical_advice_refusal', $plan->questionType);
         $this->assertSame([], $plan->sections);
-        $this->assertStringContainsString('cannot provide diagnosis', (string) $plan->refusal);
+        $this->assertSame(
+            'Clinical Co-Pilot can summarize chart facts, but cannot provide diagnosis, treatment, dosing, medication-change advice, or note drafting.',
+            $plan->refusal,
+        );
     }
 
     public function testRoutesCommonQuestionsToMinimumEvidenceSections(): void

@@ -113,7 +113,7 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 | Fixture-only green is not described as full live-agent proof. | Release rule and Tier 0 boundary language in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
 | Seeded SQL eval tier exists with expected evidence and pass/fail criteria. | Tier 1 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLivePathTiersHavePassCriteriaAndRequiredCases`. | Local reviewer inspection confirmed tier exists; not executed as live SQL in this epic. |
 | Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed tier exists; not executed against provider in this epic. |
-| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local browser smoke was performed separately for Epics 11-12; deployed smoke remains pending. |
+| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local and deployed browser smoke was performed separately for Epics 11-12 on fake patient `900001`. |
 | Release gate requires live-tier captured result or explicit gap before live-agent claims. | Purpose/release rule in `EVALUATION-TIERS.md`; reviewer-guide link. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed on 2026-05-01. |
 
 ---
@@ -122,7 +122,7 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 
 - Source criteria mapped to code/proof/deferral? yes
 - Required automated tests executed and captured? yes for targeted Epic 10 and AgentForge proof
-- Required manual checks executed and captured? yes for local reviewer inspection; local browser smoke was performed separately for Epics 11-12; deployed smoke remains pending
+- Required manual checks executed and captured? yes for local reviewer inspection; local and deployed browser smoke was performed separately for Epics 11-12
 - Required fixtures/data/users for proof exist? yes, fake patient and seed/verify commands are referenced for planned live tiers
 - Security/privacy/logging/error-handling requirements verified? yes for documentation requirements; no runtime trust boundary changed
 - Known limitations and deferred relationship/scope shapes documented? yes
