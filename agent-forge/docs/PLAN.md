@@ -1701,6 +1701,273 @@ Implementation status:
 - Production readiness remains blocked until production-shaped telemetry shows p95 verified-answer-or-clear-failure latency under 10 seconds for the demo path and `stage_timings_ms` identifies bottlenecks.
 - Optimization work is tied to selective routing, evidence-size reduction, model timeout tuning, citation-safe prompt/cache strategy, query/index proof, and infrastructure measurement.
 
+## Epic 15 - Reviewer Entry Point And Submission Map
+
+Status: Planned. The root README currently points to `AGENTFORGE-REVIEWER-GUIDE.md`, but that file is absent.
+
+Goal: give reviewers one working repository-root entry point for the deployed URL, demo path, seed/eval commands, artifact map, implemented proof, and known blockers.
+
+### Feature 15.1 - Reviewer Guide Contract
+
+#### Task 15.1.1 - Define The Required Reviewer Guide Contents
+
+Why: reviewers should not have to hunt through `agent-forge/docs/epics/` to find the evidence required by `SPECS.txt`.
+
+Start with eval/test or documentation proof:
+
+- Check root README links before changing documentation.
+- Define the guide contents from `SPECS.txt`, current artifact locations, and known review findings.
+
+Implementation notes:
+
+- The guide should live at repository root as `AGENTFORGE-REVIEWER-GUIDE.md` unless README is changed to point somewhere else.
+- Required guide sections: deployed URL, readiness/health check command, fake patient and demo credentials policy, demo path, seed command, eval command, artifact map, cost analysis link, implementation proof, known blockers, and production-readiness caveats.
+- Do not include secrets, real PHI, private credentials, or unsupported production-readiness claims.
+- The guide should point to canonical docs rather than duplicating long audit or architecture content.
+
+Definition of done:
+
+- Root README points to an existing reviewer entry point.
+- The reviewer entry point contains the promised deployed URL, demo path, commands, artifact map, proof, and blockers.
+- Links in the reviewer path resolve from the repository root.
+
+Human verification:
+
+- A reviewer can start at root README and find every required submission artifact without guessing.
+
+### Feature 15.2 - Packaging Proof
+
+#### Task 15.2.1 - Add A Reviewer Navigation Smoke Check
+
+Why: this finding is a packaging failure, so the fix needs packaging proof.
+
+Start with eval/test or documentation proof:
+
+- Define a simple root-navigation checklist before editing docs.
+
+Implementation notes:
+
+- The checklist should verify README link, reviewer guide existence, root artifact links, deployed URL, seed/eval commands, cost analysis, and known-blocker wording.
+- Keep this as a human-verifiable doc check unless a later automation epic adds link checking.
+
+Definition of done:
+
+- Reviewer navigation checklist exists and passes manually.
+- No required submission artifact is discoverable only through tribal knowledge.
+
+Human verification:
+
+- A reviewer can follow the checklist from a fresh clone.
+
+## Epic 16 - Adversarial Demo Patients
+
+Status: Planned. The seeded demo data centers on fake patient `900001` with a happy-path shape.
+
+Goal: add two adversarial fake patients that pressure the verifier and refusal language. Patient count is not the goal; verification stress is.
+
+### Feature 16.1 - Polypharmacy And Stale-Medication Patient
+
+#### Task 16.1.1 - Seed A Polypharmacy Patient With Stale And Inactive Records
+
+Why: active/inactive medication routing and citation correctness are the most likely failure modes in real charts.
+
+Start with eval/test:
+
+- Define expected active medications, expected inactive medications, expected stale records the verifier must not promote, and expected citations before changing seed SQL.
+
+Implementation notes:
+
+- Use a stable obviously-fake patient id and source-row identifiers.
+- Include at least one active medication, one inactive medication, one duplicate or near-duplicate row, and one stale record older than the active window.
+- Add lab and problem rows that match the medication picture so visit briefing has something to summarize.
+- Seeding must be idempotent and verifiable against the ground-truth file.
+
+Definition of done:
+
+- Patient has ground-truth entries for expected facts, expected missing facts, and source-row expectations.
+- Seed and verification scripts include this patient.
+- At least three eval cases cover this patient: active-medication routing, inactive-medication exclusion, and citation-source attribution.
+
+Human verification:
+
+- A reviewer can open the chart, see the messy shape, and trace each expected answer to a source row.
+
+### Feature 16.2 - Sparse-Record Patient
+
+#### Task 16.2.1 - Seed A Patient With Missing Sections
+
+Why: missing-data refusal language is safety-critical and must not collapse to "no information available" without explicit unchecked sections.
+
+Start with eval/test:
+
+- Define which sections are missing, which are present, and the expected refusal/unchecked language before changing seed SQL.
+
+Implementation notes:
+
+- Patient should have demographics and at least one tool that returns data.
+- At least two evidence sections (e.g., labs and recent notes) must be empty or absent so the agent has to surface unchecked sections.
+- Ground truth must list each missing section explicitly.
+
+Definition of done:
+
+- Patient has ground-truth entries for present and missing sections.
+- Seed and verification scripts include this patient.
+- At least three eval cases cover this patient: missing-section transparency, refusal of inferred facts, and successful answer over the sections that do have data.
+
+Human verification:
+
+- A reviewer can ask a question whose data is missing and see the unchecked-section behavior, not a fabricated answer.
+
+## Epic 17 - Allergy And Vital-Sign Evidence Tools
+
+Status: Planned. Current tools cover demographics, active problems, active medications, recent labs, and recent notes/last plan.
+
+Goal: add allergies and vitals to the read-only evidence surface. These two clear the safety bar (allergies for prescribing-adjacent claims, vitals for abnormal-flag awareness during a between-rooms briefing). No other tools are in scope.
+
+### Feature 17.1 - Allergies Tool
+
+#### Task 17.1.1 - Implement Read-Only Allergies Evidence
+
+Why: allergies are the highest-leverage piece of clinical evidence the agent does not currently surface; their absence makes any medication-adjacent answer incomplete.
+
+Start with eval/test:
+
+- Define one happy-path eval, one missing-allergies eval, one inactive/resolved exclusion eval, and one citation eval before implementation.
+
+Implementation notes:
+
+- Source from the canonical allergies table; document the source-of-truth in the tool description.
+- Output must conform to the existing evidence contract: source type, source table, source row id, source date, display label, and value.
+- Active/inactive rules must mirror the existing medication tool's active-status handling.
+- Tool must be active-patient scoped and read-only.
+- The verifier must reject any allergy-related claim whose cited source ID is not in the evidence bundle.
+
+Definition of done:
+
+- Tool returns evidence items conforming to the existing contract.
+- Eval cases pass: happy path, missing data, inactive exclusion, citation enforcement.
+- The planner selects the tool only when the question warrants it.
+
+Human verification:
+
+- A reviewer can ask about allergies, see the cited source row, and ask about a patient with no allergies and see the unchecked behavior.
+
+### Feature 17.2 - Vital Signs Tool
+
+#### Task 17.2.1 - Implement Read-Only Recent Vitals Evidence
+
+Why: a between-rooms briefing without recent vitals misses the most common abnormal-flag triggers.
+
+Start with eval/test:
+
+- Define one happy-path eval, one missing-vitals eval, one stale-only eval, and one citation eval before implementation.
+
+Implementation notes:
+
+- Source from the canonical vitals table; document the source-of-truth in the tool description.
+- Output must conform to the existing evidence contract plus minimal optional fields for unit and abnormal flag where present.
+- Bound results to the most recent N readings to keep the evidence bundle small.
+- Tool must be active-patient scoped and read-only.
+- The verifier must reject any vital-sign claim whose cited source ID is not in the evidence bundle.
+
+Definition of done:
+
+- Tool returns evidence items conforming to the existing contract.
+- Eval cases pass: happy path, missing data, stale-only behavior, citation enforcement.
+- Tool output stays bounded.
+
+Human verification:
+
+- A reviewer can ask about vitals on a patient with recent readings, a patient with only stale readings, and a patient with no readings, and see distinct correct behavior in each case.
+
+## Epic 19 - Server-Bound Multi-Turn Conversation State
+
+Status: Planned. The current request shell submits only `patient_id` and `question`; no conversation id or follow-up grounding exists.
+
+Goal: satisfy the SPECS multi-turn requirement with the smallest possible server-bound state. Each turn re-fetches evidence; prior turn text never becomes a citation source.
+
+### Feature 19.1 - Conversation Identity And Patient Binding
+
+#### Task 19.1.1 - Issue A Server-Bound Conversation Id
+
+Why: follow-ups need stable identity that the server controls; client-supplied conversation ids cannot be trusted.
+
+Start with eval/test:
+
+- Define eval cases for first-turn identity issuance, same-patient follow-up, cross-patient reuse refusal, and missing/expired id refusal before implementation.
+
+Implementation notes:
+
+- The server issues `conversation_id` only after the existing authorization gate passes.
+- The id is bound to `(user_id, patient_id)` in a session-scoped or short-TTL in-memory map. No persistent transcript storage.
+- A request that presents a `conversation_id` whose binding does not match the active user and patient must fail closed before tools or model run.
+- TTL is a hard expiry; expired ids return a clear refusal.
+- Logs must record the conversation id alongside the existing request id for traceability.
+
+Definition of done:
+
+- First-turn responses include a server-issued `conversation_id`.
+- Cross-patient reuse and expired ids fail closed.
+- Eval cases pass for issuance, valid follow-up, cross-patient refusal, and expiry.
+
+Human verification:
+
+- A reviewer can start a conversation, ask a follow-up, and see the same conversation id; switching patients issues a new id; reusing the old id against a different patient is refused.
+
+### Feature 19.2 - Follow-Up Grounding Discipline
+
+#### Task 19.2.1 - Treat Prior Turn Text As Planner Hint Only
+
+Why: multi-turn convenience must not weaken citation discipline.
+
+Start with eval/test:
+
+- Define eval cases for pronoun follow-ups, omitted-subject follow-ups, and stale prior-answer reuse before implementation.
+
+Implementation notes:
+
+- The planner may receive a short summary of prior turns to interpret intent; evidence tools still re-fetch fresh evidence on every turn.
+- Patient-specific claims in follow-ups must cite source IDs from the current evidence bundle. The existing verifier already enforces this when evidence is re-fetched.
+- Missing data, tool failure, refusal, and prompt-injection policies apply identically to follow-ups.
+
+Definition of done:
+
+- Follow-up answers cite freshly-fetched evidence, not prior turn text.
+- Eval cases pass for pronoun resolution, omitted subjects, and stale-prior-answer rejection.
+
+Human verification:
+
+- A reviewer can ask a pronoun follow-up ("what about her labs?") and see citations drawn from a fresh evidence fetch.
+
+## Epic 21 - Seeded SQL Evidence Eval Tier
+
+Goal: prove the SQL evidence path against the expanded fake-patient corpus with a repeatable runner, separate from fixture results. Live-model and deployed-browser proof remain manual for this submission.
+
+### Feature 21.1 - SQL Eval Runner Against Demo Data
+
+#### Task 21.1.1 - Build A Real Database Eval Runner Against Demo Data
+
+Why: fixture tools prove orchestration, not the SQL evidence path or seeded demo data.
+
+Start with eval/test:
+
+- Define pass/fail cases using the expanded fake-patient corpus and seeded ground truth before implementation.
+
+Implementation notes:
+
+- The SQL eval tier runs against local demo data; VM execution is optional when credentials and environment allow.
+- Cases cover each demo patient and every tool shown in the demo, including visit briefing, active medications, lab trends, allergies, vitals, missing-data cases, stale/inactive exclusions, tool failure or missing table handling, and citation source ids.
+- Results include code version, data version, environment label, pass/fail counts, and failure details.
+
+Definition of done:
+
+- A reviewer can distinguish fixture eval results from SQL-backed eval results.
+- SQL-backed results are not written unless the SQL tier actually ran.
+
+Human verification:
+
+- A reviewer can trace expected answers to seeded rows rather than fixture objects.
+
 ## Epic Final - Demo, Cost Analysis, And Final Packaging
 
 Goal: produce the artifacts needed to defend the system, not just run it.
