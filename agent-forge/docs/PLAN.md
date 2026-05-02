@@ -1023,12 +1023,12 @@ Definition of done:
 Human verification:
 
 - A reviewer can run or follow one smoke path and see the whole chain work.
-- Local proof recorded: admin opened fake patient `900001`, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
+- Local proof recorded: admin opened fake patient `900001` and verified A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, visit briefing medication completeness, cross-patient refusal, and sensitive structured log payload inspection. Detailed request IDs, latencies, and telemetry are recorded in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 - VM proof recorded: admin opened fake patient `900001` on the public VM, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
 ## Instructor Review Remediation Backlog
 
-The following epics are remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. Epics 8-13 are complete or complete with explicitly named limitations; Epic 14 is not started. These statuses do not claim the current product is hospital-grade production-ready.
+The following epics are remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. Epics 8-14 are complete or complete with explicitly named limitations. These statuses do not claim the current product is hospital-grade production-ready.
 
 - Already implemented: the current safety-first foundation, including chart embedding, narrow authorization, bounded evidence tools, structured drafting, deterministic verification, request logging, demo data, deployment proof, and fixture evals.
 - Completed remediation: root reviewer packaging, cost analysis rewrite, evaluation-tier honesty, citation UI surfacing, verifier hardening, selective tool routing, medication evidence expansion, authorization-scope inventory, and composite-index remediation planning.
@@ -1400,7 +1400,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can ask the A1c trend question and see citations outside the answer prose.
-- Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data, clinical-advice refusal, and ambiguous-question UI states were also verified locally.
+- Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data and clinical-advice refusal UI states were also verified locally. Ambiguous follow-up remains a single-shot behavior concern, not a completed multi-turn capability.
 
 ## Epic 12 - Verifier Hardening And PHI-Minimizing Tool Routing
 
@@ -1487,9 +1487,10 @@ Definition of done:
 Human verification:
 
 - A reviewer can compare logs for medication and lab questions and see different, minimal tool sets.
-- Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, ambiguous refusal before evidence access, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
-- Local browser/log proof recorded: A1c question logged `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs, token/cost telemetry, and `verifier_result=passed`. Medication question returned only active prescription names and prescription source IDs, then logged `question_type=medication`, `tools_called=["Active prescriptions"]`, skipped unrelated chart sections, medication source IDs, and `verifier_result=passed`. Clinical-advice and ambiguous questions refused before tools with `model=not_run`.
-- Deployed browser/log proof recorded after OpenEMR container recreation cleared stale runtime code: A1c log `request_id=37667cff-a97b-4fef-8259-492a2391c64e` used only `Recent labs`; medication log `request_id=1a758ecd-4612-42ff-b11f-1a5696a85d99` used only `Active prescriptions`; missing microalbumin log `request_id=50fa82b6-559b-4ce5-8c6c-ebd4bada7a9e` used bounded `Recent labs`; clinical-advice refusal log `request_id=fadf7901-64d5-4068-ab92-052ad9c06cf3` and ambiguous-question log `request_id=635cc0b7-29bb-4057-a5ac-ff864adff400` used no tools and no model.
+- Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, current-chart scope refusal, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
+- Local browser/log proof recorded: A1c question logged `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs, token/cost telemetry, and `verifier_result=passed`. Medication question returned active medication names and prescription source IDs, then logged `question_type=medication`, `tools_called=["Active medications"]`, skipped unrelated chart sections, medication source IDs, and `verifier_result=passed`. Clinical-advice and cross-patient questions refused before tools with `model=not_run`.
+- Previous deployed browser/log proof recorded after OpenEMR container recreation cleared stale runtime code: A1c log `request_id=37667cff-a97b-4fef-8259-492a2391c64e` used only `Recent labs`; medication log `request_id=1a758ecd-4612-42ff-b11f-1a5696a85d99` used only the then-current active-prescription path; missing microalbumin log `request_id=50fa82b6-559b-4ce5-8c6c-ebd4bada7a9e` used bounded `Recent labs`; clinical-advice refusal log `request_id=fadf7901-64d5-4068-ab92-052ad9c06cf3` and the then-current ambiguous-refusal case log `request_id=635cc0b7-29bb-4057-a5ac-ff864adff400` used no tools and no model.
+- Current deployed browser/log proof recorded: visit briefing returned direct active-medication lines and medication citations with `request_id=a3a9b3d1-8658-41d1-961c-06f18eacc0a0`; cross-patient request refused before tools/model with `request_id=de266feb-50ec-44a5-a36a-77d60e03bc28`; A1c, missing microalbumin, clinical-advice refusal, active-medication, and last-plan VM checks passed with request IDs recorded in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 

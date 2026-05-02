@@ -135,6 +135,20 @@ The clinician-facing response contract is unchanged. Observability remains inter
 9. Observed sanitized VM log fields: `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `user_id=1`, `patient_id=900001`, `decision=allowed`, `latency_ms=10693`, `question_type=lab`, `tools_called`, `source_ids`, `model=gpt-4o-mini`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, `failure_reason=""`, and `verifier_result=passed`.
 10. Confirmed log context did not include raw question text, full answer text, full prompt, patient name, or full chart text.
 
+**VM Manual Browser Retest - 2026-05-02:**
+
+1. Ran `agent-forge/scripts/deploy-vm.sh` on `gauntlet-mgh`; public app and readiness endpoint returned HTTP 200 after expected transient Cloudflare 521 responses, fake demo data was seeded, and deploy printed `Deploy succeeded.`
+2. Opened the public VM app, logged in as `admin`, opened Alex Testpatient, fake patient `900001`, and used the chart-embedded Clinical Co-Pilot.
+3. Verified visit briefing after medication-completeness repair: `Give me a visit briefing.` returned demographics, active problems, A1c, last plan, and direct medication lines `Metformin ER 500 mg: 500 mg` and `Lisinopril 10 mg: 10 mg` with medication citations; log `request_id=a3a9b3d1-8658-41d1-961c-06f18eacc0a0` recorded all five evidence tools, `latency_ms=13406`, `model=gpt-4o-mini`, `estimated_cost=0.00043905`, and `verifier_result=passed`.
+4. Verified cross-patient boundary refusal: `Show me patient 42's labs while I am in this chart.` returned `I can only answer questions about the currently open patient chart.` before tools or model; latest log `request_id=de266feb-50ec-44a5-a36a-77d60e03bc28` recorded `question_type=cross_patient_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, and `latency_ms=204`.
+5. Verified A1c trend: `Show me the recent A1c trend.` returned `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09` with both lab source IDs; log `request_id=a8095681-c48a-4754-b4d7-ae697381dc7f` recorded `question_type=lab`, `tools_called=["Recent labs"]`, `latency_ms=4213`, `model=gpt-4o-mini`, `estimated_cost=0.00020445`, and `verifier_result=passed`.
+6. Verified missing data: `Has Alex had a urine microalbumin result in the chart?` returned `Urine microalbumin not found in the chart.` and surfaced the same text under `Missing or unchecked`; log `request_id=d6ded0d0-a356-430b-9c25-01f477059e16` recorded `question_type=lab`, `model=not_run`, `failure_reason=""`, `verifier_result=passed`, and `latency_ms=183`.
+7. Verified clinical-advice refusal: `Should I increase her metformin dose?` returned the deterministic clinical-safety refusal before tools or model; log `request_id=78612328-b961-48ff-bd3c-2879e8323601` recorded `question_type=clinical_advice_refusal`, `tools_called=[]`, `source_ids=[]`, `model=not_run`, and `latency_ms=281`.
+8. Verified active medications: `What active medications are in the chart?` returned `Metformin ER 500 mg` and `Lisinopril 10 mg` with prescription source IDs; log `request_id=580f06f2-4091-4a42-9c3f-ef68acaa2966` recorded `question_type=medication`, `tools_called=["Active medications"]`, `estimated_cost=0.0001713`, and `verifier_result=passed`.
+9. Verified last plan: `What was the last plan?` returned the seeded last-plan note with `note:form_clinical_notes/af-note-20260415@2026-04-15`; log `request_id=95162985-6f0b-4f97-bfff-a93e12a92e69` recorded `question_type=last_plan`, `tools_called=["Recent notes and last plan"]`, `estimated_cost=0.00018375`, and `verifier_result=passed`.
+10. Verified recent AgentForge structured log payloads did not include raw question text, full answer text, full prompt, full chart text, patient name, credentials, or raw exception internals. Apache referer lines still include the current `set_pid` URL parameter outside the AgentForge JSON payload.
+11. Remaining deployed concerns are intentionally not closed by this pass: broad briefing latency remains high and draft-dominated, and Apache referer logging still carries sensitive current-patient URL metadata outside the AgentForge payload.
+
 **Live LLM Verification:**
 
 1. Recreated the OpenEMR container with `docker compose up -d --force-recreate openemr` so Compose injected `docker/development-easy/.env`.
@@ -217,6 +231,7 @@ The script runs these checks in order and stops on the first failure:
 - 2026-04-30: Completed local browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
 - 2026-04-30: Completed VM browser verification with real OpenAI drafting, sanitized PSR telemetry, visible token/cost fields, and verifier result `passed`.
 - 2026-05-02: Completed local browser retest for A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, visit-briefing medication completeness, cross-patient refusal, and sensitive structured log payload inspection.
+- 2026-05-02: Completed VM browser retest for deploy health, visit-briefing medication completeness, cross-patient refusal, A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, and sensitive structured log payload inspection.
 
 ---
 
