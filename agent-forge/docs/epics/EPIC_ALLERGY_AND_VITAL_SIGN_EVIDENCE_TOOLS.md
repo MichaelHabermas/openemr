@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-02 00:00:00 America/New_York
 **Scope:** backend AgentForge evidence, eval, fixture, and docs
-**Status:** In Progress
+**Status:** Complete
 
 ---
 
@@ -24,7 +24,7 @@ Acceptance sources:
 **Status:** [x] Complete
 **Description:** Add active allergy evidence from canonical `lists` allergy rows without broad search or clinical reconciliation.
 **Acceptance Map:** Epic 17.1 happy path, missing allergies, inactive exclusion, citation enforcement, active-patient scoping, read-only SQL.
-**Proof Required:** isolated tool/repository/planner/verifier tests; fixture eval cases; manual checklist documented as available but not performed.
+**Proof Required:** isolated tool/repository/planner/verifier tests; fixture eval cases; manual browser proof for active and missing allergy behavior.
 
 **Subtasks:**
 - [x] Add repository and SQL support for active allergy rows scoped by `pid`.
@@ -40,7 +40,7 @@ Acceptance sources:
 **Status:** [x] Complete
 **Description:** Add recent authorized vital-sign evidence from `form_vitals`, bounded by recency and item count.
 **Acceptance Map:** Epic 17.2 happy path, missing vitals, stale-only behavior, bounded output, citation enforcement, active-patient scoping, read-only SQL.
-**Proof Required:** isolated tool/repository/planner/verifier tests; fixture eval cases; manual checklist documented as available but not performed.
+**Proof Required:** isolated tool/repository/planner/verifier tests; fixture eval cases; manual browser proof for recent, missing, and stale-only vital behavior.
 
 **Subtasks:**
 - [x] Add repository and SQL support for recent authorized vital rows scoped by `pid`.
@@ -75,7 +75,7 @@ Acceptance sources:
 - [x] Every required proof item has an executable path before implementation starts.
 - [x] Boundary/orchestration behavior is tested when a boundary changed.
 - [x] Security/logging/error-handling requirements were implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they were actually performed.
+- [x] Human verification items are checked only after they were actually performed.
 - [x] Known fixture/data/user prerequisites for manual proof are created or explicitly assigned as tasks.
 
 ---
@@ -90,4 +90,8 @@ Acceptance sources:
 - 2026-05-02: Docker demo seed passed: `agent-forge/scripts/seed-demo-data.sh`.
 - 2026-05-02: Docker demo verification passed: `agent-forge/scripts/verify-demo-data.sh`, including active allergy, inactive allergy exclusion, recent vitals, and sparse stale-only vitals checks.
 - 2026-05-02: Full `composer phpunit-isolated` was attempted for broader confidence. It reached all 2,952 tests but failed 8 `FrontControllerRoutingTest` cases because no server was listening on `127.0.0.1:8765`; this is an environment prerequisite failure, not an AgentForge assertion failure.
-- Manual verification remains intentionally unchecked because no browser/manual reviewer workflow was performed in this task. Required fixture/data prerequisites exist for: Alex active allergies, Alex recent vitals, Riley inactive allergy exclusion, Jordan missing allergies, and Jordan stale-only vitals.
+- 2026-05-02: Manual local browser proof passed for Alex active allergies. The `Allergies` tool alone was routed, cited `allergy:lists/af-al-penicillin@2026-04-01` and `allergy:lists/af-al-shellfish@2025-11-20`, and used verified deterministic fallback after the live model draft failed verification.
+- 2026-05-02: Manual local browser proof passed for Alex recent blood pressure and pulse. The `Recent vitals` tool alone was routed, cited `vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15` and `vital:form_vitals/af-vitals-20260415-pulse@2026-04-15`, and returned clean display values `142/88 mmHg` and `84 bpm`.
+- 2026-05-02: Manual local browser proof passed for Riley active allergy exclusion. Only active `Sulfonamide antibiotics` surfaced with `allergy:lists/af-al-p2-sulfa@2026-05-16`; inactive/resolved allergy rows were not returned.
+- 2026-05-02: Manual local browser proof passed for Jordan missing allergies and stale-only vitals. The agent returned `Active allergies not found in the chart.` and `Recent vitals not found in the chart within 180 days.` without converting missing data into normal/absent clinical facts or surfacing stale vitals.
+- 2026-05-02: Corrective live-path hardening added after manual proof exposed model/verifier brittleness: model verification failures can fall back to deterministic evidence-line output only for real model drafts and only after verifier proof of the fallback. Fixture/eval hallucination failures still refuse. Focused isolated PHPUnit passed: 70 tests, 279 assertions. AgentForge evals passed: 24 passed, 0 failed. Latest result: `agent-forge/eval-results/eval-results-20260502-190051.json`.

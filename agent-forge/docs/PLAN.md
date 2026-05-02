@@ -1703,7 +1703,7 @@ Implementation status:
 
 ## Epic 15 - Reviewer Entry Point And Submission Map
 
-Status: Planned. The root README currently points to `AGENTFORGE-REVIEWER-GUIDE.md`, but that file is absent.
+Status: Complete. The root README points to the existing `AGENTFORGE-REVIEWER-GUIDE.md`, and reviewer navigation proof is captured in `agent-forge/docs/epics/EPIC_REVIEWER_ENTRY_POINT_SUBMISSION_MAP.md`.
 
 Goal: give reviewers one working repository-root entry point for the deployed URL, demo path, seed/eval commands, artifact map, implemented proof, and known blockers.
 
@@ -1733,7 +1733,7 @@ Definition of done:
 
 Human verification:
 
-- A reviewer can start at root README and find every required submission artifact without guessing.
+- Verified 2026-05-02: root README links the reviewer guide; the guide contains deployed URL, demo path, seed/verify commands, eval command, artifact map, cost-analysis link, implemented proof, known blockers, production-readiness caveats, and reviewer navigation checklist.
 
 ### Feature 15.2 - Packaging Proof
 
@@ -1761,7 +1761,7 @@ Human verification:
 
 ## Epic 16 - Adversarial Demo Patients
 
-Status: Planned. The seeded demo data centers on fake patient `900001` with a happy-path shape.
+Status: Complete. Fake patients `900002` and `900003` are seeded, covered by deterministic evals, verified by seed checks, and manually smoke-tested in the local browser.
 
 Goal: add two adversarial fake patients that pressure the verifier and refusal language. Patient count is not the goal; verification stress is.
 
@@ -1790,7 +1790,7 @@ Definition of done:
 
 Human verification:
 
-- A reviewer can open the chart, see the messy shape, and trace each expected answer to a source row.
+- Verified 2026-05-02: Riley active-medication question cited active apixaban, active metformin, and duplicate metformin list evidence while excluding inactive warfarin and stale simvastatin.
 
 ### Feature 16.2 - Sparse-Record Patient
 
@@ -1816,11 +1816,11 @@ Definition of done:
 
 Human verification:
 
-- A reviewer can ask a question whose data is missing and see the unchecked-section behavior, not a fabricated answer.
+- Verified 2026-05-02: Jordan missing-labs question reported `Recent labs not found in the chart.` without inferring normal labs, and sparse briefing cited present demographics/problem evidence while listing absent sections as missing or unchecked.
 
 ## Epic 17 - Allergy And Vital-Sign Evidence Tools
 
-Status: Implemented pending proof. Current tools cover demographics, active problems, active medications, active allergies, recent labs, recent vitals, and recent notes/last plan.
+Status: Complete. Current tools cover demographics, active problems, active medications, active allergies, recent labs, recent vitals, and recent notes/last plan. Automated proof and local browser proof are captured in `agent-forge/docs/epics/EPIC_ALLERGY_AND_VITAL_SIGN_EVIDENCE_TOOLS.md`.
 
 Goal: add allergies and vitals to the read-only evidence surface. These two clear the safety bar (allergies for prescribing-adjacent claims, vitals for abnormal-flag awareness during a between-rooms briefing). No other tools are in scope.
 
@@ -1850,7 +1850,7 @@ Definition of done:
 
 Human verification:
 
-- A reviewer can ask about allergies, see the cited source row, and ask about a patient with no allergies and see the unchecked behavior.
+- Verified 2026-05-02: Alex active allergies cited Penicillin and Shellfish source rows; Riley active allergy cited only the active sulfonamide row; Jordan missing allergies returned `Active allergies not found in the chart.` without claiming no allergies.
 
 ### Feature 17.2 - Vital Signs Tool
 
@@ -1878,7 +1878,7 @@ Definition of done:
 
 Human verification:
 
-- A reviewer can ask about vitals on a patient with recent readings, a patient with only stale readings, and a patient with no readings, and see distinct correct behavior in each case.
+- Verified 2026-05-02: Alex recent vitals returned cited blood pressure `142/88 mmHg` and pulse `84 bpm`; Jordan stale-only vitals returned `Recent vitals not found in the chart within 180 days.` without surfacing stale readings.
 
 ## Epic 19 - Server-Bound Multi-Turn Conversation State
 

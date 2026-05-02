@@ -88,3 +88,4 @@ Manual root navigation was checked from repository root:
 - 2026-05-02: Added reviewer navigation checklist and Epic 15 evidence file.
 - 2026-05-02: Added isolated reviewer-guide regression proof and tightened evaluation-tier guide existence proof.
 - 2026-05-02: Captured focused reviewer proof, full AgentForge isolated PHPUnit proof, and deterministic eval proof.
+- 2026-05-02: Rechecked reviewer navigation during Epics 15-17 manual verification. `README.md` links `AGENTFORGE-REVIEWER-GUIDE.md`; the guide includes deployed URL, seed/verify commands, eval command, cost-analysis link, known blockers, production-readiness caveats, and reviewer checklist. `composer phpunit-isolated -- --filter 'ReviewerGuideDocumentTest|EvaluationTiersDocumentTest'` passed: 10 tests, 141 assertions.

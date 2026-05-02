@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-02
 **Scope:** AgentForge demo seed data, ground-truth fixtures, deterministic evals, and seed verification
-**Status:** Implemented - Human Review Pending
+**Status:** Complete
 
 ---
 
@@ -75,16 +75,16 @@ Epic 16 adds two fake adversarial patients to stress the Clinical Co-Pilot verif
 
 ## Human Verification Instructions
 
-Human chart verification was not performed in this automated implementation pass.
+Human chart verification was performed locally on 2026-05-02 after the seed and verifier proof passed.
 
-1. Open OpenEMR locally and search for patient `AF-DEMO-900002` / `Riley Medmix`.
-2. Confirm the chart shows a medication-reconciliation shape: active apixaban and metformin, inactive warfarin, stale simvastatin, and a duplicate metformin medication-list row.
-3. Ask the AgentForge panel: `What medications are active right now for Riley?`
-4. Expected signal: active apixaban and metformin are cited; inactive warfarin and stale simvastatin are not promoted as active medications.
-5. Open patient `AF-DEMO-900003` / `Jordan Sparsechart`.
-6. Confirm demographics and `Seasonal allergic rhinitis` are present, while recent labs and clinical notes are absent.
-7. Ask the AgentForge panel: `Give me Jordan sparse chart briefing.`
-8. Expected signal: the answer cites present facts and explicitly reports labs and recent notes/last plan as not found.
+1. [x] Open OpenEMR locally and search for patient `AF-DEMO-900002` / `Riley Medmix`.
+2. [x] Ask the AgentForge panel: `What medications are active right now for Riley?`
+3. [x] Confirm active apixaban and metformin are cited; inactive warfarin and stale simvastatin are not promoted as active medications.
+4. [x] Open patient `AF-DEMO-900003` / `Jordan Sparsechart`.
+5. [x] Ask the AgentForge panel: `Are Jordan's labs normal?`
+6. [x] Confirm the answer reports `Recent labs not found in the chart.` and does not infer normal labs.
+7. [x] Ask the AgentForge panel: `Give me Jordan sparse chart briefing.`
+8. [x] Confirm the answer cites present demographics and `Seasonal allergic rhinitis`, while active medications, active allergies, recent labs, recent vitals, and recent notes/last plan are explicitly missing or unchecked.
 
 ---
 
@@ -93,3 +93,5 @@ Human chart verification was not performed in this automated implementation pass
 - 2026-05-02: Created Epic 16 execution file and implemented seed, fixture, verifier, and deterministic eval changes.
 - 2026-05-02: Automated proof passed. Human chart verification remains intentionally unchecked until performed by a reviewer.
 - 2026-05-02: Correctness audit aligned live `lists_medication` citations with stable external source ids, added focused isolated coverage, and reconfirmed seed idempotence.
+- 2026-05-02: Manual local browser proof passed for Riley active-medication routing and inactive/stale exclusion. The answer cited `medication:prescriptions/af-rx-p2-apixaban@2026-05-16`, `medication:prescriptions/af-rx-p2-metformin@2026-05-16`, and `medication:lists_medication/af-l900002-metdup@2026-05-16`; inactive warfarin and stale simvastatin were absent.
+- 2026-05-02: Manual local browser proof passed for Jordan sparse-chart behavior. Missing labs were reported as missing rather than normal, and sparse briefing cited only present demographics/problem evidence while listing absent sections as missing or unchecked.
