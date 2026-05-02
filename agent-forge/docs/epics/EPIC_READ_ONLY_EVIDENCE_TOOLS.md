@@ -129,7 +129,7 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 
 ## Deferred Scope
 
-- `lists` medication rows are deferred; Epic 5 reads active records from `prescriptions` only.
+- Historical Epic 5 scope deferred `lists` medication rows and read active records from `prescriptions` only. Epic 13 supersedes that limitation with active medication evidence across `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available.
 - Unauthorized clinical notes (`form_clinical_notes.authorized = 0`) and standalone `form_encounter` rows without linked clinical notes are not surfaced. Reason: Epic 5 only cites authorized last-plan text that can be traced to a clinical note row.
 - OpenEMR `procedure_result` does not have a stable `external_id` column. Epic 5 uses the seeded demo lab `comments` value as the source id when present and falls back to `procedure_result_id`; broader source-id normalization is deferred to verifier/eval work.
 - Model drafting, deterministic verification, eval runner, broad chart search, vector database, background workers, and note drafting are out of scope.
@@ -167,7 +167,7 @@ Epic 5 adds the minimum source-carrying chart evidence layer required before any
 | Demographics return active patient evidence and empty fields are explicit. | `DemographicsEvidenceTool`; `EvidenceToolsTest`; verifier demographics source-row check. |
 | Active problems return with citations; missing/inactive problems are not invented. | `ProblemsEvidenceTool`; `testProblemsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow`; verifier problem source-row check. |
 | Problem and prescription text is bounded before display. | `EvidenceText`; `testProblemsToolBoundsLongProblemTitles`; `testPrescriptionsToolBoundsLongInstructions`; note bounding test. |
-| Active medications use prescriptions only and defer `lists` medications. | `PrescriptionsEvidenceTool`; `testPrescriptionsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow`; deferred scope section; verifier prescription source-row check. |
+| Active medications use prescriptions only and defer `lists` medications. | Historical Epic 5 proof only; superseded by Epic 13 `ActiveMedicationsEvidenceTool` and medication remediation tests. |
 | Labs are bounded to the active patient through order/report/result chain. | `LabsEvidenceTool`; `SqlChartEvidenceRepository::recentLabs`; `SqlChartEvidenceRepositoryIsolationTest`; verifier A1c chain and lab source-row checks. |
 | Recent notes/last plan are bounded, authorized, active, and cited. | `EncountersNotesEvidenceTool`; `testNotesToolDoesNotSurfaceUnauthorizedRows`; verifier last-plan source-row check. |
 | Evidence tools run only after authorization passes. | `AgentRequestHandlerTest::testAllowedRequestRunsEvidenceHandlerAfterAuthorization` and `testAuthorizationFailureDoesNotRunEvidenceTools`. |

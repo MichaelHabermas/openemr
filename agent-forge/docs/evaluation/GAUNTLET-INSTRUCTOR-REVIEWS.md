@@ -37,9 +37,9 @@ The verifier checks that cited source IDs exist and that the claim text contains
 
 The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](../ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
 
-6. Medication evidence is incomplete against the project’s own audit.
+6. Medication evidence incompleteness was identified and remediated in Epic 13.
 
-The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](../AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
+The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](../AUDIT.md:142). Epic 13 replaced the prescription-only evidence path with active medication evidence across `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:48). This closes the known omission path for bounded evidence retrieval, while still avoiding unsupported clinical reconciliation of duplicate, conflicting, uncoded, or instruction-missing medication records.
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
