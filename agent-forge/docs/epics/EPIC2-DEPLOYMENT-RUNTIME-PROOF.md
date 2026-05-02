@@ -116,6 +116,7 @@ What this epic does NOT do:
 | Public readiness health | Verified 2026-04-30 | `agent-forge/scripts/health-check.sh` | HTTP 200 (informational; deploy does not block on it) |
 | Deploy branch reattach | Implemented in `deploy-vm.sh` | After `rollback-vm.sh` leaves a detached HEAD, deploy runs `git switch` to `AGENTFORGE_DEPLOY_BRANCH` (default `master`) before `git pull --ff-only` | Avoids deploying from the wrong commit |
 | OpenAI key for default provider | Implemented in `deploy-vm.sh` | When `AGENTFORGE_DRAFT_PROVIDER` is `openai` (default), `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` must be set in the shell or in `docker/development-easy/.env` | Deploy fails fast with a clear message if missing |
+| Anthropic key when provider is anthropic | Implemented in `deploy-vm.sh` | When `AGENTFORGE_DRAFT_PROVIDER` is `anthropic`, `AGENTFORGE_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY` must be set (same locations as OpenAI) | Deploy fails fast with a clear message if missing |
 | Post-`up` health polling | Implemented in `deploy-vm.sh` | `AGENTFORGE_HEALTH_TIMEOUT_SECONDS` (default 300) and `AGENTFORGE_HEALTH_INTERVAL_SECONDS` (default 5) bound the wait for the public app URL | Tunable when Cloudflare origin recovery is slow |
 
 The deploy script accepts these optional overrides; defaults are correct for the standard VM:
@@ -136,7 +137,7 @@ export AGENTFORGE_DRAFT_PROVIDER="openai"
 ### Deploy script behavior (aligned with `deploy-vm.sh`)
 
 - **Compose `.env`:** If `docker/development-easy/.env` exists, the deploy script sources it before validating model config, so keys and provider can live in that file.
-- **Model config gate:** With `AGENTFORGE_DRAFT_PROVIDER=openai`, deploy exits with an error unless an API key is available (env or loaded `.env`). Override the provider only if the stack is intentionally fixture-only.
+- **Model config gate:** With `AGENTFORGE_DRAFT_PROVIDER=openai`, deploy exits with an error unless an OpenAI API key is available (env or loaded `.env`). With `AGENTFORGE_DRAFT_PROVIDER=anthropic`, deploy exits unless an Anthropic API key is available. Override the provider only if the stack is intentionally fixture-only. (Runtime inference when `AGENTFORGE_DRAFT_PROVIDER` is unset—e.g. Anthropic key selecting Anthropic—is handled inside OpenEMR; see `agent-forge/.env.sample`.)
 - **Branch:** If the current branch name is not `AGENTFORGE_DEPLOY_BRANCH`, deploy prints a switch message and runs `git switch` to that branch before pulling.
 
 ### `health-check.sh` vs `deploy-vm.sh`

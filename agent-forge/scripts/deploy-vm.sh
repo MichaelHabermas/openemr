@@ -78,6 +78,11 @@ verify_agentforge_model_config() {
         printf 'Set the key in the shell running deploy-vm.sh or in docker/development-easy/.env on the VM.\n' >&2
         return 1
     fi
+    if [[ "${DRAFT_PROVIDER}" == "anthropic" && -z "${AGENTFORGE_ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY:-}}" ]]; then
+        printf 'Deploy failed: AGENTFORGE_DRAFT_PROVIDER=anthropic requires AGENTFORGE_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY.\n' >&2
+        printf 'Set the key in the shell running deploy-vm.sh or in docker/development-easy/.env on the VM.\n' >&2
+        return 1
+    fi
 }
 
 main() {
