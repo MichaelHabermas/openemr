@@ -77,7 +77,7 @@ First-principles premise check: the expensive part of a clinical co-pilot is not
 
 Boundary/orchestration note: this epic changes documentation and a document regression test only. No runtime endpoint, authorization gate, parser, model call, SQL path, or external integration changed.
 
-Human verification: local reviewer inspection was performed on 2026-05-01 by searching `agent-forge/docs/COST-ANALYSIS.md` for the required scale tiers, non-token costs, architecture changes, measured baseline language, and explicit unknowns.
+Human verification: local reviewer inspection was performed on 2026-05-01 by searching `agent-forge/docs/operations/COST-ANALYSIS.md` for the required scale tiers, non-token costs, architecture changes, measured baseline language, and explicit unknowns.
 
 ---
 
@@ -85,7 +85,7 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 
 | Requirement | Implementation | Automated proof | Human proof or gap |
 | --- | --- | --- | --- |
-| Clear assumptions table. | `agent-forge/docs/COST-ANALYSIS.md` `Assumptions Table`. | `CostAnalysisDocumentTest::testCostAnalysisCoversRequiredUserTiersAndScaleDrivers`. | Local reviewer inspection confirmed measured/estimated/unknown assumptions on 2026-05-01. |
+| Clear assumptions table. | `agent-forge/docs/operations/COST-ANALYSIS.md` `Assumptions Table`. | `CostAnalysisDocumentTest::testCostAnalysisCoversRequiredUserTiersAndScaleDrivers`. | Local reviewer inspection confirmed measured/estimated/unknown assumptions on 2026-05-01. |
 | Measured A1c request is baseline, not production forecast. | `Measured Baseline` section. | `CostAnalysisDocumentTest::testMeasuredA1cRequestIsBaselineNotProductionForecast`. | Local reviewer inspection confirmed baseline language on 2026-05-01. |
 | Covers 100, 1K, 10K, and 100K users. | `User-Tier Monthly Projection` section. | `CostAnalysisDocumentTest::testCostAnalysisCoversRequiredUserTiersAndScaleDrivers`. | Local reviewer inspection confirmed all four tiers on 2026-05-01. |
 | Includes model and non-token costs. | Projection table plus non-token table. | `CostAnalysisDocumentTest::testBaseScenarioModelSpendMatchesDocumentedFormula`. | Local reviewer inspection confirmed hosting, storage, monitoring, backup, support/on-call, and compliance/admin on 2026-05-01. |

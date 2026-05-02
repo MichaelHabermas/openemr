@@ -6,56 +6,56 @@
 
 Tough but fair: this is a strong narrow prototype and a credible one-week engineering effort. It has real OpenEMR integration, a patient-chart card, a server-side endpoint, an authorization gate, evidence tools, structured drafting, a verifier, logs, seeded demo data, and passing tests.
 
-But I would not accept it as “production-ready” under the standard in [SPECS.txt](agent-forge/docs/SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
+But I would not accept it as “production-ready” under the standard in [SPECS.txt](../SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
 
 I verified:
 
 - `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`: 103 tests, 344 assertions, passing.
-- `php agent-forge/scripts/run-evals.php`: 13/13 passing.
-- `agent-forge/scripts/health-check.sh`: public app and readiness endpoint both HTTP 200.
+- `php ../../scripts/run-evals.php`: 13/13 passing.
+- `../../scripts/health-check.sh`: public app and readiness endpoint both HTTP 200.
 - Running evals wrote a timestamped JSON summary under `agent-forge/eval-results/` (gitignored; see `agent-forge/eval-results/README.md`).
 
 **Major Shortfalls**
 
 1. The chatbot is not actually multi-turn.
 
-The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](agent-forge/docs/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
+The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](../SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](../../../src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
 
 2. Evidence retrieval is over-broad and not really tool-routed.
 
-The architecture promises a “tool router” [ARCHITECTURE.md](agent-forge/docs/ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin in the saved eval telemetry (`tools_called`). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
+The architecture promises a “tool router” [ARCHITECTURE.md](../ARCHITECTURE.md:100), but the handler iterates every configured tool for every question [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php:141). The active-medication eval still calls demographics, problems, labs, notes, and urine microalbumin in the saved eval telemetry (`tools_called`). That weakens speed, PHI minimization, and the “agent invokes tools as needed” story.
 
 3. Citations are not properly surfaced in the UI.
 
-The spec makes source attribution non-negotiable [SPECS.txt](agent-forge/docs/SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
+The spec makes source attribution non-negotiable [SPECS.txt](../SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
 
 4. Verification is useful, but shallow.
 
-The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](agent-forge/docs/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
+The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](../../../src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](../SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](../../../src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
 
 5. Authorization is intentionally narrow, which is safer than loose but too brittle for real use.
 
-The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](agent-forge/docs/ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
+The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](../ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
 
 6. Medication evidence is incomplete against the project’s own audit.
 
-The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](agent-forge/docs/AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
+The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](../AUDIT.md:142). The implementation reads only active rows from `prescriptions` [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:44). So “current medications” can be wrong by omission in OpenEMR data shapes outside the seeded demo path.
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
-The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases ([run-evals.php](agent-forge/scripts/run-evals.php), harness types under `src/AgentForge/Eval/`). A typical saved result shows `model: fixture-draft-provider`, zero tokens, and null cost in the JSON written under `agent-forge/eval-results/`. This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
+The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for most cases ([run-evals.php](../../scripts/run-evals.php), harness types under `src/AgentForge/Eval/`). A typical saved result shows `model: fixture-draft-provider`, zero tokens, and null cost in the JSON written under `agent-forge/eval-results/`. This proves orchestration logic, not the deployed OpenEMR database plus real model path. The manual VM proof helps, but it is not a repeatable live eval.
 
 8. Observability lacks per-step timing.
 
-The spec says logs should answer “How long did each step take?” [SPECS.txt](agent-forge/docs/SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](src/AgentForge/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
+The spec says logs should answer “How long did each step take?” [SPECS.txt](../SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](../../../src/AgentForge/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
 
 9. Cost analysis does not meet the spec.
 
-The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](agent-forge/docs/SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:75).
+The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](../SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:75).
 
 10. Packaging is weak for an external reviewer.
 
-The root [README.md](README.md:19) is still the generic OpenEMR README. The AgentForge docs are substantial, but there is no obvious top-level setup guide, deployed link, demo path, seed/eval command list, and “how to grade this” landing page. For a submission, that hurts.
+The root [README.md](../../../README.md:19) is still the generic OpenEMR README. The AgentForge docs are substantial, but there is no obvious top-level setup guide, deployed link, demo path, seed/eval command list, and “how to grade this” landing page. For a submission, that hurts.
 
 **What Is Strong**
 
@@ -76,40 +76,40 @@ The project earns credit for embedding in OpenEMR, using server-side authorizati
 **Highest-Risk Shortfalls**
 
 1. Verification trusts the model’s claim label  
-[DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
+[DraftVerifier.php](../../../src/AgentForge/Verification/DraftVerifier.php:48) only source-checks claims marked `patient_fact`. Claims marked `warning`, `missing_data`, or `refusal` are accepted into verified output without citation matching. Since the model chooses the label, this is a trust-boundary bug.
 
 Why it matters: `SPECS.txt` requires every claim to be traceable to the patient record. The verifier should classify or validate factuality itself, not rely on model-provided claim type.
 
 2. The agent is single-turn, not multi-turn  
-[AgentRequest.php](src/AgentForge/Handlers/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](src/AgentForge/Handlers/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
+[AgentRequest.php](../../../src/AgentForge/Handlers/AgentRequest.php:17) only contains `patientId` and `question`. [AgentRequestParser.php](../../../src/AgentForge/Handlers/AgentRequestParser.php:20) parses only those fields. The UI in [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:69) replaces the response rather than preserving a thread.
 
 Why it matters: the spec explicitly calls for a conversational agent that receives follow-up questions and maintains context. Current follow-ups are just independent single-turn queries.
 
 3. Citations are not visible to the physician  
-[AgentResponse.php](src/AgentForge/Handlers/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
+[AgentResponse.php](../../../src/AgentForge/Handlers/AgentResponse.php:25) returns citations, but [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:59) ignores `payload.citations`.
 
 Why it matters: internal verification is not enough. The physician must see why the answer is trustworthy. The architecture promises source-cited answer display, but the UI currently hides the evidence trail.
 
 4. Observability is useful but overstated  
-[RequestLog.php](src/AgentForge/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](src/AgentForge/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
+[RequestLog.php](../../../src/AgentForge/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](../../../src/AgentForge/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
 
 Why it matters: this may be acceptable as a sensitive audit log, but it is not PHI-free. The fix is mostly honesty and controls: rename the concept, document retention/access policy, and avoid implying de-identification.
 
 5. Evals are too synthetic for the claims being made  
-[run-evals.php](agent-forge/scripts/run-evals.php:104) wires fake authorization, fake tools, and mostly `FixtureDraftProvider`. That is good for deterministic regression testing, but it does not prove the live SQL evidence path, live OpenAI provider, browser UI, deployed endpoint, or real session behavior.
+[run-evals.php](../../scripts/run-evals.php:104) wires fake authorization, fake tools, and mostly `FixtureDraftProvider`. That is good for deterministic regression testing, but it does not prove the live SQL evidence path, live OpenAI provider, browser UI, deployed endpoint, or real session behavior.
 
 Why it matters: the eval suite tests the architecture shape more than the deployed product. For clinical trust, you need at least a small live-path eval tier.
 
 6. Cost analysis is request-scale, not user-scale  
-[COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md:64) projects monthly requests, while the spec asks for 100, 1K, 10K, and 100K users with architectural changes. This is less important than verifier/auth correctness, but it is still a production-thinking gap.
+[COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:64) projects monthly requests, while the spec asks for 100, 1K, 10K, and 100K users with architectural changes. This is less important than verifier/auth correctness, but it is still a production-thinking gap.
 
 **What Is Strong**
 
-The authorization posture is thoughtful. [PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
+The authorization posture is thoughtful. [PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php:17) binds requests to session user, active chart patient, coarse ACL, patient existence, and direct relationship. Narrow and fail-closed is the right first move.
 
-The evidence boundary is good. [SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
+The evidence boundary is good. [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:17) uses fixed, parameterized, patient-scoped queries rather than model-generated SQL.
 
-The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
+The failure behavior is much better than typical student work. [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php:68) handles draft provider failures, tool failures, verification failures, and clinical-advice refusals visibly.
 
 **Priority Fixes**
 
@@ -154,7 +154,7 @@ But the spec asked for several specific things, and the submission misses or wea
 ### 1.1 AUDIT.md, USERS.md, ARCHITECTURE.md
 
 **Spec wording:** the rubric lists these at `./AUDIT.md`, `./USERS.md`, `./ARCHITECTURE.md` — repo root.
-**Submitted:** [agent-forge/docs/AUDIT.md](agent-forge/docs/AUDIT.md), [agent-forge/docs/USERS.md](agent-forge/docs/USERS.md), [agent-forge/docs/ARCHITECTURE.md](agent-forge/docs/ARCHITECTURE.md).
+**Submitted:** [../AUDIT.md](../AUDIT.md), [../USERS.md](../USERS.md), [../ARCHITECTURE.md](../ARCHITECTURE.md).
 
 **Shortfall (S-1, gating):** The required documents are not at repo root. A reviewer following the spec literally would not find them. This is the kind of mistake that gets a real submission auto-rejected by an intake checklist. Either move them or symlink them, but the location the spec calls for is non-negotiable.
 
@@ -166,7 +166,7 @@ But the spec asked for several specific things, and the submission misses or wea
 
 ### 1.2 Eval Dataset
 
-**Submitted:** [agent-forge/fixtures/eval-cases.json](agent-forge/fixtures/eval-cases.json) — 13 cases, 9 marked `safety_critical`. Run via [agent-forge/scripts/run-evals.php](agent-forge/scripts/run-evals.php). Latest result: 13/13 pass.
+**Submitted:** [../../fixtures/eval-cases.json](../../fixtures/eval-cases.json) — 13 cases, 9 marked `safety_critical`. Run via [../../scripts/run-evals.php](../../scripts/run-evals.php). Latest result: 13/13 pass.
 
 **Shortfall (S-2, severe):** The eval suite never exercises the real LLM. Twelve of thirteen cases use `FixtureDraftProvider` and one uses `EvalHallucinatingDraftProvider`. The result file confirms it: `model: "fixture-draft-provider"`, `input_tokens: 0`, `output_tokens: 0`, `estimated_cost: null`, `latency_ms: 0` or `1`.
 
@@ -178,11 +178,11 @@ This is a real gap. The right shape is: keep the deterministic fixture suite (it
 
 ### 1.3 AI Cost Analysis
 
-**Submitted:** [agent-forge/docs/COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md).
+**Submitted:** [../operations/COST-ANALYSIS.md](../operations/COST-ANALYSIS.md).
 
 **Shortfall (S-4, severe — this is the one to fix first):** The spec is explicit that the projection should be at 100 / 1,000 / 10,000 / 100,000 *USERS*, with discussion of *architectural changes*, and is "not simply cost-per-token × n users." Your submission does exactly the thing the spec forbids:
 
-- The projection table at [COST-ANALYSIS.md:67-73](agent-forge/docs/COST-ANALYSIS.md:67) is in *monthly requests*, not users.
+- The projection table at [COST-ANALYSIS.md:67-73](../operations/COST-ANALYSIS.md:67) is in *monthly requests*, not users.
 - It is mechanically `(request_cost) × n` — the value at 1,000 is exactly 10× the value at 100.
 - There is no discussion of what changes architecturally between tiers: caching, batch pricing, model tiering, rate limits, dedicated capacity, fallback providers, on-prem hosting at scale, retention/log volumes, none of it.
 - Hosting, monitoring, support, retention costs are correctly listed under "Known Unknowns" — but listing them as unknown does not satisfy a deliverable that explicitly asks for them.
@@ -195,13 +195,13 @@ The single real measurement (gpt-4o-mini, 836 in / 173 out, $0.0002292, 10,693 m
 
 ### 2.1 "Agentic chatbot" (multi-turn, follow-ups, tool chaining)
 
-**Submitted:** [src/AgentForge/Handlers/VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php), [interface/patient_file/summary/agent_request.php](interface/patient_file/summary/agent_request.php), [templates/patient/card/agent_forge.html.twig](templates/patient/card/agent_forge.html.twig).
+**Submitted:** [src/AgentForge/Handlers/VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php), [interface/patient_file/summary/agent_request.php](../../../interface/patient_file/summary/agent_request.php), [templates/patient/card/agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig).
 
 **Shortfall (S-5, severe):** Calling this "agentic" is generous. It is a fixed-pipeline single-shot RAG system:
 
 - The handler runs *every* evidence tool on *every* request — the model does not select tools. There is no tool chaining; there is tool *concatenation*, decided by deterministic question classification.
 - There is no conversation state. The endpoint takes a question and a patient ID; there is no `conversation_id`, no prior-turn context, no follow-up handling. The Twig template is a single textarea and a Send button — submit, render, done.
-- This directly contradicts your own [USERS.md](agent-forge/docs/USERS.md) Use Case 2 ("Follow-Up Drill-Down"), which explicitly requires multi-turn.
+- This directly contradicts your own [USERS.md](../USERS.md) Use Case 2 ("Follow-Up Drill-Down"), which explicitly requires multi-turn.
 
 To be clear: a single-shot constrained-RAG design is *defensible* for a clinical co-pilot — it's actually the safer choice. But then USERS.md should not promise multi-turn, ARCHITECTURE.md should explicitly say "we do not use a multi-turn agent loop and here is why," and the spec's "agentic" requirement should be addressed head-on. Right now the docs claim a capability the code does not have.
 
@@ -209,11 +209,11 @@ To be clear: a single-shot constrained-RAG design is *defensible* for a clinical
 
 ### 2.2 Verification (source attribution + domain constraints)
 
-**Submitted:** [src/AgentForge/Verification/DraftVerifier.php](src/AgentForge/Verification/DraftVerifier.php), [src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php](src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php), [src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php](src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php).
+**Submitted:** [src/AgentForge/Verification/DraftVerifier.php](../../../src/AgentForge/Verification/DraftVerifier.php), [src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php](../../../src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php), [src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php](../../../src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php).
 
 **Strength:** The domain-constraint side is genuinely well done. The OpenAI provider uses `response_format: json_schema` with `strict: true`, temperature 0, `#[SensitiveParameter]` on the API key, and a system prompt that explicitly forbids diagnosis/dosing/notes. The `ClinicalAdviceRefusalPolicy` is applied to both sentences and claims. Refusals are wired through to the evidence layer (`refusalSentences` map) so the policy and the model agree. This is solid boundary discipline.
 
-**Shortfall (S-7, moderate):** Source attribution is implemented as substring matching — [DraftVerifier.php:93-98](src/AgentForge/Verification/DraftVerifier.php:93):
+**Shortfall (S-7, moderate):** Source attribution is implemented as substring matching — [DraftVerifier.php:93-98](../../../src/AgentForge/Verification/DraftVerifier.php:93):
 
 ```php
 if (
@@ -233,7 +233,7 @@ This is the kind of weakness that an instructor review should flag because it di
 
 ### 2.3 Observability (request, latency, tool failures, tokens, cost)
 
-**Submitted:** [src/AgentForge/RequestLog.php](src/AgentForge/RequestLog.php), [src/AgentForge/PsrRequestLogger.php](src/AgentForge/PsrRequestLogger.php).
+**Submitted:** [src/AgentForge/RequestLog.php](../../../src/AgentForge/RequestLog.php), [src/AgentForge/PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php).
 
 **Strength:** The log entry is well-shaped — request_id, user_id, patient_id, decision, latency_ms, question_type, tools_called, source_ids, model, input/output tokens, estimated_cost, failure_reason, verifier_result. It is PHI-free by contract and that contract is enforced by isolated tests. Token and cost capture work for the real provider (the COST-ANALYSIS measurement comes from this path).
 
@@ -251,7 +251,7 @@ Mostly addressed under §1.2. Restating the structural gap because it is the mos
 
 ### 3.1 Authorization
 
-[src/AgentForge/Auth/PatientAuthorizationGate.php](src/AgentForge/Auth/PatientAuthorizationGate.php), [src/AgentForge/Auth/SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php).
+[src/AgentForge/Auth/PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php), [src/AgentForge/Auth/SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php).
 
 **Strength:** Fail-closed end-to-end. Session user > 0, session patient > 0, requested patient matches active chart, ACL check, patient exists, direct relationship check. RuntimeException → refusal. This is correct.
 
@@ -259,7 +259,7 @@ Mostly addressed under §1.2. Restating the structural gap because it is the mos
 
 ### 3.2 Data layer
 
-[src/AgentForge/Evidence/SqlChartEvidenceRepository.php](src/AgentForge/Evidence/SqlChartEvidenceRepository.php).
+[src/AgentForge/Evidence/SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php).
 
 **Strength:** Parameterized queries throughout, bounded `LIMIT` clauses (max 50), explicit handling of OpenEMR's quirks (the `CAST` workaround for `form_clinical_notes.encounter` being VARCHAR is the right call given the legacy schema).
 
@@ -271,7 +271,7 @@ Single demo patient, `pid=900001`. The eval suite tests safety with fixtures, bu
 
 ### 3.4 Deployment
 
-[agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md](agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md), [agent-forge/scripts/deploy-vm.sh](agent-forge/scripts/deploy-vm.sh), [agent-forge/scripts/rollback-vm.sh](agent-forge/scripts/rollback-vm.sh).
+[../epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md](../epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md), [../../scripts/deploy-vm.sh](../../scripts/deploy-vm.sh), [../../scripts/rollback-vm.sh](../../scripts/rollback-vm.sh).
 
 **Strength:** Real deploy + real rollback, with captured transcripts and a 200 health check. Cloudflare TLS termination. Honest documentation of MariaDB first-init fragility. This is *the* part of the submission where the team most clearly went past the minimum bar.
 
@@ -293,17 +293,17 @@ These are not the focus of the review but they should be on the record:
 
 | # | Severity | Shortfall | Where |
 |---|---|---|---|
-| S-4 | Severe | COST-ANALYSIS measures requests not users, is `cost × n` (the spec explicitly forbids this), no architectural-tier discussion, no infra cost. | [COST-ANALYSIS.md](agent-forge/docs/COST-ANALYSIS.md) |
-| S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](agent-forge/scripts/run-evals.php), `src/AgentForge/Eval/` |
-| S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php), [agent_forge.html.twig](templates/patient/card/agent_forge.html.twig) |
-| S-1 | Gating | AUDIT/USERS/ARCHITECTURE are at `agent-forge/docs/`, not repo root as the spec specifies. | [agent-forge/docs/](agent-forge/docs/) |
-| S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](src/AgentForge/Verification/DraftVerifier.php:93) |
-| S-9 | Moderate | Measured VM latency 10,693 ms vs. a "seconds" use case. No defined latency budget. | [COST-ANALYSIS.md:62](agent-forge/docs/COST-ANALYSIS.md:62) |
-| S-3 | Moderate | Eval coverage thin on ambiguous queries; no eval for the multi-turn use case USERS.md defines. | [eval-cases.json](agent-forge/fixtures/eval-cases.json) |
-| S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](src/AgentForge/Handlers/VerifiedAgentHandler.php) |
-| S-8 | Moderate | "Observability" is structured log lines to apache error.log — no aggregation, no SLO, no alerts. | [PsrRequestLogger.php](src/AgentForge/PsrRequestLogger.php) |
-| S-11 | Moderate | AUDIT P1 (missing composite indexes) identified but not remediated. | [AUDIT.md](agent-forge/docs/AUDIT.md) |
-| S-10 | Acknowledged | Authorization scope: direct provider/encounter relationship only — no care-team / facility / scheduling derivation. | [SqlPatientAccessRepository.php](src/AgentForge/Auth/SqlPatientAccessRepository.php) |
+| S-4 | Severe | COST-ANALYSIS measures requests not users, is `cost × n` (the spec explicitly forbids this), no architectural-tier discussion, no infra cost. | [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md) |
+| S-2 | Severe | Eval suite stubs the LLM (`fixture-draft-provider`, 0 tokens, 0–1 ms). 13/13 green does not validate the real agent. | [run-evals.php](../../scripts/run-evals.php), `src/AgentForge/Eval/` |
+| S-5 | Severe | Single-shot RAG, no tool selection by model, no multi-turn — but USERS.md and the "agentic" framing claim otherwise. | [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php), [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig) |
+| S-1 | Gating | AUDIT/USERS/ARCHITECTURE are at `../`, not repo root as the spec specifies. | [../](../) |
+| S-7 | Moderate | DraftVerifier is substring matching — false-negatives on paraphrase, false-positives on extra unsupported text. | [DraftVerifier.php:93-98](../../../src/AgentForge/Verification/DraftVerifier.php:93) |
+| S-9 | Moderate | Measured VM latency 10,693 ms vs. a "seconds" use case. No defined latency budget. | [COST-ANALYSIS.md:62](../operations/COST-ANALYSIS.md:62) |
+| S-3 | Moderate | Eval coverage thin on ambiguous queries; no eval for the multi-turn use case USERS.md defines. | [eval-cases.json](../../fixtures/eval-cases.json) |
+| S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php) |
+| S-8 | Moderate | "Observability" is structured log lines to apache error.log — no aggregation, no SLO, no alerts. | [PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php) |
+| S-11 | Moderate | AUDIT P1 (missing composite indexes) identified but not remediated. | [AUDIT.md](../AUDIT.md) |
+| S-10 | Acknowledged | Authorization scope: direct provider/encounter relationship only — no care-team / facility / scheduling derivation. | [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php) |
 
 ---
 

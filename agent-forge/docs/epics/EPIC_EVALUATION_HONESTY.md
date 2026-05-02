@@ -89,13 +89,13 @@ First-principles premise check: the problem is not a lack of green numbers. The 
 
 Boundary/orchestration note: this epic changes documentation and isolated document regression tests only. It does not change runtime endpoint, authorization, SQL execution, model provider, browser UI, or deployed VM behavior.
 
-Human verification: local reviewer inspection was performed on 2026-05-01 by searching `agent-forge/docs/EVALUATION-TIERS.md` for fixture/orchestration labeling, SQL/live-model/browser/deployed tier separation, release-gate language, captured-result requirements, and no-result-file-unless-run rules.
+Human verification: local reviewer inspection was performed on 2026-05-01 by searching `agent-forge/docs/evaluation/EVALUATION-TIERS.md` for fixture/orchestration labeling, SQL/live-model/browser/deployed tier separation, release-gate language, captured-result requirements, and no-result-file-unless-run rules.
 
 ---
 
 ## Change Log
 
-- 2026-05-01 22:30 EDT: Added `agent-forge/docs/EVALUATION-TIERS.md` with Tier 0 fixture/orchestration proof, planned SQL/live-model/browser/deployed tiers, pass criteria, and release rule.
+- 2026-05-01 22:30 EDT: Added `agent-forge/docs/evaluation/EVALUATION-TIERS.md` with Tier 0 fixture/orchestration proof, planned SQL/live-model/browser/deployed tiers, pass criteria, and release rule.
 - 2026-05-01 22:30 EDT: Updated reviewer-facing eval docs to avoid treating fixture-only green as full live-agent proof.
 - 2026-05-01 22:30 EDT: Added `EvaluationTiersDocumentTest` to lock the proof taxonomy, live-tier pass criteria, required telemetry, and no-result-file-unless-run rule.
 - 2026-05-01 22:30 EDT: Updated architecture, PRD, and PLAN references to point at the Epic 10 taxonomy.
@@ -109,7 +109,7 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 
 | Requirement | Implementation | Automated proof | Human proof or gap |
 | --- | --- | --- | --- |
-| Current fixture evals are labeled deterministic fixture/orchestration proof. | `agent-forge/docs/EVALUATION-TIERS.md`; `agent-forge/eval-results/README.md`; `AGENTFORGE-REVIEWER-GUIDE.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
+| Current fixture evals are labeled deterministic fixture/orchestration proof. | `agent-forge/docs/evaluation/EVALUATION-TIERS.md`; `agent-forge/eval-results/README.md`; `AGENTFORGE-REVIEWER-GUIDE.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
 | Fixture-only green is not described as full live-agent proof. | Release rule and Tier 0 boundary language in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
 | Seeded SQL eval tier exists with expected evidence and pass/fail criteria. | Tier 1 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLivePathTiersHavePassCriteriaAndRequiredCases`. | Local reviewer inspection confirmed tier exists; not executed as live SQL in this epic. |
 | Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed tier exists; not executed against provider in this epic. |

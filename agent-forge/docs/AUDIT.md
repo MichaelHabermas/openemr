@@ -138,7 +138,7 @@ Planned remediation:
 
 **Risk for the agent:** Any response-time target must be treated as an implementation goal, not an observed fact, until measured.
 
-**Remediation status:** Partially updated after implementation. A single local A1c request and a single public VM A1c request have been measured in `COST-ANALYSIS.md`, with the VM path around 10.693 seconds. These are baseline observations, not a production latency benchmark. Epic 14 must define a latency budget, per-step timing, aggregation, and optimization plan before production-readiness claims.
+**Remediation status:** Partially updated after implementation. A single local A1c request and a single public VM A1c request have been measured in `operations/COST-ANALYSIS.md`, with the VM path around 10.693 seconds. These are baseline observations, not a production latency benchmark. Epic 14 must define a latency budget, per-step timing, aggregation, and optimization plan before production-readiness claims.
 
 ## Data Quality
 

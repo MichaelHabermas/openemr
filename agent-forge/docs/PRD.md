@@ -107,7 +107,7 @@ Verification must enforce:
 
 The eval suite must prove the agent fails safely, not only that it can demo well.
 
-Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. `EVALUATION-TIERS.md` defines the Epic 10 taxonomy: fixture/orchestration proof remains Tier 0, and live SQL, live model, browser, and deployed session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. `evaluation/EVALUATION-TIERS.md` defines the Epic 10 taxonomy: fixture/orchestration proof remains Tier 0, and live SQL, live model, browser, and deployed session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Minimum eval cases:
 

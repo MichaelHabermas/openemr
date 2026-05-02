@@ -46,7 +46,7 @@ Create one repeatable fake-patient dataset that makes the Clinical Co-Pilot demo
 - [x] Verification script passes after seeding.
 - [x] Deploy and rollback scripts can discover `agent-forge/scripts/seed-demo-data.sh`.
 - [x] Verifier asserts the chart-render contract (encounter↔forms linkage, forms↔clinical-notes linkage, A1c order→report→result chain, no contradicting metformin titration) so chart correctness is proven by query, not by screenshot.
-- [x] Human verification step closed by running the verifier; cosmetic gaps (empty Medications widget, Clinical Notes Type/Category "Unspecified") documented as out of scope in `agent-forge/docs/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
+- [x] Human verification step closed by running the verifier; cosmetic gaps (empty Medications widget, Clinical Notes Type/Category "Unspecified") documented as out of scope in `agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
 
 ---
 

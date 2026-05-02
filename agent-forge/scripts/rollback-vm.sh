@@ -3,7 +3,7 @@
 # checks, and re-seeds the idempotent fake demo data. Volumes are preserved
 # across rollbacks; the seed script restores known demo state for pid=900001.
 # There is no point-in-time database rollback in this project.
-# See agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
+# See agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
 set -Eeuo pipefail
 
 REPO_DIR="${AGENTFORGE_REPO_DIR:-${HOME}/repos/openemr}"

@@ -9,7 +9,7 @@
 
 **Original Epic 4 scope (completed):** Build the server-owned request shell before adding model behavior: same-origin POST endpoint, CSRF and session binding, typed parsing, fail-closed patient authorization gate, and PHI-minimized request logging. A **placeholder** handler returned a non-model acknowledgment after authorization passed.
 
-**Current repository state:** Epics 5–6 wired read-only chart evidence tools and a verified drafting pipeline into the same endpoint. [agent_request.php](../../interface/patient_file/summary/agent_request.php) now composes `AgentRequestHandler` with `VerifiedAgentHandler` (default evidence tools, `DraftProviderFactory::createDefault()`, `DraftVerifier`) after the same authorization gate. Refusals still occur before any chart read when the gate fails.
+**Current repository state:** Epics 5–6 wired read-only chart evidence tools and a verified drafting pipeline into the same endpoint. [agent_request.php](../../../interface/patient_file/summary/agent_request.php) now composes `AgentRequestHandler` with `VerifiedAgentHandler` (default evidence tools, `DraftProviderFactory::createDefault()`, `DraftVerifier`) after the same authorization gate. Refusals still occur before any chart read when the gate fails.
 
 The first-principles constraint is unchanged: a browser panel is useful only after the server proves the current session user, active patient chart, and patient-specific relationship. If any of those facts are missing or unclear, the request is refused before chart tools run.
 
@@ -73,7 +73,7 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 - [x] Direct PHP smoke assertion confirmed `PsrRequestLogger` emits one PHI-minimized sensitive context without `question`.
 - [x] Direct PHP smoke assertion confirmed `AgentResponse::unexpectedFailure()` does not expose an internal SQL-style message.
 - [x] PHP syntax check passed for `AgentRequestHandler`, `AgentRequestResult`, `AgentRequestParserInterface`, and `AgentRequestHandlerTest`.
-- [x] Isolated suite: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` — see `agent-forge/docs/epic4-phpunit-output.txt` for a captured run (29 tests / 103 assertions at time of capture; counts may grow).
+- [x] Isolated suite: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'` — see `../evaluation/epic4-phpunit-output.txt` for a captured run (29 tests / 103 assertions at time of capture; counts may grow).
 - [x] Endpoint JSON output is protected from accidental prior output by buffering before `globals.php` and cleaning before emitting the JSON response.
 
 ---
@@ -125,7 +125,7 @@ That string is **obsolete**; the current endpoint runs the verified agent path a
 ## Definition Of Done Gate
 
 - Source criteria mapped to code/proof/deferral? yes.
-- Required automated tests executed and captured? yes — `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`; see `agent-forge/docs/epic4-phpunit-output.txt`.
+- Required automated tests executed and captured? yes — `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`; see `../evaluation/epic4-phpunit-output.txt`.
 - Required local manual checks executed and captured? yes (update narrative when re-running against verified path only).
 - Required fixtures/data/users for local proof exist? yes, `af_demo_unrelated` is seeded for the no-relationship refusal path.
 - Security/privacy/logging/error-handling requirements verified locally? yes.

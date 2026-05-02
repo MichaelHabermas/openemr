@@ -294,7 +294,7 @@ Rollback completed to bfd666d56.
 
 ## Epic 3 Demo Data — Deployed Verification
 
-Captured 2026-04-30 on the demo VM (`gauntlet-mgh`) after `git pull` brought the Epic 3 seed and verifier scripts onto the host. The seed is idempotent and the verifier asserts the chart-render contract documented in `agent-forge/docs/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
+Captured 2026-04-30 on the demo VM (`gauntlet-mgh`) after `git pull` brought the Epic 3 seed and verifier scripts onto the host. The seed is idempotent and the verifier asserts the chart-render contract documented in `agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
 
 Seed run:
 

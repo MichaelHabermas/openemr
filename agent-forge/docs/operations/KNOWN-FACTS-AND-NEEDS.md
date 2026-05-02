@@ -88,6 +88,6 @@ The deploy script should do the following, in order:
 1. Do not assume the active branch.
 2. Do not assume the reverse proxy setup.
 3. Do not assume database reset is acceptable.
-4. Do not use `docker compose down -v`. It is confirmed unsafe on the demo VM — see `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility". Deploys and rollbacks must use `docker compose down` (no `-v`).
+4. Do not use `docker compose down -v`. It is confirmed unsafe on the demo VM — see `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility". Deploys and rollbacks must use `docker compose down` (no `-v`).
 5. Do not use real patient data.
 6. Do not assume fake data is already present in the deployed database.

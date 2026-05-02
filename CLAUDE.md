@@ -46,7 +46,7 @@ state and the project-owned deployment sources:
 
 - `agent-forge/scripts/deploy-vm.sh`
 - `agent-forge/scripts/rollback-vm.sh`
-- `agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`
+- `agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`
 - `agent-forge/docs/PRD.md`
 
 Before instructing a VM/deploy step, state what script or doc supports it, what

@@ -3,7 +3,7 @@
 # re-seeds the idempotent fake demo data. Volumes are preserved across deploys
 # because the upstream MariaDB image's first-init is fragile on the demo VM;
 # the seed script alone is sufficient to restore known demo state.
-# See agent-forge/docs/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
+# See agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
 set -Eeuo pipefail
 
 REPO_DIR="${AGENTFORGE_REPO_DIR:-${HOME}/repos/openemr}"

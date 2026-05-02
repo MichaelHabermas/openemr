@@ -91,7 +91,7 @@ final class CostAnalysisDocumentTest extends TestCase
 
     private function costAnalysisDocument(): string
     {
-        $path = dirname(__DIR__, 4) . '/agent-forge/docs/COST-ANALYSIS.md';
+        $path = dirname(__DIR__, 4) . '/agent-forge/docs/operations/COST-ANALYSIS.md';
         $document = file_get_contents($path);
 
         $this->assertIsString($document);

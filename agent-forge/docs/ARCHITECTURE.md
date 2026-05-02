@@ -87,7 +87,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 
 | Boundary or constraint | Audit source | Required design response |
 | --- | --- | --- |
-| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. Epic 4's demo gate is intentionally narrow; see `EPIC4-AGENT-REQUEST-SHELL.md` for included and deferred relationship shapes. |
+| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. Epic 4's demo gate is intentionally narrow; see `epics/EPIC4-AGENT-REQUEST-SHELL.md` for included and deferred relationship shapes. |
 | Session-bound identity binding | Security S2 | The OpenEMR server endpoint binds each request to the active session user before agent handling. |
 | Browser treated as untrusted surface | Security S3 | The browser only sends input and displays output; it does not hold model credentials or make access decisions. |
 | Narrow OpenEMR integration | Architecture A1 and A2 | The first version uses a small chart-embedded endpoint instead of broad OpenEMR rewrites. |
@@ -235,7 +235,7 @@ Current local model configuration:
 - Model: `gpt-4o-mini`.
 - Credentials: server/container environment only; never browser-exposed.
 - Structured output: JSON-schema draft with sentences, claims, missing sections, refusals/warnings, and source IDs.
-- Pricing: see `COST-ANALYSIS.md` for the exact source and measured local request cost.
+- Pricing: see `operations/COST-ANALYSIS.md` for the exact source and measured local request cost.
 
 Current structured logs answer most request-level questions. Target observability must answer:
 
@@ -334,7 +334,7 @@ Minimum target eval set:
 - Tool failure is disclosed in the answer.
 - Hallucinated claim is blocked by the verifier.
 
-Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Epic 10 defines the proof boundary and live-path gates in `EVALUATION-TIERS.md`: Tier 0 is implemented fixture/orchestration proof, while seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Epic 10 defines the proof boundary and live-path gates in `evaluation/EVALUATION-TIERS.md`: Tier 0 is implemented fixture/orchestration proof, while seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Pass condition:
 
@@ -359,6 +359,6 @@ The architecture may feel small. That is the point. If this version cannot be tr
 - Architecture Defense is the immediate priority.
 - The first version serves only the primary care physician workflow in `USERS.md`.
 - Only demo data is used.
-- The deployment remains based on the existing Docker Compose setup documented in `KNOWN-FACTS-AND-NEEDS.md`.
+- The deployment remains based on the existing Docker Compose setup documented in `operations/KNOWN-FACTS-AND-NEEDS.md`.
 - `AUDIT.md` is treated as the current source of security and data-quality constraints.
 - The agent must be read-only, cited, logged, narrow, and fail-closed.

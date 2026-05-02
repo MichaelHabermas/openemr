@@ -31,14 +31,14 @@ Run these tracks in parallel if more than one worker is available.
 
 Track A - submission files:
 
-- Verify `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md`, `PRD.md`, `PLAN.md`, and `COST-ANALYSIS.md` exist.
+- Verify `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md`, `PRD.md`, `PLAN.md`, and `operations/COST-ANALYSIS.md` exist.
 - Add or update release checklist.
 
 Track B - deployment proof:
 
 - Verify public app URL and readiness endpoint.
 - Verify VM branch, remote, compose command, Docker permissions, TLS termination, environment variables, and volume safety.
-- Record a **git rollback target** before taking the stack offline (e.g. pre-deploy commit printed by `deploy-vm.sh`, or explicit commit for `rollback-vm.sh`). This is **not** a database or Docker volume snapshot — recovery of demo DB state is by re-seed; see `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`.
+- Record a **git rollback target** before taking the stack offline (e.g. pre-deploy commit printed by `deploy-vm.sh`, or explicit commit for `rollback-vm.sh`). This is **not** a database or Docker volume snapshot — recovery of demo DB state is by re-seed; see `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`.
 
 Track C - agent skeleton:
 
@@ -140,10 +140,10 @@ If any safety-critical proof is missing, the status is `implemented but not acce
 - `agent-forge/docs/PRD.md`
 - `agent-forge/docs/USERS.md`
 - `agent-forge/docs/AUDIT.md`
-- `agent-forge/docs/KNOWN-FACTS-AND-NEEDS.md`
+- `agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md`
 - `agent-forge/docs/ARCHITECTURE.md`
-- `agent-forge/docs/COST-ANALYSIS.md`
-- `agent-forge/docs/REVIEWER-PACKAGING-PLAN.md` (short pointer; canonical Epic 8 narrative in `agent-forge/docs/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md`)
+- `agent-forge/docs/operations/COST-ANALYSIS.md`
+- `agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md` (short pointer; canonical Epic 8 narrative in `agent-forge/docs/epics/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md`)
 
 ## Unknowns That Must Not Be Assumed
 
@@ -162,10 +162,10 @@ Verified facts (no longer unknown):
 - Deploy user runs `docker compose` without sudo.
 - Repo path on the VM: `~/repos/openemr`.
 - Compose directory: `docker/development-easy/`.
-- Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script. See `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility".
+- Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script. See `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility".
 - LLM provider/model for the current AgentForge path: OpenAI `gpt-4o-mini` via server-side `AGENTFORGE_DRAFT_PROVIDER=openai` and `AGENTFORGE_OPENAI_API_KEY`.
 - Structured-output support: `gpt-4o-mini` supports structured outputs and is called from the server-side OpenAI draft provider.
-- Pricing source for `gpt-4o-mini`: OpenAI model documentation records $0.15 input and $0.60 output per 1M text tokens. See `COST-ANALYSIS.md`.
+- Pricing source for `gpt-4o-mini`: OpenAI model documentation records $0.15 input and $0.60 output per 1M text tokens. See `operations/COST-ANALYSIS.md`.
 - Local measured manual request: A1c trend browser test on patient `900001` logged `latency_ms=2989`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
 - VM measured manual request: A1c trend browser test on patient `900001` logged `latency_ms=10693`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
 
@@ -194,7 +194,7 @@ The entire system follows **SOLID** and **modular design** so each piece can be 
 
 ## Epic 1 - Submission Gate Hygiene
 
-Status: Completed. Evidence is recorded in `agent-forge/docs/EPIC1-SUBMISSION-GATE-CHECKLIST.md`.
+Status: Completed. Evidence is recorded in `agent-forge/docs/epics/EPIC1-SUBMISSION-GATE-CHECKLIST.md`.
 
 Goal: make the required submission artifacts exist under the required names before building anything else.
 
@@ -302,7 +302,7 @@ Goal: prove the app is reachable and the deployment process is repeatable withou
 
 #### Task 2.1.1 - Define Health Check Script Before Deploy Automation
 
-Why: `SPECS.txt` requires a deployed app URL for every submission. `KNOWN-FACTS-AND-NEEDS.md` identifies the public URL and readiness endpoint.
+Why: `SPECS.txt` requires a deployed app URL for every submission. `operations/KNOWN-FACTS-AND-NEEDS.md` identifies the public URL and readiness endpoint.
 
 Start with eval/test:
 
@@ -346,7 +346,7 @@ Human verification:
 
 #### Task 2.1.3 - Demo Deploy Script (Reset-And-Seed Model)
 
-Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM (see "Known VM Bootstrap Fragility" in `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
+Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM (see "Known VM Bootstrap Fragility" in `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
 
 Start with eval/test:
 
@@ -450,7 +450,7 @@ Human verification:
 
 Goal: build the thinnest server-owned request path before adding model behavior.
 
-**Current tree note:** Epic 4’s shell and gate remain the outer boundary; Epics 5–6 added evidence tools and `VerifiedAgentHandler` behind the same endpoint. Historical task text below describes the original slice-and-sequence; smoke expectations for “placeholder only” are **superseded** — see `EPIC4-AGENT-REQUEST-SHELL.md` and Epic 6 for today’s definition of done.
+**Current tree note:** Epic 4’s shell and gate remain the outer boundary; Epics 5–6 added evidence tools and `VerifiedAgentHandler` behind the same endpoint. Historical task text below describes the original slice-and-sequence; smoke expectations for “placeholder only” are **superseded** — see `epics/EPIC4-AGENT-REQUEST-SHELL.md` and Epic 6 for today’s definition of done.
 
 ### Feature 4.1 - Embedded Chart Entry Point
 
@@ -485,7 +485,7 @@ Why: the physician needs a conversational surface inside the chart.
 Start with eval/test:
 
 - Originally: smoke test was a non-model placeholder response after authorization.
-- **Superseded:** open a patient chart, see the agent panel, enter a question, receive a **verified** JSON answer (or refusal) tied to the active patient; see Epic 6 and `EPIC_MODEL_DRAFTING_AND_VERIFICATION.md`.
+- **Superseded:** open a patient chart, see the agent panel, enter a question, receive a **verified** JSON answer (or refusal) tied to the active patient; see Epic 6 and `epics/EPIC_MODEL_DRAFTING_AND_VERIFICATION.md`.
 
 Implementation:
 
@@ -839,7 +839,7 @@ Goal: make behavior measurable from the beginning.
 
 #### Task 7.1.1 - Define Log Contract Tests
 
-Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: `SPECS.txt` requires real observability: request order, step latency, tool failures, tokens, and cost.
 
@@ -864,7 +864,7 @@ Human verification:
 
 #### Task 7.1.2 - Add Token And Cost Tracking
 
-Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md` and `COST-ANALYSIS.md`.
+Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md` and `operations/COST-ANALYSIS.md`.
 
 Why: `SPECS.txt` requires cost analysis and observability.
 
@@ -892,7 +892,7 @@ Human verification:
 
 #### Task 7.2.1 - Create Eval Cases Before Final Agent Behavior
 
-Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: evals must drive implementation, not describe it afterward.
 
@@ -922,7 +922,7 @@ Human verification:
 
 #### Task 7.2.2 - Run Evals And Save Results
 
-Status: complete locally. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: final submission requires eval dataset with results.
 
@@ -948,7 +948,7 @@ Human verification:
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
 
-Status: complete for local and VM browser. Detailed proof is in `EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete for local and VM browser. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
 
 Why: isolated tests do not prove the full clinical path works.
 
@@ -1082,7 +1082,7 @@ Implementation notes:
 
 Definition of done:
 
-- `COST-ANALYSIS.md` includes a clear assumptions table.
+- `operations/COST-ANALYSIS.md` includes a clear assumptions table.
 - The measured A1c request is identified as a baseline, not a production forecast.
 - Unknowns are not filled with false precision.
 
@@ -1105,7 +1105,7 @@ Implementation notes:
 
 Definition of done:
 
-- `COST-ANALYSIS.md` covers 100, 1K, 10K, and 100K users.
+- `operations/COST-ANALYSIS.md` covers 100, 1K, 10K, and 100K users.
 - Each tier includes model cost and non-token cost assumptions.
 - Each tier includes architectural changes needed at that scale.
 
@@ -1141,7 +1141,7 @@ Human verification:
 
 Goal: preserve deterministic fixture evals while adding planned live-path eval tiers that prove the real model, SQL evidence path, browser UI, deployed endpoint, and session behavior.
 
-Current implementation note: Epic 10 is implemented as a documentation-backed evaluation taxonomy in `agent-forge/docs/EVALUATION-TIERS.md` with isolated regression proof. Tier 0 remains the current deterministic fixture/orchestration runner; seeded SQL, live model, local browser/session, and deployed browser/session tiers are gated/manual until actually run and captured.
+Current implementation note: Epic 10 is implemented as a documentation-backed evaluation taxonomy in `agent-forge/docs/evaluation/EVALUATION-TIERS.md` with isolated regression proof. Tier 0 remains the current deterministic fixture/orchestration runner; seeded SQL, live model, local browser/session, and deployed browser/session tiers are gated/manual until actually run and captured.
 
 ### Feature 10.1 - Eval Tier Taxonomy
 
@@ -1606,7 +1606,7 @@ Implementation:
 
 Definition of done:
 
-- `COST-ANALYSIS.md` covers 100, 1K, 10K, and 100K users.
+- `operations/COST-ANALYSIS.md` covers 100, 1K, 10K, and 100K users.
 - Each scale level includes likely architecture changes.
 - Unknowns are labeled.
 
