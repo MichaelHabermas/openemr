@@ -85,6 +85,17 @@ final readonly class AgentTelemetry
         );
     }
 
+    /** @param array<string, int> $stageTimingsMs */
+    public function withMergedStageTimings(array $stageTimingsMs): self
+    {
+        $merged = $this->stageTimingsMs;
+        foreach ($stageTimingsMs as $stage => $timingMs) {
+            $merged[$stage] = ($merged[$stage] ?? 0) + $timingMs;
+        }
+
+        return $this->withStageTimings($merged);
+    }
+
     public static function notRun(?string $failureReason): self
     {
         return new self(

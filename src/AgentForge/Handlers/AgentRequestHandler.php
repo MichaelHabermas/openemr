@@ -22,6 +22,7 @@ use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
+use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -51,24 +52,36 @@ final readonly class AgentRequestHandler
         bool $csrfValid,
         string $requestId,
     ): AgentRequestResult {
+        $timer = new StageTimer($this->clock);
+        $timer->start('request:method');
         if (strtoupper($method) !== 'POST') {
-            return $this->refusal('AgentForge requests must use POST.', 405, 'refused_method_not_post');
+            $timer->stop('request:method');
+            return $this->refusal('AgentForge requests must use POST.', 405, 'refused_method_not_post', stageTimingsMs: $timer->timings());
         }
+        $timer->stop('request:method');
 
+        $timer->start('request:csrf');
         if (!$csrfValid) {
-            return $this->refusal('The request could not be verified.', 403, 'refused_bad_csrf', $sessionPatientId);
+            $timer->stop('request:csrf');
+            return $this->refusal('The request could not be verified.', 403, 'refused_bad_csrf', $sessionPatientId, stageTimingsMs: $timer->timings());
         }
+        $timer->stop('request:csrf');
 
         try {
+            $timer->start('request:parse');
             $request = $this->parser->parse($post);
+            $timer->stop('request:parse');
         } catch (DomainException) {
+            $timer->stop('request:parse');
             return $this->refusal(
                 self::INVALID_REQUEST_MESSAGE,
                 400,
                 'refused_invalid_request',
                 $sessionPatientId,
+                stageTimingsMs: $timer->timings(),
             );
         } catch (RuntimeException $exception) {
+            $timer->stop('request:parse');
             $this->logger->error(
                 'AgentForge request parsing failed unexpectedly.',
                 [
@@ -82,16 +95,18 @@ final readonly class AgentRequestHandler
                 statusCode: 500,
                 decision: 'refused_unexpected_error',
                 logPatientId: $sessionPatientId,
-                telemetry: AgentTelemetry::notRun('unexpected_parser_error'),
+                telemetry: AgentTelemetry::notRun('unexpected_parser_error')->withStageTimings($timer->timings()),
             );
         }
 
+        $timer->start('request:authorize');
         $decision = $this->authorizationGate->decide(
             $request,
             $sessionPatientId,
             $sessionUserId,
             $hasMedicalRecordAcl,
         );
+        $timer->stop('request:authorize');
 
         if (!$decision->allowed) {
             return $this->refusal(
@@ -99,14 +114,17 @@ final readonly class AgentRequestHandler
                 403,
                 'refused_' . $decision->code,
                 $request->patientId->value,
+                stageTimingsMs: $timer->timings(),
             );
         }
 
         $conversationState = null;
         if ($request->conversationId !== null) {
+            $timer->start('conversation:lookup');
             $lookup = $this->conversationStore->lookup($request->conversationId, $this->clock->nowMs());
+            $timer->stop('conversation:lookup');
             if ($lookup->status !== ConversationLookup::FOUND || $lookup->state === null) {
-                return $this->conversationRefusal($lookup->status, $request->patientId->value, $request->conversationId->value);
+                return $this->conversationRefusal($lookup->status, $request->patientId->value, $request->conversationId->value, $timer->timings());
             }
             if (!$lookup->state->boundTo((int) $sessionUserId, $request->patientId)) {
                 return $this->refusal(
@@ -115,6 +133,7 @@ final readonly class AgentRequestHandler
                     'refused_conversation_patient_mismatch',
                     $request->patientId->value,
                     $request->conversationId->value,
+                    $timer->timings(),
                 );
             }
             $conversationState = $lookup->state;
@@ -125,9 +144,16 @@ final readonly class AgentRequestHandler
         $telemetry = $this->agentHandler instanceof AgentTelemetryProvider
             ? $this->agentHandler->lastTelemetry()
             : AgentTelemetry::notRun(null);
-        $conversationState ??= $this->conversationStore->start((int) $sessionUserId, $request->patientId, $this->clock->nowMs());
+        if ($conversationState === null) {
+            $timer->start('conversation:start');
+            $conversationState = $this->conversationStore->start((int) $sessionUserId, $request->patientId, $this->clock->nowMs());
+            $timer->stop('conversation:start');
+        }
+        $timer->start('conversation:record_turn');
         $conversationState = $this->recordConversationTurn($conversationState, $response, $telemetry);
+        $timer->stop('conversation:record_turn');
         $response = $response->withConversationId($conversationState->id->value);
+        $telemetry = ($telemetry ?? AgentTelemetry::notRun(null))->withMergedStageTimings($timer->timings());
 
         return new AgentRequestResult(
             response: $response,
@@ -145,18 +171,20 @@ final readonly class AgentRequestHandler
         string $decision,
         ?int $logPatientId = null,
         ?string $conversationId = null,
+        array $stageTimingsMs = [],
     ): AgentRequestResult {
         return new AgentRequestResult(
             response: AgentResponse::refusal($message),
             statusCode: $statusCode,
             decision: $decision,
             logPatientId: $logPatientId,
-            telemetry: AgentTelemetry::notRun($decision),
+            telemetry: AgentTelemetry::notRun($decision)->withStageTimings($stageTimingsMs),
             conversationId: $conversationId,
         );
     }
 
-    private function conversationRefusal(string $lookupStatus, int $logPatientId, string $conversationId): AgentRequestResult
+    /** @param array<string, int> $stageTimingsMs */
+    private function conversationRefusal(string $lookupStatus, int $logPatientId, string $conversationId, array $stageTimingsMs): AgentRequestResult
     {
         if ($lookupStatus === ConversationLookup::EXPIRED) {
             return $this->refusal(
@@ -165,6 +193,7 @@ final readonly class AgentRequestHandler
                 'refused_conversation_expired',
                 $logPatientId,
                 $conversationId,
+                $stageTimingsMs,
             );
         }
 
@@ -175,6 +204,7 @@ final readonly class AgentRequestHandler
                 'refused_conversation_turn_limit',
                 $logPatientId,
                 $conversationId,
+                $stageTimingsMs,
             );
         }
 
@@ -184,6 +214,7 @@ final readonly class AgentRequestHandler
             'refused_conversation_not_found',
             $logPatientId,
             $conversationId,
+            $stageTimingsMs,
         );
     }
 

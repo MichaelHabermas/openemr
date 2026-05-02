@@ -13,14 +13,14 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use OpenEMR\AgentForge\AgentForgeClock;
-use OpenEMR\AgentForge\Observability\AgentTelemetry;
-use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
-use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
@@ -55,25 +55,30 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     public function handle(AgentRequest $request): AgentResponse
     {
         $this->lastTelemetry = null;
+        $plannerTimer = new StageTimer();
+        $plannerTimer->start('planner');
         $scopeRefusal = CurrentChartScopePolicy::refusalFor($request->question, $request->patientId);
         if ($scopeRefusal !== null) {
+            $plannerTimer->stop('planner');
             $this->lastTelemetry = AgentTelemetry::plannedRefusal(
                 'cross_patient_refusal',
                 'cross_patient_refusal',
                 ChartQuestionPlanner::defaultSections(),
-            );
+            )->withStageTimings($plannerTimer->timings());
             return AgentResponse::refusal($scopeRefusal);
         }
 
         $plan = $this->planner->plan($request->question, $this->deadlineMs, $request->conversationSummary);
         if ($plan->refused()) {
+            $plannerTimer->stop('planner');
             $this->lastTelemetry = AgentTelemetry::plannedRefusal(
                 $plan->questionType,
                 $plan->questionType,
                 $plan->skippedSections,
-            );
+            )->withStageTimings($plannerTimer->timings());
             return AgentResponse::refusal((string) $plan->refusal);
         }
+        $plannerTimer->stop('planner');
 
         $deadline = new Deadline($this->clock, $this->deadlineMs);
         $timer = new StageTimer($this->clock);
@@ -87,7 +92,9 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             $timer,
             $deadline,
         );
-        $this->lastTelemetry = $draftingResult->telemetry->withStageTimings($timer->timings());
+        $this->lastTelemetry = $draftingResult->telemetry
+            ->withMergedStageTimings($plannerTimer->timings())
+            ->withMergedStageTimings($timer->timings());
 
         return $draftingResult->response;
     }

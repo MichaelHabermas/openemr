@@ -210,6 +210,26 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame('verification_failed', $result->telemetry->failureReason);
     }
 
+    public function testVerifiedDraftTelemetryIncludesDeterministicUsageAndCost(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineUsageProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
+            $this->bundle(),
+            'lab',
+            ['Recent labs'],
+        );
+
+        $this->assertSame('ok', $result->response->status);
+        $this->assertSame('mock-usage-provider', $result->telemetry->model);
+        $this->assertSame(123, $result->telemetry->inputTokens);
+        $this->assertSame(45, $result->telemetry->outputTokens);
+        $this->assertSame(0.0067, $result->telemetry->estimatedCost);
+        $this->assertSame('passed', $result->telemetry->verifierResult);
+    }
+
     private function bundle(): EvidenceBundle
     {
         return new EvidenceBundle([
@@ -335,6 +355,20 @@ final readonly class PipelineFabricatingProvider implements DraftProvider
             [],
             [],
             DraftUsage::fixture(),
+        );
+    }
+}
+
+final readonly class PipelineUsageProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    {
+        return new DraftResponse(
+            [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 %')],
+            [new DraftClaim('Hemoglobin A1c: 7.4 %', DraftClaim::TYPE_PATIENT_FACT, ['lab:procedure_result/a1c@2026-04-10'], 's1')],
+            [],
+            [],
+            new DraftUsage('mock-usage-provider', 123, 45, 0.0067),
         );
     }
 }

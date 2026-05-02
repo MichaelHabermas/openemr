@@ -44,6 +44,7 @@ final class AgentRequestHandlerTest extends TestCase
         $result = $this->handler()->handle('POST', [], 7, 900001, true, false, 'request-1');
 
         $this->assertResult($result, 403, 'refused_bad_csrf', 'The request could not be verified.');
+        $this->assertTelemetryStages($result, ['request:method', 'request:csrf']);
     }
 
     public function testRefusesMissingPatientId(): void
@@ -169,6 +170,7 @@ final class AgentRequestHandlerTest extends TestCase
             ->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
 
         $this->assertResult($result, 500, 'refused_unexpected_error', 'The request could not be processed.');
+        $this->assertTelemetryStages($result, ['request:method', 'request:csrf', 'request:parse']);
         $responseJson = json_encode($result->response->toArray(), JSON_THROW_ON_ERROR);
 
         $this->assertStringNotContainsString('SQLSTATE', $responseJson);
@@ -188,6 +190,14 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame($result->conversationId, $result->response->conversationId);
         $this->assertSame('ok', $result->response->status);
         $this->assertStringContainsString('patient 900001', $result->response->answer);
+        $this->assertTelemetryStages($result, [
+            'request:method',
+            'request:csrf',
+            'request:parse',
+            'request:authorize',
+            'conversation:start',
+            'conversation:record_turn',
+        ]);
     }
 
     public function testSamePatientFollowUpKeepsConversationIdAndRunsTools(): void
@@ -217,6 +227,14 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame('allowed', $followUp->decision);
         $this->assertSame($first->conversationId, $followUp->conversationId);
         $this->assertTrue($tool->called);
+        $this->assertTelemetryStages($followUp, [
+            'request:method',
+            'request:csrf',
+            'request:parse',
+            'request:authorize',
+            'conversation:lookup',
+            'conversation:record_turn',
+        ]);
     }
 
     public function testCrossPatientConversationReuseFailsBeforeToolsRun(): void
@@ -243,6 +261,13 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame(403, $followUp->statusCode);
         $this->assertSame('refused_conversation_patient_mismatch', $followUp->decision);
         $this->assertFalse($tool->called);
+        $this->assertTelemetryStages($followUp, [
+            'request:method',
+            'request:csrf',
+            'request:parse',
+            'request:authorize',
+            'conversation:lookup',
+        ]);
     }
 
     public function testExpiredConversationFailsBeforeToolsRun(): void
@@ -269,6 +294,13 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame(403, $followUp->statusCode);
         $this->assertSame('refused_conversation_expired', $followUp->decision);
         $this->assertFalse($tool->called);
+        $this->assertTelemetryStages($followUp, [
+            'request:method',
+            'request:csrf',
+            'request:parse',
+            'request:authorize',
+            'conversation:lookup',
+        ]);
     }
 
     public function testUnknownConversationFailsBeforeToolsRun(): void
@@ -287,6 +319,13 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame(403, $result->statusCode);
         $this->assertSame('refused_conversation_not_found', $result->decision);
         $this->assertFalse($tool->called);
+        $this->assertTelemetryStages($result, [
+            'request:method',
+            'request:csrf',
+            'request:parse',
+            'request:authorize',
+            'conversation:lookup',
+        ]);
     }
 
     public function testAllowedRequestRunsEvidenceHandlerAfterAuthorization(): void
@@ -310,6 +349,7 @@ final class AgentRequestHandlerTest extends TestCase
 
         $this->assertSame(403, $result->statusCode);
         $this->assertFalse($tool->called);
+        $this->assertTelemetryStages($result, ['request:method', 'request:csrf', 'request:parse', 'request:authorize']);
     }
 
     public function testUnexpectedEvidenceToolFailureReturnsGenericUncheckedSectionAndLogsInternally(): void
@@ -368,6 +408,16 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame($decision, $result->decision);
         $this->assertSame('refused', $result->response->status);
         $this->assertSame([$message], $result->response->refusalsOrWarnings);
+    }
+
+    /** @param list<string> $stages */
+    private function assertTelemetryStages(AgentRequestResult $result, array $stages): void
+    {
+        $this->assertNotNull($result->telemetry);
+        foreach ($stages as $stage) {
+            $this->assertArrayHasKey($stage, $result->telemetry->stageTimingsMs);
+            $this->assertGreaterThanOrEqual(0, $result->telemetry->stageTimingsMs[$stage]);
+        }
     }
 }
 

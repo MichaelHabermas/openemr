@@ -349,6 +349,32 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         $failures[] = 'Expected citation count was not met.';
     }
 
+    if (isset($case['expected_citations_exact']) && is_array($case['expected_citations_exact'])) {
+        $expected = agentforge_eval_normalized_string_list($case['expected_citations_exact']);
+        $actual = agentforge_eval_normalized_string_list($response->citations);
+        sort($expected);
+        sort($actual);
+        if ($actual !== $expected) {
+            $failures[] = sprintf(
+                'Expected exact citations [%s], got [%s].',
+                implode(', ', $expected),
+                implode(', ', $actual),
+            );
+        }
+    }
+
+    foreach (agentforge_eval_normalized_string_list($case['expected_citations_contains'] ?? []) as $citation) {
+        if (!in_array($citation, $response->citations, true)) {
+            $failures[] = sprintf('Missing expected citation %s.', $citation);
+        }
+    }
+
+    foreach (agentforge_eval_normalized_string_list($case['expected_citations_not_contains'] ?? []) as $citation) {
+        if (in_array($citation, $response->citations, true)) {
+            $failures[] = sprintf('Found forbidden citation %s.', $citation);
+        }
+    }
+
     if (($case['expected_conversation_id'] ?? false) && !is_string($result['conversation_id'])) {
         $failures[] = 'Expected a server-issued conversation id.';
     }
@@ -363,6 +389,33 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         }
     }
 
+    $stageTimings = is_array($logContext['stage_timings_ms'] ?? null) ? $logContext['stage_timings_ms'] : [];
+    foreach (agentforge_eval_normalized_string_list($case['expected_stage_timings_contains'] ?? []) as $stage) {
+        if (!array_key_exists($stage, $stageTimings)) {
+            $failures[] = sprintf('Log context stage_timings_ms missing expected stage %s.', $stage);
+        }
+    }
+
+    if (isset($case['expected_log_context']) && is_array($case['expected_log_context'])) {
+        foreach ($case['expected_log_context'] as $key => $expectedValue) {
+            if (!is_string($key)) {
+                continue;
+            }
+            if (!array_key_exists($key, $logContext)) {
+                $failures[] = sprintf('Log context missing expected key %s.', $key);
+                continue;
+            }
+            if ($logContext[$key] !== $expectedValue) {
+                $failures[] = sprintf(
+                    'Log context key %s expected %s, got %s.',
+                    $key,
+                    agentforge_eval_export_value($expectedValue),
+                    agentforge_eval_export_value($logContext[$key]),
+                );
+            }
+        }
+    }
+
     return [
         'id' => $case['id'],
         'safety_critical' => $case['safety_critical'],
@@ -374,4 +427,26 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         'citation_count' => count($response->citations),
         'log_context' => $logContext,
     ];
+}
+
+/**
+ * @param mixed $items
+ * @return list<string>
+ */
+function agentforge_eval_normalized_string_list(mixed $items): array
+{
+    if (!is_array($items)) {
+        return [];
+    }
+
+    return array_values(array_filter($items, static fn (mixed $item): bool => is_string($item) && trim($item) !== ''));
+}
+
+function agentforge_eval_export_value(mixed $value): string
+{
+    if (is_scalar($value) || $value === null) {
+        return var_export($value, true);
+    }
+
+    return json_encode($value, JSON_THROW_ON_ERROR);
 }
