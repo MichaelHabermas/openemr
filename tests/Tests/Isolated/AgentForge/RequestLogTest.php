@@ -13,9 +13,9 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DateTimeImmutable;
-use OpenEMR\AgentForge\AgentTelemetry;
-use OpenEMR\AgentForge\PsrRequestLogger;
-use OpenEMR\AgentForge\RequestLog;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\PsrRequestLogger;
+use OpenEMR\AgentForge\Observability\RequestLog;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 

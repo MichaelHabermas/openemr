@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\SensitiveLogPolicy;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use PHPUnit\Framework\TestCase;
 
 final class SensitiveLogPolicyTest extends TestCase

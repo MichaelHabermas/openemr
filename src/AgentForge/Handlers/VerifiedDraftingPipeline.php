@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
-use OpenEMR\AgentForge\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
@@ -21,7 +21,7 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
-use OpenEMR\AgentForge\StageTimer;
+use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\AgentForge\Verification\KnownMissingDataPolicy;

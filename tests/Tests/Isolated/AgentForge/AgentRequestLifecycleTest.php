@@ -19,8 +19,8 @@ use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
-use OpenEMR\AgentForge\RequestLog;
-use OpenEMR\AgentForge\RequestLogger;
+use OpenEMR\AgentForge\Observability\RequestLog;
+use OpenEMR\AgentForge\Observability\RequestLogger;
 use PHPUnit\Framework\TestCase;
 
 final class AgentRequestLifecycleTest extends TestCase

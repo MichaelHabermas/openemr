@@ -23,7 +23,7 @@ use OpenEMR\AgentForge\Handlers\AgentHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
-use OpenEMR\AgentForge\RequestLog;
+use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 
@@ -89,7 +89,7 @@ function agentforge_eval_main(): int
 
 /**
  * @param array<string, mixed> $case
- * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry}
+ * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry}
  */
 function agentforge_eval_run_case(array $case): array
 {
@@ -245,7 +245,7 @@ function agentforge_eval_tools(string $scenario): array
 
 /**
  * @param array<string, mixed> $case
- * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\AgentTelemetry} $result
+ * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry} $result
  * @param array<string, mixed> $logContext
  * @return array<string, mixed>
  */

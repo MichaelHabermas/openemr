@@ -190,7 +190,7 @@ The clinician-facing response contract is unchanged. Observability remains inter
 ## Commands Run
 
 ```bash
-php -l src/AgentForge/AgentTelemetry.php
+php -l src/AgentForge/Observability/AgentTelemetry.php
 php -l src/AgentForge/Handlers/VerifiedAgentHandler.php
 php -l src/AgentForge/Handlers/AgentRequestHandler.php
 php -l src/AgentForge/ResponseGeneration/OpenAiDraftProvider.php

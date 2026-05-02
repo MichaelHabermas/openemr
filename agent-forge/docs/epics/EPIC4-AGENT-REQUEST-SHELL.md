@@ -57,7 +57,7 @@ This limitation responds to `AUDIT.md` Security S1: OpenEMR's coarse ACL checks 
 
 | Requirement | Proof |
 | --- | --- |
-| Authorized requests log request id, user/patient context, decision, latency, telemetry, and pass/fail status. | `RequestLog`, `RequestLogger`, `PsrRequestLogger`, and `agent_request.php` log-and-respond helper. |
+| Authorized requests log request id, user/patient context, decision, latency, telemetry, and pass/fail status. | `Observability\RequestLog`, `Observability\RequestLogger`, `Observability\PsrRequestLogger`, and `agent_request.php` log-and-respond helper. |
 | Authorization result is logged without raw PHI in default context. | `RequestLog::toContext()` avoids question/answer text; extended telemetry is sanitized per observability epic. |
 | Logging can be tested without a live OpenEMR request. | `tests/Tests/Isolated/AgentForge/RequestLogTest.php` uses a recording PSR logger. Run: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'`. |
 | Unexpected endpoint failures do not leak internal exception messages. | `agent_request.php` catches modeled `DomainException` validation failures separately from unexpected `Throwable`; unexpected failures are logged internally and return `AgentResponse::unexpectedFailure()`. |

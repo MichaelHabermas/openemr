@@ -23,7 +23,7 @@ use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\AgentResponse;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
-use OpenEMR\AgentForge\PsrRequestLogger;
+use OpenEMR\AgentForge\Observability\PsrRequestLogger;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\BC\ServiceContainer;

@@ -26,7 +26,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Narrow fail-closed authorization gate for session user, active patient, coarse ACL, patient existence, and direct provider/encounter/supervisor relationships.
 - Bounded read-only evidence tools for the demo path with source-carrying evidence.
 - Server-side OpenAI draft provider using structured output, plus deterministic verification and refusal behavior.
-- Structured request logging with request id, user id, patient id, total latency, per-stage timings, question type, tools called, source ids, model, token counts, estimated cost, failure reason, and verifier result.
+- Structured request logging under `src/AgentForge/Observability` with request id, user id, patient id, total latency, per-stage timings, question type, tools called, source ids, model, token counts, estimated cost, failure reason, and verifier result.
 - Fake demo patient data, fixture evals, local/VM manual proof, deployment and rollback documentation.
 
 ### Accepted V1 Limitations
@@ -36,7 +36,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - The handler may call more evidence tools than the question requires; selective PHI-minimizing routing remains incomplete.
 - Medication evidence checks active prescriptions, active medication-list entries, and linked medication extension rows, but it does not reconcile duplicates or conflicts into clinical truth.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
-- Observability now includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
+- Observability lives under `src/AgentForge/Observability` and includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
 - Fixture evals prove deterministic orchestration and verifier behavior, but not the full live LLM, SQL, browser, deployed endpoint, or real session path.
 - The VM A1c request baseline is about 10.693 seconds. Production readiness requires a latency budget, p95 proof under that budget, and a measured optimization plan.
 

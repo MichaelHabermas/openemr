@@ -15,7 +15,7 @@ namespace OpenEMR\AgentForge\Evidence;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\StageTimer;
+use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

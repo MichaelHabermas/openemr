@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Handlers;
 
-use OpenEMR\AgentForge\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
 
 final readonly class AgentRequestResult
 {

@@ -13,8 +13,8 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use DateTimeImmutable;
-use OpenEMR\AgentForge\RequestLog;
-use OpenEMR\AgentForge\RequestLogger;
+use OpenEMR\AgentForge\Observability\RequestLog;
+use OpenEMR\AgentForge\Observability\RequestLogger;
 
 final readonly class AgentRequestLifecycle
 {

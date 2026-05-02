@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Exposes sanitized telemetry for the most recent AgentForge handler run.
+ * AgentForge request logging boundary.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -10,9 +10,9 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge;
+namespace OpenEMR\AgentForge\Observability;
 
-interface AgentTelemetryProvider
+interface RequestLogger
 {
-    public function lastTelemetry(): ?AgentTelemetry;
+    public function record(RequestLog $entry): void;
 }

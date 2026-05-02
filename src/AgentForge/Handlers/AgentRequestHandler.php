@@ -13,8 +13,8 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
-use OpenEMR\AgentForge\AgentTelemetry;
-use OpenEMR\AgentForge\AgentTelemetryProvider;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

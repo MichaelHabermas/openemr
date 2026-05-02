@@ -13,14 +13,14 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use OpenEMR\AgentForge\AgentForgeClock;
-use OpenEMR\AgentForge\AgentTelemetry;
-use OpenEMR\AgentForge\AgentTelemetryProvider;
+use OpenEMR\AgentForge\Observability\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
-use OpenEMR\AgentForge\StageTimer;
+use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
 use OpenEMR\AgentForge\Verification\DraftVerifier;

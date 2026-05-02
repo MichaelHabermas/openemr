@@ -10,7 +10,9 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge;
+namespace OpenEMR\AgentForge\Observability;
+
+use OpenEMR\AgentForge\StringKeyedArray;
 
 final class SensitiveLogPolicy
 {

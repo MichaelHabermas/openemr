@@ -10,7 +10,7 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge;
+namespace OpenEMR\AgentForge\Observability;
 
 use Psr\Log\LoggerInterface;
 

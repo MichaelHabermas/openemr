@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\AgentForgeClock;
-use OpenEMR\AgentForge\StageTimer;
+use OpenEMR\AgentForge\Observability\StageTimer;
 use PHPUnit\Framework\TestCase;
 
 final class StageTimerTest extends TestCase

@@ -47,7 +47,7 @@ The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for 
 
 8. Observability lacks per-step timing.
 
-The spec says logs should answer “How long did each step take?” [SPECS.txt](../SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](../../../src/AgentForge/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
+The spec says logs should answer “How long did each step take?” [SPECS.txt](../SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
 
 9. Cost analysis does not meet the spec.
 
@@ -91,7 +91,7 @@ Why it matters: the spec explicitly calls for a conversational agent that receiv
 Why it matters: internal verification is not enough. The physician must see why the answer is trustworthy. The architecture promises source-cited answer display, but the UI currently hides the evidence trail.
 
 4. Observability is useful but overstated  
-[RequestLog.php](../../../src/AgentForge/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](../../../src/AgentForge/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
+[RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php:3) calls the log “PHI-free,” while [RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php:52) includes `user_id`, `patient_id`, and telemetry source IDs.
 
 Why it matters: this may be acceptable as a sensitive audit log, but it is not PHI-free. The fix is mostly honesty and controls: rename the concept, document retention/access policy, and avoid implying de-identification.
 
@@ -235,7 +235,7 @@ This is the kind of weakness that an instructor review should flag because it di
 
 ### 2.3 Observability (request, latency, tool failures, tokens, cost)
 
-**Submitted:** [src/AgentForge/RequestLog.php](../../../src/AgentForge/RequestLog.php), [src/AgentForge/PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php).
+**Submitted:** [src/AgentForge/Observability/RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php), [src/AgentForge/Observability/PsrRequestLogger.php](../../../src/AgentForge/Observability/PsrRequestLogger.php).
 
 **Strength:** The log entry is well-shaped: request_id, user_id, patient_id, decision, latency_ms, question_type, tools_called, source_ids, model, input/output tokens, estimated_cost, failure_reason, verifier_result. It is a PHI-minimized sensitive audit log contract, and that contract is enforced by isolated tests. Token and cost capture work for the real provider (the COST-ANALYSIS measurement comes from this path).
 
@@ -303,7 +303,7 @@ These are not the focus of the review but they should be on the record:
 | S-9 | Moderate | Measured VM latency 10,693 ms vs. a "seconds" use case. No defined latency budget. | [COST-ANALYSIS.md:62](../operations/COST-ANALYSIS.md:62) |
 | S-3 | Moderate | Eval coverage thin on ambiguous queries; no eval for the multi-turn use case USERS.md defines. | [eval-cases.json](../../fixtures/eval-cases.json) |
 | S-6 | Moderate | Naïve `str_contains` question classifier — brittle to phrasing/synonyms. | [VerifiedAgentHandler.php](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php) |
-| S-8 | Moderate | "Observability" is structured log lines to apache error.log — no aggregation, no SLO, no alerts. | [PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php) |
+| S-8 | Moderate | "Observability" is structured log lines to apache error.log — no aggregation, no SLO, no alerts. | [PsrRequestLogger.php](../../../src/AgentForge/Observability/PsrRequestLogger.php) |
 | S-11 | Moderate | AUDIT P1 (missing composite indexes) identified but not remediated. | [AUDIT.md](../AUDIT.md) |
 | S-10 | Acknowledged | Authorization scope: direct provider/encounter relationship only — no care-team / facility / scheduling derivation. | [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php) |
 

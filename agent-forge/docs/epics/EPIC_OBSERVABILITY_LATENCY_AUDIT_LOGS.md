@@ -8,7 +8,7 @@
 
 ## Overview
 
-Epic 14 corrects the logging and observability claims around AgentForge. The implementation keeps the runtime surface unchanged: `SensitiveLogPolicy`, `RequestLog`, `AgentTelemetry`, and `StageTimer` remain the current logging and timing foundation. No dashboard, alerting provider, log shipper, database migration, or telemetry backend is added in this pass. Runtime dashboards, alerting infrastructure, and a new telemetry backend are not implemented.
+Epic 14 corrects the logging and observability claims around AgentForge. The runtime logging and timing foundation now lives under `src/AgentForge/Observability`: `SensitiveLogPolicy`, `RequestLog`, `AgentTelemetry`, and `StageTimer`. No dashboard, alerting provider, log shipper, database migration, or telemetry backend is added in this pass. Runtime dashboards, alerting infrastructure, and a new telemetry backend are not implemented.
 
 The first-principles constraint is that production readiness should be blocked by unclear sensitive audit controls, missing SLO/alert policy, or an unaccepted `10,693 ms` VM A1c path. The current local `2,989 ms` and VM `10,693 ms` A1c measurements are accepted as demo evidence only because the output was verified and cited.
 
