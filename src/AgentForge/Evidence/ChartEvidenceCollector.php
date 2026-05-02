@@ -14,6 +14,8 @@ namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -23,12 +25,12 @@ final class ChartEvidenceCollector
     /** @var array<string, ChartEvidenceTool> */
     private array $toolsBySection = [];
 
-    private AgentForgeClock $clock;
+    private readonly AgentForgeClock $clock;
 
     /** @param list<ChartEvidenceTool> $tools */
     public function __construct(
         array $tools,
-        private LoggerInterface $logger = new NullLogger(),
+        private readonly LoggerInterface $logger = new NullLogger(),
         ?AgentForgeClock $clock = null,
     ) {
         foreach ($tools as $tool) {
@@ -37,9 +39,13 @@ final class ChartEvidenceCollector
         $this->clock = $clock ?? new SystemAgentForgeClock();
     }
 
-    public function collect(PatientId $patientId, ChartQuestionPlan $plan): EvidenceRun
-    {
-        $startMs = $this->clock->nowMs();
+    public function collect(
+        PatientId $patientId,
+        ChartQuestionPlan $plan,
+        ?StageTimer $timer = null,
+        ?Deadline $deadline = null,
+    ): EvidenceRun {
+        $deadline ??= new Deadline($this->clock, $plan->deadlineMs);
         $results = [];
         $toolsCalled = [];
 
@@ -50,10 +56,13 @@ final class ChartEvidenceCollector
                 continue;
             }
 
+            $stageKey = 'evidence:' . $tool->section();
+            $timer?->start($stageKey);
             $toolsCalled[] = $tool->section();
             $results[] = ChartEvidenceToolInvoker::collectOrFailure($tool, $patientId, $this->logger);
+            $timer?->stop($stageKey);
 
-            if ($this->deadlineExceeded($startMs, $plan->deadlineMs)) {
+            if ($deadline->exceeded()) {
                 $results[] = EvidenceResult::failure(
                     'Deadline',
                     'Some chart sections could not be checked before the deadline.',
@@ -68,10 +77,5 @@ final class ChartEvidenceCollector
             array_values(array_unique($toolsCalled)),
             $plan->skippedSections,
         );
-    }
-
-    private function deadlineExceeded(int $startMs, int $deadlineMs): bool
-    {
-        return $deadlineMs >= 0 && ($this->clock->nowMs() - $startMs) > $deadlineMs;
     }
 }

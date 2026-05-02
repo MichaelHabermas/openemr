@@ -14,11 +14,14 @@ namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
 use OpenEMR\AgentForge\AgentTelemetry;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
+use OpenEMR\AgentForge\StageTimer;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\AgentForge\Verification\KnownMissingDataPolicy;
 use OpenEMR\AgentForge\Verification\VerificationResult;
@@ -45,13 +48,37 @@ final readonly class VerifiedDraftingPipeline
         string $questionType,
         array $toolsCalled,
         array $skippedChartSections = [],
+        ?StageTimer $timer = null,
+        ?Deadline $deadline = null,
     ): VerifiedDraftingResult {
         $bundle = $this->bundleWithKnownMissingSections($request, $bundle);
+        $deadline ??= new Deadline(new SystemAgentForgeClock(), -1);
+
+        if ($bundle->items === []) {
+            return new VerifiedDraftingResult(
+                $this->emptyBundleResponse($bundle),
+                $this->telemetry(
+                    $questionType,
+                    $toolsCalled,
+                    $skippedChartSections,
+                    $bundle,
+                    DraftUsage::notRun(),
+                    'empty_evidence_bundle',
+                    'not_run',
+                ),
+            );
+        }
 
         try {
-            $draft = $this->draftWithOneRetry($request, $bundle);
+            $timer?->start('draft');
+            $draft = $this->draftWithOneRetry($request, $bundle, $deadline);
+            $timer?->stop('draft');
+            $timer?->start('verify');
             $result = $this->verifier->verify($draft, $bundle);
+            $timer?->stop('verify');
         } catch (DraftProviderException $exception) {
+            $timer?->stop('draft');
+            $timer?->stop('verify');
             return $this->loggedDraftFailure(
                 $request,
                 $questionType,
@@ -64,6 +91,8 @@ final readonly class VerifiedDraftingPipeline
                 'draft_provider_unavailable',
             );
         } catch (DomainException | RuntimeException $exception) {
+            $timer?->stop('draft');
+            $timer?->stop('verify');
             return $this->loggedDraftFailure(
                 $request,
                 $questionType,
@@ -120,13 +149,32 @@ final readonly class VerifiedDraftingPipeline
         );
     }
 
-    private function draftWithOneRetry(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    private function emptyBundleResponse(EvidenceBundle $bundle): AgentResponse
+    {
+        $missingOrUnchecked = array_values(array_unique(array_merge(
+            $bundle->missingSections,
+            $bundle->failedSections,
+        )));
+        $lines = $missingOrUnchecked === []
+            ? ['No chart evidence was found for the checked sections.']
+            : $missingOrUnchecked;
+
+        return new AgentResponse(
+            'ok',
+            implode("\n", $lines),
+            [],
+            $missingOrUnchecked,
+            [],
+        );
+    }
+
+    private function draftWithOneRetry(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         try {
-            return $this->draftProvider->draft($request, $bundle);
+            return $this->draftProvider->draft($request, $bundle, $deadline);
         } catch (DomainException) {
             // One retry: transient validation gaps from the provider should not immediately fail the visit.
-            return $this->draftProvider->draft($request, $bundle);
+            return $this->draftProvider->draft($request, $bundle, $deadline);
         }
     }
 

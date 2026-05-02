@@ -14,9 +14,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Handlers\AgentResponse;
 use PHPUnit\Framework\TestCase;
-use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 
 final class AgentResponseTest extends TestCase
 {

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\ResponseGeneration\AnthropicDraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DisabledDraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
@@ -77,6 +78,30 @@ final class DraftProviderFactoryTest extends TestCase
 
         $this->assertNull($config->inputCostPerMillionTokens);
         $this->assertNull($config->outputCostPerMillionTokens);
+    }
+
+    public function testAnthropicModeReturnsAnthropicProvider(): void
+    {
+        $provider = DraftProviderFactory::create(new DraftProviderConfig(
+            mode: DraftProviderConfig::MODE_ANTHROPIC,
+            apiKey: 'test-anthropic-key',
+        ));
+
+        $this->assertInstanceOf(AnthropicDraftProvider::class, $provider);
+    }
+
+    public function testAnthropicDefaultsUseHaiku45Pricing(): void
+    {
+        $config = new DraftProviderConfig(
+            mode: DraftProviderConfig::MODE_ANTHROPIC,
+            apiKey: 'test-anthropic-key',
+        );
+
+        $this->assertSame('claude-haiku-4-5-20251001', $config->model);
+        $this->assertSame(1.00, $config->inputCostPerMillionTokens);
+        $this->assertSame(5.00, $config->outputCostPerMillionTokens);
+        $this->assertNull($config->cacheWriteCostPerMillionTokens);
+        $this->assertNull($config->cacheReadCostPerMillionTokens);
     }
 
     public function testUnsupportedExternalModeFailsClosed(): void

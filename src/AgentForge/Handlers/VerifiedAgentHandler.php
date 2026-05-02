@@ -15,10 +15,12 @@ namespace OpenEMR\AgentForge\Handlers;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\AgentTelemetry;
 use OpenEMR\AgentForge\AgentTelemetryProvider;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
+use OpenEMR\AgentForge\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use Psr\Log\LoggerInterface;
@@ -27,9 +29,10 @@ use Psr\Log\NullLogger;
 final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
 {
     private ?AgentTelemetry $lastTelemetry = null;
-    private ChartQuestionPlanner $planner;
-    private ChartEvidenceCollector $collector;
-    private VerifiedDraftingPipeline $pipeline;
+    private readonly ChartQuestionPlanner $planner;
+    private readonly ChartEvidenceCollector $collector;
+    private readonly VerifiedDraftingPipeline $pipeline;
+    private readonly AgentForgeClock $clock;
 
     /**
      * @param list<ChartEvidenceTool> $tools
@@ -40,11 +43,11 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         DraftVerifier $verifier,
         LoggerInterface $logger = new NullLogger(),
         ?AgentForgeClock $clock = null,
-        private int $deadlineMs = 8000,
+        private readonly int $deadlineMs = 8000,
     ) {
-        $clock = $clock ?? new SystemAgentForgeClock();
+        $this->clock = $clock ?? new SystemAgentForgeClock();
         $this->planner = new ChartQuestionPlanner();
-        $this->collector = new ChartEvidenceCollector($tools, $logger, $clock);
+        $this->collector = new ChartEvidenceCollector($tools, $logger, $this->clock);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $logger);
     }
 
@@ -61,15 +64,19 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             return AgentResponse::refusal((string) $plan->refusal);
         }
 
-        $evidenceRun = $this->collector->collect($request->patientId, $plan);
+        $deadline = new Deadline($this->clock, $this->deadlineMs);
+        $timer = new StageTimer($this->clock);
+        $evidenceRun = $this->collector->collect($request->patientId, $plan, $timer, $deadline);
         $draftingResult = $this->pipeline->run(
             $request,
             $evidenceRun->bundle,
             $plan->questionType,
             $evidenceRun->toolsCalled,
             $evidenceRun->skippedSections,
+            $timer,
+            $deadline,
         );
-        $this->lastTelemetry = $draftingResult->telemetry;
+        $this->lastTelemetry = $draftingResult->telemetry->withStageTimings($timer->timings());
 
         return $draftingResult->response;
     }

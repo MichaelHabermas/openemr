@@ -16,7 +16,7 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DefaultQueryExecutor;
 use OpenEMR\AgentForge\QueryExecutor;
 
-final class SqlChartEvidenceRepository implements ChartEvidenceRepository
+final readonly class SqlChartEvidenceRepository implements ChartEvidenceRepository
 {
     private QueryExecutor $executor;
 

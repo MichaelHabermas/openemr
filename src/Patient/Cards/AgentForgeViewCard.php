@@ -45,7 +45,7 @@ final class AgentForgeViewCard extends CardModel
     {
         $session = SessionWrapperFactory::getInstance()->getActiveSession();
 
-        return array_merge(parent::getTemplateVariables(), [
+        return [
             'title' => xl('Clinical Co-Pilot'),
             'id' => self::CARD_ID_EXPAND,
             'initiallyCollapsed' => UserSettingsService::getUserSetting(self::CARD_ID_EXPAND) == 0,
@@ -53,6 +53,6 @@ final class AgentForgeViewCard extends CardModel
             'patientId' => $this->pid,
             'csrfToken' => CsrfUtils::collectCsrfToken(session: $session),
             'endpoint' => 'agent_request.php',
-        ]);
+        ];
     }
 }

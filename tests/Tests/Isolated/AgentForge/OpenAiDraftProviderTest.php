@@ -16,17 +16,18 @@ use BadMethodCallException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Response;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\UriInterface;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Evidence\EvidenceBundle;
+use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
-use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\ResponseGeneration\OpenAiDraftProvider;
-use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 final class OpenAiDraftProviderTest extends TestCase
 {
@@ -35,7 +36,7 @@ final class OpenAiDraftProviderTest extends TestCase
         $client = new RecordingOpenAiClient($this->openAiResponse());
         $provider = new OpenAiDraftProvider($client, 'test-key', 'gpt-4o-mini', 0.15, 0.60);
 
-        $draft = $provider->draft($this->request(), $this->bundle());
+        $draft = $provider->draft($this->request(), $this->bundle(), $this->deadline());
 
         $this->assertSame('Hemoglobin A1c: 7.4 % [lab:procedure_result/agentforge-a1c-2026-04@2026-04-10]', $draft->sentences[0]->text);
         $this->assertSame(DraftClaim::TYPE_PATIENT_FACT, $draft->claims[0]->type);
@@ -81,7 +82,7 @@ final class OpenAiDraftProviderTest extends TestCase
         ]);
         $provider = new OpenAiDraftProvider($client, 'test-key', 'gpt-4o-mini');
 
-        $draft = $provider->draft($this->request(), $this->bundle());
+        $draft = $provider->draft($this->request(), $this->bundle(), $this->deadline());
 
         $this->assertSame(DraftClaim::TYPE_REFUSAL, $draft->claims[0]->type);
         $this->assertSame('I cannot assist with that request.', $draft->sentences[0]->text);
@@ -136,6 +137,11 @@ final class OpenAiDraftProviderTest extends TestCase
                 '7.4 %',
             ),
         ]);
+    }
+
+    private function deadline(): Deadline
+    {
+        return new Deadline(new SystemAgentForgeClock(), 8000);
     }
 
     /**

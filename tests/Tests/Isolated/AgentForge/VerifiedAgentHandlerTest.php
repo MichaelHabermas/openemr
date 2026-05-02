@@ -15,6 +15,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 use DomainException;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
@@ -175,7 +176,8 @@ final class VerifiedAgentHandlerTest extends TestCase
 
     public function testDeadlineStopsLaterToolsAndSurfacesVisibleWarning(): void
     {
-        $clock = new VerifiedManualClock([0, 50]);
+        // Ticks consumed in collector: startMs, timer.start (per tool), timer.stop (per tool), deadlineExceeded check.
+        $clock = new VerifiedManualClock([0, 0, 50, 51]);
         $secondTool = new VerifiedRecordingEvidenceTool();
         $response = (new VerifiedAgentHandler(
             [
@@ -341,20 +343,20 @@ final class RetryThenFixtureDraftProvider implements DraftProvider
 {
     public int $calls = 0;
 
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         ++$this->calls;
         if ($this->calls === 1) {
             throw new DomainException('malformed draft');
         }
 
-        return (new FixtureDraftProvider())->draft($request, $bundle);
+        return (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
     }
 }
 
 final class AlwaysMalformedDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DomainException('malformed internals');
     }
@@ -362,7 +364,7 @@ final class AlwaysMalformedDraftProvider implements DraftProvider
 
 final class UnavailableDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('cURL timeout internals');
     }
@@ -370,7 +372,7 @@ final class UnavailableDraftProvider implements DraftProvider
 
 final class FabricatingDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 8.2 %')],
@@ -407,13 +409,9 @@ final class VerifiedRecordingLogger extends AbstractLogger
 
 final class VerifiedManualClock implements AgentForgeClock
 {
-    /** @var list<int> */
-    private array $ticks;
-
     /** @param list<int> $ticks */
-    public function __construct(array $ticks)
+    public function __construct(private array $ticks)
     {
-        $this->ticks = $ticks;
     }
 
     public function nowMs(): int

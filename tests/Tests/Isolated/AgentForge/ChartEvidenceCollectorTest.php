@@ -115,13 +115,9 @@ final class CollectorThrowingTool implements ChartEvidenceTool
 
 final class CollectorManualClock implements AgentForgeClock
 {
-    /** @var list<int> */
-    private array $ticks;
-
     /** @param list<int> $ticks */
-    public function __construct(array $ticks)
+    public function __construct(private array $ticks)
     {
-        $this->ticks = $ticks;
     }
 
     public function nowMs(): int

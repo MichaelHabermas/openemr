@@ -15,6 +15,7 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 use DomainException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use Psr\Http\Message\ResponseInterface;
@@ -28,6 +29,8 @@ final readonly class OpenAiDraftProvider implements DraftProvider
         private string $model,
         private ?float $inputCostPerMillionTokens = null,
         private ?float $outputCostPerMillionTokens = null,
+        private float $configuredTimeoutSeconds = 15.0,
+        private PromptComposer $promptComposer = new PromptComposer(),
     ) {
         if (trim($apiKey) === '') {
             throw new DomainException('OpenAI draft provider requires an API key.');
@@ -37,8 +40,14 @@ final readonly class OpenAiDraftProvider implements DraftProvider
         }
     }
 
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
+        if ($deadline->exceeded()) {
+            throw new DraftProviderException('Deadline exceeded before OpenAI draft request.');
+        }
+
+        $timeoutSeconds = min($this->configuredTimeoutSeconds, $deadline->remainingSeconds());
+
         try {
             $response = $this->client->request('POST', '/v1/chat/completions', [
                 'headers' => [
@@ -46,6 +55,8 @@ final readonly class OpenAiDraftProvider implements DraftProvider
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $this->payload($request, $bundle),
+                'timeout' => $timeoutSeconds,
+                DraftProviderRetryMiddleware::DEADLINE_OPTION => $deadline,
             ]);
         } catch (GuzzleException $exception) {
             throw new DraftProviderException('OpenAI draft request failed.', previous: $exception);
@@ -62,93 +73,22 @@ final readonly class OpenAiDraftProvider implements DraftProvider
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => implode("\n", [
-                        'You are AgentForge Clinical Co-Pilot inside OpenEMR.',
-                        'Use only the supplied bounded evidence JSON.',
-                        'Answer only the clinician question that was asked; do not add demographics, problems, medications, labs, or plan details unless they directly answer that question.',
-                        'Do not diagnose, recommend treatment, suggest dosing, recommend medication changes, draft notes, or answer generic medical questions.',
-                        'Every patient-specific fact must cite source IDs exactly as provided.',
-                        'For every patient_fact claim, copy the cited evidence display_label and value exactly into the claim text.',
-                        'If a sentence cites multiple sources, include every cited display_label and value in that sentence or split it into separate sentences.',
-                        'If evidence is missing, say it was not found in the chart.',
-                        'Return only valid JSON matching the response schema.',
-                    ]),
+                    'content' => $this->promptComposer->systemPrompt(),
                 ],
                 [
                     'role' => 'user',
-                    'content' => json_encode([
-                        'question' => $request->question->value,
-                        'patient_id' => $request->patientId->value,
-                        'bounded_evidence' => $bundle->toPromptArray(),
-                    ], JSON_THROW_ON_ERROR),
+                    'content' => $this->promptComposer->userMessage($request, $bundle),
                 ],
             ],
             'response_format' => [
                 'type' => 'json_schema',
                 'json_schema' => [
-                    'name' => 'agentforge_draft_response',
+                    'name' => PromptComposer::SCHEMA_NAME,
                     'strict' => true,
-                    'schema' => $this->schema(),
+                    'schema' => $this->promptComposer->schema(),
                 ],
             ],
             'temperature' => 0,
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function schema(): array
-    {
-        return [
-            'type' => 'object',
-            'additionalProperties' => false,
-            'required' => ['sentences', 'claims', 'missing_sections', 'refusals_or_warnings'],
-            'properties' => [
-                'sentences' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'additionalProperties' => false,
-                        'required' => ['id', 'text'],
-                        'properties' => [
-                            'id' => ['type' => 'string'],
-                            'text' => ['type' => 'string'],
-                        ],
-                    ],
-                ],
-                'claims' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'additionalProperties' => false,
-                        'required' => ['text', 'type', 'cited_source_ids', 'sentence_id'],
-                        'properties' => [
-                            'text' => ['type' => 'string'],
-                            'type' => [
-                                'type' => 'string',
-                                'enum' => [
-                                    DraftClaim::TYPE_PATIENT_FACT,
-                                    DraftClaim::TYPE_MISSING_DATA,
-                                    DraftClaim::TYPE_REFUSAL,
-                                    DraftClaim::TYPE_WARNING,
-                                ],
-                            ],
-                            'cited_source_ids' => [
-                                'type' => 'array',
-                                'items' => ['type' => 'string'],
-                            ],
-                            'sentence_id' => ['type' => 'string'],
-                        ],
-                    ],
-                ],
-                'missing_sections' => [
-                    'type' => 'array',
-                    'items' => ['type' => 'string'],
-                ],
-                'refusals_or_warnings' => [
-                    'type' => 'array',
-                    'items' => ['type' => 'string'],
-                ],
-            ],
         ];
     }
 

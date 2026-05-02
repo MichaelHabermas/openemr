@@ -17,8 +17,13 @@ use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 
-final class DraftVerifier
+final readonly class DraftVerifier
 {
+    public function __construct(
+        private EvidenceMatcher $matcher = new EvidenceMatcher(),
+    ) {
+    }
+
     public function verify(DraftResponse $draft, EvidenceBundle $bundle): VerificationResult
     {
         $itemsBySourceId = $bundle->itemsBySourceId();
@@ -95,17 +100,12 @@ final class DraftVerifier
             return false;
         }
 
-        $claimText = $this->normalize($claim->text);
         foreach ($claim->citedSourceIds as $sourceId) {
             if (!isset($itemsBySourceId[$sourceId])) {
                 return false;
             }
 
-            $item = $itemsBySourceId[$sourceId];
-            if (
-                !str_contains($claimText, $this->normalize($item->displayLabel))
-                || !str_contains($claimText, $this->normalize($item->value))
-            ) {
+            if (!$this->matcher->matches($claim->text, $itemsBySourceId[$sourceId])) {
                 return false;
             }
         }

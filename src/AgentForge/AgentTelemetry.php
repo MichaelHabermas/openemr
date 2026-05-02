@@ -18,6 +18,7 @@ final readonly class AgentTelemetry
      * @param list<string> $toolsCalled
      * @param list<string> $skippedChartSections
      * @param list<string> $sourceIds
+     * @param array<string, int> $stageTimingsMs
      */
     public function __construct(
         public string $questionType,
@@ -30,6 +31,7 @@ final readonly class AgentTelemetry
         public ?float $estimatedCost,
         public ?string $failureReason,
         public string $verifierResult,
+        public array $stageTimingsMs = [],
     ) {
     }
 
@@ -44,7 +46,8 @@ final readonly class AgentTelemetry
      *     output_tokens: int,
      *     estimated_cost: ?float,
      *     failure_reason: ?string,
-     *     verifier_result: string
+     *     verifier_result: string,
+     *     stage_timings_ms: array<string, int>
      * }
      */
     public function toContext(): array
@@ -60,7 +63,26 @@ final readonly class AgentTelemetry
             'estimated_cost' => $this->estimatedCost,
             'failure_reason' => $this->failureReason,
             'verifier_result' => $this->verifierResult,
+            'stage_timings_ms' => $this->stageTimingsMs,
         ];
+    }
+
+    /** @param array<string, int> $stageTimingsMs */
+    public function withStageTimings(array $stageTimingsMs): self
+    {
+        return new self(
+            $this->questionType,
+            $this->toolsCalled,
+            $this->skippedChartSections,
+            $this->sourceIds,
+            $this->model,
+            $this->inputTokens,
+            $this->outputTokens,
+            $this->estimatedCost,
+            $this->failureReason,
+            $this->verifierResult,
+            $stageTimingsMs,
+        );
     }
 
     public static function notRun(?string $failureReason): self

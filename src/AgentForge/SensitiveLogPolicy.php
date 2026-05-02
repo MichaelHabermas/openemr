@@ -32,6 +32,7 @@ final class SensitiveLogPolicy
         'estimated_cost' => true,
         'failure_reason' => true,
         'verifier_result' => true,
+        'stage_timings_ms' => true,
     ];
 
     /** @var array<string, true> */

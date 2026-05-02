@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\HandlerStack;
 
 final class DraftProviderFactory
 {
@@ -27,20 +28,38 @@ final class DraftProviderFactory
             DraftProviderConfig::MODE_FIXTURE => new FixtureDraftProvider(),
             DraftProviderConfig::MODE_DISABLED => new DisabledDraftProvider(),
             DraftProviderConfig::MODE_OPENAI => new OpenAiDraftProvider(
-                new Client([
-                    'base_uri' => 'https://api.openai.com',
-                    'timeout' => $config->timeoutSeconds,
-                    'connect_timeout' => $config->connectTimeoutSeconds,
-                ]),
+                self::buildClient('https://api.openai.com', $config),
                 (string) $config->apiKey,
                 $config->model,
                 $config->inputCostPerMillionTokens,
                 $config->outputCostPerMillionTokens,
+            ),
+            DraftProviderConfig::MODE_ANTHROPIC => new AnthropicDraftProvider(
+                self::buildClient('https://api.anthropic.com', $config),
+                (string) $config->apiKey,
+                $config->model,
+                $config->inputCostPerMillionTokens,
+                $config->outputCostPerMillionTokens,
+                $config->cacheWriteCostPerMillionTokens,
+                $config->cacheReadCostPerMillionTokens,
             ),
             default => throw new \RuntimeException(sprintf(
                 'AgentForge draft provider mode "%s" is not configured.',
                 $config->mode,
             )),
         };
+    }
+
+    private static function buildClient(string $baseUri, DraftProviderConfig $config): Client
+    {
+        $stack = HandlerStack::create();
+        $stack->push(DraftProviderRetryMiddleware::create(), 'draft_provider_retry');
+
+        return new Client([
+            'base_uri' => $baseUri,
+            'timeout' => $config->timeoutSeconds,
+            'connect_timeout' => $config->connectTimeoutSeconds,
+            'handler' => $stack,
+        ]);
     }
 }

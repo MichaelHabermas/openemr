@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
@@ -102,15 +103,15 @@ final class VerifiedDraftingPipelineTest extends TestCase
 
 final readonly class PipelineMissingAwareDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
-        return (new FixtureDraftProvider())->draft($request, $bundle);
+        return (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
     }
 }
 
 final readonly class PipelineUnavailableProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('cURL timeout internals');
     }
@@ -118,7 +119,7 @@ final readonly class PipelineUnavailableProvider implements DraftProvider
 
 final readonly class PipelineFabricatingProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 11.9 %')],

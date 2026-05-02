@@ -12,10 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 
 interface DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse;
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse;
 }

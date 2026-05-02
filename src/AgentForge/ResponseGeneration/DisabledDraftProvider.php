@@ -12,13 +12,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
-use RuntimeException;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
+use RuntimeException;
 
 final class DisabledDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle): DraftResponse
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new RuntimeException('AgentForge draft provider is disabled.');
     }

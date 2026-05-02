@@ -74,6 +74,7 @@ final class RequestLogTest extends TestCase
                 estimatedCost: null,
                 failureReason: null,
                 verifierResult: 'passed',
+                stageTimingsMs: ['evidence:Recent labs' => 12, 'draft' => 80, 'verify' => 3],
             ),
         );
 
@@ -89,6 +90,10 @@ final class RequestLogTest extends TestCase
         $this->assertNull($context['estimated_cost']);
         $this->assertNull($context['failure_reason']);
         $this->assertSame('passed', $context['verifier_result']);
+        $this->assertSame(
+            ['evidence:Recent labs' => 12, 'draft' => 80, 'verify' => 3],
+            $context['stage_timings_ms'],
+        );
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);
         $this->assertArrayNotHasKey('full_prompt', $context);

@@ -12,22 +12,21 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\AgentRequestParserInterface;
 use OpenEMR\AgentForge\Handlers\AgentRequestResult;
-use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Handlers\EvidenceAgentHandler;
-use OpenEMR\AgentForge\Evidence\EvidenceItem;
-use OpenEMR\AgentForge\Evidence\EvidenceResult;
-use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
-use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
-use OpenEMR\AgentForge\Handlers\AgentHandler;
 
 final class AgentRequestHandlerTest extends TestCase
 {

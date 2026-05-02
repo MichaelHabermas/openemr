@@ -13,12 +13,14 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
 use PHPUnit\Framework\TestCase;
 
 final class FixtureDraftProviderTest extends TestCase
@@ -36,6 +38,7 @@ final class FixtureDraftProviderTest extends TestCase
                     '7.4 %',
                 ),
             ]),
+            $this->deadline(),
         );
 
         $this->assertSame('Hemoglobin A1c: 7.4 % [lab:procedure_result/agentforge-a1c-2026-04@2026-04-10]', $draft->sentences[0]->text);
@@ -51,6 +54,7 @@ final class FixtureDraftProviderTest extends TestCase
         $draft = (new FixtureDraftProvider())->draft(
             new AgentRequest(new PatientId(900001), new AgentQuestion('What dose should I prescribe?')),
             new EvidenceBundle([]),
+            $this->deadline(),
         );
 
         $this->assertSame(DraftClaim::TYPE_REFUSAL, $draft->claims[0]->type);
@@ -73,8 +77,14 @@ final class FixtureDraftProviderTest extends TestCase
                     '7.4 %',
                 ),
             ]),
+            $this->deadline(),
         );
 
         $this->assertContains('Urine microalbumin not found in the chart.', $draft->missingSections);
+    }
+
+    private function deadline(): Deadline
+    {
+        return new Deadline(new SystemAgentForgeClock(), 8000);
     }
 }
