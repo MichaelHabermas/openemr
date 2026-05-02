@@ -970,7 +970,7 @@ INSERT INTO prescriptions (
     '2025-11-20',
     'Community',
     'Order',
-    'Historical anticoagulant; stopped before apixaban',
+    'Historical anticoagulant before apixaban',
     'af-rx-p2-warfarin'
 ),
 (

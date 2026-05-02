@@ -144,7 +144,41 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame(1, substr_count($result->response->answer, 'Lisinopril 10 mg: 10 mg'));
     }
 
-    public function testNonBriefingAnswerDoesNotAppendMedicationEvidence(): void
+    public function testMedicationAnswerDoesNotDuplicateAlreadyCitedMedicationEvidence(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineBriefingWithMedicationProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('What medications are active?')),
+            $this->briefingBundle(),
+            'medication',
+            ['Active medications'],
+        );
+
+        $this->assertSame(1, substr_count($result->response->answer, 'Metformin ER 500 mg: 500 mg'));
+        $this->assertSame(1, substr_count($result->response->answer, 'Lisinopril 10 mg: 10 mg'));
+    }
+
+    public function testMedicationAnswerAppendsMedicationEvidenceWhenVerifiedDraftOmitsIt(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineBriefingWithoutMedicationProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('What medications are active?')),
+            $this->briefingBundle(),
+            'medication',
+            ['Active medications'],
+        );
+
+        $this->assertStringContainsString('Metformin ER 500 mg: 500 mg', $result->response->answer);
+        $this->assertStringContainsString('Lisinopril 10 mg: 10 mg', $result->response->answer);
+        $this->assertContains('medication:prescriptions/af-rx-metformin@2026-03-15', $result->response->citations);
+        $this->assertContains('medication:prescriptions/af-rx-lisinopril@2026-03-15', $result->response->citations);
+    }
+
+    public function testNonBriefingNonMedicationAnswerDoesNotAppendMedicationEvidence(): void
     {
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithoutMedicationProvider(),

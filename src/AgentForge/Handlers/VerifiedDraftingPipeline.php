@@ -395,8 +395,8 @@ final readonly class VerifiedDraftingPipeline
         }
 
         $citations = $result->citations;
-        if ($questionType === 'visit_briefing') {
-            foreach ($this->missingMedicationLines($lines, $bundle) as $line => $sourceId) {
+        if (in_array($questionType, ['visit_briefing', 'medication'], true)) {
+            foreach ($this->missingMedicationLines($lines, $bundle, $citations) as $line => $sourceId) {
                 $lines[] = $line;
                 $citations[] = $sourceId;
             }
@@ -413,15 +413,21 @@ final readonly class VerifiedDraftingPipeline
 
     /**
      * @param list<string> $lines
+     * @param list<string> $citations
      * @return array<string, string>
      */
-    private function missingMedicationLines(array $lines, EvidenceBundle $bundle): array
+    private function missingMedicationLines(array $lines, EvidenceBundle $bundle, array $citations): array
     {
         $answerText = "\n" . implode("\n", $lines) . "\n";
+        $cited = array_fill_keys($citations, true);
         $missingLines = [];
 
         foreach ($bundle->items as $item) {
             if ($item->sourceType !== 'medication') {
+                continue;
+            }
+
+            if (isset($cited[$item->sourceId])) {
                 continue;
             }
 

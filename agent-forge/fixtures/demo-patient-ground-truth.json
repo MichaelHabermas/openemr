@@ -55,7 +55,7 @@
             "source_id": "af-prob-diabetes",
             "source_date": "2025-09-10",
             "display_label": "Type 2 diabetes mellitus",
-            "value": "Active; diagnosis code: ICD10:E11.9"
+            "value": "Active; source code: ICD10:E11.9"
           },
           {
             "source_type": "problem",
@@ -63,7 +63,7 @@
             "source_id": "af-prob-htn",
             "source_date": "2024-02-18",
             "display_label": "Essential hypertension",
-            "value": "Active; diagnosis code: ICD10:I10"
+            "value": "Active; source code: ICD10:I10"
           }
         ],
         "active_medications": [
@@ -206,7 +206,7 @@
             "source_id": "af-p900002-afib",
             "source_date": "2025-12-01",
             "display_label": "Atrial fibrillation",
-            "value": "Active; diagnosis code: ICD10:I48.91"
+            "value": "Active; source code: ICD10:I48.91"
           },
           {
             "source_type": "problem",
@@ -214,7 +214,7 @@
             "source_id": "af-p900002-dm",
             "source_date": "2024-08-12",
             "display_label": "Type 2 diabetes mellitus",
-            "value": "Active; diagnosis code: ICD10:E11.9"
+            "value": "Active; source code: ICD10:E11.9"
           }
         ],
         "active_medications": [
@@ -270,7 +270,7 @@
             "source_id": "af-rx-p2-warfarin",
             "source_date": "2025-11-20",
             "display_label": "Inactive medication history: Warfarin 2 mg",
-            "value": "inactive or stopped medication row; dosage: 2 mg; instructions: Historical anticoagulant; stopped before apixaban"
+            "value": "inactive historical row; strength: 2 mg; instructions: Historical anticoagulant before apixaban"
           },
           {
             "source_type": "medication",
@@ -278,7 +278,7 @@
             "source_id": "af-rx-p2-simvast",
             "source_date": "2023-01-10",
             "display_label": "Inactive medication history: Simvastatin 20 mg",
-            "value": "inactive or stopped medication row; dosage: 20 mg; instructions: Historical statin record; not active"
+            "value": "inactive historical row; strength: 20 mg; instructions: Historical statin record; not active"
           }
         ],
         "recent_note": {

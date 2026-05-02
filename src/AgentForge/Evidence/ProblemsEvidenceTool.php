@@ -67,6 +67,6 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
             return 'Active';
         }
 
-        return sprintf('Active; diagnosis code: %s', $diagnosis);
+        return sprintf('Active; source code: %s', $diagnosis);
     }
 }

@@ -141,7 +141,7 @@ Kept scope:
 - [x] Add or update proof for each acceptance criterion this task claims.
 - [x] Update this epic file with completed proof or an explicit gap.
 
-**Proof:** `EvidenceToolsTest` covers problem diagnosis code output and empty lab code omission; SQL eval expects diagnosis/result/order code fragments.
+**Proof:** `EvidenceToolsTest` covers problem source-code output and empty lab code omission; SQL eval expects source/result/order code fragments.
 
 **Suggested Commit:** `feat(agent-forge): surface chart codes as evidence metadata`
 
@@ -162,7 +162,7 @@ Kept scope:
 - [x] Add or update proof for each acceptance criterion this task claims.
 - [x] Update this epic file with completed proof or an explicit gap.
 
-**Proof:** `composer phpunit-isolated -- --filter AgentForge` returned `OK (251 tests, 1272 assertions)`. `php agent-forge/scripts/run-evals.php` returned `28 passed, 0 failed` at `agent-forge/eval-results/eval-results-20260502-214248.json`. After `bash agent-forge/scripts/seed-demo-data.sh`, Docker SQL eval returned `7 passed, 0 failed` at `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/sql-evidence-eval-results-20260502-214120.json`.
+**Proof:** `composer phpunit-isolated -- --filter AgentForge` returned `OK (252 tests, 1276 assertions)`. `php agent-forge/scripts/run-evals.php` returned `28 passed, 0 failed` at `agent-forge/eval-results/eval-results-20260502-215119.json`. After `bash agent-forge/scripts/seed-demo-data.sh`, Docker SQL eval returned `7 passed, 0 failed` at `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/sql-evidence-eval-results-20260502-215140.json`.
 
 **Suggested Commit:** `docs(agent-forge): plan high signal evidence coverage`
 
@@ -219,3 +219,4 @@ Do not mark this epic complete if any of these are true:
 
 - 2026-05-02: Planned Epic 22 from first-principles scope review. Added PLAN.md backlog section and this detailed epic file. Implementation is intentionally not started.
 - 2026-05-02: Implemented Epic 22 evidence coverage. Proof: focused evidence/repository/eval tests pass, full `AgentForge` isolated filter passes, fixture evals pass, Docker seeded SQL evidence evals pass. Host SQL eval without Docker context failed with `mysqli_query(): Argument #1 ($mysql) must be of type mysqli, false given`; Docker SQL eval is the accepted SQL proof path for this run.
+- 2026-05-02: Manual UI review found medication-focused answers could omit inactive medication history and problem-code metadata used the phrase `diagnosis code`, which tripped safety wording. Fixed medication-question evidence appending and relabeled displayed problem codes as `source code`; reran full local proof successfully.

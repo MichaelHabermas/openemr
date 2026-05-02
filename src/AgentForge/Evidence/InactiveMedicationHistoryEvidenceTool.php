@@ -94,8 +94,8 @@ final readonly class InactiveMedicationHistoryEvidenceTool implements ChartEvide
     /** @param array<string, mixed> $row */
     private function value(array $row): string
     {
-        $parts = ['inactive or stopped medication row'];
-        foreach (['dosage' => 'dosage', 'drug_dosage_instructions' => 'instructions'] as $key => $label) {
+        $parts = ['inactive historical row'];
+        foreach (['dosage' => 'strength', 'drug_dosage_instructions' => 'instructions'] as $key => $label) {
             $value = EvidenceRowValue::string($row, $key);
             if ($value !== '') {
                 $parts[] = sprintf('%s: %s', $label, $value);

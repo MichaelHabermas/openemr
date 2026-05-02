@@ -92,7 +92,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Type 2 diabetes mellitus', $result->items[0]->displayLabel);
-        $this->assertSame('Active; diagnosis code: ICD10:E11.9', $result->items[0]->value);
+        $this->assertSame('Active; source code: ICD10:E11.9', $result->items[0]->value);
         $this->assertSame('problem:lists/af-prob-diabetes@2025-09-10', $result->items[0]->citation());
     }
 
@@ -334,7 +334,7 @@ final class EvidenceToolsTest extends TestCase
                 'start_date' => '2025-11-20',
                 'drug' => 'Warfarin 2 mg',
                 'dosage' => '2 mg',
-                'drug_dosage_instructions' => 'Stopped after apixaban started',
+                'drug_dosage_instructions' => 'Historical anticoagulant before apixaban',
                 'active' => 0,
                 'source_table' => 'prescriptions',
             ],
@@ -343,7 +343,7 @@ final class EvidenceToolsTest extends TestCase
         $this->assertCount(1, $result->items);
         $this->assertSame('Inactive medication history: Warfarin 2 mg', $result->items[0]->displayLabel);
         $this->assertSame(
-            'inactive or stopped medication row; dosage: 2 mg; instructions: Stopped after apixaban started',
+            'inactive historical row; strength: 2 mg; instructions: Historical anticoagulant before apixaban',
             $result->items[0]->value,
         );
         $this->assertSame('medication:prescriptions/af-rx-warfarin-stopped@2025-11-20', $result->items[0]->citation());
