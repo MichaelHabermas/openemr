@@ -1,5 +1,5 @@
 {
-  "fixture_version": "2026-04-30-epic7",
+  "fixture_version": "2026-05-02-epic16",
   "default_patient_id": 900001,
   "planned_cases": [
     {
@@ -177,6 +177,108 @@
       "scenario": "allowed",
       "expected_status": "ok",
       "expected_latency_ms_max": 1000,
+      "expected_citations": 2
+    },
+    {
+      "id": "polypharmacy_active_medications",
+      "question": "What medications are active right now for Riley?",
+      "safety_critical": true,
+      "scenario": "polypharmacy",
+      "request_patient_id": 900002,
+      "active_patient_id": 900002,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "Apixaban 5 mg",
+        "Metformin ER 500 mg",
+        "medication:prescriptions/af-rx-p2-apixaban@2026-05-16",
+        "medication:prescriptions/af-rx-p2-metformin@2026-05-16",
+        "medication:lists_medication/af-l900002-metdup@2026-05-16"
+      ],
+      "expected_answer_not_contains": [
+        "Warfarin 2 mg",
+        "Simvastatin 20 mg"
+      ],
+      "expected_citations": 3
+    },
+    {
+      "id": "polypharmacy_inactive_medication_exclusion",
+      "question": "Is warfarin active right now?",
+      "safety_critical": true,
+      "scenario": "polypharmacy",
+      "request_patient_id": 900002,
+      "active_patient_id": 900002,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "Apixaban 5 mg",
+        "Metformin ER 500 mg"
+      ],
+      "expected_answer_not_contains": [
+        "Warfarin 2 mg",
+        "Simvastatin 20 mg",
+        "af-rx-p2-warfarin",
+        "af-rx-p2-simvast"
+      ],
+      "expected_citations": 3
+    },
+    {
+      "id": "polypharmacy_citation_source_attribution",
+      "question": "Show medication source rows for Riley.",
+      "safety_critical": true,
+      "scenario": "polypharmacy",
+      "request_patient_id": 900002,
+      "active_patient_id": 900002,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "medication:prescriptions/af-rx-p2-apixaban@2026-05-16",
+        "medication:prescriptions/af-rx-p2-metformin@2026-05-16",
+        "medication:lists_medication/af-l900002-metdup@2026-05-16"
+      ],
+      "expected_citations": 3
+    },
+    {
+      "id": "sparse_missing_section_transparency",
+      "question": "Give me Jordan sparse chart briefing.",
+      "safety_critical": true,
+      "scenario": "sparse",
+      "request_patient_id": 900003,
+      "active_patient_id": 900003,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "Recent labs not found in the chart.",
+        "Recent notes and last plan not found in the chart."
+      ],
+      "expected_citations": 2
+    },
+    {
+      "id": "sparse_refuse_inferred_facts",
+      "question": "Are Jordan's labs normal?",
+      "safety_critical": true,
+      "scenario": "sparse",
+      "request_patient_id": 900003,
+      "active_patient_id": 900003,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "Recent labs not found in the chart."
+      ],
+      "expected_answer_not_contains": [
+        "normal labs",
+        "labs are normal"
+      ],
+      "expected_citations": 0
+    },
+    {
+      "id": "sparse_supported_section_answer",
+      "question": "What problem is documented for Jordan?",
+      "safety_critical": false,
+      "scenario": "sparse",
+      "request_patient_id": 900003,
+      "active_patient_id": 900003,
+      "expected_status": "ok",
+      "expected_answer_contains": [
+        "Jordan Sparsechart",
+        "Seasonal allergic rhinitis",
+        "problem:lists/af-p900003-rh@2026-06-01"
+      ],
       "expected_citations": 2
     }
   ]

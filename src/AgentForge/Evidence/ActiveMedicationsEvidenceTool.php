@@ -81,7 +81,7 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
     private function sourceId(array $row): string
     {
         if ($this->sourceTable($row) === 'lists_medication') {
-            return EvidenceRowValue::firstString($row, 'lists_medication_id', 'list_external_id', 'list_id');
+            return EvidenceRowValue::firstString($row, 'list_external_id', 'lists_medication_id', 'list_id');
         }
 
         if ($this->sourceTable($row) === 'lists') {

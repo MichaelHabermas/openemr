@@ -180,6 +180,23 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('medication:lists_medication/22@2026-02-02', $result->items[0]->citation());
     }
 
+    public function testActiveMedicationsToolPrefersStableListExternalIdForLinkedMedicationEvidence(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'list_id' => 11,
+                'list_external_id' => 'af-l900002-metdup',
+                'lists_medication_id' => 90000203,
+                'begdate' => '2026-05-16',
+                'title' => 'Metformin ER 500 mg',
+                'activity' => 1,
+                'source_table' => 'lists_medication',
+            ],
+        ])))->collect(new PatientId(900002));
+
+        $this->assertSame('medication:lists_medication/af-l900002-metdup@2026-05-16', $result->items[0]->citation());
+    }
+
     public function testActiveMedicationsToolSurfacesDuplicateMedicationRowsAsSeparateEvidence(): void
     {
         $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [

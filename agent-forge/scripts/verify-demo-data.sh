@@ -10,6 +10,8 @@ DB_NAME="${AGENTFORGE_DB_NAME:-openemr}"
 DB_USER="${AGENTFORGE_DB_USER:-root}"
 DB_PASS="${AGENTFORGE_DB_PASS:-root}"
 DEMO_PID="${AGENTFORGE_DEMO_PID:-900001}"
+POLY_PID="${AGENTFORGE_POLY_PID:-900002}"
+SPARSE_PID="${AGENTFORGE_SPARSE_PID:-900003}"
 FAILURES=0
 
 compose() {
@@ -122,6 +124,81 @@ main() {
     expect_count \
         "no contradicting metformin titration" \
         "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${DEMO_PID} AND drug LIKE 'Metformin%' AND active = 1 AND dosage <> '500 mg';" \
+        "0"
+
+    expect_count \
+        "polypharmacy demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${POLY_PID} AND pubpid = 'AF-DEMO-900002' AND fname = 'Riley' AND lname = 'Medmix' AND DOB = '1954-02-20' AND sex = 'Male';" \
+        "1"
+
+    expect_count \
+        "polypharmacy active problems" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${POLY_PID} AND type = 'medical_problem' AND activity = 1 AND external_id IN ('af-p900002-afib', 'af-p900002-dm');" \
+        "2"
+
+    expect_count \
+        "polypharmacy active prescription rows" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${POLY_PID} AND active = 1 AND external_id IN ('af-rx-p2-apixaban', 'af-rx-p2-metformin');" \
+        "2"
+
+    expect_count \
+        "polypharmacy inactive stale rows retained" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${POLY_PID} AND active = 0 AND external_id IN ('af-rx-p2-warfarin', 'af-rx-p2-simvast');" \
+        "2"
+
+    expect_count \
+        "polypharmacy stale row older than active window" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${POLY_PID} AND external_id = 'af-rx-p2-simvast' AND active = 0 AND start_date < '2024-01-01';" \
+        "1"
+
+    expect_count \
+        "polypharmacy duplicate list medication row" \
+        "SELECT COUNT(*) FROM lists l INNER JOIN lists_medication lm ON lm.list_id = l.id WHERE l.pid = ${POLY_PID} AND l.type = 'medication' AND l.activity = 1 AND l.external_id = 'af-l900002-metdup' AND l.title = 'Metformin ER 500 mg' AND lm.id = 90000203;" \
+        "1"
+
+    expect_count \
+        "polypharmacy active medication evidence excludes inactive stale rows" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${POLY_PID} AND active = 1 AND external_id IN ('af-rx-p2-warfarin', 'af-rx-p2-simvast');" \
+        "0"
+
+    expect_count \
+        "polypharmacy lab context" \
+        "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${POLY_PID} AND pr.result_text = 'Estimated GFR' AND DATE(pr.date) = '2026-05-10' AND pr.result = '68' AND pr.comments = 'agentforge-egfr-900002-2026-05';" \
+        "1"
+
+    expect_count \
+        "polypharmacy medication reconciliation note" \
+        "SELECT COUNT(*) FROM form_clinical_notes WHERE pid = ${POLY_PID} AND activity = 1 AND authorized = 1 AND external_id = 'af-note-900002-med-recon' AND description LIKE '%Warfarin is documented as stopped%' AND description LIKE '%Duplicate metformin row%';" \
+        "1"
+
+    expect_count \
+        "sparse demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${SPARSE_PID} AND pubpid = 'AF-DEMO-900003' AND fname = 'Jordan' AND lname = 'Sparsechart' AND DOB = '1988-11-03' AND sex = 'Female';" \
+        "1"
+
+    expect_count \
+        "sparse present problem" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${SPARSE_PID} AND type = 'medical_problem' AND activity = 1 AND external_id = 'af-p900003-rh' AND title = 'Seasonal allergic rhinitis';" \
+        "1"
+
+    expect_count \
+        "sparse encounter present" \
+        "SELECT COUNT(*) FROM form_encounter WHERE pid = ${SPARSE_PID} AND encounter = 900617 AND reason LIKE '%Sparse chart orientation%';" \
+        "1"
+
+    expect_count \
+        "sparse labs absent" \
+        "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${SPARSE_PID};" \
+        "0"
+
+    expect_count \
+        "sparse notes absent" \
+        "SELECT COUNT(*) FROM form_clinical_notes WHERE pid = ${SPARSE_PID};" \
+        "0"
+
+    expect_count \
+        "sparse forbidden note source absent" \
+        "SELECT COUNT(*) FROM form_clinical_notes WHERE external_id = 'af-note-900003';" \
         "0"
 
     if [[ "${FAILURES}" -gt 0 ]]; then

@@ -23,11 +23,13 @@ final readonly class EvalPatientAccessRepository implements PatientAccessReposit
 
     public function patientExists(PatientId $patientId): bool
     {
-        return $patientId->value === 900001 || $patientId->value === 42;
+        return in_array($patientId->value, [900001, 900002, 900003, 42], true);
     }
 
     public function userHasDirectRelationship(PatientId $patientId, int $userId): bool
     {
-        return $this->scenario !== 'unauthorized' && $patientId->value === 900001 && $userId === 7;
+        return $this->scenario !== 'unauthorized'
+            && in_array($patientId->value, [900001, 900002, 900003], true)
+            && $userId === 7;
     }
 }
