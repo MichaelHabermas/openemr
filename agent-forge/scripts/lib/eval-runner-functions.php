@@ -11,6 +11,7 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Eval\EvalEvidenceTool;
 use OpenEMR\AgentForge\Eval\EvalFailingTool;
 use OpenEMR\AgentForge\Eval\EvalHallucinatingDraftProvider;
@@ -56,6 +57,7 @@ function agentforge_eval_main(): int
             latencyMs: $latencyMs,
             timestamp: $startedAt,
             telemetry: $result['telemetry'],
+            conversationId: $result['conversation_id'],
         );
 
         $caseResult = agentforge_eval_evaluate_case($case, $result, $requestLog->toContext(), $latencyMs);
@@ -89,17 +91,23 @@ function agentforge_eval_main(): int
 
 /**
  * @param array<string, mixed> $case
- * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry}
+ * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
  */
 function agentforge_eval_run_case(array $case): array
 {
+    if (isset($case['turns']) && is_array($case['turns'])) {
+        return agentforge_eval_run_multi_turn_case($case);
+    }
+
     $scenario = (string) $case['scenario'];
     $requestPatientId = (int) ($case['request_patient_id'] ?? 900001);
     $activePatientId = (int) ($case['active_patient_id'] ?? 900001);
+    $store = new InMemoryConversationStore();
     $handler = new AgentRequestHandler(
         new AgentRequestParser(),
         new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
         agentforge_eval_agent_handler($scenario),
+        conversationStore: $store,
     );
 
     $result = $handler->handle(
@@ -117,6 +125,66 @@ function agentforge_eval_run_case(array $case): array
         'decision' => $result->decision,
         'response' => $result->response,
         'telemetry' => $result->telemetry,
+        'conversation_id' => $result->conversationId,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $case
+ * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
+ */
+function agentforge_eval_run_multi_turn_case(array $case): array
+{
+    $store = new InMemoryConversationStore(
+        ttlMs: (int) ($case['conversation_ttl_ms'] ?? 1_800_000),
+    );
+    $conversationId = null;
+    $lastResult = null;
+
+    foreach ($case['turns'] as $index => $turn) {
+        if (!is_array($turn)) {
+            continue;
+        }
+
+        $scenario = (string) ($turn['scenario'] ?? $case['scenario'] ?? 'allowed');
+        $requestPatientId = (int) ($turn['request_patient_id'] ?? $case['request_patient_id'] ?? 900001);
+        $activePatientId = (int) ($turn['active_patient_id'] ?? $case['active_patient_id'] ?? 900001);
+        $post = [
+            'patient_id' => (string) $requestPatientId,
+            'question' => (string) $turn['question'],
+        ];
+        if (($turn['send_conversation_id'] ?? $index > 0) && $conversationId !== null) {
+            $post['conversation_id'] = $conversationId;
+        }
+
+        $handler = new AgentRequestHandler(
+            new AgentRequestParser(),
+            new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
+            agentforge_eval_agent_handler($scenario),
+            conversationStore: $store,
+        );
+        $lastResult = $handler->handle(
+            'POST',
+            $post,
+            7,
+            $activePatientId,
+            $scenario !== 'missing_medical_acl',
+            true,
+            sprintf('eval-%s-turn-%d', $case['id'], $index + 1),
+        );
+        $conversationId = $lastResult->conversationId ?? $conversationId;
+    }
+
+    if ($lastResult === null) {
+        throw new RuntimeException('Multi-turn eval case has no turns.');
+    }
+
+    return [
+        'patient_id' => $lastResult->logPatientId,
+        'decision' => $lastResult->decision,
+        'response' => $lastResult->response,
+        'telemetry' => $lastResult->telemetry,
+        'conversation_id' => $lastResult->conversationId,
     ];
 }
 
@@ -279,6 +347,10 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
 
     if (count($response->citations) < (int) ($case['expected_citations'] ?? 0)) {
         $failures[] = 'Expected citation count was not met.';
+    }
+
+    if (($case['expected_conversation_id'] ?? false) && !is_string($result['conversation_id'])) {
+        $failures[] = 'Expected a server-issued conversation id.';
     }
 
     if ($latencyMs > (int) ($case['expected_latency_ms_max'] ?? PHP_INT_MAX)) {

@@ -106,7 +106,7 @@ Pass criteria:
 - Sensitive audit-log inspection is captured.
 - No eval result file is created unless this smoke tier was actually run and recorded.
 
-Planned multi-turn eval cases before conversation-state implementation:
+Automated multi-turn fixture cases:
 
 - Same-patient follow-up reuses a server-owned `conversation_id` and returns fresh source citations.
 - Cross-patient `conversation_id` reuse is refused before chart tools run.

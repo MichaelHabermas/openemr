@@ -27,6 +27,7 @@ final readonly class AgentResponse
         public array $citations = [],
         public array $missingOrUncheckedSections = [],
         public array $refusalsOrWarnings = [],
+        public ?string $conversationId = null,
     ) {
     }
 
@@ -36,7 +37,8 @@ final readonly class AgentResponse
      *     answer: string,
      *     citations: list<string>,
      *     missing_or_unchecked_sections: list<string>,
-     *     refusals_or_warnings: list<string>
+     *     refusals_or_warnings: list<string>,
+     *     conversation_id: ?string
      * }
      */
     public function toArray(): array
@@ -47,7 +49,20 @@ final readonly class AgentResponse
             'citations' => $this->citations,
             'missing_or_unchecked_sections' => $this->missingOrUncheckedSections,
             'refusals_or_warnings' => $this->refusalsOrWarnings,
+            'conversation_id' => $this->conversationId,
         ];
+    }
+
+    public function withConversationId(string $conversationId): self
+    {
+        return new self(
+            $this->status,
+            $this->answer,
+            $this->citations,
+            $this->missingOrUncheckedSections,
+            $this->refusalsOrWarnings,
+            $conversationId,
+        );
     }
 
     public static function placeholder(AgentRequest $request): self

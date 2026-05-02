@@ -33,6 +33,8 @@ use RuntimeException;
 
 final readonly class VerifiedDraftingPipeline
 {
+    private const FIXTURE_DRAFT_WARNING = 'Model drafting is disabled; deterministic fixture drafting was used.';
+
     public function __construct(
         private DraftProvider $draftProvider,
         private DraftVerifier $verifier,
@@ -91,6 +93,18 @@ final readonly class VerifiedDraftingPipeline
         } catch (DraftProviderException $exception) {
             $timer?->stop('draft');
             $timer?->stop('verify');
+            $fallback = $this->providerUnavailableFallback(
+                $request,
+                $questionType,
+                $toolsCalled,
+                $skippedChartSections,
+                $bundle,
+                $exception,
+            );
+            if ($fallback !== null) {
+                return $fallback;
+            }
+
             return $this->loggedDraftFailure(
                 $request,
                 $questionType,
@@ -173,6 +187,66 @@ final readonly class VerifiedDraftingPipeline
                 $draft->usage,
                 null,
                 'passed',
+            ),
+        );
+    }
+
+    /**
+     * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
+     */
+    private function providerUnavailableFallback(
+        AgentRequest $request,
+        string $questionType,
+        array $toolsCalled,
+        array $skippedChartSections,
+        EvidenceBundle $bundle,
+        DraftProviderException $exception,
+    ): ?VerifiedDraftingResult {
+        $this->logger->error('AgentForge draft provider failed; deterministic evidence fallback attempted.', [
+            'failure_class' => $exception::class,
+            'patient_id' => $request->patientId->value,
+        ]);
+
+        try {
+            $fallbackDraft = (new FixtureDraftProvider())->draft(
+                $request,
+                $bundle,
+                new Deadline(new SystemAgentForgeClock(), -1),
+            );
+            $fallbackResult = $this->verifier->verify($fallbackDraft, $bundle);
+        } catch (DomainException | RuntimeException) {
+            return null;
+        }
+
+        if (!$fallbackResult->passed) {
+            return null;
+        }
+
+        $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
+
+        return new VerifiedDraftingResult(
+            new AgentResponse(
+                $response->status,
+                $response->answer,
+                $response->citations,
+                $response->missingOrUncheckedSections,
+                array_values(array_unique(array_merge(
+                    ['The model draft provider could not be reached; deterministic evidence fallback was used.'],
+                    array_values(array_filter(
+                        $fallbackResult->refusalsOrWarnings,
+                        static fn (string $warning): bool => $warning !== self::FIXTURE_DRAFT_WARNING,
+                    )),
+                ))),
+            ),
+            $this->telemetry(
+                $questionType,
+                $toolsCalled,
+                $skippedChartSections,
+                $bundle,
+                DraftUsage::notRun(),
+                'draft_provider_unavailable_fallback_used',
+                'fallback_passed',
             ),
         );
     }
@@ -352,7 +426,7 @@ final readonly class VerifiedDraftingPipeline
             }
 
             $line = $this->evidenceLine($item);
-            if (str_contains($answerText, "\n" . $line . "\n")) {
+            if (str_contains($answerText, "\n" . $line . "\n") || str_contains($answerText, $item->sourceId)) {
                 continue;
             }
 

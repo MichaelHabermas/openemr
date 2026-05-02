@@ -24,6 +24,7 @@ final class SensitiveLogPolicy
         'decision' => true,
         'latency_ms' => true,
         'timestamp' => true,
+        'conversation_id' => true,
         'question_type' => true,
         'tools_called' => true,
         'skipped_chart_sections' => true,

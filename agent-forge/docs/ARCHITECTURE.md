@@ -4,7 +4,7 @@
 
 This architecture exists for one deadline: the 24-hour Architecture Defense for the Clinical Co-Pilot. The goal is not to design the final hospital system. The goal is to define the smallest defensible agent that can be built inside OpenEMR without pretending trust exists where it does not.
 
-The target user is one primary care physician opening a scheduled outpatient chart before walking into the room. The agent's job is chart orientation. The desired product answers only the questions documented in `USERS.md`: who the patient is, why they are here, what changed since the last visit, what chart facts matter now, and focused follow-up questions about the same patient chart. The current implemented path is narrower: it is a single-shot constrained RAG request path, not a persistent multi-turn conversation. It does not diagnose. It does not recommend treatment. It does not change medications. It does not draft notes. It does not answer open-ended medical questions.
+The target user is one primary care physician opening a scheduled outpatient chart before walking into the room. The agent's job is chart orientation. The product answers only the questions documented in `USERS.md`: who the patient is, why they are here, what changed since the last visit, what chart facts matter now, and focused follow-up questions about the same patient chart. The current implemented path is constrained RAG with short-lived server-bound conversation state, not persistent transcript storage. It does not diagnose. It does not recommend treatment. It does not change medications. It does not draft notes. It does not answer open-ended medical questions.
 
 The agent lives inside the OpenEMR patient chart. A small browser panel sends the physician's question and the current `patient_id` to a server-side OpenEMR endpoint. The server, not the browser, owns trust decisions. The endpoint binds the request to the active OpenEMR session user, the current patient, and the current chart context. If the user is missing, the patient is missing, or patient-specific authorization is unclear, the request is refused.
 
@@ -27,12 +27,13 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Bounded read-only evidence tools for the demo path with source-carrying evidence.
 - Server-side OpenAI draft provider using structured output, plus deterministic verification and refusal behavior.
 - Structured request logging under `src/AgentForge/Observability` with request id, user id, patient id, total latency, per-stage timings, question type, tools called, source ids, model, token counts, estimated cost, failure reason, and verifier result.
+- Short-lived server-bound conversation state under `src/AgentForge/Conversation`, with each `conversation_id` bound to one session user and one active patient.
 - Fake demo patient data, fixture evals, local/VM manual proof, deployment and rollback documentation.
 
 ### Accepted V1 Limitations
 
-- The current UI and request model are single-turn. They do not preserve transcript, `conversation_id`, turn history, or follow-up grounding.
-- The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is proof of source surfacing, not proof of multi-turn state.
+- The current UI and request model support same-patient follow-up with a server-owned `conversation_id`, but do not preserve a persistent transcript.
+- The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is proof of source surfacing for each turn.
 - The handler may call more evidence tools than the question requires; selective PHI-minimizing routing remains incomplete.
 - Medication evidence checks active prescriptions, active medication-list entries, and linked medication extension rows, but it does not reconcile duplicates or conflicts into clinical truth.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
@@ -59,7 +60,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 | Agent capability | User source | Why it exists |
 | --- | --- | --- |
 | Visit briefing summary | Use Case 1 - Visit Briefing | The physician needs fast chart orientation before entering the room. |
-| Multi-turn follow-up drill-down | Use Case 2 - Follow-Up Drill-Down | Target capability; current v1 is single-shot and has no persistent conversation state. |
+| Multi-turn follow-up drill-down | Use Case 2 - Follow-Up Drill-Down | Implemented for short-lived same-patient follow-up with server-bound state and fresh citations. |
 | Missing or unclear data reporting | Use Case 3 - Missing Or Unclear Data | Incomplete records must be surfaced explicitly instead of inferred away. |
 | Unsupported request refusal | Use Case 1 boundary, Use Case 2 boundary, Use Case 3 boundary, Non-Goals | The agent must remain a chart-orientation aid, not a diagnosis or treatment engine. |
 | Patient demographics tool | Workflow questions 1 and 4; Use Case 1 | The physician needs to know who the current patient is and what basic chart facts matter. |
@@ -117,7 +118,7 @@ Delete for v1:
 
 What survives:
 
-- A read-only chart-orientation assistant. It is single-shot today; persistent conversation is not implemented.
+- A read-only chart-orientation assistant with short-lived same-patient follow-up.
 - Current patient only.
 - Server-controlled tools only.
 - Source-cited answers only.
@@ -279,21 +280,19 @@ Agent request:
   "patient_id": "current OpenEMR patient id",
   "question": "physician question",
   "session_user": "active OpenEMR session user",
-  "conversation_id": "not implemented in the current single-shot path"
+  "conversation_id": "optional server-issued id for follow-up turns"
 }
 ```
 
-### Planned Minimum Multi-Turn Contract
-
-This is a target contract only. The current runtime API remains single-shot and does not accept or return a live `conversation_id`.
+### Minimum Multi-Turn Contract
 
 - First turn: the server issues a `conversation_id` after session user, active patient, authorization, evidence, and verification succeed.
 - Follow-up turns: the browser sends the server-owned `conversation_id`; the server rejects the request if the conversation is expired, missing, owned by another user, or bound to another patient.
 - Scope: every conversation is bound to exactly one OpenEMR session user and one active patient. Cross-patient carryover is refused before chart tools run.
 - State: store turn metadata, cited source ids, missing/unchecked sections, and a compact server-side summary. Do not store full chart dumps, model prompts, browser-owned transcript state, or raw full-chart text.
 - Safety: prior answer text may help interpret the follow-up, but it is never evidence. Each factual follow-up answer must fetch current patient evidence and cite current source rows again.
-- Limits: enforce a small turn limit, short expiration, explicit PHI retention policy, and a deletion path before enabling stored turn state.
-- Evals before implementation: same-patient follow-up succeeds with fresh citations, cross-patient `conversation_id` reuse fails closed, expired conversations fail closed, and stale-context pressure cannot produce uncited claims.
+- Limits: enforce a small turn limit and short expiration.
+- Runtime evals prove same-patient follow-up succeeds with fresh citations, cross-patient `conversation_id` reuse fails closed, expired conversations fail closed, and stale-context pressure cannot produce uncited claims.
 
 Tool result:
 

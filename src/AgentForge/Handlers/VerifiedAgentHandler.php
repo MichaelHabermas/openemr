@@ -65,7 +65,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             return AgentResponse::refusal($scopeRefusal);
         }
 
-        $plan = $this->planner->plan($request->question, $this->deadlineMs);
+        $plan = $this->planner->plan($request->question, $this->deadlineMs, $request->conversationSummary);
         if ($plan->refused()) {
             $this->lastTelemetry = AgentTelemetry::plannedRefusal(
                 $plan->questionType,

@@ -15,6 +15,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 use DomainException;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
@@ -184,6 +185,30 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertContains('Recent labs', $telemetry->toolsCalled);
     }
 
+    public function testFollowUpSummaryRoutesAmbiguousQuestionWithoutBecomingEvidence(): void
+    {
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $response = $handler->handle(new AgentRequest(
+            new PatientId(900001),
+            new AgentQuestion('What about those?'),
+            conversationSummary: new ConversationTurnSummary('lab', ['stale-prior-source']),
+        ));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertSame('ok', $response->status);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $response->citations);
+        $this->assertNotContains('stale-prior-source', $response->citations);
+        $this->assertNotNull($telemetry);
+        $this->assertSame('lab', $telemetry->questionType);
+        $this->assertSame(['Recent labs'], $telemetry->toolsCalled);
+    }
+
     public function testToolFailureIsVisibleWithoutLeakingInternalError(): void
     {
         $logger = new VerifiedRecordingLogger();
@@ -291,12 +316,17 @@ final class VerifiedAgentHandlerTest extends TestCase
         $telemetry = $handler->lastTelemetry();
         $json = json_encode($response->toArray(), JSON_THROW_ON_ERROR);
 
-        $this->assertSame('refused', $response->status);
-        $this->assertSame(['The model draft provider could not be reached. Please try again.'], $response->refusalsOrWarnings);
+        $this->assertSame('ok', $response->status);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $response->citations);
+        $this->assertSame(
+            ['The model draft provider could not be reached; deterministic evidence fallback was used.'],
+            $response->refusalsOrWarnings,
+        );
         $this->assertStringNotContainsString('cURL timeout internals', $json);
         $this->assertNotNull($telemetry);
-        $this->assertSame('draft_provider_unavailable', $telemetry->failureReason);
-        $this->assertSame('not_run', $telemetry->verifierResult);
+        $this->assertSame('draft_provider_unavailable_fallback_used', $telemetry->failureReason);
+        $this->assertSame('fallback_passed', $telemetry->verifierResult);
         $this->assertCount(1, $logger->records);
     }
 

@@ -27,6 +27,30 @@ final class AgentRequestParserTest extends TestCase
 
         $this->assertSame(900001, $request->patientId->value);
         $this->assertSame('What changed since last visit?', $request->question->value);
+        $this->assertNull($request->conversationId);
+    }
+
+    public function testParsesOptionalConversationId(): void
+    {
+        $request = (new AgentRequestParser())->parse([
+            'patient_id' => '900001',
+            'question' => 'What about those?',
+            'conversation_id' => '0123456789abcdef0123456789abcdef',
+        ]);
+
+        $this->assertSame('0123456789abcdef0123456789abcdef', $request->conversationId?->value);
+    }
+
+    public function testRejectsInvalidConversationId(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Conversation id is invalid.');
+
+        (new AgentRequestParser())->parse([
+            'patient_id' => '900001',
+            'question' => 'What about those?',
+            'conversation_id' => 'browser-owned-id',
+        ]);
     }
 
     public function testRejectsMissingPatientId(): void

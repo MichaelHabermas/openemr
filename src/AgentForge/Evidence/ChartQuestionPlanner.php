@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
+use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Verification\ClinicalAdviceRefusalPolicy;
 
@@ -39,7 +40,7 @@ final readonly class ChartQuestionPlanner
         ];
     }
 
-    public function plan(AgentQuestion $question, int $deadlineMs): ChartQuestionPlan
+    public function plan(AgentQuestion $question, int $deadlineMs, ?ConversationTurnSummary $conversationSummary = null): ChartQuestionPlan
     {
         $refusal = ClinicalAdviceRefusalPolicy::refusalFor($question->value);
         if ($refusal !== null) {
@@ -61,6 +62,12 @@ final readonly class ChartQuestionPlanner
         }
         if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up'])) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs);
+        }
+        if ($conversationSummary !== null && $this->looksLikeFollowUp($normalized)) {
+            $sections = $this->sectionsForPriorQuestionType($conversationSummary->questionType);
+            if ($sections !== []) {
+                return $this->buildPlan($conversationSummary->questionType, $sections, $deadlineMs);
+            }
         }
 
         return $this->buildPlan('visit_briefing', self::defaultSections(), $deadlineMs);
@@ -92,5 +99,26 @@ final readonly class ChartQuestionPlanner
         }
 
         return false;
+    }
+
+    private function looksLikeFollowUp(string $value): bool
+    {
+        return (bool) preg_match(
+            '/\b(what about|how about|and (her|his|their|those|that|them|it)|those|that|them|it|her|his|their)\b/',
+            $value,
+        );
+    }
+
+    /** @return list<string> */
+    private function sectionsForPriorQuestionType(string $questionType): array
+    {
+        return match ($questionType) {
+            'allergy' => [self::SECTION_ALLERGIES],
+            'medication' => [self::SECTION_MEDICATIONS],
+            'lab' => [self::SECTION_LABS],
+            'vital' => [self::SECTION_VITALS],
+            'last_plan' => [self::SECTION_NOTES],
+            default => [],
+        };
     }
 }

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
+use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use PHPUnit\Framework\TestCase;
 
@@ -110,5 +111,14 @@ final class ChartQuestionPlannerTest extends TestCase
             $this->assertSame([], $plan->skippedSections, $question);
             $this->assertNull($plan->refusal, $question);
         }
+    }
+
+    public function testAmbiguousFollowUpUsesPriorQuestionTypeAsPlannerHint(): void
+    {
+        $summary = new ConversationTurnSummary('lab', ['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10']);
+        $plan = (new ChartQuestionPlanner())->plan(new AgentQuestion('What about those?'), 8000, $summary);
+
+        $this->assertSame('lab', $plan->questionType);
+        $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $plan->sections);
     }
 }

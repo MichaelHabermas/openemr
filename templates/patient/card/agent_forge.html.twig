@@ -24,6 +24,7 @@
     const status = document.getElementById('agent-forge-status');
     const response = document.getElementById('agent-forge-response');
     const submit = form.querySelector('button[type="submit"]');
+    let conversationId = null;
 
     function appendTextBlock(parent, message, className) {
         if (message === '') {
@@ -110,6 +111,9 @@
         body.append('csrf_token_form', form.dataset.csrfToken);
         body.append('patient_id', form.dataset.patientId);
         body.append('question', value);
+        if (conversationId) {
+            body.append('conversation_id', conversationId);
+        }
 
         fetch(form.dataset.endpoint, {
             method: 'POST',
@@ -118,6 +122,9 @@
         }).then(function (result) {
             return result.json();
         }).then(function (payload) {
+            if (payload.conversation_id) {
+                conversationId = payload.conversation_id;
+            }
             if (payload.status === 'ok') {
                 showMessage(payload.answer || '', 'info', payload);
             } else {

@@ -104,7 +104,7 @@ final class EvaluationTiersDocumentTest extends TestCase
         $this->assertStringContainsString('captured result or an explicit documented gap', $document);
     }
 
-    public function testMultiTurnEvalCasesArePlannedWithoutRuntimeClaim(): void
+    public function testMultiTurnEvalCasesRunAsRuntimeProof(): void
     {
         $document = $this->evaluationDocument();
         $fixture = $this->readRepoFile('/agent-forge/fixtures/eval-cases.json');
@@ -122,15 +122,16 @@ final class EvaluationTiersDocumentTest extends TestCase
 
         foreach (
             [
-                'same_patient_followup_planned',
-                'cross_patient_conversation_reuse_planned',
-                'expired_conversation_planned',
-                'stale_context_citation_planned',
-                'planned_not_runtime_claimed',
-            ] as $plannedFixtureCase
+                'same_patient_followup',
+                'cross_patient_conversation_reuse',
+                'expired_conversation',
+                'stale_prior_answer_reuse_rejected',
+            ] as $runtimeFixtureCase
         ) {
-            $this->assertStringContainsString($plannedFixtureCase, $fixture);
+            $this->assertStringContainsString($runtimeFixtureCase, $fixture);
         }
+
+        $this->assertStringNotContainsString('planned_not_runtime_claimed', $fixture);
     }
 
     public function testReviewerGuideAndEvalReadmePointToTierTaxonomy(): void

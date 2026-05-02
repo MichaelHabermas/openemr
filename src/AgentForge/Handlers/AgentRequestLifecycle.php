@@ -55,6 +55,7 @@ final readonly class AgentRequestLifecycle
             latencyMs: max(0, (int) floor((hrtime(true) - $start) / 1_000_000)),
             timestamp: $startedAt,
             telemetry: $result->telemetry,
+            conversationId: $result->conversationId,
         ));
 
         return $result;

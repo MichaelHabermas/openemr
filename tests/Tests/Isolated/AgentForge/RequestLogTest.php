@@ -30,6 +30,7 @@ final class RequestLogTest extends TestCase
             decision: 'refused_patient_mismatch',
             latencyMs: 4,
             timestamp: new DateTimeImmutable('2026-04-30T12:00:00+00:00'),
+            conversationId: '0123456789abcdef0123456789abcdef',
         );
 
         $context = $entry->toContext();
@@ -40,6 +41,7 @@ final class RequestLogTest extends TestCase
         $this->assertSame('refused_patient_mismatch', $context['decision']);
         $this->assertGreaterThanOrEqual(0, $context['latency_ms']);
         $this->assertSame('2026-04-30T12:00:00+00:00', $context['timestamp']);
+        $this->assertSame('0123456789abcdef0123456789abcdef', $context['conversation_id']);
         $this->assertSame('not_classified', $context['question_type']);
         $this->assertSame([], $context['tools_called']);
         $this->assertSame([], $context['source_ids']);

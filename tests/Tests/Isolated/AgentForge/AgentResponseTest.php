@@ -37,6 +37,15 @@ final class AgentResponseTest extends TestCase
         }
     }
 
+    public function testResponseCanCarryServerBoundConversationId(): void
+    {
+        $response = AgentResponse::refusal('No active OpenEMR session user was found.')
+            ->withConversationId('0123456789abcdef0123456789abcdef')
+            ->toArray();
+
+        $this->assertSame('0123456789abcdef0123456789abcdef', $response['conversation_id']);
+    }
+
     public function testUnexpectedFailureDoesNotExposeInternalMessage(): void
     {
         $internalMessage = 'SQLSTATE[HY000] table patient_data connection failed';

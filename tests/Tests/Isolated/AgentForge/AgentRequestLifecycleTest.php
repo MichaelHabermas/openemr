@@ -42,6 +42,7 @@ final class AgentRequestLifecycleTest extends TestCase
         $this->assertCount(1, $logger->entries);
         $this->assertSame('allowed', $logger->entries[0]->decision);
         $this->assertSame(900001, $logger->entries[0]->patientId);
+        $this->assertNotNull($logger->entries[0]->conversationId);
     }
 
     public function testRefusedRequestIsLoggedExactlyOnce(): void

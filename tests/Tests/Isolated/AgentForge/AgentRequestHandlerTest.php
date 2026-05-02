@@ -14,6 +14,8 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Conversation\ConversationStore;
+use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
@@ -182,8 +184,109 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame(200, $result->statusCode);
         $this->assertSame('allowed', $result->decision);
         $this->assertSame(900001, $result->logPatientId);
+        $this->assertNotNull($result->conversationId);
+        $this->assertSame($result->conversationId, $result->response->conversationId);
         $this->assertSame('ok', $result->response->status);
         $this->assertStringContainsString('patient 900001', $result->response->answer);
+    }
+
+    public function testSamePatientFollowUpKeepsConversationIdAndRunsTools(): void
+    {
+        $store = new InMemoryConversationStore();
+        $tool = new RecordingEvidenceTool();
+        $handler = $this->handler(
+            agentHandler: new EvidenceAgentHandler([$tool]),
+            conversationStore: $store,
+        );
+
+        $first = $handler->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+        $this->assertNotNull($first->conversationId);
+
+        $tool->called = false;
+        $followUp = $handler->handle(
+            'POST',
+            $this->validPost(['question' => 'What about those?', 'conversation_id' => $first->conversationId]),
+            7,
+            900001,
+            true,
+            true,
+            'request-2',
+        );
+
+        $this->assertSame(200, $followUp->statusCode);
+        $this->assertSame('allowed', $followUp->decision);
+        $this->assertSame($first->conversationId, $followUp->conversationId);
+        $this->assertTrue($tool->called);
+    }
+
+    public function testCrossPatientConversationReuseFailsBeforeToolsRun(): void
+    {
+        $store = new InMemoryConversationStore();
+        $handler = $this->handler(conversationStore: $store);
+        $first = $handler->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+        $this->assertNotNull($first->conversationId);
+
+        $tool = new RecordingEvidenceTool();
+        $followUp = $this->handler(
+            agentHandler: new EvidenceAgentHandler([$tool]),
+            conversationStore: $store,
+        )->handle(
+            'POST',
+            $this->validPost(['patient_id' => '900002', 'conversation_id' => $first->conversationId]),
+            7,
+            900002,
+            true,
+            true,
+            'request-2',
+        );
+
+        $this->assertSame(403, $followUp->statusCode);
+        $this->assertSame('refused_conversation_patient_mismatch', $followUp->decision);
+        $this->assertFalse($tool->called);
+    }
+
+    public function testExpiredConversationFailsBeforeToolsRun(): void
+    {
+        $store = new InMemoryConversationStore(ttlMs: -1);
+        $first = $this->handler(conversationStore: $store)
+            ->handle('POST', $this->validPost(), 7, 900001, true, true, 'request-1');
+        $this->assertNotNull($first->conversationId);
+
+        $tool = new RecordingEvidenceTool();
+        $followUp = $this->handler(
+            agentHandler: new EvidenceAgentHandler([$tool]),
+            conversationStore: $store,
+        )->handle(
+            'POST',
+            $this->validPost(['conversation_id' => $first->conversationId]),
+            7,
+            900001,
+            true,
+            true,
+            'request-2',
+        );
+
+        $this->assertSame(403, $followUp->statusCode);
+        $this->assertSame('refused_conversation_expired', $followUp->decision);
+        $this->assertFalse($tool->called);
+    }
+
+    public function testUnknownConversationFailsBeforeToolsRun(): void
+    {
+        $tool = new RecordingEvidenceTool();
+        $result = $this->handler(agentHandler: new EvidenceAgentHandler([$tool]))->handle(
+            'POST',
+            $this->validPost(['conversation_id' => '0123456789abcdef0123456789abcdef']),
+            7,
+            900001,
+            true,
+            true,
+            'request-1',
+        );
+
+        $this->assertSame(403, $result->statusCode);
+        $this->assertSame('refused_conversation_not_found', $result->decision);
+        $this->assertFalse($tool->called);
     }
 
     public function testAllowedRequestRunsEvidenceHandlerAfterAuthorization(): void
@@ -225,13 +328,16 @@ final class AgentRequestHandlerTest extends TestCase
         $this->assertSame('error', $logger->records[0]['level']);
     }
 
-    /** @return array{patient_id: string, question: string} */
-    private function validPost(): array
+    /**
+     * @param array<string, string> $overrides
+     * @return array<string, string>
+     */
+    private function validPost(array $overrides = []): array
     {
-        return [
+        return array_merge([
             'patient_id' => '900001',
             'question' => 'What changed since last visit?',
-        ];
+        ], $overrides);
     }
 
     private function handler(
@@ -241,12 +347,14 @@ final class AgentRequestHandlerTest extends TestCase
         ?AgentRequestParserInterface $parser = null,
         ?HandlerRecordingLogger $logger = null,
         ?\OpenEMR\AgentForge\Handlers\AgentHandler $agentHandler = null,
+        ?ConversationStore $conversationStore = null,
     ): AgentRequestHandler {
         return new AgentRequestHandler(
             $parser ?? new AgentRequestParser(),
             new PatientAuthorizationGate(new ConfigurablePatientAccessRepository($patientExists, $hasRelationship, $repositoryThrows)),
             $agentHandler ?? new PlaceholderAgentHandler(),
             $logger ?? new HandlerRecordingLogger(),
+            $conversationStore ?? new InMemoryConversationStore(),
         );
     }
 

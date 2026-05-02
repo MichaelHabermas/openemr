@@ -40,6 +40,17 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $this->assertStringContainsString('No chart sources were returned.', $template);
     }
 
+    public function testPanelKeepsConversationIdOnlyInMemoryForFollowUps(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('let conversationId = null;', $template);
+        $this->assertStringContainsString("body.append('conversation_id', conversationId)", $template);
+        $this->assertStringContainsString('conversationId = payload.conversation_id', $template);
+        $this->assertStringNotContainsString('localStorage', $template);
+        $this->assertStringNotContainsString('sessionStorage', $template);
+    }
+
     private function agentForgePanelTemplate(): string
     {
         $template = file_get_contents(dirname(__DIR__, 4) . '/templates/patient/card/agent_forge.html.twig');

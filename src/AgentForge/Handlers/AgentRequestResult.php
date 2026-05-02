@@ -22,6 +22,7 @@ final readonly class AgentRequestResult
         public string $decision,
         public ?int $logPatientId,
         public ?AgentTelemetry $telemetry = null,
+        public ?string $conversationId = null,
     ) {
     }
 }

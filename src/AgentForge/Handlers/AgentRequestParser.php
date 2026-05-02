@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Conversation\ConversationId;
 
 final class AgentRequestParser implements AgentRequestParserInterface
 {
@@ -30,9 +31,19 @@ final class AgentRequestParser implements AgentRequestParserInterface
             throw new DomainException('Question is required.');
         }
 
+        $conversationId = null;
+        $rawConversationId = $input['conversation_id'] ?? null;
+        if ($rawConversationId !== null && $rawConversationId !== '') {
+            if (!is_scalar($rawConversationId)) {
+                throw new DomainException('Conversation id is invalid.');
+            }
+            $conversationId = new ConversationId((string) $rawConversationId);
+        }
+
         return new AgentRequest(
             new PatientId((int) $rawPatientId),
             new AgentQuestion((string) $rawQuestion),
+            $conversationId,
         );
     }
 }

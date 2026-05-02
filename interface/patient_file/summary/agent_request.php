@@ -16,6 +16,7 @@ require_once("../../globals.php");
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
+use OpenEMR\AgentForge\Conversation\SessionConversationStore;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
@@ -73,6 +74,7 @@ $handler = new AgentRequestLifecycle(
             ServiceContainer::getLogger(),
         ),
         ServiceContainer::getLogger(),
+        new SessionConversationStore(),
     ),
     $agentForgeLogger,
 );

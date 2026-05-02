@@ -119,6 +119,20 @@ class SessionUtil
     }
 
     /**
+     * Set a session value without writing the value itself to debug logs.
+     */
+    public static function setSensitiveSession(string $session_key, mixed $session_value): void
+    {
+        self::withWritableSession(static function (SessionInterface $session) use ($session_key, $session_value): void {
+            $session->set($session_key, $session_value);
+        });
+
+        ServiceContainer::getLogger()->debug("SessionUtil: set sensitive session value", [
+            'session_key' => $session_key,
+        ]);
+    }
+
+    /**
      * @param string|array<int, string> $session_key_or_array
      */
     public static function unsetSession(string|array $session_key_or_array): void

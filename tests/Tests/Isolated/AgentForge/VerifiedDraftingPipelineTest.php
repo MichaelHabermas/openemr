@@ -57,7 +57,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->telemetry->sourceIds);
     }
 
-    public function testProviderFailureAfterEvidencePreservesUsefulTelemetry(): void
+    public function testProviderFailureAfterEvidenceFallsBackToVerifiedEvidence(): void
     {
         $result = (new VerifiedDraftingPipeline(
             new PipelineUnavailableProvider(),
@@ -69,10 +69,42 @@ final class VerifiedDraftingPipelineTest extends TestCase
             ['Recent labs'],
         );
 
-        $this->assertSame('refused', $result->response->status);
-        $this->assertSame('draft_provider_unavailable', $result->telemetry->failureReason);
+        $this->assertSame('ok', $result->response->status);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $result->response->answer);
+        $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->response->citations);
+        $this->assertSame(
+            ['The model draft provider could not be reached; deterministic evidence fallback was used.'],
+            $result->response->refusalsOrWarnings,
+        );
+        $this->assertSame('draft_provider_unavailable_fallback_used', $result->telemetry->failureReason);
+        $this->assertSame('fallback_passed', $result->telemetry->verifierResult);
         $this->assertSame(['Recent labs'], $result->telemetry->toolsCalled);
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->telemetry->sourceIds);
+    }
+
+    public function testProviderFailureVisitBriefingFallbackDoesNotDuplicateMedicationLines(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineUnavailableProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(new PatientId(900001), new AgentQuestion('Tell me about this patient.')),
+            $this->briefingBundle(),
+            'visit_briefing',
+            ['Demographics', 'Active medications'],
+        );
+
+        $this->assertSame('ok', $result->response->status);
+        $this->assertSame(1, substr_count($result->response->answer, 'Metformin ER 500 mg: 500 mg'));
+        $this->assertSame(1, substr_count($result->response->answer, 'Lisinopril 10 mg: 10 mg'));
+        $this->assertStringContainsString(
+            'Metformin ER 500 mg: 500 mg [medication:prescriptions/af-rx-metformin@2026-03-15]',
+            $result->response->answer,
+        );
+        $this->assertStringContainsString(
+            'Lisinopril 10 mg: 10 mg [medication:prescriptions/af-rx-lisinopril@2026-03-15]',
+            $result->response->answer,
+        );
     }
 
     public function testVisitBriefingAppendsMedicationEvidenceWhenVerifiedDraftOmitsIt(): void

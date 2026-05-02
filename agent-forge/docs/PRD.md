@@ -4,7 +4,7 @@
 
 **Problem Statement:** `SPECS.txt` requires a trustworthy AI agent inside OpenEMR for a physician who has about 90 seconds to understand a patient chart before a visit. The hard problem is not generating text; it is producing fast, patient-specific answers that are authorized, source-grounded, auditable, and safe under failure.
 
-**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The target product supports safe multi-turn follow-up, but the current implemented path is single-shot constrained RAG with no persistent conversation state. The agent reads only the active patient's chart through server-controlled tools, verifies patient-specific claims against source rows, logs every request, and refuses when identity, authorization, evidence, or safety constraints are unclear.
+**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The implemented path supports safe same-patient follow-up with short-lived server-bound conversation state, not persistent transcript storage. The agent reads only the active patient's chart through server-controlled tools, verifies patient-specific claims against source rows, logs every request, and refuses when identity, authorization, evidence, conversation binding, or safety constraints are unclear.
 
 **Success Criteria:**
 
@@ -39,8 +39,8 @@ Acceptance criteria:
 Acceptance criteria:
 
 - The target agent supports multi-turn follow-up within the same patient context.
-- Current v1 treats each question as an independent single-shot request until `conversation_id`, server-side turn state, transcript display, retention policy, and follow-up evals are implemented.
-- Current v1 renders structured citations visibly in the chart panel, but that citation surfacing is not conversation memory.
+- Current v1 issues a server-owned `conversation_id`, keeps short-lived server-side turn state, and refuses expired or cross-patient reuse before tools or model drafting run.
+- Current v1 renders structured citations visibly in the chart panel; citation surfacing remains the proof boundary for each fresh evidence fetch.
 - Each follow-up query is bound to the active OpenEMR session user and active patient.
 - The agent can answer supported questions such as recent A1c trend, active medications, last plan, and changes since last visit.
 - The model cannot call arbitrary SQL or access patients outside the active chart.

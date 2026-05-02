@@ -86,7 +86,7 @@ Exit criteria:
 
 Exit criteria:
 
-- Live app demonstrates supported chart-orientation questions, visible citation payloads, missing data, refusal, and log inspection. True multi-turn follow-up remains a planned runtime capability, while citation UI surfacing is completed in Epic 11.
+- Live app demonstrates supported chart-orientation questions, visible citation payloads, missing data, refusal, log inspection, and server-bound same-patient follow-up.
 - Eval suite pass threshold is met: all safety-critical evals must pass; non-safety failures must be documented with mitigation or removed from demo scope.
 
 ### P1 - Hours 32-44: Packaging And Defense
@@ -1032,7 +1032,7 @@ The following epics are remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. 
 
 - Already implemented: the current safety-first foundation, including chart embedding, narrow authorization, bounded evidence tools, structured drafting, deterministic verification, request logging, demo data, deployment proof, and fixture evals.
 - Completed remediation: root reviewer packaging, cost analysis rewrite, evaluation-tier honesty, citation UI surfacing, verifier hardening, selective tool routing, medication evidence expansion, authorization-scope inventory, and composite-index remediation planning.
-- Accepted v1 limitation: the current product is a single-shot constrained RAG path with narrow authorization, tiered-but-not-fully-automated live eval proof, documented semantic-verification limits, and no implemented persistent multi-turn conversation state.
+- Accepted v1 limitation: the current product is a constrained RAG path with narrow authorization, tiered-but-not-fully-automated live eval proof, documented semantic-verification limits, and short-lived server-bound conversation state rather than persistent transcript storage.
 - Implemented as documentation-and-proof remediation: Epic 14 covers sensitive audit-log policy cleanup, observability maturity, and latency-budget/optimization planning. Runtime dashboards, alerting infrastructure, and a new telemetry backend remain deferred, and human log-policy review remains pending.
 - Production-readiness blocker: any remediation item that maps to `SPECS.txt` production readiness, observability, evaluation, authorization, latency, cost, or submission deliverables must be completed or explicitly scoped out before claiming production readiness.
 
@@ -1319,7 +1319,7 @@ Human verification:
 
 ## Epic 11 - Conversation Scope And Citation Surfacing
 
-Status: Complete for scope correction, planned multi-turn contract, and visible citation surfacing. Runtime multi-turn conversation state is not implemented and remains an accepted limitation.
+Status: Complete for scope correction, planned multi-turn contract, and visible citation surfacing. Runtime multi-turn conversation state was later implemented in Epic 19.
 
 Goal: correct the current single-turn/multi-turn mismatch and ensure source citations are visible to the physician, not only present in the response payload.
 
@@ -1329,30 +1329,30 @@ Goal: correct the current single-turn/multi-turn mismatch and ensure source cita
 
 Status: Complete.
 
-Why: `SPECS.txt` asks for follow-up questions and conversation context, while the current request model and UI are single-turn.
+Why: `SPECS.txt` asks for follow-up questions and conversation context; at the time of Epic 11 the request model and UI were single-turn.
 
 Start with eval/test or documentation proof:
 
-- Update `USERS.md`, `ARCHITECTURE.md`, and release notes to state that current v1 answers independent single-shot questions.
-- Preserve Follow-Up Drill-Down as a valid target use case, but mark it planned until conversation state is implemented.
+- Update `USERS.md`, `ARCHITECTURE.md`, and release notes to state that then-current v1 answered independent single-shot questions.
+- Preserve Follow-Up Drill-Down as a valid target use case, with Epic 19 closing the runtime conversation-state gap.
 
 Implementation notes:
 
-- Do not pretend the current system has `conversation_id`, transcript state, or turn grounding.
-- State that single-shot constrained RAG is safer for v1 but incomplete against the spec's multi-turn agent requirement.
+- Do not pretend the Epic 11-era system had `conversation_id`, transcript state, or turn grounding.
+- State that single-shot constrained RAG was safer for that scope but incomplete against the spec's multi-turn agent requirement.
 
 Definition of done:
 
-- Reviewer-facing docs do not claim implemented multi-turn behavior.
-- Multi-turn remains a planned remediation item with acceptance criteria.
+- Reviewer-facing docs did not claim implemented multi-turn behavior before Epic 19.
+- Multi-turn remediation had acceptance criteria that Epic 19 later implemented.
 
 Human verification:
 
-- A reviewer can explain what happens if a physician asks a follow-up today and what future epic closes the gap.
+- A reviewer can explain that Epic 11 corrected the claim and Epic 19 implemented the narrow server-bound follow-up path.
 
 #### Task 11.1.2 - Plan Minimum Multi-Turn Conversation State
 
-Status: Complete as planned contract and planned eval metadata. Runtime `conversation_id`, transcript storage, and follow-up grounding are not implemented.
+Status: Complete as planned contract and planned eval metadata. Runtime `conversation_id` and follow-up grounding were later implemented in Epic 19 without persistent transcript storage.
 
 Why: Use Case 2 requires follow-up drill-down within the same patient context.
 
@@ -1400,7 +1400,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can ask the A1c trend question and see citations outside the answer prose.
-- Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data and clinical-advice refusal UI states were also verified locally. Ambiguous follow-up remains a single-shot behavior concern, not a completed multi-turn capability.
+- Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data and clinical-advice refusal UI states were also verified locally. Epic 19 later added deterministic proof for ambiguous follow-up grounding.
 
 ## Epic 12 - Verifier Hardening And PHI-Minimizing Tool Routing
 
@@ -1882,7 +1882,7 @@ Human verification:
 
 ## Epic 19 - Server-Bound Multi-Turn Conversation State
 
-Status: Planned. The current request shell submits only `patient_id` and `question`; no conversation id or follow-up grounding exists.
+Status: Implemented with deterministic proof. The request shell accepts optional server-owned `conversation_id`; first turns return a bound id and follow-ups validate it before tools or model run.
 
 Goal: satisfy the SPECS multi-turn requirement with the smallest possible server-bound state. Each turn re-fetches evidence; prior turn text never becomes a citation source.
 
@@ -1894,7 +1894,7 @@ Why: follow-ups need stable identity that the server controls; client-supplied c
 
 Start with eval/test:
 
-- Define eval cases for first-turn identity issuance, same-patient follow-up, cross-patient reuse refusal, and missing/expired id refusal before implementation.
+- Implemented eval cases for first-turn identity issuance, same-patient follow-up, cross-patient reuse refusal, and expired id refusal.
 
 Implementation notes:
 
@@ -1910,6 +1910,11 @@ Definition of done:
 - Cross-patient reuse and expired ids fail closed.
 - Eval cases pass for issuance, valid follow-up, cross-patient refusal, and expiry.
 
+Proof:
+
+- Verified 2026-05-02: `composer phpunit-isolated -- --filter 'AgentForge'` passed 233 tests / 1170 assertions.
+- Verified 2026-05-02: `php agent-forge/scripts/run-evals.php` passed 28 evals, including same-patient follow-up, cross-patient conversation reuse refusal, expired conversation refusal, and stale prior-answer rejection.
+
 Human verification:
 
 - A reviewer can start a conversation, ask a follow-up, and see the same conversation id; switching patients issues a new id; reusing the old id against a different patient is refused.
@@ -1922,7 +1927,7 @@ Why: multi-turn convenience must not weaken citation discipline.
 
 Start with eval/test:
 
-- Define eval cases for pronoun follow-ups, omitted-subject follow-ups, and stale prior-answer reuse before implementation.
+- Implemented eval/test coverage for ambiguous follow-ups and stale prior-answer reuse.
 
 Implementation notes:
 
@@ -1934,6 +1939,11 @@ Definition of done:
 
 - Follow-up answers cite freshly-fetched evidence, not prior turn text.
 - Eval cases pass for pronoun resolution, omitted subjects, and stale-prior-answer rejection.
+
+Proof:
+
+- Verified 2026-05-02: follow-up planner tests route ambiguous follow-up text from compact prior-turn context while verified handler output cites only current evidence source ids.
+- Verified 2026-05-02: eval case `stale_prior_answer_reuse_rejected` refuses an unverifiable follow-up draft instead of reusing prior context as evidence.
 
 Human verification:
 
