@@ -35,42 +35,33 @@ final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
         $name = trim(EvidenceRowValue::string($row, 'fname') . ' ' . EvidenceRowValue::string($row, 'lname'));
         $dob = EvidenceRowValue::string($row, 'DOB');
         $sex = EvidenceRowValue::string($row, 'sex');
+        $sourceId = EvidenceRowValue::firstString($row, 'pid') ?: (string) $patientId->value;
+        $sourceDate = EvidenceRowValue::dateOnly($row, 'date', 'DOB');
+
+        $items = [];
         $missing = [];
-        foreach (['name' => $name, 'date of birth' => $dob, 'sex' => $sex] as $label => $value) {
-            if ($value === '') {
-                $missing[] = sprintf('Demographics %s not found in the chart.', $label);
-            }
-        }
-
-        if ($name === '' && $dob === '' && $sex === '') {
-            return new EvidenceResult($this->section(), [], $missing);
-        }
-
-        $parts = [];
-        if ($name !== '') {
-            $parts[] = $name;
-        }
-        if ($dob !== '') {
-            $parts[] = 'born ' . $dob;
-        }
-        if ($sex !== '') {
-            $parts[] = 'sex ' . $sex;
-        }
-
-        return new EvidenceResult(
-            $this->section(),
+        foreach (
             [
-                new EvidenceItem(
-                    'demographic',
-                    'patient_data',
-                    EvidenceRowValue::firstString($row, 'pid') ?: (string) $patientId->value,
-                    EvidenceRowValue::dateOnly($row, 'date', 'DOB'),
-                    'Patient',
-                    implode(', ', $parts),
-                ),
-            ],
-            $missing,
-        );
+                ['Patient name', $name, 'name', $sourceId . '-name'],
+                ['Date of birth', $dob, 'date of birth', $sourceId . '-dob'],
+                ['Sex', $sex, 'sex', $sourceId . '-sex'],
+            ] as [$label, $value, $missingLabel, $itemSourceId]
+        ) {
+            if ($value === '') {
+                $missing[] = sprintf('Demographics %s not found in the chart.', $missingLabel);
+                continue;
+            }
+            $items[] = new EvidenceItem(
+                'demographic',
+                'patient_data',
+                $itemSourceId,
+                $sourceDate,
+                $label,
+                $value,
+            );
+        }
+
+        return new EvidenceResult($this->section(), $items, $missing);
     }
 
 }

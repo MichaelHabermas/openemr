@@ -16,10 +16,26 @@
       {
         "source_type": "demographic",
         "source_table": "patient_data",
-        "source_id": "900001",
+        "source_id": "900001-name",
         "source_date": "2026-04-15",
-        "display_label": "Patient",
-        "value": "Alex Testpatient, born 1976-04-12, sex Female"
+        "display_label": "Patient name",
+        "value": "Alex Testpatient"
+      },
+      {
+        "source_type": "demographic",
+        "source_table": "patient_data",
+        "source_id": "900001-dob",
+        "source_date": "2026-04-15",
+        "display_label": "Date of birth",
+        "value": "1976-04-12"
+      },
+      {
+        "source_type": "demographic",
+        "source_table": "patient_data",
+        "source_id": "900001-sex",
+        "source_date": "2026-04-15",
+        "display_label": "Sex",
+        "value": "Female"
       }
     ],
     "active_problems": [
@@ -29,7 +45,7 @@
         "source_id": "af-prob-diabetes",
         "source_date": "2025-09-10",
         "display_label": "Type 2 diabetes mellitus",
-        "value": "Active problem since 2025-09-10"
+        "value": "Active"
       },
       {
         "source_type": "problem",
@@ -37,7 +53,7 @@
         "source_id": "af-prob-htn",
         "source_date": "2024-02-18",
         "display_label": "Essential hypertension",
-        "value": "Active problem since 2024-02-18"
+        "value": "Active"
       }
     ],
     "active_medications": [

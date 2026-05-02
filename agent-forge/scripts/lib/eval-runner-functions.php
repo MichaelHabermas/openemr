@@ -166,11 +166,13 @@ function agentforge_eval_tools(string $scenario): array
 
     return [
         new EvalEvidenceTool('Demographics', [
-            new EvidenceItem('demographic', 'patient_data', '900001', '2026-04-15', 'Patient', 'Alex Testpatient, born 1976-04-12, sex Female'),
+            new EvidenceItem('demographic', 'patient_data', '900001-name', '2026-04-15', 'Patient name', 'Alex Testpatient'),
+            new EvidenceItem('demographic', 'patient_data', '900001-dob', '2026-04-15', 'Date of birth', '1976-04-12'),
+            new EvidenceItem('demographic', 'patient_data', '900001-sex', '2026-04-15', 'Sex', 'Female'),
             new EvidenceItem('demographic', 'patient_data', '900001-rfv', '2026-04-15', 'Reason for visit', 'Follow-up for diabetes and blood pressure before a scheduled primary care visit.'),
         ]),
         new EvalEvidenceTool('Active problems', [
-            new EvidenceItem('problem', 'lists', 'af-prob-diabetes', '2025-09-10', 'Type 2 diabetes mellitus', 'Active problem since 2025-09-10'),
+            new EvidenceItem('problem', 'lists', 'af-prob-diabetes', '2025-09-10', 'Type 2 diabetes mellitus', 'Active'),
         ]),
         new EvalEvidenceTool('Active medications', [
             new EvidenceItem('medication', 'prescriptions', 'af-rx-metformin', '2026-03-15', 'Metformin ER 500 mg', '500 mg'),

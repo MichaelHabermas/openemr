@@ -19,7 +19,6 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
     public function __construct(
         private ChartEvidenceRepository $repository,
         private int $limit = 10,
-        private int $maxValueLength = 300,
     ) {
     }
 
@@ -41,14 +40,13 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
                 continue;
             }
 
-            $date = EvidenceRowValue::dateOnly($row, 'begdate', 'date');
             $items[] = new EvidenceItem(
                 'problem',
                 'lists',
                 $this->sourceId($row),
-                $date,
+                EvidenceRowValue::dateOnly($row, 'begdate', 'date'),
                 EvidenceText::bounded($title, 120),
-                EvidenceText::bounded(sprintf('Active problem since %s', $date), $this->maxValueLength),
+                'Active',
             );
         }
 

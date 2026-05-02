@@ -90,6 +90,66 @@ final class EvidenceMatcherTest extends TestCase
                 'The Take 1 tablet by mouth daily with evening meal',
                 true,
             ],
+            'date: english month-day-year matches ISO' => [
+                'Date of birth April 12, 1976',
+                'Date of birth',
+                '1976-04-12',
+                true,
+            ],
+            'date: english day-month-year matches ISO' => [
+                'Date of birth 12 April 1976',
+                'Date of birth',
+                '1976-04-12',
+                true,
+            ],
+            'date: abbreviated month matches ISO' => [
+                'Date of birth Apr 12, 1976',
+                'Date of birth',
+                '1976-04-12',
+                true,
+            ],
+            'date: case-insensitive month matches ISO' => [
+                'Date of birth APRIL 12, 1976',
+                'Date of birth',
+                '1976-04-12',
+                true,
+            ],
+            'date: zero-padded day in claim matches ISO' => [
+                'Hemoglobin A1c on 2026-01-09 was 8.2 %',
+                'Hemoglobin A1c',
+                '8.2 %',
+                true,
+            ],
+            'date: wrong year is still rejected' => [
+                'Date of birth April 12, 1977',
+                'Date of birth',
+                '1976-04-12',
+                false,
+            ],
+            'date: wrong month is still rejected' => [
+                'Date of birth July 12, 1976',
+                'Date of birth',
+                '1976-04-12',
+                false,
+            ],
+            'date: year-only claim does not ground full DOB' => [
+                'Date of birth 1976',
+                'Date of birth',
+                '1976-04-12',
+                false,
+            ],
+            'date: month verb without year is not canonicalized' => [
+                'The patient may improve with Metformin ER 500 mg therapy',
+                'Metformin ER 500 mg',
+                '500 mg',
+                true,
+            ],
+            'date: standalone "may" before non-year token does not ground' => [
+                'The patient may have a 1976 history',
+                'Date of birth',
+                '1976-04-12',
+                false,
+            ],
         ];
     }
 }

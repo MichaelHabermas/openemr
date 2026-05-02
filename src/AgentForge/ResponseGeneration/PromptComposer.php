@@ -30,6 +30,8 @@ final readonly class PromptComposer
             'Every patient-specific fact must cite source IDs exactly as provided.',
             'For every patient_fact claim, copy the cited evidence display_label and value exactly into the claim text.',
             'If a sentence cites multiple sources, include every cited display_label and value in that sentence or split it into separate sentences.',
+            'Example: for evidence with display_label "Date of birth" and value "1980-06-15", write "Date of birth: 1980-06-15"; do not paraphrase to "Born on June 15, 1980" or "DOB: 1980-06-15".',
+            'Example: for evidence with display_label "Sex" and value "Female", write "Sex: Female"; do not paraphrase to "She is female" or use pronouns in place of the label.',
             'If evidence is missing, say it was not found in the chart.',
             'Return only valid JSON matching the response schema.',
         ]);

@@ -28,17 +28,39 @@ final class EvidenceToolsTest extends TestCase
         $result = (new DemographicsEvidenceTool($this->repository()))->collect(new PatientId(900001));
 
         $this->assertSame('Demographics', $result->section);
-        $this->assertCount(1, $result->items);
+        $this->assertCount(3, $result->items);
         $this->assertSame(
             [
                 'source_type' => 'demographic',
                 'source_table' => 'patient_data',
-                'source_id' => '900001',
+                'source_id' => '900001-name',
                 'source_date' => '2026-04-15',
-                'display_label' => 'Patient',
-                'value' => 'Alex Testpatient, born 1976-04-12, sex Female',
+                'display_label' => 'Patient name',
+                'value' => 'Alex Testpatient',
             ],
             $result->items[0]->toArray(),
+        );
+        $this->assertSame(
+            [
+                'source_type' => 'demographic',
+                'source_table' => 'patient_data',
+                'source_id' => '900001-dob',
+                'source_date' => '2026-04-15',
+                'display_label' => 'Date of birth',
+                'value' => '1976-04-12',
+            ],
+            $result->items[1]->toArray(),
+        );
+        $this->assertSame(
+            [
+                'source_type' => 'demographic',
+                'source_table' => 'patient_data',
+                'source_id' => '900001-sex',
+                'source_date' => '2026-04-15',
+                'display_label' => 'Sex',
+                'value' => 'Female',
+            ],
+            $result->items[2]->toArray(),
         );
     }
 
@@ -65,6 +87,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Type 2 diabetes mellitus', $result->items[0]->displayLabel);
+        $this->assertSame('Active', $result->items[0]->value);
         $this->assertSame('problem:lists/af-prob-diabetes@2025-09-10', $result->items[0]->citation());
     }
 
