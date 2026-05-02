@@ -439,6 +439,30 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('note:form_clinical_notes/af-note-20260415@2026-04-15', $result->items[0]->citation());
     }
 
+    public function testNotesToolReturnsEncounterReasonEvidenceWhenLinked(): void
+    {
+        $result = (new EncountersNotesEvidenceTool($this->repository(notes: [
+            [
+                'id' => 1,
+                'external_id' => 'af-note-20260415',
+                'note_date' => '2026-04-15',
+                'codetext' => 'Last plan',
+                'description' => 'Continue metformin ER and lisinopril.',
+                'encounter' => 900415,
+                'encounter_reason' => 'Follow-up for diabetes and blood pressure before a scheduled primary care visit.',
+                'encounter_date' => '2026-04-15',
+                'activity' => 1,
+                'authorized' => 1,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(2, $result->items);
+        $this->assertSame('Reason for visit', $result->items[0]->displayLabel);
+        $this->assertSame('Follow-up for diabetes and blood pressure before a scheduled primary care visit.', $result->items[0]->value);
+        $this->assertSame('encounter:form_encounter/900415@2026-04-15', $result->items[0]->citation());
+        $this->assertSame('Last plan', $result->items[1]->displayLabel);
+    }
+
     public function testNotesToolReturnsMissingWhenNoLastPlanExists(): void
     {
         $result = (new EncountersNotesEvidenceTool($this->repository(notes: [])))->collect(new PatientId(900001));

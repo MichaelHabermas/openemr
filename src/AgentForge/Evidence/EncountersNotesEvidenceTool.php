@@ -36,6 +36,18 @@ final readonly class EncountersNotesEvidenceTool implements ChartEvidenceTool
                 continue;
             }
 
+            $reason = EvidenceRowValue::string($row, 'encounter_reason');
+            if ($reason !== '') {
+                $items[] = new EvidenceItem(
+                    'encounter',
+                    'form_encounter',
+                    EvidenceRowValue::firstString($row, 'encounter'),
+                    EvidenceRowValue::dateOnly($row, 'encounter_date', 'note_date'),
+                    'Reason for visit',
+                    EvidenceText::bounded($reason, $this->maxNoteLength),
+                );
+            }
+
             $note = EvidenceRowValue::string($row, 'description');
             if ($note === '') {
                 continue;

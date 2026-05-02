@@ -85,6 +85,7 @@ final class EvaluationTiersDocumentTest extends TestCase
     public function testLiveModelTelemetryAndSmokeResultRulesAreExplicit(): void
     {
         $document = $this->evaluationDocument();
+        $evalReadme = $this->readRepoFile('/agent-forge/eval-results/README.md');
 
         foreach (
             [
@@ -102,6 +103,9 @@ final class EvaluationTiersDocumentTest extends TestCase
         $this->assertStringContainsString('No eval result file is created unless this smoke tier was actually run', $document);
         $this->assertStringContainsString('release rule', strtolower($document));
         $this->assertStringContainsString('captured result or an explicit documented gap', $document);
+        $this->assertStringContainsString('php agent-forge/scripts/run-sql-evidence-evals.php', $document);
+        $this->assertStringContainsString('sql-evidence-eval-results-', $evalReadme);
+        $this->assertStringContainsString('Do not create or commit SQL evidence result files unless that SQL tier actually ran', $evalReadme);
     }
 
     public function testMultiTurnEvalCasesRunAsRuntimeProof(): void

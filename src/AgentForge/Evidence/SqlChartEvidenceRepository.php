@@ -121,7 +121,7 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     {
         return $this->executor->fetchRecords(
             'SELECT n.id, n.external_id, n.date AS note_date, n.codetext, n.description, '
-            . 'n.activity, n.authorized, e.date AS encounter_date '
+            . 'n.activity, n.authorized, e.encounter, e.reason AS encounter_reason, e.date AS encounter_date '
             . 'FROM form_clinical_notes n '
             // CAST: form_clinical_notes.encounter is VARCHAR; form_encounter.encounter is numeric.
             . 'LEFT JOIN form_encounter e ON e.pid = n.pid AND CAST(e.encounter AS CHAR) = n.encounter '

@@ -1,5 +1,5 @@
 {
-  "fixture_version": "2026-05-02-epic17",
+  "fixture_version": "2026-05-02-epic21",
   "patients": [
     {
       "pid": 900001,
@@ -36,6 +36,16 @@
             "source_date": "2026-04-15",
             "display_label": "Sex",
             "value": "Female"
+          }
+        ],
+        "recent_encounters": [
+          {
+            "source_type": "encounter",
+            "source_table": "form_encounter",
+            "source_id": "900415",
+            "source_date": "2026-04-15",
+            "display_label": "Reason for visit",
+            "value": "Follow-up for diabetes and blood pressure before a scheduled primary care visit."
           }
         ],
         "active_problems": [
@@ -177,6 +187,16 @@
             "source_date": "2026-05-16",
             "display_label": "Patient name",
             "value": "Riley Medmix"
+          }
+        ],
+        "recent_encounters": [
+          {
+            "source_type": "encounter",
+            "source_table": "form_encounter",
+            "source_id": "900516",
+            "source_date": "2026-05-16",
+            "display_label": "Reason for visit",
+            "value": "Medication reconciliation for anticoagulation and diabetes follow-up."
           }
         ],
         "active_problems": [

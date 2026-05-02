@@ -63,6 +63,7 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
         $this->assertStringContainsString('authorized = 1', $executor->queries[6]['sql']);
         $this->assertStringContainsString('DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->queries[6]['sql']);
         $this->assertStringContainsString('WHERE n.pid = ?', $executor->queries[7]['sql']);
+        $this->assertStringContainsString('e.reason AS encounter_reason', $executor->queries[7]['sql']);
     }
 
     public function testActiveMedicationsReturnsTotalLimitInDateOrderAcrossSources(): void

@@ -33,7 +33,15 @@ What this tier does not exercise:
 
 ## Tier 1 - Seeded SQL Evidence Evals
 
-This tier is not automated. It must run against fake seeded OpenEMR data through the real SQL evidence repositories, not `EvalEvidenceTool` fixtures. It requires a local or VM Docker-backed OpenEMR database seeded with `agent-forge/scripts/seed-demo-data.sh` and verified with `agent-forge/scripts/verify-demo-data.sh`.
+Command:
+
+```sh
+php agent-forge/scripts/run-sql-evidence-evals.php
+```
+
+This tier runs against fake seeded OpenEMR data through the real SQL evidence repositories, not `EvalEvidenceTool` fixtures. It requires a local or VM Docker-backed OpenEMR database seeded with `agent-forge/scripts/seed-demo-data.sh` and verified with `agent-forge/scripts/verify-demo-data.sh`.
+
+The runner is model-free. It proves the SQL evidence path from seeded rows to bounded, patient-scoped, source-carrying evidence; it does not evaluate LLM wording or browser display.
 
 Required cases and pass criteria:
 
@@ -50,6 +58,8 @@ Required cases and pass criteria:
 | Cross-patient leakage | Active chart patient differs from requested patient | Request refuses mismatch and returns no other-patient evidence. |
 
 This tier maps to `SPECS.txt` evaluation requirements for failure modes, missing data, ambiguous or unsafe requests, unauthorized access, and source-grounded chart facts. It also addresses the review shortfall that fixture evals do not prove the live SQL evidence path.
+
+SQL-backed result files are named `sql-evidence-eval-results-*.json` and must only be written by an actual SQL runner execution. Each result records `tier=seeded_sql_evidence`, code version, seeded data fixture version, environment label, pass/fail counts, expected citations, present citations, missing-section signals, and failure details.
 
 ## Tier 2 - Live Model Contract Evals
 
@@ -152,4 +162,4 @@ Live-path proof is captured as manual/browser evidence, not as a fully automated
 - VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
 - Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by deployed browser/log proof.
 
-Tiers 1 through 4 are still not a fully automated live eval framework. A final submission may cite the captured manual/browser proof above, but must not describe it as repeatable automated live eval coverage until those tier runners exist.
+Tier 1 now has a dedicated SQL evidence runner, but it only counts as captured proof when `php agent-forge/scripts/run-sql-evidence-evals.php` has actually been executed against seeded SQL data and its result file is available. Tiers 2 through 4 are still not a fully automated live eval framework. A final submission may cite the captured manual/browser proof above, but must not describe it as repeatable automated live eval coverage until those tier runners exist.
