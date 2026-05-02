@@ -4,6 +4,14 @@
 
 **Reviewer landing:** Start at repository-root `AGENTFORGE-REVIEWER-GUIDE.md` when that packaging artifact is present.
 
+**Reviewer navigation checklist:**
+
+- Start at repository-root `README.md`.
+- Open `AGENTFORGE-REVIEWER-GUIDE.md` from the `AgentForge Reviewer Entry Point` link.
+- Confirm root `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` exist.
+- Confirm the reviewer guide links resolve from the repository root.
+- Confirm the guide exposes the documented deployed URL, fake patient, demo path, seed command, eval command, cost analysis, implemented proof, and known blockers without needing tribal knowledge.
+
 **Root artifact drift check** (required docs must match canonical copies under `agent-forge/docs/`):
 
 ```sh

@@ -136,14 +136,9 @@ final class EvaluationTiersDocumentTest extends TestCase
     public function testReviewerGuideAndEvalReadmePointToTierTaxonomy(): void
     {
         $evalReadme = $this->readRepoFile('/agent-forge/eval-results/README.md');
-        $reviewerGuidePath = dirname(__DIR__, 4) . '/AGENTFORGE-REVIEWER-GUIDE.md';
+        $reviewerGuide = $this->readRepoFile('/AGENTFORGE-REVIEWER-GUIDE.md');
 
-        if (file_exists($reviewerGuidePath)) {
-            $reviewerGuide = file_get_contents($reviewerGuidePath);
-            $this->assertIsString($reviewerGuide);
-            $this->assertStringContainsString('agent-forge/docs/evaluation/EVALUATION-TIERS.md', $reviewerGuide);
-        }
-
+        $this->assertStringContainsString('agent-forge/docs/evaluation/EVALUATION-TIERS.md', $reviewerGuide);
         $this->assertStringContainsString('Tier 0 deterministic fixture/orchestration proof', $evalReadme);
         $this->assertStringContainsString('not full live-agent proof', $evalReadme);
     }
