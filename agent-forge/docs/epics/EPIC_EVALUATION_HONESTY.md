@@ -8,7 +8,7 @@
 
 ## Overview
 
-Epic 10 preserves the existing deterministic fixture evals while making their proof boundary explicit. It adds a reviewer-facing evaluation tier taxonomy for seeded SQL evidence, live model contract checks, browser smoke checks, deployed smoke checks, and release gating without pretending those live tiers have been run in this pass.
+Epic 10 preserves the existing deterministic fixture evals while making their proof boundary explicit. It adds a reviewer-facing evaluation tier taxonomy for seeded SQL evidence, live model contract checks, browser smoke checks, deployed smoke checks, and release gating. Later catch-up proof records fake-data verification, a refreshed deterministic `13/13` fixture run, and existing manual live OpenAI/local/VM browser evidence without pretending those manual checks are automated live eval runners.
 
 First-principles premise check: the problem is not a lack of green numbers. The bottleneck is proof honesty. A cheap fixture run is useful only if reviewers can see exactly what it proves and what it does not prove.
 
@@ -102,6 +102,8 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 - 2026-05-01 22:32 EDT: Proof run captured: `EvaluationTiersDocumentTest` passed 4/4; AgentForge isolated PHPUnit passed 122/122; `php agent-forge/scripts/run-evals.php` passed 13/13; `agent-forge/scripts/check-local.sh` passed after rerun with sandbox escalation for PHPStan local TCP binding.
 - 2026-05-01 22:40 EDT: A repository-wide Docker clean sweep was started but deemed out of scope for this Epic 10 documentation/test change. Its unrelated Rector/API/e2e/service findings are not used as Epic 10 acceptance proof.
 - 2026-05-01 23:47 UTC: Local reviewer inspection confirmed Tier 0 fixture proof is not overclaimed, Tiers 1-4 are separated as SQL/live-model/local-browser/deployed-browser gates, and live-agent evaluation cannot be claimed without captured results or explicit documented gaps.
+- 2026-05-02 14:39 UTC: Catch-up proof refreshed fake seeded data and deterministic evals. `agent-forge/scripts/verify-demo-data.sh` passed all fake patient `900001` checks. `php agent-forge/scripts/run-evals.php` passed 13/13 after updating the visit-briefing expectation to the current fixture wording, `Patient name: Alex Testpatient`.
+- 2026-05-02 14:39 UTC: Evaluation status reconciled with existing Epic 6/Epic 7 live proof: live OpenAI provider, local browser, and VM browser proof are captured as manual/browser evidence, while Tiers 1-4 remain non-automated until dedicated live runners exist.
 
 ---
 
@@ -112,8 +114,8 @@ Human verification: local reviewer inspection was performed on 2026-05-01 by sea
 | Current fixture evals are labeled deterministic fixture/orchestration proof. | `agent-forge/docs/evaluation/EVALUATION-TIERS.md`; `agent-forge/eval-results/README.md`; `AGENTFORGE-REVIEWER-GUIDE.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
 | Fixture-only green is not described as full live-agent proof. | Release rule and Tier 0 boundary language in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testFixtureEvalsAreLabeledWithoutOverclaimingLiveProof`. | Local reviewer inspection confirmed on 2026-05-01. |
 | Seeded SQL eval tier exists with expected evidence and pass/fail criteria. | Tier 1 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLivePathTiersHavePassCriteriaAndRequiredCases`. | Local reviewer inspection confirmed tier exists; not executed as live SQL in this epic. |
-| Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed tier exists; not executed against provider in this epic. |
-| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local and deployed browser smoke was performed separately for Epics 11-12 on fake patient `900001`. |
+| Live model tier exists with cost/latency capture. | Tier 2 section in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Manual live OpenAI proof is captured in Epics 6-7; no repeatable live eval runner exists yet. |
+| Browser and deployed smoke tiers exist without fake result files. | Tier 3 and Tier 4 sections in `EVALUATION-TIERS.md`. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local and deployed browser smoke proof is captured in Epics 7, 11, and 12 on fake patient `900001`; no repeatable browser/deployed eval runner exists yet. |
 | Release gate requires live-tier captured result or explicit gap before live-agent claims. | Purpose/release rule in `EVALUATION-TIERS.md`; reviewer-guide link. | `EvaluationTiersDocumentTest::testLiveModelTelemetryAndSmokeResultRulesAreExplicit`. | Local reviewer inspection confirmed on 2026-05-01. |
 
 ---

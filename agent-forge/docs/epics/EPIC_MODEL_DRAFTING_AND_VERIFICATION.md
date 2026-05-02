@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-30
 **Scope:** AgentForge structured drafting, bounded evidence bundle, deterministic verification, and verified endpoint response
-**Status:** Complete With OpenAI Provider Support; Live API-Key Proof Pending
+**Status:** Complete With Live OpenAI Proof Captured
 
 ---
 
@@ -115,6 +115,7 @@ The OpenAI provider sends only the bounded evidence bundle plus the physician qu
 - 2026-04-30: Added deterministic deadline handling and handler-level proof that missing last-plan and timeout/deadline states surface visibly.
 - 2026-04-30: Completed broader AgentForge static-analysis and boundary type cleanup without changing fixture-first behavior or adding a real model provider.
 - 2026-04-30: Added OpenAI structured-output draft provider support. Default provider selection uses OpenAI when an API key is configured, and fixture mode remains available for deterministic test/eval runs.
+- 2026-05-02: Reconciled stale live-provider status. Existing Epic 6 and Epic 7 proof already captured live OpenAI provider output, local browser proof, VM browser proof, token/cost telemetry, visible citations, missing-data behavior, and clinical-advice refusal for fake patient `900001`.
 
 ## Proof Log
 
@@ -158,6 +159,9 @@ The OpenAI provider sends only the bounded evidence bundle plus the physician qu
 - Live OpenAI calls require `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` in the runtime environment.
 - Optional pricing variables are `AGENTFORGE_OPENAI_INPUT_COST_PER_1M` and `AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M`; when absent for the default `gpt-4o-mini` model, AgentForge uses built-in default pricing of $0.15 input and $0.60 output per 1M tokens from https://developers.openai.com/api/docs/models/gpt-4o-mini.
 - Live OpenAI proof passed inside the recreated OpenEMR container with `gpt-4o-mini`: provider returned input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and the expected A1c citation. Mocked provider tests also prove payload, parsing, usage, and cost behavior without depending on network access.
+- Local browser proof passed with `gpt-4o-mini`: A1c trend returned `7.4 %` on `2026-04-10` and `8.2 %` on `2026-01-09`, logged `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `latency_ms=2989`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
+- VM browser proof passed with `gpt-4o-mini`: A1c trend returned `7.4 %` and `8.2 %`, logged `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, `input_tokens=836`, `output_tokens=173`, `estimated_cost=0.0002292`, and `verifier_result=passed`.
+- Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are also covered by the Epic 12 deployed browser/log proof.
 
 ## Manual Verification
 

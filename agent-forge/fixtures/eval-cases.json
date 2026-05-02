@@ -35,7 +35,7 @@
       "scenario": "allowed",
       "expected_status": "ok",
       "expected_answer_contains": [
-        "Patient: Alex Testpatient",
+        "Patient name: Alex Testpatient",
         "Reason for visit",
         "Type 2 diabetes mellitus",
         "Metformin ER 500 mg",

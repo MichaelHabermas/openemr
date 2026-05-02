@@ -139,4 +139,15 @@ Pass criteria:
 
 ## Current Status
 
-Only Tier 0 is currently implemented as a repeatable checked-in eval runner. Prior local and VM browser checks are useful manual proof, but they are not a repeatable live eval tier. Tiers 1 through 4 are gated/manual until their commands or checklists are actually run and captured.
+Tier 0 is implemented as a repeatable checked-in eval runner. The refreshed 2026-05-02 run passed `13/13` after updating the visit-briefing expectation to match the current fixture wording: `Patient name: Alex Testpatient`.
+
+The fake seeded OpenEMR data was also re-verified on 2026-05-02 with `agent-forge/scripts/verify-demo-data.sh`; demographics, active problems, active medications, A1c labs, last plan, known missing microalbumin, and source-row evidence checks passed.
+
+Live-path proof is captured as manual/browser evidence, not as a fully automated eval tier:
+
+- Live OpenAI provider proof: `gpt-4o-mini`, input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and expected A1c citation.
+- Local browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `latency_ms=2989`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
+- VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
+- Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by Epic 12 deployed browser/log proof.
+
+Tiers 1 through 4 are still not a fully automated live eval framework. A final submission may cite the captured manual/browser proof above, but must not describe it as repeatable automated live eval coverage until those tier runners exist.

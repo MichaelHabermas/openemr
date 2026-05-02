@@ -86,7 +86,7 @@ Exit criteria:
 
 Exit criteria:
 
-- Live app demonstrates supported chart-orientation questions, citation payloads, missing data, refusal, and log inspection. True multi-turn follow-up and visible citation UI are planned remediation items.
+- Live app demonstrates supported chart-orientation questions, visible citation payloads, missing data, refusal, and log inspection. True multi-turn follow-up remains a planned runtime capability, while citation UI surfacing is completed in Epic 11.
 - Eval suite pass threshold is met: all safety-critical evals must pass; non-safety failures must be documented with mitigation or removed from demo scope.
 
 ### P1 - Hours 32-44: Packaging And Defense
@@ -296,11 +296,15 @@ Human verification:
 
 ## Epic 2 - Deployment And Runtime Proof
 
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`; code rollback is implemented as code reset plus fake-data re-seed, while point-in-time database rollback is intentionally not provided.
+
 Goal: prove the app is reachable and the deployment process is repeatable without destructive unverified premises.
 
 ### Feature 2.1 - Local And Public Health Checks
 
 #### Task 2.1.1 - Define Health Check Script Before Deploy Automation
+
+Status: Complete. Public URL and readiness health checks are documented and scriptable.
 
 Why: `SPECS.txt` requires a deployed app URL for every submission. `operations/KNOWN-FACTS-AND-NEEDS.md` identifies the public URL and readiness endpoint.
 
@@ -324,6 +328,8 @@ Human verification:
 
 #### Task 2.1.2 - Verify VM Deployment Unknowns
 
+Status: Complete. VM facts were captured on `gauntlet-mgh` on 2026-04-30.
+
 Why: deploy automation is unsafe until VM facts are known.
 
 Start with eval/test:
@@ -345,6 +351,8 @@ Human verification:
 - A reviewer can read the checklist and see whether `docker compose down` is safe and whether volumes are preserved.
 
 #### Task 2.1.3 - Demo Deploy Script (Reset-And-Seed Model)
+
+Status: Complete. Deploy transcript was captured on 2026-04-30.
 
 Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM (see "Known VM Bootstrap Fragility" in `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
 
@@ -371,6 +379,8 @@ Human verification:
 
 #### Task 2.1.4 - Code Rollback (Re-Seed Model)
 
+Status: Complete. Rollback transcript was captured on 2026-04-30; database point-in-time rollback remains explicitly out of scope.
+
 Why: a failed deploy shortly before recording can burn the deadline. Code rollback plus re-seed is sufficient because all data is fake and re-loadable.
 
 Start with eval/test:
@@ -396,11 +406,15 @@ Human verification:
 
 ## Epic 3 - Demo Data And Eval Ground Truth
 
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_DEMO_DATA.md` and `agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
+
 Goal: create fake patient facts that support demos and evals without using real PHI.
 
 ### Feature 3.1 - Fake Patient Dataset
 
 #### Task 3.1.1 - Define Minimum Fake Patient Facts
+
+Status: Complete. Fake patient ground truth and expected missing/unsafe cases are documented.
 
 Why: the agent cannot be evaluated without known chart facts and known missing facts.
 
@@ -425,6 +439,8 @@ Human verification:
 
 #### Task 3.1.2 - Load Or Seed Fake Patient Data
 
+Status: Complete. Idempotent seed and verification scripts exist for fake patient `900001`.
+
 Why: evals and demos need repeatable data.
 
 Start with eval/test:
@@ -448,6 +464,8 @@ Human verification:
 
 ## Epic 4 - Agent Request Shell
 
+Status: Complete for the request shell and patient-specific gate. Full evidence retrieval, model drafting, and verification are completed in Epics 5 and 6.
+
 Goal: build the thinnest server-owned request path before adding model behavior.
 
 **Current tree note:** Epic 4’s shell and gate remain the outer boundary; Epics 5–6 added evidence tools and `VerifiedAgentHandler` behind the same endpoint. Historical task text below describes the original slice-and-sequence; smoke expectations for “placeholder only” are **superseded** — see `epics/EPIC4-AGENT-REQUEST-SHELL.md` and Epic 6 for today’s definition of done.
@@ -455,6 +473,8 @@ Goal: build the thinnest server-owned request path before adding model behavior.
 ### Feature 4.1 - Embedded Chart Entry Point
 
 #### Task 4.1.1 - Locate The Correct OpenEMR Integration Point
+
+Status: Complete. Integration points are documented in `agent-forge/docs/epics/EPIC4-AGENT-REQUEST-SHELL.md`.
 
 Why: `ARCHITECTURE.md` says the agent lives inside the patient chart, but exact files and routes are not verified yet.
 
@@ -479,6 +499,8 @@ Human verification:
 - A reviewer can open the listed files and see why they are the right integration points.
 
 #### Task 4.1.2 - Add Minimal Agent Panel
+
+Status: Complete. The chart panel exists; current behavior uses the verified agent pipeline rather than the original placeholder milestone.
 
 Why: the physician needs a conversational surface inside the chart.
 
@@ -507,6 +529,8 @@ Human verification:
 
 #### Task 4.2.1 - Add Server Endpoint With Fail-Closed Guards
 
+Status: Complete. The endpoint refuses missing identity, missing patient context, and invalid questions before the downstream handler.
+
 Why: the browser is not trusted. The server must own identity and patient context.
 
 Start with eval/test:
@@ -532,6 +556,8 @@ Human verification:
 
 #### Task 4.2.2 - Add Patient-Specific Authorization Gate
 
+Status: Complete for the narrow v1 gate. Broader care-team/facility/schedule/delegation authorization remains fail-closed and documented in Epic 13.
+
 Why: the audit says existing coarse ACL is not enough for patient-specific access.
 
 Start with eval/test:
@@ -555,11 +581,15 @@ Human verification:
 
 ## Epic 5 - Read-Only Evidence Tools
 
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_READ_ONLY_EVIDENCE_TOOLS.md`; medication coverage is expanded further in Epic 13.
+
 Goal: retrieve bounded chart evidence with source metadata before any LLM synthesis.
 
 ### Feature 5.1 - Evidence Contract
 
 #### Task 5.1.1 - Write Evidence Contract Tests
+
+Status: Complete. Source-carrying evidence contract tests are in place.
 
 Why: verification depends on a stable source-carrying evidence shape.
 
@@ -585,6 +615,8 @@ Human verification:
 
 #### Task 5.2.1 - Demographics Tool
 
+Status: Complete.
+
 Why: visit briefing needs patient identity context.
 
 Start with eval/test:
@@ -608,6 +640,8 @@ Human verification:
 
 #### Task 5.2.2 - Problems Tool
 
+Status: Complete.
+
 Why: visit briefing needs active problems when present.
 
 Start with eval/test:
@@ -630,6 +664,8 @@ Human verification:
 - A reviewer can compare the answer to the chart's problem list.
 
 #### Task 5.2.3 - Medications And Prescriptions Tool
+
+Status: Complete for the original prescription-focused evidence path; Epic 13 completes active medication evidence across `prescriptions`, `lists`, and `lists_medication`.
 
 Why: current medications are high-risk and required for chart orientation.
 
@@ -655,6 +691,8 @@ Human verification:
 
 #### Task 5.2.4 - Labs Tool
 
+Status: Complete.
+
 Why: follow-up drill-down includes recent lab trend questions.
 
 Start with eval/test:
@@ -677,6 +715,8 @@ Human verification:
 - A reviewer can ask for the fake A1c trend and compare it to chart data.
 
 #### Task 5.2.5 - Encounters, Notes, And Last Plan Tool
+
+Status: Complete.
 
 Why: visit briefing and follow-up require last plan and recent changes when present.
 
@@ -702,11 +742,15 @@ Human verification:
 
 ## Epic 6 - Model Drafting And Deterministic Verification
 
+Status: Complete with live OpenAI proof captured. Existing local and VM browser proof records model `gpt-4o-mini`, token/cost telemetry, source citations, and `verifier_result=passed`.
+
 Goal: let the model draft from evidence, then prove unsupported claims cannot reach the physician.
 
 ### Feature 6.1 - Draft Response Contract
 
 #### Task 6.1.1 - Define Structured Draft Schema
+
+Status: Complete.
 
 Why: free-form model text is hard to verify.
 
@@ -733,6 +777,8 @@ Human verification:
 - A reviewer can read the schema and see where citations and missing data are represented.
 
 #### Task 6.1.2 - Add LLM Drafting Behind Feature Flag Or Config
+
+Status: Complete for fixture and provider wiring with token/cost capture. Live provider proof is captured as manual/browser evidence, not as a repeatable live eval runner.
 
 Why: model behavior must be isolated from request routing and tools.
 
@@ -763,6 +809,8 @@ Human verification:
 
 #### Task 6.2.1 - Block Unsupported Patient Claims
 
+Status: Complete; verifier hardening continues in Epic 12.
+
 Why: unsupported clinical claims are the core safety failure.
 
 Start with eval/test:
@@ -788,6 +836,8 @@ Human verification:
 
 #### Task 6.2.2 - Refuse Clinical Advice
 
+Status: Complete.
+
 Why: v1 is chart orientation only.
 
 Start with eval/test:
@@ -809,6 +859,8 @@ Human verification:
 - A reviewer can ask "What dose should I prescribe?" and see a refusal.
 
 #### Task 6.2.3 - Handle Missing Data And Tool Failure
+
+Status: Complete.
 
 Why: silent failure is worse than no agent.
 
@@ -832,6 +884,8 @@ Human verification:
 - A reviewer can trigger a fake tool failure and see visible degradation.
 
 ## Epic 7 - Observability, Cost, And Eval Runner
+
+Status: Complete for structured request logging, token/cost tracking, deterministic evals, and local/VM smoke proof. Full observability maturity and per-step timing are deferred to Epic 14.
 
 Goal: make behavior measurable from the beginning.
 
@@ -974,20 +1028,25 @@ Human verification:
 
 ## Instructor Review Remediation Backlog
 
-The following epics are planned remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. They do not claim the current product is complete. They separate four states:
+The following epics are remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. Epics 8-13 are complete or complete with explicitly named limitations; Epic 14 is not started. These statuses do not claim the current product is hospital-grade production-ready.
 
 - Already implemented: the current safety-first foundation, including chart embedding, narrow authorization, bounded evidence tools, structured drafting, deterministic verification, request logging, demo data, deployment proof, and fixture evals.
-- Accepted v1 limitation: the current product is a single-shot constrained RAG path with narrow authorization, fixture-heavy evals, partial medication evidence, structured logs, and no reviewer-grade root packaging.
-- Planned remediation: Epics 8-14 below.
-- Production-readiness blocker: any remediation item that maps to `SPECS.txt` production readiness, source attribution, observability, evaluation, authorization, cost, or submission deliverables must be completed or explicitly scoped out before claiming production readiness.
+- Completed remediation: root reviewer packaging, cost analysis rewrite, evaluation-tier honesty, citation UI surfacing, verifier hardening, selective tool routing, medication evidence expansion, authorization-scope inventory, and composite-index remediation planning.
+- Accepted v1 limitation: the current product is a single-shot constrained RAG path with narrow authorization, tiered-but-not-fully-automated live eval proof, documented semantic-verification limits, and no implemented persistent multi-turn conversation state.
+- Not started: Epic 14, covering sensitive audit-log policy cleanup, per-step timing/observability maturity, and latency-budget/optimization planning.
+- Production-readiness blocker: any remediation item that maps to `SPECS.txt` production readiness, observability, evaluation, authorization, latency, cost, or submission deliverables must be completed or explicitly scoped out before claiming production readiness.
 
 ## Epic 8 - Reviewer Submission Packaging And Root Artifact Map
+
+Status: Complete for root packaging; deployed verification captured. Evidence is recorded in `agent-forge/docs/epics/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md`.
 
 Goal: make the submission easy to grade from the repository root without hiding required deliverables under `agent-forge/docs/`.
 
 ### Feature 8.1 - Required Root-Level Submission Artifacts
 
 #### Task 8.1.1 - Plan Root-Level Submission Document Placement
+
+Status: Complete.
 
 Why: `SPECS.txt` requires `./AUDIT.md`, `./USERS.md`, and `./ARCHITECTURE.md`; Review 3 flags the current `agent-forge/docs/` location as a gating packaging shortfall.
 
@@ -1013,6 +1072,8 @@ Human verification:
 - A reviewer starting at the repository root can find the audit, user doc, architecture doc, deployed URL, eval command, seed command, cost analysis, and demo path without asking for directions.
 
 #### Task 8.1.2 - Add Reviewer Landing Page And Artifact Map
+
+Status: Complete.
 
 Why: the root `README.md` is still generic OpenEMR, and the reviews identify weak external-reviewer packaging.
 
@@ -1040,6 +1101,8 @@ Human verification:
 
 #### Task 8.2.1 - Add Claim-Level Packaging Checklist
 
+Status: Complete.
+
 Why: the instructor reviews reward the safety foundation but warn that some docs overstate current capability.
 
 Start with eval/test or documentation proof:
@@ -1062,11 +1125,15 @@ Human verification:
 
 ## Epic 9 - Cost Analysis Rewrite And Scale-Tier Architecture
 
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_COST_ANALYSIS_SCALE_TIERS.md` and `agent-forge/docs/operations/COST-ANALYSIS.md`.
+
 Goal: replace request-scale token math with a reviewer-grade cost analysis for 100, 1K, 10K, and 100K users, including architecture changes and non-token assumptions.
 
 ### Feature 9.1 - User-Tier Cost Model
 
 #### Task 9.1.1 - Define Cost Assumptions Before Projection
+
+Status: Complete.
 
 Why: `SPECS.txt` explicitly says cost analysis is not simply cost-per-token times users; Reviews 1-3 identify the current request-count projection as a severe shortfall.
 
@@ -1091,6 +1158,8 @@ Human verification:
 - A reviewer can trace every cost input to measured telemetry, a cited pricing source, or an explicit assumption.
 
 #### Task 9.1.2 - Project Costs At Required User Levels
+
+Status: Complete.
 
 Why: `SPECS.txt` requires projected production costs at 100, 1K, 10K, and 100K users.
 
@@ -1117,6 +1186,8 @@ Human verification:
 
 #### Task 9.2.1 - Document Architecture Changes Per Tier
 
+Status: Complete.
+
 Why: the cost deliverable must include production thinking, not only arithmetic.
 
 Start with eval/test or documentation proof:
@@ -1139,13 +1210,17 @@ Human verification:
 
 ## Epic 10 - Evaluation Honesty And Live-Path Eval Tiers
 
+Status: Complete as evaluation taxonomy plus captured manual live proof. Tier 0 fixture/orchestration proof is repeatable; seeded SQL, live model, browser, and deployed session tiers are still not fully automated runners.
+
 Goal: preserve deterministic fixture evals while adding planned live-path eval tiers that prove the real model, SQL evidence path, browser UI, deployed endpoint, and session behavior.
 
-Current implementation note: Epic 10 is implemented as a documentation-backed evaluation taxonomy in `agent-forge/docs/evaluation/EVALUATION-TIERS.md` with isolated regression proof. Tier 0 remains the current deterministic fixture/orchestration runner; seeded SQL, live model, local browser/session, and deployed browser/session tiers are gated/manual until actually run and captured.
+Current implementation note: Epic 10 is implemented as an evaluation taxonomy in `agent-forge/docs/evaluation/EVALUATION-TIERS.md` with isolated regression proof. Tier 0 remains the current deterministic fixture/orchestration runner. Manual live proof is captured for fake patient `900001` through existing local/VM OpenAI browser logs, but seeded SQL, live model, local browser/session, and deployed browser/session tiers are not yet fully automated eval runners.
 
 ### Feature 10.1 - Eval Tier Taxonomy
 
 #### Task 10.1.1 - Label Existing Fixture Evals Honestly
+
+Status: Complete.
 
 Why: Reviews 1-3 agree that the fixture eval suite is useful, but it proves verifier and orchestration behavior rather than the full deployed agent.
 
@@ -1169,6 +1244,8 @@ Human verification:
 - A reviewer can read the eval section and understand the difference between fixture proof and product proof.
 
 #### Task 10.1.2 - Plan Seeded SQL Evidence Evals
+
+Status: Complete as planned eval-tier definition; result files are intentionally not claimed until that tier is implemented and run.
 
 Why: `SPECS.txt` asks for evaluation of failure modes, missing data, ambiguous queries, and unauthorized access; live SQL evidence is part of the system under test.
 
@@ -1194,6 +1271,8 @@ Human verification:
 
 #### Task 10.2.1 - Plan Live Model Contract Evals
 
+Status: Complete as planned eval-tier definition with manual live-provider proof captured. Live-provider result files are intentionally not claimed because no repeatable live eval runner exists yet.
+
 Why: model prompts, structured-output behavior, token usage, and verifier interactions can regress even when fixture evals pass.
 
 Start with eval/test or documentation proof:
@@ -1215,6 +1294,8 @@ Human verification:
 - A reviewer can see which cases use the real provider and what safety behavior they prove.
 
 #### Task 10.2.2 - Plan Browser UI And Deployed Session Smoke Evals
+
+Status: Complete as planned eval-tier definition with local/VM browser smoke proof captured. Browser/deployed smoke result files are intentionally not claimed because no repeatable live eval runner exists yet.
 
 Why: the reviews identify missing proof for citation display, deployed endpoint behavior, browser UI, and real session behavior.
 
@@ -1238,11 +1319,15 @@ Human verification:
 
 ## Epic 11 - Conversation Scope And Citation Surfacing
 
+Status: Complete for scope correction, planned multi-turn contract, and visible citation surfacing. Runtime multi-turn conversation state is not implemented and remains an accepted limitation.
+
 Goal: correct the current single-turn/multi-turn mismatch and ensure source citations are visible to the physician, not only present in the response payload.
 
 ### Feature 11.1 - Conversation Scope Correction
 
 #### Task 11.1.1 - Document Current V1 As Single-Shot Constrained RAG
+
+Status: Complete.
 
 Why: `SPECS.txt` asks for follow-up questions and conversation context, while the current request model and UI are single-turn.
 
@@ -1267,6 +1352,8 @@ Human verification:
 
 #### Task 11.1.2 - Plan Minimum Multi-Turn Conversation State
 
+Status: Complete as planned contract and planned eval metadata. Runtime `conversation_id`, transcript storage, and follow-up grounding are not implemented.
+
 Why: Use Case 2 requires follow-up drill-down within the same patient context.
 
 Start with eval/test or documentation proof:
@@ -1290,7 +1377,9 @@ Human verification:
 
 ### Feature 11.2 - Citation UI Surfacing
 
-#### Task 11.2.1 - Plan Citation Display From Response Payload
+#### Task 11.2.1 - Surface Citation Payloads In The Chart Panel
+
+Status: Complete. Local and deployed browser verification are recorded in `agent-forge/docs/epics/EPIC_CONVERSATION_SCOPE_AND_CITATION_SURFACING.md`.
 
 Why: `SPECS.txt` requires source attribution, and reviews note that `payload.citations` exists but is not reliably rendered in the UI.
 
@@ -1314,6 +1403,8 @@ Human verification:
 - Local proof recorded: fake patient `900001` was opened in the local browser, `Show me the recent A1c trend.` returned `Hemoglobin A1c` values `7.4 %` and `8.2 %`, and the visible Sources list showed both A1c lab source IDs. Missing-data, clinical-advice refusal, and ambiguous-question UI states were also verified locally.
 
 ## Epic 12 - Verifier Hardening And PHI-Minimizing Tool Routing
+
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md`; proof includes automated tests plus local and deployed browser/log verification.
 
 Goal: strengthen the trust boundary by making verification distrust model-supplied claim types and by selecting only the evidence tools needed for the question.
 
@@ -1402,11 +1493,15 @@ Human verification:
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 
+Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_MEDICATION_AUTH_INDEX_REMEDIATION.md`; broader production authorization and actual index migrations remain explicitly deferred.
+
 Goal: close known data-model and access-control gaps identified by the audit and reviews before expanding beyond the demo path.
 
 ### Feature 13.1 - Medication Evidence Completeness
 
 #### Task 13.1.1 - Plan Medication Evidence Across OpenEMR Table Shapes
+
+Status: Complete. Active medication evidence now covers active `prescriptions`, active `lists` medication rows, and linked `lists_medication` extension rows where available.
 
 Why: `AUDIT.md` says medication data spans `prescriptions`, `lists`, and `lists_medication`, but the current evidence path is limited to active prescriptions.
 
@@ -1439,6 +1534,8 @@ Implementation status:
 
 #### Task 13.2.1 - Plan Care-Team, Facility, Schedule, And Delegation Authorization
 
+Status: Complete as inventory and fail-closed disclosure. New care-team, facility, schedule, group, delegation, or supervision access paths are not allowed by this epic.
+
 Why: the current gate is intentionally narrow and fail-closed, but real clinical workflows include shared coverage, facility scope, schedules, teams, and delegation.
 
 Start with eval/test or documentation proof:
@@ -1470,6 +1567,8 @@ Implementation status:
 
 #### Task 13.3.1 - Plan Agent Query Indexes And Data-Access Performance Proof
 
+Status: Complete as remediation plan. No database migration or before/after `EXPLAIN` proof is created in this pass.
+
 Why: `AUDIT.md` P1 identifies missing composite indexes for agent query shapes, but the remediation is not planned or closed.
 
 Start with eval/test or documentation proof:
@@ -1498,6 +1597,8 @@ Implementation status:
 - No database migration is created in Epic 13.
 
 ## Epic 14 - Observability, Latency Budget, And Sensitive Audit Logs
+
+Status: Not started.
 
 Goal: reframe current logging honestly and plan the timing, aggregation, retention, SLO, and alerting work needed for production readiness.
 
