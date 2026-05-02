@@ -51,8 +51,18 @@ final readonly class VerifiedDraftingPipeline
         ?StageTimer $timer = null,
         ?Deadline $deadline = null,
     ): VerifiedDraftingResult {
-        $bundle = $this->bundleWithKnownMissingSections($request, $bundle);
         $deadline ??= new Deadline(new SystemAgentForgeClock(), -1);
+        $knownMissing = KnownMissingDataPolicy::missingSectionsFor($request->question, $bundle);
+
+        if ($knownMissing !== []) {
+            return $this->knownMissingResponse(
+                $questionType,
+                $toolsCalled,
+                $skippedChartSections,
+                $bundle,
+                $knownMissing,
+            );
+        }
 
         if ($bundle->items === []) {
             return new VerifiedDraftingResult(
@@ -135,17 +145,41 @@ final readonly class VerifiedDraftingPipeline
         );
     }
 
-    private function bundleWithKnownMissingSections(AgentRequest $request, EvidenceBundle $bundle): EvidenceBundle
-    {
-        $knownMissing = KnownMissingDataPolicy::missingSectionsFor($request->question, $bundle);
-        if ($knownMissing === []) {
-            return $bundle;
-        }
-
-        return new EvidenceBundle(
-            $bundle->items,
-            array_values(array_unique(array_merge($bundle->missingSections, $knownMissing))),
+    /**
+     * @param list<string> $toolsCalled
+     * @param list<string> $skippedChartSections
+     * @param list<string> $knownMissing
+     */
+    private function knownMissingResponse(
+        string $questionType,
+        array $toolsCalled,
+        array $skippedChartSections,
+        EvidenceBundle $bundle,
+        array $knownMissing,
+    ): VerifiedDraftingResult {
+        $missingOrUnchecked = array_values(array_unique(array_merge(
+            $bundle->missingSections,
+            $knownMissing,
             $bundle->failedSections,
+        )));
+
+        return new VerifiedDraftingResult(
+            new AgentResponse(
+                'ok',
+                implode("\n", $missingOrUnchecked),
+                [],
+                $missingOrUnchecked,
+                [],
+            ),
+            $this->telemetry(
+                $questionType,
+                $toolsCalled,
+                $skippedChartSections,
+                $bundle,
+                DraftUsage::notRun(),
+                null,
+                'passed',
+            ),
         );
     }
 

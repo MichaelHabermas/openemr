@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Deterministic missing-data hints for fixture-mode chart questions.
+ * Deterministic missing-data hints for chart questions.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org

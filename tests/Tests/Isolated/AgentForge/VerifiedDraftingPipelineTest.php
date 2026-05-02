@@ -25,7 +25,6 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
-use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use PHPUnit\Framework\TestCase;
 
@@ -34,7 +33,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
     public function testKnownMissingDataIsAppliedOutsideProviderSpecificBehavior(): void
     {
         $pipeline = new VerifiedDraftingPipeline(
-            new PipelineMissingAwareDraftProvider(),
+            new PipelineProviderThatMustNotBeCalled(),
             new DraftVerifier(),
         );
 
@@ -51,6 +50,11 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame('ok', $result->response->status);
         $this->assertContains('Urine microalbumin not found in the chart.', $result->response->missingOrUncheckedSections);
         $this->assertStringContainsString('Urine microalbumin not found in the chart.', $result->response->answer);
+        $this->assertSame([], $result->response->citations);
+        $this->assertSame('not_run', $result->telemetry->model);
+        $this->assertNull($result->telemetry->failureReason);
+        $this->assertSame('passed', $result->telemetry->verifierResult);
+        $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->telemetry->sourceIds);
     }
 
     public function testProviderFailureAfterEvidencePreservesUsefulTelemetry(): void
@@ -101,11 +105,11 @@ final class VerifiedDraftingPipelineTest extends TestCase
     }
 }
 
-final readonly class PipelineMissingAwareDraftProvider implements DraftProvider
+final readonly class PipelineProviderThatMustNotBeCalled implements DraftProvider
 {
     public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
-        return (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
+        throw new DraftProviderException('Known missing data should not call the draft provider.');
     }
 }
 
