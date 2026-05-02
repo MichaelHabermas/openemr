@@ -28,7 +28,9 @@ final class EvidenceToolFactoryTest extends TestCase
                 'Demographics',
                 'Active problems',
                 'Active medications',
+                'Allergies',
                 'Recent labs',
+                'Recent vitals',
                 'Recent notes and last plan',
             ],
             array_map(static fn ($tool): string => $tool->section(), $tools),
@@ -53,7 +55,17 @@ final class EvidenceToolFactoryTest extends TestCase
                 return [];
             }
 
+            public function activeAllergies(PatientId $patientId, int $limit): array
+            {
+                return [];
+            }
+
             public function recentLabs(PatientId $patientId, int $limit): array
+            {
+                return [];
+            }
+
+            public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
             {
                 return [];
             }

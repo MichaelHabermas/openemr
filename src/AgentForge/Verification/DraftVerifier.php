@@ -135,7 +135,7 @@ final readonly class DraftVerifier
         }
 
         return (bool) preg_match(
-            '/\b(a1c|hemoglobin|lab|labs|medication|medications|metformin|dose|mg|diagnosis|problem|problems|demographic|dob)\b/',
+            '/\b(a1c|hemoglobin|lab|labs|medication|medications|metformin|dose|mg|diagnosis|problem|problems|demographic|dob|allergy|allergies|allergic|reaction|severity|vital|vitals|blood\s+pressure|bp|pulse|temperature|respiration|oxygen|o2|weight|height|bmi)\b/',
             $claimText,
         );
     }
@@ -177,7 +177,7 @@ final readonly class DraftVerifier
             $uncovered = str_replace($this->normalize($candidate->text), ' ', $uncovered);
             foreach ($candidate->citedSourceIds as $sourceId) {
                 $item = $itemsBySourceId[$sourceId] ?? null;
-                if ($item !== null && $item->sourceType === 'medication') {
+                if ($item !== null && in_array($item->sourceType, ['medication', 'allergy', 'vital'], true)) {
                     $uncovered = str_replace($this->normalize($item->displayLabel), ' ', $uncovered);
                 }
             }
@@ -195,6 +195,16 @@ final readonly class DraftVerifier
         ) ?? $text;
         $text = preg_replace(
             '/\b(the\s+)?recent\s+(lab|labs|results|hemoglobin\s+a1c\s+results)\s+(are|include|includes|show|shows|listed|found)\b/',
+            ' ',
+            $text,
+        ) ?? $text;
+        $text = preg_replace(
+            '/\b(the\s+)?(active\s+)?allergies\s+(are|include|includes|listed|found|shown)\b/',
+            ' ',
+            $text,
+        ) ?? $text;
+        $text = preg_replace(
+            '/\b(the\s+)?recent\s+(vital|vitals|vital\s+signs)\s+(are|include|includes|show|shows|listed|found)\b/',
             ' ',
             $text,
         ) ?? $text;

@@ -65,7 +65,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('lab', $telemetry->questionType);
         $this->assertSame(['Recent labs'], $telemetry->toolsCalled);
         $this->assertSame(
-            ['Demographics', 'Active problems', 'Active medications', 'Recent notes and last plan'],
+            ['Demographics', 'Active problems', 'Active medications', 'Allergies', 'Recent vitals', 'Recent notes and last plan'],
             $telemetry->skippedChartSections,
         );
         $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $telemetry->sourceIds);
@@ -110,7 +110,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame([], $telemetry->toolsCalled);
         $this->assertSame([], $telemetry->sourceIds);
         $this->assertSame(
-            ['Demographics', 'Active problems', 'Active medications', 'Recent labs', 'Recent notes and last plan'],
+            ['Demographics', 'Active problems', 'Active medications', 'Allergies', 'Recent labs', 'Recent vitals', 'Recent notes and last plan'],
             $telemetry->skippedChartSections,
         );
         $this->assertSame('not_run', $telemetry->model);

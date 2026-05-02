@@ -14,11 +14,13 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Evidence\ActiveMedicationsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\AllergiesEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\DemographicsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EncountersNotesEvidenceTool;
 use OpenEMR\AgentForge\Evidence\LabsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ProblemsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\RecentVitalsEvidenceTool;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolsTest extends TestCase
@@ -301,6 +303,41 @@ final class EvidenceToolsTest extends TestCase
         $this->assertStringEndsWith('...', $result->items[0]->value);
     }
 
+    public function testAllergiesToolReturnsActiveAllergyEvidence(): void
+    {
+        $result = (new AllergiesEvidenceTool($this->repository()))->collect(new PatientId(900001));
+
+        $this->assertCount(2, $result->items);
+        $this->assertSame('Penicillin', $result->items[0]->displayLabel);
+        $this->assertSame('reaction: rash; severity: moderate; verification: confirmed', $result->items[0]->value);
+        $this->assertSame('allergy:lists/af-al-penicillin@2026-04-01', $result->items[0]->citation());
+    }
+
+    public function testAllergiesToolReturnsMissingWhenNoActiveAllergiesExist(): void
+    {
+        $result = (new AllergiesEvidenceTool($this->repository(allergies: [])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Active allergies not found in the chart.'], $result->missingSections);
+    }
+
+    public function testAllergiesToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
+    {
+        $result = (new AllergiesEvidenceTool($this->repository(allergies: [
+            [
+                'id' => 1,
+                'external_id' => 'af-al-inactive',
+                'title' => 'Inactive allergy',
+                'begdate' => '2026-04-01',
+                'reaction' => 'Do not surface this.',
+                'activity' => 0,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Active allergies not found in the chart.'], $result->missingSections);
+    }
+
     public function testLabsToolReturnsRecentLabEvidence(): void
     {
         $result = (new LabsEvidenceTool($this->repository()))->collect(new PatientId(900001));
@@ -316,6 +353,66 @@ final class EvidenceToolsTest extends TestCase
         $result = (new LabsEvidenceTool($this->repository(labs: [])))->collect(new PatientId(900001));
 
         $this->assertSame(['Recent labs not found in the chart.'], $result->missingSections);
+    }
+
+    public function testRecentVitalsToolReturnsBoundedRecentVitalEvidence(): void
+    {
+        $result = (new RecentVitalsEvidenceTool($this->repository(), limit: 1))->collect(new PatientId(900001));
+
+        $this->assertCount(8, $result->items);
+        $this->assertSame('Blood pressure', $result->items[0]->displayLabel);
+        $this->assertSame('142/88 mmHg', $result->items[0]->value);
+        $this->assertSame('vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15', $result->items[0]->citation());
+        $this->assertSame('Pulse', $result->items[1]->displayLabel);
+        $this->assertSame('84 bpm', $result->items[1]->value);
+    }
+
+    public function testRecentVitalsToolReturnsMissingWhenNoRecentVitalsExist(): void
+    {
+        $result = (new RecentVitalsEvidenceTool($this->repository(vitals: [])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Recent vitals not found in the chart within 180 days.'], $result->missingSections);
+    }
+
+    public function testRecentVitalsToolDoesNotSurfaceUnauthorizedRows(): void
+    {
+        $result = (new RecentVitalsEvidenceTool($this->repository(vitals: [
+            [
+                'id' => 1,
+                'external_id' => 'af-vitals-unauthorized',
+                'date' => '2026-04-15',
+                'bps' => '150',
+                'bpd' => '90',
+                'activity' => 1,
+                'authorized' => 0,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Recent vitals not found in the chart within 180 days.'], $result->missingSections);
+    }
+
+    public function testRecentVitalsToolOmitsEmptyAndZeroFields(): void
+    {
+        $result = (new RecentVitalsEvidenceTool($this->repository(vitals: [
+            [
+                'id' => 1,
+                'external_id' => 'af-vitals-empty',
+                'date' => '2026-04-15',
+                'bps' => '0',
+                'bpd' => '88',
+                'pulse' => '0.000000',
+                'temperature' => '',
+                'oxygen_saturation' => '97.00',
+                'activity' => 1,
+                'authorized' => 1,
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Oxygen saturation', $result->items[0]->displayLabel);
+        $this->assertSame('97.00 %', $result->items[0]->value);
     }
 
     public function testNotesToolReturnsBoundedLastPlanEvidence(): void
@@ -361,22 +458,28 @@ final class EvidenceToolsTest extends TestCase
      * @param array<string, mixed>|null $demographics
      * @param list<array<string, mixed>>|null $problems
      * @param list<array<string, mixed>>|null $medications
+     * @param list<array<string, mixed>>|null $allergies
      * @param list<array<string, mixed>>|null $labs
+     * @param list<array<string, mixed>>|null $vitals
      * @param list<array<string, mixed>>|null $notes
      */
     private function repository(
         ?array $demographics = null,
         ?array $problems = null,
         ?array $medications = null,
+        ?array $allergies = null,
         ?array $labs = null,
+        ?array $vitals = null,
         ?array $notes = null,
     ): ChartEvidenceRepository {
-        return new class ($demographics, $problems, $medications, $labs, $notes) implements ChartEvidenceRepository {
+        return new class ($demographics, $problems, $medications, $allergies, $labs, $vitals, $notes) implements ChartEvidenceRepository {
             /**
              * @param array<string, mixed>|null $demographics
              * @param list<array<string, mixed>>|null $problems
              * @param list<array<string, mixed>>|null $medications
+             * @param list<array<string, mixed>>|null $allergies
              * @param list<array<string, mixed>>|null $labs
+             * @param list<array<string, mixed>>|null $vitals
              * @param list<array<string, mixed>>|null $notes
              */
             public function __construct(
@@ -387,7 +490,11 @@ final class EvidenceToolsTest extends TestCase
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $medications,
                 /** @var list<array<string, mixed>>|null */
+                private readonly ?array $allergies,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $labs,
+                /** @var list<array<string, mixed>>|null */
+                private readonly ?array $vitals,
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $notes,
             ) {
@@ -457,6 +564,34 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
+            public function activeAllergies(PatientId $patientId, int $limit): array
+            {
+                return array_slice($this->allergies ?? [
+                    [
+                        'id' => 1,
+                        'external_id' => 'af-al-penicillin',
+                        'title' => 'Penicillin',
+                        'begdate' => '2026-04-01',
+                        'reaction' => 'rash',
+                        'severity_al' => 'moderate',
+                        'verification' => 'confirmed',
+                        'comments' => '',
+                        'activity' => 1,
+                    ],
+                    [
+                        'id' => 2,
+                        'external_id' => 'af-al-shellfish',
+                        'title' => 'Shellfish',
+                        'begdate' => '2025-11-20',
+                        'reaction' => 'hives',
+                        'severity_al' => 'mild',
+                        'verification' => 'confirmed',
+                        'activity' => 1,
+                    ],
+                ], 0, $limit);
+            }
+
+            /** @return list<array<string, mixed>> */
             public function recentLabs(PatientId $patientId, int $limit): array
             {
                 return $this->labs ?? [
@@ -477,6 +612,39 @@ final class EvidenceToolsTest extends TestCase
                         'result' => '7.4',
                     ],
                 ];
+            }
+
+            /** @return list<array<string, mixed>> */
+            public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+            {
+                return array_slice($this->vitals ?? [
+                    [
+                        'id' => 1,
+                        'external_id' => 'af-vitals-20260415',
+                        'date' => '2026-04-15 08:25:00',
+                        'bps' => '142',
+                        'bpd' => '88',
+                        'pulse' => '84',
+                        'temperature' => '98.60',
+                        'respiration' => '16',
+                        'oxygen_saturation' => '98.00',
+                        'weight' => '184.000000',
+                        'height' => '65.000000',
+                        'BMI' => '30.600000',
+                        'activity' => 1,
+                        'authorized' => 1,
+                    ],
+                    [
+                        'id' => 2,
+                        'external_id' => 'af-vitals-20260109',
+                        'date' => '2026-01-09 12:00:00',
+                        'bps' => '138',
+                        'bpd' => '84',
+                        'pulse' => '80',
+                        'activity' => 1,
+                        'authorized' => 1,
+                    ],
+                ], 0, $limit);
             }
 
             /** @return list<array<string, mixed>> */

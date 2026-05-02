@@ -48,8 +48,20 @@ final class ChartQuestionPlannerTest extends TestCase
             $planner->plan(new AgentQuestion('List current prescriptions.'), 8000)->sections,
         );
         $this->assertSame(
+            [ChartQuestionPlanner::SECTION_ALLERGIES],
+            $planner->plan(new AgentQuestion('What allergies are active?'), 8000)->sections,
+        );
+        $this->assertSame(
+            [ChartQuestionPlanner::SECTION_ALLERGIES],
+            $planner->plan(new AgentQuestion('Any allergic reactions to medications?'), 8000)->sections,
+        );
+        $this->assertSame(
             [ChartQuestionPlanner::SECTION_NOTES],
             $planner->plan(new AgentQuestion('What was the last plan?'), 8000)->sections,
+        );
+        $this->assertSame(
+            [ChartQuestionPlanner::SECTION_VITALS],
+            $planner->plan(new AgentQuestion('Show me recent blood pressure and pulse.'), 8000)->sections,
         );
         $this->assertSame(
             ChartQuestionPlanner::defaultSections(),
@@ -71,6 +83,8 @@ final class ChartQuestionPlannerTest extends TestCase
                 ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
                 ChartQuestionPlanner::SECTION_PROBLEMS,
                 ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_ALLERGIES,
+                ChartQuestionPlanner::SECTION_VITALS,
                 ChartQuestionPlanner::SECTION_NOTES,
             ],
             $plan->skippedSections,

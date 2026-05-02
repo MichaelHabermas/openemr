@@ -180,9 +180,13 @@ function agentforge_eval_tools(string $scenario): array
                 new EvidenceItem('medication', 'prescriptions', 'af-rx-p2-metformin', '2026-05-16', 'Metformin ER 500 mg', '500 mg'),
                 new EvidenceItem('medication', 'lists_medication', 'af-l900002-metdup', '2026-05-16', 'Metformin ER 500 mg', 'active medication'),
             ]),
+            new EvalEvidenceTool('Allergies', [
+                new EvidenceItem('allergy', 'lists', 'af-al-p2-sulfa', '2026-05-16', 'Sulfonamide antibiotics', 'reaction: hives; severity: moderate; verification: confirmed'),
+            ]),
             new EvalEvidenceTool('Recent labs', [
                 new EvidenceItem('lab', 'procedure_result', 'agentforge-egfr-900002-2026-05', '2026-05-10', 'Estimated GFR', '68 mL/min/1.73m2'),
             ]),
+            new EvalMissingTool('Recent vitals', 'Recent vitals not found in the chart within 180 days.'),
             new EvalEvidenceTool('Recent notes and last plan', [
                 new EvidenceItem('note', 'form_clinical_notes', 'af-note-900002-med-recon', '2026-05-16', 'Medication reconciliation plan', 'Medication list contains active apixaban and metformin. Warfarin is documented as stopped. Duplicate metformin row should be cited separately if surfaced.'),
             ]),
@@ -198,7 +202,9 @@ function agentforge_eval_tools(string $scenario): array
             new EvalEvidenceTool('Active problems', [
                 new EvidenceItem('problem', 'lists', 'af-p900003-rh', '2026-06-01', 'Seasonal allergic rhinitis', 'Active'),
             ]),
+            new EvalMissingTool('Allergies', 'Active allergies not found in the chart.'),
             new EvalMissingTool('Recent labs', 'Recent labs not found in the chart.'),
+            new EvalMissingTool('Recent vitals', 'Recent vitals not found in the chart within 180 days.'),
             new EvalMissingTool('Recent notes and last plan', 'Recent notes and last plan not found in the chart.'),
         ];
     }
@@ -217,9 +223,18 @@ function agentforge_eval_tools(string $scenario): array
             new EvidenceItem('medication', 'prescriptions', 'af-rx-metformin', '2026-03-15', 'Metformin ER 500 mg', '500 mg'),
             new EvidenceItem('medication', 'prescriptions', 'af-rx-lisinopril', '2026-03-15', 'Lisinopril 10 mg', '10 mg'),
         ]),
+        new EvalEvidenceTool('Allergies', [
+            new EvidenceItem('allergy', 'lists', 'af-al-penicillin', '2026-04-01', 'Penicillin', 'reaction: rash; severity: moderate; verification: confirmed'),
+            new EvidenceItem('allergy', 'lists', 'af-al-shellfish', '2025-11-20', 'Shellfish', 'reaction: hives; severity: mild; verification: confirmed'),
+        ]),
         new EvalEvidenceTool('Recent labs', [
             new EvidenceItem('lab', 'procedure_result', 'agentforge-a1c-2026-01', '2026-01-09', 'Hemoglobin A1c', '8.2 %'),
             new EvidenceItem('lab', 'procedure_result', 'agentforge-a1c-2026-04', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
+        ]),
+        new EvalEvidenceTool('Recent vitals', [
+            new EvidenceItem('vital', 'form_vitals', 'af-vitals-20260415-blood-pressure', '2026-04-15', 'Blood pressure', '142/88 mmHg'),
+            new EvidenceItem('vital', 'form_vitals', 'af-vitals-20260415-pulse', '2026-04-15', 'Pulse', '84 bpm'),
+            new EvidenceItem('vital', 'form_vitals', 'af-vitals-20260415-oxygen-saturation', '2026-04-15', 'Oxygen saturation', '98.00 %'),
         ]),
         new EvalEvidenceTool('Recent notes and last plan', [
             new EvidenceItem('note', 'form_clinical_notes', 'af-note-20260415', '2026-04-15', 'Last plan', 'Continue metformin ER and lisinopril. Review home blood pressure log at next visit. Recheck A1c in 3 months.'),

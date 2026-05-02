@@ -10,7 +10,7 @@ The agent lives inside the OpenEMR patient chart. A small browser panel sends th
 
 The audit shows the critical constraint: OpenEMR's existing ACL checks are capability-oriented, not patient-resource-oriented. That means coarse permission to read patient data is not enough. The agent needs an explicit patient authorization gate before any chart data is read. The model never gets direct database access. It can only use allowlisted, read-only chart tools controlled by the server.
 
-Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active medications, recent labs, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available; duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
+Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active medications, active allergies, recent labs, recent vitals, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available; allergy evidence checks active `lists` allergy rows; vital evidence checks recent authorized `form_vitals` rows. Duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
 
 The LLM is not trusted. It receives only the evidence bundle and must produce a structured draft answer from that evidence. The verifier no longer trusts model-supplied claim types for factuality: unsupported tails are blocked, and the substring matcher has been replaced by `EvidenceMatcher` token-set matching with English-month -> ISO date canonicalization (so `April 12, 1976` grounds against stored value `1976-04-12` without weakening exact-value enforcement). Broader semantic paraphrase verification remains a known limitation.
 
@@ -162,7 +162,9 @@ Start with read-only tools:
 - Patient demographics.
 - Active problems.
 - Active medications across `prescriptions`, active `lists` medication rows, and linked `lists_medication` extension rows where available.
+- Active allergies from active `lists` allergy rows.
 - Recent labs.
+- Recent authorized vitals from `form_vitals`.
 - Recent encounters and notes.
 - Last plan when available.
 
@@ -297,7 +299,7 @@ Tool result:
 
 ```json
 {
-  "source_type": "problem | medication | lab | encounter | note | demographic",
+  "source_type": "problem | medication | allergy | lab | vital | encounter | note | demographic",
   "source_table": "OpenEMR table name",
   "source_id": "row id",
   "source_date": "date tied to source row",

@@ -79,7 +79,9 @@ The agent needs only read-only, server-controlled tools for the active patient:
 - Patient demographics.
 - Active problems.
 - Active medications and prescriptions.
+- Active allergies.
 - Recent labs.
+- Recent vitals.
 - Recent encounters and notes.
 - Last plan when available.
 
@@ -113,7 +115,9 @@ Minimum eval cases:
 
 - Visit briefing returns only supported chart facts with citations.
 - Medication question returns active medication facts with citations.
+- Allergy question returns active allergy facts with citations and does not promote inactive allergy rows.
 - Lab trend question returns cited lab values and dates.
+- Vital-sign question returns bounded recent vitals with citations and reports missing or stale-only vitals distinctly.
 - Missing data returns not found in the chart.
 - Unauthorized patient request is blocked.
 - Unsupported diagnosis or treatment recommendation is refused.

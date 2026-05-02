@@ -20,7 +20,9 @@ final readonly class ChartQuestionPlanner
     public const SECTION_DEMOGRAPHICS = 'Demographics';
     public const SECTION_PROBLEMS = 'Active problems';
     public const SECTION_MEDICATIONS = 'Active medications';
+    public const SECTION_ALLERGIES = 'Allergies';
     public const SECTION_LABS = 'Recent labs';
+    public const SECTION_VITALS = 'Recent vitals';
     public const SECTION_NOTES = 'Recent notes and last plan';
 
     /** @return list<string> */
@@ -30,7 +32,9 @@ final readonly class ChartQuestionPlanner
             self::SECTION_DEMOGRAPHICS,
             self::SECTION_PROBLEMS,
             self::SECTION_MEDICATIONS,
+            self::SECTION_ALLERGIES,
             self::SECTION_LABS,
+            self::SECTION_VITALS,
             self::SECTION_NOTES,
         ];
     }
@@ -43,11 +47,17 @@ final readonly class ChartQuestionPlanner
         }
 
         $normalized = strtolower($question->value);
+        if ($this->containsAny($normalized, ['allergy', 'allergies', 'allergic', 'reaction', 'reactions'])) {
+            return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs);
+        }
         if ($this->containsAny($normalized, ['medication', 'medications', 'meds', 'prescription', 'prescriptions', 'metformin'])) {
             return $this->buildPlan('medication', [self::SECTION_MEDICATIONS], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['a1c', 'lab', 'labs', 'laboratory', 'microalbumin', 'glucose', 'result'])) {
             return $this->buildPlan('lab', [self::SECTION_LABS], $deadlineMs);
+        }
+        if ($this->containsAny($normalized, ['vital', 'vitals', 'blood pressure', 'bp', 'pulse', 'temperature', 'weight', 'height', 'oxygen', 'o2'])) {
+            return $this->buildPlan('vital', [self::SECTION_VITALS], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up'])) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs);

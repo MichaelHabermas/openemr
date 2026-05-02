@@ -43,6 +43,7 @@ WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
 
 DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
 DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
+DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
 DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
 DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
 DELETE FROM prescriptions WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
@@ -170,6 +171,55 @@ INSERT INTO gacl_groups_aro_map (
 ) VALUES (
     @admin_acl_group_id,
     @unrelated_aro_id
+);
+
+INSERT INTO lists (
+    uuid,
+    date,
+    type,
+    title,
+    begdate,
+    reaction,
+    severity_al,
+    verification,
+    activity,
+    comments,
+    pid,
+    user,
+    groupname,
+    external_id
+) VALUES
+(
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000701', '-', '')),
+    '2026-04-01 09:00:00',
+    'allergy',
+    'Penicillin',
+    '2026-04-01 00:00:00',
+    'rash',
+    'moderate',
+    'confirmed',
+    1,
+    '',
+    @demo_pid,
+    @demo_user,
+    @demo_group,
+    'af-al-penicillin'
+),
+(
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000702', '-', '')),
+    '2025-11-20 09:00:00',
+    'allergy',
+    'Shellfish',
+    '2025-11-20 00:00:00',
+    'hives',
+    'mild',
+    'confirmed',
+    1,
+    '',
+    @demo_pid,
+    @demo_user,
+    @demo_group,
+    'af-al-shellfish'
 );
 
 INSERT INTO lists (
@@ -384,6 +434,44 @@ INSERT INTO forms (
 UPDATE form_clinical_notes
 SET form_id = LAST_INSERT_ID()
 WHERE id = @clinical_note_id;
+
+INSERT INTO form_vitals (
+    uuid,
+    date,
+    pid,
+    user,
+    groupname,
+    authorized,
+    activity,
+    bps,
+    bpd,
+    weight,
+    height,
+    temperature,
+    pulse,
+    respiration,
+    BMI,
+    oxygen_saturation,
+    external_id
+) VALUES (
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000801', '-', '')),
+    '2026-04-15 08:25:00',
+    @demo_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '142',
+    '88',
+    184.000000,
+    65.000000,
+    98.600000,
+    84.000000,
+    16.000000,
+    30.600000,
+    98.00,
+    'af-vitals-20260415'
+);
 
 INSERT INTO procedure_order (
     procedure_order_id,
@@ -658,6 +746,81 @@ INSERT INTO lists (
     @demo_user,
     @demo_group,
     'af-p900003-rh'
+);
+
+INSERT INTO lists (
+    uuid,
+    date,
+    type,
+    title,
+    begdate,
+    reaction,
+    severity_al,
+    verification,
+    activity,
+    comments,
+    pid,
+    user,
+    groupname,
+    external_id
+) VALUES
+(
+    UNHEX(REPLACE('90000200-0000-4000-8000-000000000701', '-', '')),
+    '2026-05-16 09:00:00',
+    'allergy',
+    'Sulfonamide antibiotics',
+    '2026-05-16 00:00:00',
+    'hives',
+    'moderate',
+    'confirmed',
+    1,
+    'AgentForge active allergy for Riley.',
+    @poly_pid,
+    @demo_user,
+    @demo_group,
+    'af-al-p2-sulfa'
+),
+(
+    UNHEX(REPLACE('90000200-0000-4000-8000-000000000702', '-', '')),
+    '2024-01-10 09:00:00',
+    'allergy',
+    'Warfarin',
+    '2024-01-10 00:00:00',
+    'historical intolerance entered in error',
+    'mild',
+    'entered-in-error',
+    0,
+    'Inactive allergy row that must not be surfaced.',
+    @poly_pid,
+    @demo_user,
+    @demo_group,
+    'af-al-p2-warfarin'
+);
+
+INSERT INTO form_vitals (
+    uuid,
+    date,
+    pid,
+    user,
+    groupname,
+    authorized,
+    activity,
+    bps,
+    bpd,
+    pulse,
+    external_id
+) VALUES (
+    UNHEX(REPLACE('90000300-0000-4000-8000-000000000801', '-', '')),
+    '2024-01-10 08:00:00',
+    @sparse_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '120',
+    '76',
+    72.000000,
+    'af-vit-900003-stale'
 );
 
 INSERT INTO lists (

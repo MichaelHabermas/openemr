@@ -26,7 +26,13 @@ interface ChartEvidenceRepository
     public function activeMedications(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
+    public function activeAllergies(PatientId $patientId, int $limit): array;
+
+    /** @return list<array<string, mixed>> */
     public function recentLabs(PatientId $patientId, int $limit): array;
+
+    /** @return list<array<string, mixed>> */
+    public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array;
 
     /** @return list<array<string, mixed>> */
     public function recentNotes(PatientId $patientId, int $limit): array;

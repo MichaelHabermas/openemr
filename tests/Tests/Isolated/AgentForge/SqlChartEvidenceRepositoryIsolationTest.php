@@ -28,10 +28,12 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
         $repository->demographics($patientId);
         $repository->activeProblems($patientId, 10);
         $repository->activeMedications($patientId, 10);
+        $repository->activeAllergies($patientId, 10);
         $repository->recentLabs($patientId, 20);
+        $repository->recentVitals($patientId, 3, 180);
         $repository->recentNotes($patientId, 5);
 
-        $this->assertCount(6, $executor->queries);
+        $this->assertCount(8, $executor->queries);
 
         foreach ($executor->queries as $query) {
             $this->assertSame(900001, $query['binds'][0]);
@@ -50,8 +52,17 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
         $this->assertStringContainsString('l.type = ?', $executor->queries[3]['sql']);
         $this->assertStringContainsString('l.activity = 1', $executor->queries[3]['sql']);
         $this->assertSame([900001, 'medication'], $executor->queries[3]['binds']);
-        $this->assertStringContainsString('WHERE po.patient_id = ?', $executor->queries[4]['sql']);
-        $this->assertStringContainsString('WHERE n.pid = ?', $executor->queries[5]['sql']);
+        $this->assertStringContainsString('FROM lists', $executor->queries[4]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[4]['sql']);
+        $this->assertStringContainsString('activity = 1', $executor->queries[4]['sql']);
+        $this->assertSame([900001, 'allergy'], $executor->queries[4]['binds']);
+        $this->assertStringContainsString('WHERE po.patient_id = ?', $executor->queries[5]['sql']);
+        $this->assertStringContainsString('FROM form_vitals', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('activity = 1', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('authorized = 1', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('WHERE n.pid = ?', $executor->queries[7]['sql']);
     }
 
     public function testActiveMedicationsReturnsTotalLimitInDateOrderAcrossSources(): void

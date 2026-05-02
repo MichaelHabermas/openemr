@@ -80,6 +80,17 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
         return array_slice($medications, 0, $limit);
     }
 
+    public function activeAllergies(PatientId $patientId, int $limit): array
+    {
+        return $this->executor->fetchRecords(
+            'SELECT id, external_id, date, begdate, title, reaction, severity_al, verification, comments, activity '
+            . 'FROM lists '
+            . 'WHERE pid = ? AND type = ? AND activity = 1 '
+            . 'ORDER BY COALESCE(begdate, date) DESC LIMIT ' . $this->limit($limit),
+            [$patientId->value, 'allergy'],
+        );
+    }
+
     public function recentLabs(PatientId $patientId, int $limit): array
     {
         return $this->executor->fetchRecords(
@@ -89,6 +100,19 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id '
             . 'WHERE po.patient_id = ? '
             . 'ORDER BY pr.date DESC LIMIT ' . $this->limit($limit),
+            [$patientId->value],
+        );
+    }
+
+    public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+    {
+        return $this->executor->fetchRecords(
+            'SELECT id, external_id, date, bps, bpd, weight, height, temperature, pulse, respiration, BMI, '
+            . 'oxygen_saturation, activity, authorized '
+            . 'FROM form_vitals '
+            . 'WHERE pid = ? AND activity = 1 AND authorized = 1 '
+            . 'AND date >= DATE_SUB(CURRENT_DATE, INTERVAL ' . $this->days($staleAfterDays) . ' DAY) '
+            . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
         );
     }
@@ -110,6 +134,11 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     private function limit(int $limit): int
     {
         return max(1, min(50, $limit));
+    }
+
+    private function days(int $days): int
+    {
+        return max(1, min(3650, $days));
     }
 
     /** @param array<string, mixed> $row */

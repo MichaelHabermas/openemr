@@ -62,6 +62,16 @@ main() {
         "2"
 
     expect_count \
+        "active allergies" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${DEMO_PID} AND type = 'allergy' AND activity = 1 AND external_id IN ('af-al-penicillin', 'af-al-shellfish') AND reaction <> '' AND severity_al <> '' AND verification <> '';" \
+        "2"
+
+    expect_count \
+        "recent vitals" \
+        "SELECT COUNT(*) FROM form_vitals WHERE pid = ${DEMO_PID} AND activity = 1 AND authorized = 1 AND external_id = 'af-vitals-20260415' AND bps = '142' AND bpd = '88' AND pulse = 84.000000 AND oxygen_saturation = 98.00;" \
+        "1"
+
+    expect_count \
         "recent encounter" \
         "SELECT COUNT(*) FROM form_encounter WHERE pid = ${DEMO_PID} AND encounter = 900415 AND reason LIKE '%diabetes and blood pressure%';" \
         "1"
@@ -112,9 +122,19 @@ main() {
         "2"
 
     expect_count \
+        "evidence contract allergy source rows" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${DEMO_PID} AND type = 'allergy' AND activity = 1 AND external_id <> '' AND title <> '' AND begdate IS NOT NULL;" \
+        "2"
+
+    expect_count \
         "evidence contract lab source rows" \
         "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${DEMO_PID} AND pr.comments <> '' AND pr.result_text <> '' AND pr.date IS NOT NULL AND pr.result <> '';" \
         "2"
+
+    expect_count \
+        "evidence contract vitals source rows" \
+        "SELECT COUNT(*) FROM form_vitals WHERE pid = ${DEMO_PID} AND activity = 1 AND authorized = 1 AND external_id <> '' AND date IS NOT NULL AND bps <> '' AND bpd <> '';" \
+        "1"
 
     expect_count \
         "evidence contract last-plan source row" \
@@ -157,8 +177,23 @@ main() {
         "1"
 
     expect_count \
+        "polypharmacy active allergy row" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${POLY_PID} AND type = 'allergy' AND activity = 1 AND external_id = 'af-al-p2-sulfa' AND title = 'Sulfonamide antibiotics' AND reaction = 'hives';" \
+        "1"
+
+    expect_count \
+        "polypharmacy inactive allergy row retained" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${POLY_PID} AND type = 'allergy' AND activity = 0 AND external_id = 'af-al-p2-warfarin';" \
+        "1"
+
+    expect_count \
         "polypharmacy active medication evidence excludes inactive stale rows" \
         "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${POLY_PID} AND active = 1 AND external_id IN ('af-rx-p2-warfarin', 'af-rx-p2-simvast');" \
+        "0"
+
+    expect_count \
+        "polypharmacy active allergy evidence excludes inactive rows" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${POLY_PID} AND type = 'allergy' AND activity = 1 AND external_id = 'af-al-p2-warfarin';" \
         "0"
 
     expect_count \
@@ -189,6 +224,21 @@ main() {
     expect_count \
         "sparse labs absent" \
         "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${SPARSE_PID};" \
+        "0"
+
+    expect_count \
+        "sparse active allergies absent" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${SPARSE_PID} AND type = 'allergy' AND activity = 1;" \
+        "0"
+
+    expect_count \
+        "sparse stale vitals retained" \
+        "SELECT COUNT(*) FROM form_vitals WHERE pid = ${SPARSE_PID} AND activity = 1 AND authorized = 1 AND external_id = 'af-vit-900003-stale' AND date < DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY);" \
+        "1"
+
+    expect_count \
+        "sparse recent vitals absent" \
+        "SELECT COUNT(*) FROM form_vitals WHERE pid = ${SPARSE_PID} AND activity = 1 AND authorized = 1 AND date >= DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY);" \
         "0"
 
     expect_count \

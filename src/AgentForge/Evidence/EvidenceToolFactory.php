@@ -21,7 +21,9 @@ final class EvidenceToolFactory
             new DemographicsEvidenceTool($repository),
             new ProblemsEvidenceTool($repository),
             new ActiveMedicationsEvidenceTool($repository),
+            new AllergiesEvidenceTool($repository),
             new LabsEvidenceTool($repository),
+            new RecentVitalsEvidenceTool($repository),
             new EncountersNotesEvidenceTool($repository),
         ];
     }

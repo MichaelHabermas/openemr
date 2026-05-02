@@ -1820,7 +1820,7 @@ Human verification:
 
 ## Epic 17 - Allergy And Vital-Sign Evidence Tools
 
-Status: Planned. Current tools cover demographics, active problems, active medications, recent labs, and recent notes/last plan.
+Status: Implemented pending proof. Current tools cover demographics, active problems, active medications, active allergies, recent labs, recent vitals, and recent notes/last plan.
 
 Goal: add allergies and vitals to the read-only evidence surface. These two clear the safety bar (allergies for prescribing-adjacent claims, vitals for abnormal-flag awareness during a between-rooms briefing). No other tools are in scope.
 

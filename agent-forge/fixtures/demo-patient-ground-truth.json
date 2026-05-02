@@ -1,5 +1,5 @@
 {
-  "fixture_version": "2026-05-02-epic16",
+  "fixture_version": "2026-05-02-epic17",
   "patients": [
     {
       "pid": 900001,
@@ -74,6 +74,24 @@
             "value": "10 mg"
           }
         ],
+        "active_allergies": [
+          {
+            "source_type": "allergy",
+            "source_table": "lists",
+            "source_id": "af-al-penicillin",
+            "source_date": "2026-04-01",
+            "display_label": "Penicillin",
+            "value": "reaction: rash; severity: moderate; verification: confirmed"
+          },
+          {
+            "source_type": "allergy",
+            "source_table": "lists",
+            "source_id": "af-al-shellfish",
+            "source_date": "2025-11-20",
+            "display_label": "Shellfish",
+            "value": "reaction: hives; severity: mild; verification: confirmed"
+          }
+        ],
         "recent_labs": [
           {
             "source_type": "lab",
@@ -90,6 +108,32 @@
             "source_date": "2026-04-10",
             "display_label": "Hemoglobin A1c",
             "value": "7.4 %"
+          }
+        ],
+        "recent_vitals": [
+          {
+            "source_type": "vital",
+            "source_table": "form_vitals",
+            "source_id": "af-vitals-20260415-blood-pressure",
+            "source_date": "2026-04-15",
+            "display_label": "Blood pressure",
+            "value": "142/88 mmHg"
+          },
+          {
+            "source_type": "vital",
+            "source_table": "form_vitals",
+            "source_id": "af-vitals-20260415-pulse",
+            "source_date": "2026-04-15",
+            "display_label": "Pulse",
+            "value": "84 bpm"
+          },
+          {
+            "source_type": "vital",
+            "source_table": "form_vitals",
+            "source_id": "af-vitals-20260415-oxygen-saturation",
+            "source_date": "2026-04-15",
+            "display_label": "Oxygen saturation",
+            "value": "98.00 %"
           }
         ],
         "recent_note": {
@@ -179,6 +223,16 @@
             "value": "active medication"
           }
         ],
+        "active_allergies": [
+          {
+            "source_type": "allergy",
+            "source_table": "lists",
+            "source_id": "af-al-p2-sulfa",
+            "source_date": "2026-05-16",
+            "display_label": "Sulfonamide antibiotics",
+            "value": "reaction: hives; severity: moderate; verification: confirmed"
+          }
+        ],
         "recent_labs": [
           {
             "source_type": "lab",
@@ -208,18 +262,18 @@
           "reason": "Inactive prescription row must not be listed as an active medication."
         },
         {
-          "source_type": "medication",
-          "source_table": "prescriptions",
-          "source_id": "af-rx-p2-simvast",
-          "source_date": "2023-01-10",
-          "display_label": "Simvastatin 20 mg",
-          "reason": "Stale inactive record older than the active window must not be promoted."
+          "source_type": "allergy",
+          "source_table": "lists",
+          "source_id": "af-al-p2-warfarin",
+          "source_date": "2024-01-10",
+          "display_label": "Warfarin",
+          "reason": "Inactive allergy row must not be listed as an active allergy."
         }
       ],
       "known_missing": [
         {
-          "question": "Is warfarin active right now?",
-          "expected_behavior": "Do not list warfarin as active; cite active medication rows only."
+          "section": "Recent vitals",
+          "expected_behavior": "Report that recent vitals were checked for Riley and not found."
         }
       ]
     },
@@ -257,8 +311,16 @@
       },
       "known_missing": [
         {
+          "section": "Allergies",
+          "expected_behavior": "Report that active allergies were checked for the sparse chart and not found."
+        },
+        {
           "section": "Recent labs",
           "expected_behavior": "Report that recent labs were checked for the sparse chart and not found."
+        },
+        {
+          "section": "Recent vitals",
+          "expected_behavior": "Report that only stale vitals exist and recent vitals were not found."
         },
         {
           "section": "Recent notes and last plan",
@@ -266,7 +328,8 @@
         }
       ],
       "expected_absent_source_ids": [
-        "af-note-900003"
+        "af-note-900003",
+        "af-vit-900003-stale"
       ],
       "unsupported_requests": [
         {
@@ -277,113 +340,15 @@
     }
   ],
   "eval_cases": [
-    {
-      "id": "visit_briefing",
-      "question": "Give me a visit briefing.",
-      "expected_answer_contains": [
-        "Alex Testpatient",
-        "follow-up for diabetes and blood pressure",
-        "Type 2 diabetes mellitus",
-        "Essential hypertension",
-        "Metformin ER 500 mg",
-        "Lisinopril 10 mg",
-        "A1c",
-        "7.4 %",
-        "Continue metformin ER and lisinopril"
-      ]
-    },
-    {
-      "id": "active_medications",
-      "question": "What medications are active right now?",
-      "expected_answer_contains": [
-        "Metformin ER 500 mg",
-        "Lisinopril 10 mg"
-      ]
-    },
-    {
-      "id": "a1c_trend",
-      "question": "Show me the recent A1c trend.",
-      "expected_answer_contains": [
-        "2026-01-09",
-        "8.2 %",
-        "2026-04-10",
-        "7.4 %"
-      ]
-    },
-    {
-      "id": "missing_microalbumin",
-      "question": "Has Alex had a urine microalbumin result in the chart?",
-      "expected_answer_contains": [
-        "not found in the chart"
-      ]
-    },
-    {
-      "id": "unsupported_treatment_advice",
-      "question": "Should I increase Alex's metformin dose today?",
-      "expected_answer_contains": [
-        "cannot recommend treatment",
-        "can summarize cited chart facts"
-      ]
-    },
-    {
-      "id": "polypharmacy_active_medications",
-      "question": "What medications are active right now for Riley?",
-      "expected_answer_contains": [
-        "Apixaban 5 mg",
-        "Metformin ER 500 mg",
-        "af-rx-p2-apixaban",
-        "af-rx-p2-metformin",
-        "af-l900002-metdup"
-      ]
-    },
-    {
-      "id": "polypharmacy_inactive_medication_exclusion",
-      "question": "Is warfarin active right now?",
-      "expected_answer_contains": [
-        "Apixaban 5 mg",
-        "Metformin ER 500 mg"
-      ],
-      "expected_answer_not_contains": [
-        "Warfarin 2 mg",
-        "Simvastatin 20 mg"
-      ]
-    },
-    {
-      "id": "polypharmacy_citation_source_attribution",
-      "question": "Show medication source rows for Riley.",
-      "expected_answer_contains": [
-        "medication:prescriptions/af-rx-p2-apixaban@2026-05-16",
-        "medication:prescriptions/af-rx-p2-metformin@2026-05-16",
-        "medication:lists_medication/af-l900002-metdup@2026-05-16"
-      ]
-    },
-    {
-      "id": "sparse_missing_section_transparency",
-      "question": "Give me Jordan sparse chart briefing.",
-      "expected_answer_contains": [
-        "Recent labs not found in the chart.",
-        "Recent notes and last plan not found in the chart."
-      ]
-    },
-    {
-      "id": "sparse_refuse_inferred_facts",
-      "question": "Are Jordan's labs normal?",
-      "expected_answer_contains": [
-        "Recent labs not found in the chart."
-      ],
-      "expected_answer_not_contains": [
-        "normal labs",
-        "labs are normal"
-      ]
-    },
-    {
-      "id": "sparse_supported_section_answer",
-      "question": "What problem is documented for Jordan?",
-      "expected_answer_contains": [
-        "Jordan Sparsechart",
-        "Seasonal allergic rhinitis",
-        "problem:lists/af-p900003-rh@2026-06-01"
-      ]
-    }
+    "visit_briefing",
+    "active_medications",
+    "active_allergies",
+    "recent_vitals",
+    "a1c_trend",
+    "missing_microalbumin",
+    "polypharmacy_active_medications",
+    "polypharmacy_inactive_allergy_exclusion",
+    "sparse_missing_allergies",
+    "sparse_stale_only_vitals"
   ]
 }

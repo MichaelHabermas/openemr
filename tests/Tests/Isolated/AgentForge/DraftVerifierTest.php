@@ -327,6 +327,144 @@ final class DraftVerifierTest extends TestCase
         $this->assertSame(['s1'], $result->verifiedSentenceIds);
     }
 
+    public function testMislabeledAllergyClaimWithoutCitationIsBlocked(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Penicillin allergy: reaction: rash')],
+                [new DraftClaim('Penicillin allergy: reaction: rash', DraftClaim::TYPE_WARNING, [], 's1')],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'allergy',
+                    'allergy:lists/af-al-penicillin@2026-04-01',
+                    '2026-04-01',
+                    'Penicillin',
+                    'reaction: rash',
+                ),
+            ]),
+        );
+
+        $this->assertFalse($result->passed);
+    }
+
+    public function testGroundedAllergyListMayUseNonFactualLeadIn(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Active allergies include Penicillin: reaction: rash and Shellfish: reaction: hives.')],
+                [
+                    new DraftClaim(
+                        'Penicillin: reaction: rash',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['allergy:lists/af-al-penicillin@2026-04-01'],
+                        's1',
+                    ),
+                    new DraftClaim(
+                        'Shellfish: reaction: hives',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['allergy:lists/af-al-shellfish@2025-11-20'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'allergy',
+                    'allergy:lists/af-al-penicillin@2026-04-01',
+                    '2026-04-01',
+                    'Penicillin',
+                    'reaction: rash',
+                ),
+                new EvidenceBundleItem(
+                    'allergy',
+                    'allergy:lists/af-al-shellfish@2025-11-20',
+                    '2025-11-20',
+                    'Shellfish',
+                    'reaction: hives',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
+    }
+
+    public function testMislabeledVitalClaimWithoutCitationIsBlocked(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Blood pressure: 142/88 mmHg')],
+                [new DraftClaim('Blood pressure: 142/88 mmHg', DraftClaim::TYPE_WARNING, [], 's1')],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'vital',
+                    'vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15',
+                    '2026-04-15',
+                    'Blood pressure',
+                    '142/88 mmHg',
+                ),
+            ]),
+        );
+
+        $this->assertFalse($result->passed);
+    }
+
+    public function testGroundedVitalsListMayUseNonFactualLeadIn(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Recent vitals show Blood pressure: 142/88 mmHg and Pulse: 84 bpm.')],
+                [
+                    new DraftClaim(
+                        'Blood pressure: 142/88 mmHg',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15'],
+                        's1',
+                    ),
+                    new DraftClaim(
+                        'Pulse: 84 bpm',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['vital:form_vitals/af-vitals-20260415-pulse@2026-04-15'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'vital',
+                    'vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15',
+                    '2026-04-15',
+                    'Blood pressure',
+                    '142/88 mmHg',
+                ),
+                new EvidenceBundleItem(
+                    'vital',
+                    'vital:form_vitals/af-vitals-20260415-pulse@2026-04-15',
+                    '2026-04-15',
+                    'Pulse',
+                    '84 bpm',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
+    }
+
     public function testClinicalAdviceClaimIsRefusedEvenWithEvidenceSource(): void
     {
         $result = (new DraftVerifier())->verify(
