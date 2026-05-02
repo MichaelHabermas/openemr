@@ -96,6 +96,7 @@ Checklist:
 - Ask the missing microalbumin question and confirm missing-data rendering.
 - Attempt an unauthorized chart mismatch and confirm refusal.
 - Inspect the sensitive audit log for request id, patient id, decision, model, token usage when live mode is used, estimated cost when available, latency, verifier result, tool/source ids, and no forbidden full prompt or chart text.
+- For multi-turn proof, ask a first same-patient question, ask an ambiguous follow-up in the same chart panel, confirm the same `conversation_id` and fresh source ids, switch patients and confirm a new id, then force-submit an old id and confirm refusal before tools/model.
 
 Pass criteria:
 
@@ -147,6 +148,7 @@ Live-path proof is captured as manual/browser evidence, not as a fully automated
 
 - Live OpenAI provider proof: `gpt-4o-mini`, input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and expected A1c citation.
 - Local browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `latency_ms=2989`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
+- Local multi-turn browser/session proof: patient `900001` first turn returned/logged `conversation_id=483e30144b95db814ba33e74b635ad98`; same-patient follow-ups for allergies and medications reused that conversation and fetched only the relevant current sections; patient `900002` switch issued new `conversation_id=f68ce87128d7494a7168b8e922a7f7cb`; forced stale-id submission against patient `900002` was refused before tools/model in `request_id=4bae6e2c-2fb7-4b08-a641-2cf0bb648f7f`; valid-format missing id was refused before tools/model in `request_id=7215e5ed-ae5e-475e-9bd1-bd433e0e936f`; same-session lab follow-up reused `conversation_id=090b14698f2334b319eb2b11c8e11363` across requests `4c9e6dc2-5a42-4ca2-b8e5-7f28d6279338` and `2719a053-d3cd-4b04-9f5d-f3b9775adc56`, re-ran `Recent labs`, and cited lab-only source id `lab:procedure_result/agentforge-egfr-900002-2026-05@2026-05-10`.
 - VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
 - Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by deployed browser/log proof.
 

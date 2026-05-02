@@ -43,6 +43,7 @@ Implemented today:
 
 Accepted v1 limitation:
 
+- Multi-turn means one follow-up question at a time in the currently open chart panel. The input box is cleared after each response; it is not a transcript editor.
 - The current product stores only short-lived server-side conversation state, not a persistent transcript.
 - Prior turn text is a planner hint only; every follow-up re-fetches current chart evidence and must cite source rows from the current evidence bundle.
 - Source citations are rendered visibly from the structured response payload and remain the trust boundary for follow-up answers.
@@ -70,7 +71,7 @@ Accepted v1 limitation:
 
 **Why an agent:** The physician does not know in advance which chart section will matter. The value is multi-turn narrowing: ask a broad question, inspect the answer, then narrow by date, problem, medication, lab, or previous note.
 
-**Current status:** Implemented for the narrow server-bound scope. Today's implementation issues a server-owned `conversation_id`, binds it to the active user and patient, rejects cross-patient or expired reuse before chart tools run, and uses compact prior-turn context only to interpret follow-up intent.
+**Current status:** Implemented for the narrow server-bound scope and manually verified locally on 2026-05-02. Today's implementation issues a server-owned `conversation_id`, binds it to the active user and patient, rejects cross-patient or expired reuse before chart tools run, clears the next-question input after each response, and uses compact prior-turn context only to interpret follow-up intent.
 
 **Boundary:** Every factual answer must be traceable to the patient's chart. If the chart does not support an answer, the agent must say so.
 

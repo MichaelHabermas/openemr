@@ -40,6 +40,7 @@ Acceptance criteria:
 
 - The target agent supports multi-turn follow-up within the same patient context.
 - Current v1 issues a server-owned `conversation_id`, keeps short-lived server-side turn state, and refuses expired or cross-patient reuse before tools or model drafting run.
+- From the user perspective, multi-turn means asking one follow-up at a time while the same patient chart panel remains open; the input clears after each response and the visible answer area shows the submitted question, but the browser does not own a persistent transcript.
 - Current v1 renders structured citations visibly in the chart panel; citation surfacing remains the proof boundary for each fresh evidence fetch.
 - Each follow-up query is bound to the active OpenEMR session user and active patient.
 - The agent can answer supported questions such as recent A1c trend, active medications, last plan, and changes since last visit.
@@ -109,7 +110,7 @@ Verification must enforce:
 
 The eval suite must prove the agent fails safely, not only that it can demo well.
 
-Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. Fixture/orchestration proof is the current repeatable tier; live SQL, live model, browser, and deployed session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. Fixture/orchestration proof is the current repeatable tier. Local browser/session proof captured on 2026-05-02 verifies the implemented same-patient follow-up path, patient-switch reset/new id behavior, forced stale-id refusal before tools/model, invalid/missing id refusal, UI input clearing, and fresh source citations. Live SQL, broader live model, and deployed session tiers still require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Minimum eval cases:
 

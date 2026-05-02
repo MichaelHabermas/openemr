@@ -1882,7 +1882,7 @@ Human verification:
 
 ## Epic 19 - Server-Bound Multi-Turn Conversation State
 
-Status: Implemented with deterministic proof. The request shell accepts optional server-owned `conversation_id`; first turns return a bound id and follow-ups validate it before tools or model run.
+Status: Implemented with deterministic and local browser/session proof. The request shell accepts optional server-owned `conversation_id`; first turns return a bound id and follow-ups validate it before tools or model run.
 
 Goal: satisfy the SPECS multi-turn requirement with the smallest possible server-bound state. Each turn re-fetches evidence; prior turn text never becomes a citation source.
 
@@ -1914,10 +1914,13 @@ Proof:
 
 - Verified 2026-05-02: `composer phpunit-isolated -- --filter 'AgentForge'` passed 233 tests / 1170 assertions.
 - Verified 2026-05-02: `php agent-forge/scripts/run-evals.php` passed 28 evals, including same-patient follow-up, cross-patient conversation reuse refusal, expired conversation refusal, and stale prior-answer rejection.
+- Verified 2026-05-02 local browser/session: patient `900001` first turn returned and logged `conversation_id=483e30144b95db814ba33e74b635ad98` with request `0d7f5923-01ee-454c-9774-0639464c0dce`; patient `900002` switch issued a new id `f68ce87128d7494a7168b8e922a7f7cb` with request `b3db300c-22a1-4476-8849-6d22394aea51`.
+- Verified 2026-05-02 local forced-reuse proof: submitting old patient `900001` id `483e30144b95db814ba33e74b635ad98` from active patient `900002` returned HTTP 403, logged `decision=refused_conversation_not_found`, and ran no tools/model in request `4bae6e2c-2fb7-4b08-a641-2cf0bb648f7f`.
+- Verified 2026-05-02 local invalid/missing-id proof: invalid id request `9609a31d-ce03-4af4-a293-4495a5c752fe` returned a generic invalid-request refusal before tools/model; valid-format missing id request `7215e5ed-ae5e-475e-9bd1-bd433e0e936f` returned `refused_conversation_not_found` before tools/model.
 
 Human verification:
 
-- A reviewer can start a conversation, ask a follow-up, and see the same conversation id; switching patients issues a new id; reusing the old id against a different patient is refused.
+- Completed locally 2026-05-02: a reviewer started a conversation, asked follow-ups, saw the same conversation id for same-patient turns, switched patients and saw a new id, and forced reuse of the old id against a different patient was refused before evidence/model work.
 
 ### Feature 19.2 - Follow-Up Grounding Discipline
 
@@ -1944,10 +1947,12 @@ Proof:
 
 - Verified 2026-05-02: follow-up planner tests route ambiguous follow-up text from compact prior-turn context while verified handler output cites only current evidence source ids.
 - Verified 2026-05-02: eval case `stale_prior_answer_reuse_rejected` refuses an unverifiable follow-up draft instead of reusing prior context as evidence.
+- Verified 2026-05-02 local browser/session: same-patient lab follow-up requests `4c9e6dc2-5a42-4ca2-b8e5-7f28d6279338` and `2719a053-d3cd-4b04-9f5d-f3b9775adc56` both used `conversation_id=090b14698f2334b319eb2b11c8e11363`, `question_type=lab`, `tools_called=["Recent labs"]`, and lab-only source id `lab:procedure_result/agentforge-egfr-900002-2026-05@2026-05-10`.
+- Verified 2026-05-02 local UI proof: the chart panel keeps the latest `conversation_id` in JS memory, clears the textarea after each handled response, and displays the submitted question separately from the next-question input.
 
 Human verification:
 
-- A reviewer can ask a pronoun follow-up ("what about her labs?") and see citations drawn from a fresh evidence fetch.
+- Completed locally 2026-05-02: a reviewer asked focused same-patient follow-ups ("What about her allergies?", "And the medications?", "What about those?") and saw fresh citations from the newly selected chart section rather than prior-turn citations.
 
 ## Epic 21 - Seeded SQL Evidence Eval Tier
 

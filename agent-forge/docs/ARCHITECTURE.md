@@ -288,6 +288,7 @@ Agent request:
 
 - First turn: the server issues a `conversation_id` after session user, active patient, authorization, evidence, and verification succeed.
 - Follow-up turns: the browser sends the server-owned `conversation_id`; the server rejects the request if the conversation is expired, missing, owned by another user, or bound to another patient.
+- User model: the chart panel supports one submitted question per turn. The textarea is cleared after each handled response, and the submitted question is displayed separately above the answer. This is same-chart follow-up support, not a persistent editable chat transcript.
 - Scope: every conversation is bound to exactly one OpenEMR session user and one active patient. Cross-patient carryover is refused before chart tools run.
 - State: store turn metadata, cited source ids, missing/unchecked sections, and a compact server-side summary. Do not store full chart dumps, model prompts, browser-owned transcript state, or raw full-chart text.
 - Safety: prior answer text may help interpret the follow-up, but it is never evidence. Each factual follow-up answer must fetch current patient evidence and cite current source rows again.
@@ -333,7 +334,7 @@ Minimum target eval set:
 - Tool failure is disclosed in the answer.
 - Hallucinated claim is blocked by the verifier.
 
-Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Tier 0 fixture/orchestration proof is repeatable; seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Tier 0 fixture/orchestration proof is repeatable. Local browser/session proof captured on 2026-05-02 verifies same-patient follow-up reuse, patient-switch reset/new id behavior, forced stale-id refusal before tools/model, invalid/missing id refusal, UI input clearing, and fresh source citations. Seeded SQL, broader live model, and deployed browser/session tiers still require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Pass condition:
 
