@@ -10,6 +10,7 @@
         <button type="submit" class="btn btn-primary btn-sm">{{ "Send"|xlt }}</button>
         <span id="agent-forge-status" class="small text-muted" aria-live="polite"></span>
     </div>
+    <div id="agent-forge-last-question" class="small text-muted mt-2 d-none"></div>
     <div id="agent-forge-response" class="alert mt-2 mb-0 d-none" role="status"></div>
 </form>
 
@@ -22,6 +23,7 @@
 
     const question = document.getElementById('agent-forge-question');
     const status = document.getElementById('agent-forge-status');
+    const lastQuestion = document.getElementById('agent-forge-last-question');
     const response = document.getElementById('agent-forge-response');
     const submit = form.querySelector('button[type="submit"]');
     let conversationId = null;
@@ -122,6 +124,9 @@
         }).then(function (result) {
             return result.json();
         }).then(function (payload) {
+            question.value = '';
+            lastQuestion.textContent = {{ "Question"|xlj }} + ': ' + value;
+            lastQuestion.className = 'small text-muted mt-2';
             if (payload.conversation_id) {
                 conversationId = payload.conversation_id;
             }

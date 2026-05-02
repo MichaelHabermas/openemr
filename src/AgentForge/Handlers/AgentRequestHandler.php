@@ -29,6 +29,8 @@ use RuntimeException;
 
 final readonly class AgentRequestHandler
 {
+    private const INVALID_REQUEST_MESSAGE = 'The request could not be processed.';
+
     public function __construct(
         private AgentRequestParserInterface $parser,
         private PatientAuthorizationGate $authorizationGate,
@@ -59,9 +61,9 @@ final readonly class AgentRequestHandler
 
         try {
             $request = $this->parser->parse($post);
-        } catch (DomainException $exception) {
+        } catch (DomainException) {
             return $this->refusal(
-                $exception->getMessage(),
+                self::INVALID_REQUEST_MESSAGE,
                 400,
                 'refused_invalid_request',
                 $sessionPatientId,

@@ -51,6 +51,17 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $this->assertStringNotContainsString('sessionStorage', $template);
     }
 
+    public function testPanelClearsQuestionAfterHandledResponse(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString("body.append('question', value)", $template);
+        $this->assertStringContainsString("question.value = '';", $template);
+        $this->assertStringContainsString('agent-forge-last-question', $template);
+        $this->assertStringContainsString("lastQuestion.textContent = {{ \"Question\"|xlj }} + ': ' + value", $template);
+        $this->assertStringNotContainsString('question.placeholder = value;', $template);
+    }
+
     private function agentForgePanelTemplate(): string
     {
         $template = file_get_contents(dirname(__DIR__, 4) . '/templates/patient/card/agent_forge.html.twig');

@@ -50,7 +50,7 @@ final class AgentRequestHandlerTest extends TestCase
     {
         $result = $this->handler()->handle('POST', ['question' => 'What changed?'], 7, 900001, true, true, 'request-1');
 
-        $this->assertResult($result, 400, 'refused_invalid_request', 'Patient id is required.');
+        $this->assertResult($result, 400, 'refused_invalid_request', 'The request could not be processed.');
     }
 
     public function testRefusesEmptyQuestion(): void
@@ -65,7 +65,7 @@ final class AgentRequestHandlerTest extends TestCase
             'request-1',
         );
 
-        $this->assertResult($result, 400, 'refused_invalid_request', 'Question is required.');
+        $this->assertResult($result, 400, 'refused_invalid_request', 'The request could not be processed.');
     }
 
     public function testRefusesMissingSessionUser(): void
