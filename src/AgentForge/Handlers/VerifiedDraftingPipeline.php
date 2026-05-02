@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
+use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
@@ -118,6 +119,36 @@ final readonly class VerifiedDraftingPipeline
         }
 
         if (!$result->passed) {
+            if ($draft->usage->model !== DraftUsage::fixture()->model) {
+                $fallbackDraft = (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
+                $fallbackResult = $this->verifier->verify($fallbackDraft, $bundle);
+                if ($fallbackResult->passed) {
+                    $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
+
+                    return new VerifiedDraftingResult(
+                        new AgentResponse(
+                            $response->status,
+                            $response->answer,
+                            $response->citations,
+                            $response->missingOrUncheckedSections,
+                            array_values(array_unique(array_merge(
+                                ['The model draft could not be verified; deterministic evidence fallback was used.'],
+                                $fallbackResult->refusalsOrWarnings,
+                            ))),
+                        ),
+                        $this->telemetry(
+                            $questionType,
+                            $toolsCalled,
+                            $skippedChartSections,
+                            $bundle,
+                            $draft->usage,
+                            'model_verification_failed_fallback_used',
+                            'fallback_passed',
+                        ),
+                    );
+                }
+            }
+
             return new VerifiedDraftingResult(
                 AgentResponse::refusal('The draft answer could not be verified.'),
                 $this->telemetry(

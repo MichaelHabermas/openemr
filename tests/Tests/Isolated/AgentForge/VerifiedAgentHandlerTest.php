@@ -300,7 +300,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertCount(1, $logger->records);
     }
 
-    public function testUnverifiableDraftIsBlocked(): void
+    public function testFixtureUnverifiableDraftIsBlocked(): void
     {
         $handler = new VerifiedAgentHandler(
             [new VerifiedRecordingEvidenceTool()],
@@ -318,6 +318,34 @@ final class VerifiedAgentHandlerTest extends TestCase
         }
         $this->assertSame('failed', $telemetry->verifierResult);
         $this->assertSame('verification_failed', $telemetry->failureReason);
+    }
+
+    public function testModelUnverifiableDraftFallsBackToVerifiedEvidenceLines(): void
+    {
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new ModelFabricatingDraftProvider(),
+            new DraftVerifier(),
+        );
+
+        $response = $handler->handle($this->request('Show me recent labs.'));
+        $telemetry = $handler->lastTelemetry();
+
+        $this->assertSame('ok', $response->status);
+        $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $response->answer);
+        $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $response->citations);
+        $this->assertSame(
+            [
+                'The model draft could not be verified; deterministic evidence fallback was used.',
+                'Model drafting is disabled; deterministic fixture drafting was used.',
+            ],
+            $response->refusalsOrWarnings,
+        );
+        if ($telemetry === null) {
+            $this->fail('Expected fallback verification telemetry.');
+        }
+        $this->assertSame('fallback_passed', $telemetry->verifierResult);
+        $this->assertSame('model_verification_failed_fallback_used', $telemetry->failureReason);
     }
 
     private function request(string $question): AgentRequest
@@ -429,6 +457,27 @@ final class FabricatingDraftProvider implements DraftProvider
             [],
             [],
             DraftUsage::fixture(),
+        );
+    }
+}
+
+final class ModelFabricatingDraftProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    {
+        return new DraftResponse(
+            [new DraftSentence('s1', 'Hemoglobin A1c: 8.2 %')],
+            [
+                new DraftClaim(
+                    'Hemoglobin A1c: 8.2 %',
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'],
+                    's1',
+                ),
+            ],
+            [],
+            [],
+            new DraftUsage('gpt-test', 10, 5, 0.001),
         );
     }
 }

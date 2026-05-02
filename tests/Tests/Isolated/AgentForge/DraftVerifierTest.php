@@ -396,6 +396,38 @@ final class DraftVerifierTest extends TestCase
         $this->assertSame(['s1'], $result->verifiedSentenceIds);
     }
 
+    public function testGroundedAllergySentenceMayUseAllergyContextNoun(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Penicillin allergy: reaction: rash.')],
+                [
+                    new DraftClaim(
+                        'Penicillin: reaction: rash',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['allergy:lists/af-al-penicillin@2026-04-01'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'allergy',
+                    'allergy:lists/af-al-penicillin@2026-04-01',
+                    '2026-04-01',
+                    'Penicillin',
+                    'reaction: rash',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['s1'], $result->verifiedSentenceIds);
+    }
+
     public function testMislabeledVitalClaimWithoutCitationIsBlocked(): void
     {
         $result = (new DraftVerifier())->verify(

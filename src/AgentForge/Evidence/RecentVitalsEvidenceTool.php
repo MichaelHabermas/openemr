@@ -72,7 +72,7 @@ final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
         if ($this->present($bps) && $this->present($bpd)) {
             $values['blood-pressure'] = [
                 'label' => 'Blood pressure',
-                'value' => sprintf('%s/%s mmHg', $bps, $bpd),
+                'value' => sprintf('%s/%s mmHg', $this->displayNumber($bps), $this->displayNumber($bpd)),
             ];
         }
 
@@ -89,7 +89,7 @@ final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
             if ($this->present($value)) {
                 $values[strtolower(str_replace('_', '-', $key))] = [
                     'label' => $label,
-                    'value' => sprintf('%s %s', $value, $unit),
+                    'value' => sprintf('%s %s', $this->displayNumber($value), $unit),
                 ];
             }
         }
@@ -104,5 +104,15 @@ final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
         }
 
         return (float) $value !== 0.0;
+    }
+
+    private function displayNumber(string $value): string
+    {
+        $value = trim($value);
+        if (!is_numeric($value) || !str_contains($value, '.')) {
+            return $value;
+        }
+
+        return rtrim(rtrim($value, '0'), '.');
     }
 }

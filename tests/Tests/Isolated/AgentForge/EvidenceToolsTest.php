@@ -365,6 +365,16 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15', $result->items[0]->citation());
         $this->assertSame('Pulse', $result->items[1]->displayLabel);
         $this->assertSame('84 bpm', $result->items[1]->value);
+        $this->assertSame('Temperature', $result->items[2]->displayLabel);
+        $this->assertSame('98.6 F', $result->items[2]->value);
+        $this->assertSame('Oxygen saturation', $result->items[4]->displayLabel);
+        $this->assertSame('98 %', $result->items[4]->value);
+        $this->assertSame('Weight', $result->items[5]->displayLabel);
+        $this->assertSame('184 lb', $result->items[5]->value);
+        $this->assertSame('Height', $result->items[6]->displayLabel);
+        $this->assertSame('65 in', $result->items[6]->value);
+        $this->assertSame('BMI', $result->items[7]->displayLabel);
+        $this->assertSame('30.6 kg/m2', $result->items[7]->value);
     }
 
     public function testRecentVitalsToolReturnsMissingWhenNoRecentVitalsExist(): void
@@ -412,7 +422,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(1, $result->items);
         $this->assertSame('Oxygen saturation', $result->items[0]->displayLabel);
-        $this->assertSame('97.00 %', $result->items[0]->value);
+        $this->assertSame('97 %', $result->items[0]->value);
     }
 
     public function testNotesToolReturnsBoundedLastPlanEvidence(): void

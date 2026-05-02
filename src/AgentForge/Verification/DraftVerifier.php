@@ -179,6 +179,7 @@ final readonly class DraftVerifier
                 $item = $itemsBySourceId[$sourceId] ?? null;
                 if ($item !== null && in_array($item->sourceType, ['medication', 'allergy', 'vital'], true)) {
                     $uncovered = str_replace($this->normalize($item->displayLabel), ' ', $uncovered);
+                    $uncovered = str_replace($this->normalize($item->value), ' ', $uncovered);
                 }
             }
         }
@@ -203,11 +204,13 @@ final readonly class DraftVerifier
             ' ',
             $text,
         ) ?? $text;
+        $text = preg_replace('/\b(allergy|allergies)\b/', ' ', $text) ?? $text;
         $text = preg_replace(
             '/\b(the\s+)?recent\s+(vital|vitals|vital\s+signs)\s+(are|include|includes|show|shows|listed|found)\b/',
             ' ',
             $text,
         ) ?? $text;
+        $text = preg_replace('/\b(vital|vitals|vital\s+signs)\b/', ' ', $text) ?? $text;
         $text = preg_replace('/\b(and|or|with|plus)\b/', ' ', $text) ?? $text;
         $text = preg_replace('/[[:punct:]\s]+/', '', $text) ?? $text;
 
