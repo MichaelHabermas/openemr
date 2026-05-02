@@ -885,7 +885,7 @@ Human verification:
 
 ## Epic 7 - Observability, Cost, And Eval Runner
 
-Status: Complete for structured request logging, token/cost tracking, deterministic evals, and local/VM smoke proof. Full observability maturity and per-step timing are deferred to Epic 14.
+Status: Complete for structured request logging, token/cost tracking, deterministic evals, local/VM smoke proof, and per-stage timing fields. Full observability maturity is deferred to Epic 14.
 
 Goal: make behavior measurable from the beginning.
 
@@ -1033,7 +1033,7 @@ The following epics are remediation work from `GAUNTLET-INSTRUCTOR-REVIEWS.md`. 
 - Already implemented: the current safety-first foundation, including chart embedding, narrow authorization, bounded evidence tools, structured drafting, deterministic verification, request logging, demo data, deployment proof, and fixture evals.
 - Completed remediation: root reviewer packaging, cost analysis rewrite, evaluation-tier honesty, citation UI surfacing, verifier hardening, selective tool routing, medication evidence expansion, authorization-scope inventory, and composite-index remediation planning.
 - Accepted v1 limitation: the current product is a single-shot constrained RAG path with narrow authorization, tiered-but-not-fully-automated live eval proof, documented semantic-verification limits, and no implemented persistent multi-turn conversation state.
-- Not started: Epic 14, covering sensitive audit-log policy cleanup, per-step timing/observability maturity, and latency-budget/optimization planning.
+- Implemented as documentation-and-proof remediation: Epic 14 covers sensitive audit-log policy cleanup, observability maturity, and latency-budget/optimization planning. Runtime dashboards, alerting infrastructure, and a new telemetry backend remain deferred, and human log-policy review remains pending.
 - Production-readiness blocker: any remediation item that maps to `SPECS.txt` production readiness, observability, evaluation, authorization, latency, cost, or submission deliverables must be completed or explicitly scoped out before claiming production readiness.
 
 ## Epic 8 - Reviewer Submission Packaging And Root Artifact Map
@@ -1598,7 +1598,7 @@ Implementation status:
 
 ## Epic 14 - Observability, Latency Budget, And Sensitive Audit Logs
 
-Status: Not started.
+Status: Implemented as documentation-and-proof remediation; human log-policy review remains pending. No dashboard, alerting provider, log shipper, database migration, or new telemetry backend is created in this epic.
 
 Goal: reframe current logging honestly and plan the timing, aggregation, retention, SLO, and alerting work needed for production readiness.
 
@@ -1617,6 +1617,9 @@ Implementation notes:
 
 - Continue forbidding raw prompt, full chart text, full answer text, credentials, and unnecessary identifiers.
 - Treat user ID, patient ID, and source IDs as sensitive operational audit metadata.
+- Allowed sensitive audit metadata: request id, user id, patient id, decision, timestamp, total latency, `stage_timings_ms`, question type, tools called, skipped chart sections, source ids, model, token counts, estimated cost, failure reason, and verifier result.
+- Forbidden default log content: raw question, full answer, full prompt, full chart text, patient name, credentials, and raw exception internals.
+- Production readiness requires restricted operational access, retention governance, and assigned review responsibility for sensitive audit logs.
 
 Definition of done:
 
@@ -1628,20 +1631,26 @@ Human verification:
 
 - A reviewer can inspect the log policy and understand what sensitive data is present and why.
 
+Implementation status:
+
+- Docs now describe AgentForge logs as PHI-minimized sensitive audit logs, not de-identified logs.
+- `ARCHITECTURE.md`, `PRD.md`, `AUDIT.md`, `COST-ANALYSIS.md`, and `EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md` document allowed fields, forbidden raw content, and retention/access expectations.
+- `ObservabilityLatencyAuditLogDocumentTest` guards against broad PHI-free or de-identified logging claims.
+
 ### Feature 14.2 - Per-Step Timing And Observability Maturity
 
 #### Task 14.2.1 - Plan Per-Step Timing, Aggregation, SLOs, And Alerts
 
-Why: `SPECS.txt` asks how long each step took, while current logs primarily prove total request latency and structured request metadata.
+Why: `SPECS.txt` asks how long each step took. Current logs now include total request latency and `stage_timings_ms` for evidence-tool, draft, and verifier stages, but not aggregation, dashboards, SLOs, alerts, or production percentile queries.
 
 Start with eval/test or documentation proof:
 
-- Define required spans before implementation: authorization, routing, each tool, evidence assembly, model call, verifier, response serialization, and total request.
+- Define current timing spans and the remaining target spans: authorization, routing, each tool, evidence assembly, model call, verifier, response serialization, and total request.
 
 Implementation notes:
 
-- Structured logs remain the v1 foundation.
-- Full observability requires aggregation, dashboards or queries, SLOs, alerting, and failure-rate tracking.
+- Structured logs plus `stage_timings_ms` remain the v1 foundation.
+- Full observability requires aggregation, dashboards or queries, SLOs, alerting, latency percentiles, verifier-failure tracking, cost anomaly tracking, and failure-rate tracking.
 - Do not claim dashboards or alerts until they exist.
 
 Definition of done:
@@ -1653,6 +1662,12 @@ Definition of done:
 Human verification:
 
 - A reviewer can answer which step is slow in a request, or see that the current system cannot yet answer that fully.
+
+Implementation status:
+
+- Current per-stage timing fields are documented as implemented for evidence-tool, draft, and verifier stages.
+- Aggregation targets and SLO/alert thresholds are proposed before production readiness; dashboards and alerts are explicitly not claimed.
+- `ObservabilityLatencyAuditLogDocumentTest` verifies the docs distinguish structured logging plus stage timing from full observability.
 
 ### Feature 14.3 - Latency Budget And Optimization Plan
 
@@ -1667,7 +1682,7 @@ Start with eval/test or documentation proof:
 Implementation notes:
 
 - State whether the current VM measurement is accepted for demo only or blocks production readiness.
-- Tie optimization work to selective routing, per-step timing, model timeout, evidence size, caching, and infrastructure.
+- Tie optimization work to selective routing, per-stage timing, model timeout, evidence size, caching, query/index proof, and infrastructure.
 
 Definition of done:
 
@@ -1678,6 +1693,12 @@ Definition of done:
 Human verification:
 
 - A reviewer can see the current 10.693s VM result and the plan to reduce or justify it.
+
+Implementation status:
+
+- The latency budget accepts the current local `2989 ms` and VM `10693 ms` A1c measurements as demo evidence only.
+- Production readiness remains blocked until production-shaped telemetry shows p95 verified-answer-or-clear-failure latency under 10 seconds for the demo path and `stage_timings_ms` identifies bottlenecks.
+- Optimization work is tied to selective routing, evidence-size reduction, model timeout tuning, citation-safe prompt/cache strategy, query/index proof, and infrastructure measurement.
 
 ## Epic Final - Demo, Cost Analysis, And Final Packaging
 

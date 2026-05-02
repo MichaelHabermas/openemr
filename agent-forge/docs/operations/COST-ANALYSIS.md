@@ -55,7 +55,7 @@ Measured A1c request:
 (836 / 1,000,000 * 0.15) + (173 / 1,000,000 * 0.60) = 0.0002292
 ```
 
-The VM latency is also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. The current VM measurement is acceptable as demo evidence only; production readiness needs the latency-budget work in `PLAN.md` Epic 14.
+The VM latency is also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. The current VM measurement is acceptable as demo evidence only; production readiness needs p95 proof under the accepted latency budget and `stage_timings_ms` evidence for bottleneck analysis.
 
 ## Assumptions Table
 
@@ -126,7 +126,7 @@ The absolute numbers are less important than the shape: token cost is cheap enou
 
 | User tier | Architecture posture | Rate-limit and model strategy | Logging, retention, and observability | Operational support |
 | ---: | --- | --- | --- | --- |
-| 100 users | Hardened single-region production deployment; managed database; server-side OpenEMR integration; no broad search or background worker unless Epic 11-14 prove need. | One primary provider/model; enforce request timeouts; keep fixture mode for deterministic regression; provider quota monitored manually. | Centralized sensitive audit logs, basic metrics, alerting on endpoint failure, backup and restore test. | Part-time support, documented deploy/rollback, privacy/security review before pilot. |
+| 100 users | Hardened single-region production deployment; managed database; server-side OpenEMR integration; no broad search or background worker unless measured product constraints prove need. | One primary provider/model; enforce request timeouts; keep fixture mode for deterministic regression; provider quota monitored manually. | Centralized sensitive audit logs, basic metrics, alerting on endpoint failure, backup and restore test. | Part-time support, documented deploy/rollback, privacy/security review before pilot. |
 | 1,000 users | Horizontally scalable app tier; database index review for evidence tools; centralized config and secrets; separate log storage. | Quota management, circuit breaker, retry budget, possible cheaper model for short lookup questions after verifier proof. | Managed log aggregation, latency dashboards, p50/p95/p99 tracking, alerting for verifier failures, cost anomaly detection. | Business-hours support plus on-call for clinical hours; incident playbooks. |
 | 10,000 users | Multi-tenant production posture; capacity-tested OpenEMR integration; read replicas or query optimization where measured; queue only for non-interactive work. | Model tiering, fallback-provider design, negotiated rate limits, prompt-cache strategy where it preserves citation integrity. | Formal retention policy, audit-log access controls, restore drills, SLOs, incident management, compliance evidence exports. | Dedicated operations and security/privacy administration. |
 | 100,000 users | Redesign required before claiming support: high-availability or multi-region architecture, dedicated observability program, mature access governance, disaster recovery, and enterprise vendor management. | Dedicated capacity or negotiated pricing, provider redundancy, strict traffic shaping, per-tenant quotas, model quality regression gates. | Large-scale sensitive audit-log retention, regional data-governance review, SRE-owned telemetry, compliance reporting automation. | Dedicated SRE/support/security/compliance functions and formal change management. |
@@ -142,7 +142,7 @@ The 100,000-user tier is not the same system with a larger bill. It changes the 
 - Security/privacy review, access-control maintenance, vendor review, and compliance/admin work.
 - Deployment, rollback, disaster-recovery operations, and change management.
 - Model-provider quota management, fallback planning, model regression checks, and possible dedicated capacity at high scale.
-- Engineering work to complete Epic 10-14 before production-readiness claims: live-path evals, multi-turn state, citation UI, verifier hardening, PHI-minimizing tool routing, medication completeness, authorization expansion, observability, and latency-budget remediation.
+- Engineering work required before production-readiness claims: live-path evals, multi-turn state, citation UI, verifier hardening, PHI-minimizing tool routing, medication completeness, authorization expansion, observability, and latency-budget proof.
 
 ## Known Unknowns And Measurement Plan
 
@@ -161,12 +161,12 @@ Unknowns that must be measured before production pricing is trusted:
 Measurement plan:
 
 1. Keep recording `model`, `input_tokens`, `output_tokens`, `estimated_cost`, `latency_ms`, `verifier_result`, `tools_called`, and `source_ids` for every request.
-2. Add Epic 10 live-path eval tiers before claiming agent-level evaluation.
-3. Add Epic 12 selective PHI-minimizing tool routing so token and latency projections are based on required evidence, not over-broad tool calls.
-4. Add Epic 14 per-step timing, log-retention policy, SLOs, dashboards, and alerts.
+2. Add live-path eval tiers before claiming agent-level evaluation.
+3. Add selective PHI-minimizing tool routing so token and latency projections are based on required evidence, not over-broad tool calls.
+4. Add log-retention policy, latency SLOs, dashboards or query paths, alerts, and p95 latency proof using existing per-stage timing fields.
 5. Recompute this cost analysis from real telemetry after a pilot contains enough requests across briefing, medication, lab, missing-data, refusal, and follow-up shapes.
 
-## Epic 9 Acceptance Matrix
+## Acceptance Matrix
 
 | Requirement | Status | Proof |
 | --- | --- | --- |

@@ -21,7 +21,7 @@ use Psr\Log\AbstractLogger;
 
 final class RequestLogTest extends TestCase
 {
-    public function testRequestLogContextIsPhiFree(): void
+    public function testRequestLogContextIsPhiMinimizedSensitiveAuditMetadata(): void
     {
         $entry = new RequestLog(
             requestId: '7aa9ef18-3227-4c43-9e5e-b8ae3fb8bbcc',
@@ -54,7 +54,7 @@ final class RequestLogTest extends TestCase
         $this->assertArrayNotHasKey('patient_name', $context);
     }
 
-    public function testRequestLogContextIncludesPhiFreeAgentTelemetry(): void
+    public function testRequestLogContextIncludesPhiMinimizedAgentTelemetry(): void
     {
         $entry = new RequestLog(
             requestId: '7aa9ef18-3227-4c43-9e5e-b8ae3fb8bbcc',

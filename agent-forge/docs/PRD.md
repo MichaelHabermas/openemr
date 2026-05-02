@@ -4,7 +4,7 @@
 
 **Problem Statement:** `SPECS.txt` requires a trustworthy AI agent inside OpenEMR for a physician who has about 90 seconds to understand a patient chart before a visit. The hard problem is not generating text; it is producing fast, patient-specific answers that are authorized, source-grounded, auditable, and safe under failure.
 
-**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The target product supports safe multi-turn follow-up, but the current implemented path is single-shot constrained RAG until the conversation-state remediation in `PLAN.md` Epic 11 is completed. The agent reads only the active patient's chart through server-controlled tools, verifies patient-specific claims against source rows, logs every request, and refuses when identity, authorization, evidence, or safety constraints are unclear.
+**Proposed Solution:** Build the smallest defensible Clinical Co-Pilot: a read-only chart-orientation agent embedded in the OpenEMR patient chart for one user, a primary care physician preparing for a scheduled outpatient visit. The target product supports safe multi-turn follow-up, but the current implemented path is single-shot constrained RAG with no persistent conversation state. The agent reads only the active patient's chart through server-controlled tools, verifies patient-specific claims against source rows, logs every request, and refuses when identity, authorization, evidence, or safety constraints are unclear.
 
 **Success Criteria:**
 
@@ -107,7 +107,7 @@ Verification must enforce:
 
 The eval suite must prove the agent fails safely, not only that it can demo well.
 
-Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. `evaluation/EVALUATION-TIERS.md` defines the Epic 10 taxonomy: fixture/orchestration proof remains Tier 0, and live SQL, live model, browser, and deployed session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current status: the existing fixture eval suite is valuable deterministic proof for verifier and orchestration behavior, but it does not fully exercise the real LLM, live SQL evidence path, browser UI, deployed endpoint, or real session behavior. Fixture/orchestration proof is the current repeatable tier; live SQL, live model, browser, and deployed session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Minimum eval cases:
 
@@ -221,13 +221,13 @@ To complete `SPECS.txt`, the project must contain:
 
 - Deployed agent works in the live environment.
 - Eval framework is wired and repeatable.
-- **Structured request logging** (and inspectable eval outputs) is in place and used for demo defense — not full production observability (dashboards, SLOs, per-step tracing); see `ARCHITECTURE.md` and Epic 14.
+- **Structured request logging** (and inspectable eval outputs) is in place and used for demo defense, including `stage_timings_ms` for evidence, draft, and verification stages. This is not full production observability: aggregation, dashboards, SLOs, alerts, and percentile queries remain unavailable.
 - Cost analysis contains measured development spend and projected production scenarios.
 - Demo video shows product behavior, architecture decisions, verification, failure handling, and structured logging (or other inspectable audit evidence).
 
-**Final submission (target milestones for the program — not a claim that the repo is production-ready before remediation epics in `PLAN.md`):**
+**Final submission (target milestones for the program — not a claim that the repo is production-ready while known production-readiness blockers remain open):**
 
-- **Target:** demo version of the narrow agent that meets submission gates; hospital-grade production readiness remains gated on `PLAN.md` remediation or explicit scope-out (see `ARCHITECTURE.md` and `GAUNTLET-INSTRUCTOR-REVIEWS.md`).
+- **Target:** demo version of the narrow agent that meets submission gates; hospital-grade production readiness remains blocked until the documented production-readiness blockers are closed or explicitly scoped out.
 - Complete repository docs and setup guide.
 - Final eval results.
 - Final cost analysis.
@@ -242,7 +242,7 @@ To complete `SPECS.txt`, the project must contain:
 - Medication facts span more than one table shape and may contain optional coded fields.
 - Current medication evidence checks active prescriptions, active medication-list entries, and linked `lists_medication` extension rows where available. It does not reconcile duplicate or conflicting medication rows into clinical truth.
 - Missing, stale, duplicate, or weakly constrained chart data can cause unsafe inferred answers.
-- Response latency has limited local/VM baseline measurements only; the VM A1c path is around 10.693 seconds and needs a latency budget plus per-step timing before production-readiness claims.
+- Response latency has limited local/VM baseline measurements only; the local A1c path is `2,989 ms` and the VM A1c path is `10,693 ms`. The VM result is accepted for demo evidence only; production-readiness claims remain blocked until p95 latency is under the accepted budget and `stage_timings_ms` identifies bottlenecks.
 - VM deployment details are not fully known, so deploy automation must avoid destructive assumptions.
 
 ### Critical Bottleneck

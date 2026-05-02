@@ -35,11 +35,11 @@ The verifier checks that cited source IDs exist and that the claim text contains
 
 5. Authorization is intentionally narrow, which is safer than loose but too brittle for real use.
 
-The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php:30). The architecture admits care-team, facility, schedule, group, and delegation access are deferred [ARCHITECTURE.md](../ARCHITECTURE.md:122). That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
+The gate requires session user, active patient, coarse ACL, patient existence, and a direct relationship [PatientAuthorizationGate.php](../../../src/AgentForge/Auth/PatientAuthorizationGate.php:23). The SQL relationship check only accepts `patient_data.providerID`, encounter provider, or supervisor [SqlPatientAccessRepository.php](../../../src/AgentForge/Auth/SqlPatientAccessRepository.php:30). Care-team, facility, schedule, group, and delegation access are unavailable and fail closed. That is a defensible v1 fail-closed boundary, but it is not a realistic authorization model.
 
-6. Medication evidence incompleteness was identified and remediated in Epic 13.
+6. Medication evidence incompleteness was identified and remediated.
 
-The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](../AUDIT.md:142). Epic 13 replaced the prescription-only evidence path with active medication evidence across `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:48). This closes the known omission path for bounded evidence retrieval, while still avoiding unsupported clinical reconciliation of duplicate, conflicting, uncoded, or instruction-missing medication records.
+The audit correctly says medication data spans `lists`, `lists_medication`, and `prescriptions` [AUDIT.md](../AUDIT.md:142). The prescription-only evidence path has been replaced with active medication evidence across `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available [SqlChartEvidenceRepository.php](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php:48). This closes the known omission path for bounded evidence retrieval, while still avoiding unsupported clinical reconciliation of duplicate, conflicting, uncoded, or instruction-missing medication records.
 
 7. The eval suite is good safety scaffolding, but too fixture-based.
 
@@ -229,17 +229,17 @@ Two failure modes:
 - **False negatives (brittle):** A claim that says "HbA1c was 8.2 %" is rejected because the evidence label is "Hemoglobin A1c." Any paraphrase is rejected. Your prompt counters this by instructing the model to copy display_label and value verbatim, which works *most of the time* — but the verifier should not be one prompt regression away from rejecting all legitimate answers.
 - **False positives (semantic gap):** A claim like "Hemoglobin A1c was 8.2 % and the patient should start insulin" passes the verifier as long as the label and value substrings are present. The unsupported tail is only blocked if `ClinicalAdviceRefusalPolicy` happens to catch the word "insulin." The verifier does not actually verify that the *whole claim* is grounded — only that the cited substrings appear somewhere in the claim text.
 
-This is the kind of weakness that an instructor review should flag because it directly affects the safety story. The fix is non-trivial (semantic alignment, structural claim parsing, or NLI scoring), but at minimum the limitation should be documented in ARCHITECTURE.md as a known weakness with a planned mitigation.
+This is the kind of weakness that an instructor review should flag because it directly affects the safety story. The fix is non-trivial (semantic alignment, structural claim parsing, or NLI scoring), but at minimum the limitation should be documented in ARCHITECTURE.md as a known weakness.
 
-**Remediation status (2026-05-02):** Substring matching has been replaced by [`EvidenceMatcher`](../../../src/AgentForge/Verification/EvidenceMatcher.php) token-set matching. All significant tokens of the cited evidence's `display_label` and `value` must appear as whole tokens in the claim text; numeric tokens must match exactly (so the false-negative case "HbA1c was 8.2 %" against label `Hemoglobin A1c` is still rejected on the label side, but the false-positive case where a digit substring like "5" matches inside "5.0 %" no longer passes). English-month → ISO date canonicalization closes the date-paraphrase failure mode without weakening exact-value enforcement. The unsupported-tail false-positive cited above is now also blocked by Epic 12 Task 12.1.2's claim-coverage requirement. See [`epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md` § Known Limitations](../epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md) for the remaining deferred semantic-paraphrase scope.
+**Remediation status (2026-05-02):** Substring matching has been replaced by [`EvidenceMatcher`](../../../src/AgentForge/Verification/EvidenceMatcher.php) token-set matching. All significant tokens of the cited evidence's `display_label` and `value` must appear as whole tokens in the claim text; numeric tokens must match exactly (so the false-negative case "HbA1c was 8.2 %" against label `Hemoglobin A1c` is still rejected on the label side, but the false-positive case where a digit substring like "5" matches inside "5.0 %" no longer passes). English-month -> ISO date canonicalization closes the date-paraphrase failure mode without weakening exact-value enforcement. The unsupported-tail false-positive cited above is now also blocked by claim-coverage enforcement. Broader semantic paraphrase verification remains unavailable.
 
 ### 2.3 Observability (request, latency, tool failures, tokens, cost)
 
 **Submitted:** [src/AgentForge/RequestLog.php](../../../src/AgentForge/RequestLog.php), [src/AgentForge/PsrRequestLogger.php](../../../src/AgentForge/PsrRequestLogger.php).
 
-**Strength:** The log entry is well-shaped — request_id, user_id, patient_id, decision, latency_ms, question_type, tools_called, source_ids, model, input/output tokens, estimated_cost, failure_reason, verifier_result. It is PHI-free by contract and that contract is enforced by isolated tests. Token and cost capture work for the real provider (the COST-ANALYSIS measurement comes from this path).
+**Strength:** The log entry is well-shaped: request_id, user_id, patient_id, decision, latency_ms, question_type, tools_called, source_ids, model, input/output tokens, estimated_cost, failure_reason, verifier_result. It is a PHI-minimized sensitive audit log contract, and that contract is enforced by isolated tests. Token and cost capture work for the real provider (the COST-ANALYSIS measurement comes from this path).
 
-**Shortfall (S-8, moderate):** It is one log line per request to apache `error.log`. There is no aggregation, no dashboard, no SLO definition, no alerting. The spec says "observability" — you have *structured logging*. For this scope that is acceptable as a v1, but call it out: "we emit structured PSR-3 lines; aggregation is out of scope for Epic 7." Right now ARCHITECTURE.md implies a richer observability story than what exists.
+**Shortfall (S-8, moderate):** It is one log line per request to apache `error.log`. There is no aggregation, no dashboard, no SLO definition, no alerting. The spec says "observability"; the current system has structured logging, not production observability.
 
 **Shortfall (S-9, moderate):** Measured VM latency is **10,693 ms** (per COST-ANALYSIS.md). USERS.md and ARCHITECTURE.md frame the agent as something a clinician uses to save time mid-visit — that's a "seconds" budget, not "ten seconds." There is one VM measurement. Either accept the budget and document it ("p50 ~10 s on current VM, acceptable for v1 because…") or set a target and don't ship without measuring against it. Right now there is no defined latency budget at all, and the one number you have is borderline-disqualifying for the use case you described.
 
@@ -265,7 +265,7 @@ Mostly addressed under §1.2. Restating the structural gap because it is the mos
 
 **Strength:** Parameterized queries throughout, bounded `LIMIT` clauses (max 50), explicit handling of OpenEMR's quirks (the `CAST` workaround for `form_clinical_notes.encounter` being VARCHAR is the right call given the legacy schema).
 
-**Shortfall (S-11, moderate):** AUDIT.md's P1 finding (missing composite indexes for the agent's query shapes) is identified but not remediated. The audit work was done; the remediation step that the audit exists to drive was not. Either add the indexes (Doctrine migration) or move P1 to "deferred" with a justification.
+**Shortfall (S-11, moderate):** AUDIT.md's P1 finding identifies missing composite indexes for the agent's query shapes. No migration has been created. Future index work needs before/after `EXPLAIN`, OpenEMR migration review, and rollback documentation.
 
 ### 3.3 Demo data
 
@@ -284,9 +284,9 @@ Single demo patient, `pid=900001`. The eval suite tests safety with fixtures, bu
 These are not the focus of the review but they should be on the record:
 
 1. **First-principles audit that is actually scoped to the application.** Most teams submit a generic security audit; you submitted one that justifies the design choices that follow.
-2. **Boundary discipline.** Fail-closed authorization, structured-output schema with strict mode, refusal policy applied at sentence and claim layers, PHI-free logging contract enforced by tests.
+2. **Boundary discipline.** Fail-closed authorization, structured-output schema with strict mode, refusal policy applied at sentence and claim layers, and PHI-minimized sensitive audit logging enforced by tests.
 3. **Modern PHP done right.** Strict types, readonly classes, PSR-4, DI through constructors, `#[SensitiveParameter]` on the API key, explicit value objects (`PatientId`, `AgentRequest`).
-4. **Honest documentation of deferred scope.** The audit and architecture docs both name what was *not* done — care-team auth, dashboards, multi-patient demo data — rather than papering over it. This is the trait that turns a v1 into a real v2.
+4. **Honest documentation of unavailable scope.** The audit and architecture docs both name what was *not* done, including care-team auth, dashboards, and multi-patient demo data, rather than papering over it. This is the trait that turns a v1 into a real v2.
 5. **Reproducible deployment.** Real scripts, real transcripts, real rollback path. Not a screenshot — a script.
 
 ---

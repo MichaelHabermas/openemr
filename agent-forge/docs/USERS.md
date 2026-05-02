@@ -45,7 +45,7 @@ Accepted v1 limitation:
 - The current product is single-shot constrained RAG. It does not maintain a transcript, `conversation_id`, turn history, or follow-up context.
 - A physician may ask another question, but the system treats it as a new independent request against the active patient, not as a grounded continuation of the prior answer.
 - Source citations are now rendered visibly from the structured response payload; this citation display does not change the single-shot request model.
-- Multi-turn Follow-Up Drill-Down remains a valid target use case because `SPECS.txt` asks for follow-up questions and conversation context. It is planned remediation in `PLAN.md` Epic 11, not a completed capability.
+- Multi-turn Follow-Up Drill-Down remains a valid target use case because `SPECS.txt` asks for follow-up questions and conversation context. It is not a completed capability in the current product.
 
 ## Use Case 1 - Visit Briefing
 
@@ -53,7 +53,7 @@ Accepted v1 limitation:
 
 **Need:** A short, patient-specific briefing: reason for visit, last plan, active problems, current medications, recent labs, and notable changes since the last visit.
 
-**Why an agent:** The physician's next question depends on what the briefing reveals. If the summary says a medication changed, the physician may ask when, who changed it, or what labs changed afterward. A static dashboard can show fields, but it does not handle follow-up questions across chart sections. Current v1 supports the first single-shot question; true follow-up continuity is planned.
+**Why an agent:** The physician's next question depends on what the briefing reveals. If the summary says a medication changed, the physician may ask when, who changed it, or what labs changed afterward. A static dashboard can show fields, but it does not handle follow-up questions across chart sections. Current v1 supports the first single-shot question; true follow-up continuity is not implemented.
 
 **Boundary:** The agent summarizes chart facts. It does not diagnose, recommend treatment, or decide what the physician should do.
 

@@ -27,7 +27,7 @@ Only these evidence types are accepted:
 
 Anything else is treated as unverified.
 
-## Remediation Status From Instructor Reviews
+## Current Implementation Status
 
 This audit remains the source of record for the risks that drove the first AgentForge implementation, but several findings are not closed.
 
@@ -39,15 +39,10 @@ Already implemented:
 
 Accepted v1 limitations:
 
-- Authorization currently covers direct provider, encounter provider, and supervisor relationships only. Care-team membership, facility scope, schedule-derived access, group assignment, and broader delegation are deferred and must fail closed.
+- Authorization currently covers direct provider, encounter provider, and supervisor relationships only. Care-team membership, facility scope, schedule-derived access, group assignment, and broader delegation are unavailable and must fail closed.
 - Medication evidence now checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available. It still treats duplicates, conflicts, uncoded rows, and missing instructions as chart evidence rather than reconciled clinical truth.
-- Performance P1 has a remediation plan but no migration in this pass; composite-index implementation still requires query-plan proof and OpenEMR migration review.
-- Observability is structured logging, not full observability. Per-step timing, aggregation, SLOs, and alerting remain planned work.
-
-Planned remediation:
-
-- `PLAN.md` Epic 13 covers medication evidence completeness, authorization-scope expansion, and composite-index remediation.
-- `PLAN.md` Epic 14 covers sensitive audit-log policy, per-step timing, SLOs, alerting, and latency budget.
+- Performance P1 has documented candidate indexes but no migration in this pass; composite-index implementation still requires query-plan proof and OpenEMR migration review.
+- Observability is structured logging plus per-stage timings, not full observability. Aggregation, dashboards or queries, SLOs, and alerting are unavailable.
 
 ## Security
 
@@ -126,16 +121,16 @@ Planned remediation:
 - `sql/database.sql:8698-8750` defines `prescriptions` with an index on `patient_id`, but no composite index covering `patient_id` and `active`.
 - `sql/database.sql:2022-2061` defines `form_encounter` with `pid_encounter` and `encounter_date` indexes.
 
-**Risk for the agent:** The first implementation should use a small number of bounded, patient-specific queries. Broad chart scans, panel-wide precomputation, and open-ended search should be deferred.
+**Risk for the agent:** The first implementation should use a small number of bounded, patient-specific queries. Broad chart scans, panel-wide precomputation, and open-ended search are not implemented.
 
-**Remediation status:** Planned, not migrated. The active agent predicates are now documented for:
+**Current status:** Documented, not migrated. The active agent predicates are:
 
 - Active prescriptions: `prescriptions.patient_id = ? AND prescriptions.active = 1`, candidate composite index `prescriptions(patient_id, active)`.
 - Active medication-list entries: `lists.pid = ? AND lists.type = 'medication' AND lists.activity = 1`, candidate composite index `lists(pid, type, activity)`.
 - Linked medication extensions: `lists_medication.list_id = lists.id`, already supported by `lists_medication_list_idx`.
 - Recent notes and encounters: current query remains bounded by `form_clinical_notes.pid` and joins `form_encounter`; future index work must inspect deployed `EXPLAIN` output before proposing changes.
 
-No migration is created in Epic 13. Future implementation must capture before/after `EXPLAIN`, review the migration against OpenEMR conventions, and document rollback.
+No migration is created in this pass. Future implementation must capture before/after `EXPLAIN`, review the migration against OpenEMR conventions, and document rollback.
 
 ### P2. No runtime latency benchmark has been established
 
@@ -145,7 +140,7 @@ No migration is created in Epic 13. Future implementation must capture before/af
 
 **Risk for the agent:** Any response-time target must be treated as an implementation goal, not an observed fact, until measured.
 
-**Remediation status:** Partially updated after implementation. A single local A1c request and a single public VM A1c request have been measured in `operations/COST-ANALYSIS.md`, with the VM path around 10.693 seconds. These are baseline observations, not a production latency benchmark. Epic 14 must define a latency budget, per-step timing, aggregation, and optimization plan before production-readiness claims.
+**Current status:** A single local A1c request and a single public VM A1c request have been measured in `operations/COST-ANALYSIS.md`, with the local path at `2,989 ms` and the VM path at `10,693 ms`. These are baseline observations, not a production latency benchmark. Stage timing now records evidence-tool, draft, and verification durations in `stage_timings_ms`; production-readiness claims still require aggregation, p95 proof under the accepted latency budget, SLOs, alerting, and an optimization plan.
 
 ## Data Quality
 
@@ -184,7 +179,7 @@ No migration is created in Epic 13. Future implementation must capture before/af
 
 **Risk for the agent:** "Current medications" is not a single trivial table read. The agent must define exactly which medication sources it reads and cite the rows used.
 
-**Remediation status:** Implemented for bounded evidence coverage. The active medication evidence path checks active rows in `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available. Inactive rows are not surfaced as active evidence. Uncoded, duplicate, conflicting, and instruction-missing records are displayed as source-cited chart evidence without reconciliation or medication-change advice.
+**Current status:** Implemented for bounded evidence coverage. The active medication evidence path checks active rows in `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available. Inactive rows are not surfaced as active evidence. Uncoded, duplicate, conflicting, and instruction-missing records are displayed as source-cited chart evidence without reconciliation or medication-change advice.
 
 ### D4. Coded fields are optional
 

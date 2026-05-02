@@ -33,7 +33,7 @@ What this tier does not exercise:
 
 ## Tier 1 - Seeded SQL Evidence Evals
 
-This planned tier must run against fake seeded OpenEMR data through the real SQL evidence repositories, not `EvalEvidenceTool` fixtures. It requires a local or VM Docker-backed OpenEMR database seeded with `agent-forge/scripts/seed-demo-data.sh` and verified with `agent-forge/scripts/verify-demo-data.sh`.
+This tier is not automated. It must run against fake seeded OpenEMR data through the real SQL evidence repositories, not `EvalEvidenceTool` fixtures. It requires a local or VM Docker-backed OpenEMR database seeded with `agent-forge/scripts/seed-demo-data.sh` and verified with `agent-forge/scripts/verify-demo-data.sh`.
 
 Required cases and pass criteria:
 
@@ -53,7 +53,7 @@ This tier maps to `SPECS.txt` evaluation requirements for failure modes, missing
 
 ## Tier 2 - Live Model Contract Evals
 
-This planned tier must use the real configured draft provider and still keep deterministic verification as the release gate. It requires server-side model credentials and must never expose credentials to the browser.
+This tier is not automated. It must use the real configured draft provider and still keep deterministic verification as the release gate. It requires server-side model credentials and must never expose credentials to the browser.
 
 Required cases:
 
@@ -83,7 +83,7 @@ Pass criteria:
 
 ## Tier 3 - Local Browser And Session Smoke
 
-This planned smoke tier validates the local UI and real OpenEMR session path. It may be manual or browser-assisted, but it must use a real authenticated OpenEMR session.
+This smoke tier is not automated. It validates the local UI and real OpenEMR session path. It may be manual or browser-assisted, but it must use a real authenticated OpenEMR session.
 
 Checklist:
 
@@ -115,7 +115,7 @@ Planned multi-turn eval cases before conversation-state implementation:
 
 ## Tier 4 - Deployed Browser And Session Smoke
 
-This planned smoke tier validates the public deployment and must be run only when the VM and demo credentials are available.
+This smoke tier is not automated. It validates the public deployment and must be run only when the VM and demo credentials are available.
 
 Checklist:
 
@@ -148,6 +148,6 @@ Live-path proof is captured as manual/browser evidence, not as a fully automated
 - Live OpenAI provider proof: `gpt-4o-mini`, input tokens `333`, output tokens `143`, estimated cost `0.00013575`, verifier result `passed`, and expected A1c citation.
 - Local browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=dcc5e992-1e13-4a0d-adb1-edbf119e8973`, `latency_ms=2989`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
 - VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
-- Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by Epic 12 deployed browser/log proof.
+- Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by deployed browser/log proof.
 
 Tiers 1 through 4 are still not a fully automated live eval framework. A final submission may cite the captured manual/browser proof above, but must not describe it as repeatable automated live eval coverage until those tier runners exist.

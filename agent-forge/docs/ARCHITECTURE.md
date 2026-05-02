@@ -12,13 +12,13 @@ The audit shows the critical constraint: OpenEMR's existing ACL checks are capab
 
 Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active medications, recent labs, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available; duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
 
-The LLM is not trusted. It receives only the evidence bundle and must produce a structured draft answer from that evidence. A deterministic verifier then checks patient-specific claims against source rows. Verifier hardening from Epic 12 is in place: model-supplied claim types are no longer trusted for factuality, unsupported tails are blocked, and the substring matcher has been replaced by `EvidenceMatcher` token-set matching with English-month → ISO date canonicalization (so `April 12, 1976` grounds against stored value `1976-04-12` without weakening exact-value enforcement). Broader semantic paraphrase verification remains deferred and is documented as a known limitation in `epics/EPIC_VERIFIER_HARDENING_TOOL_ROUTING.md`.
+The LLM is not trusted. It receives only the evidence bundle and must produce a structured draft answer from that evidence. The verifier no longer trusts model-supplied claim types for factuality: unsupported tails are blocked, and the substring matcher has been replaced by `EvidenceMatcher` token-set matching with English-month -> ISO date canonicalization (so `April 12, 1976` grounds against stored value `1976-04-12` without weakening exact-value enforcement). Broader semantic paraphrase verification remains a known limitation.
 
-The system favors trust over completeness. A slower complete answer is less useful than a fast, cited, bounded answer that says what it could and could not check. Every request is logged with request metadata, tool calls, failures, total latency, token use, estimated cost, verifier result, and source row ids. These are PHI-minimized sensitive audit logs, not PHI-free logs, because they include user, patient, and source identifiers. Per-step timing, aggregation, SLOs, and alerting are planned in Epic 14.
+The system favors trust over completeness. A slower complete answer is less useful than a fast, cited, bounded answer that says what it could and could not check. Every request is logged with request metadata, tool calls, failures, total latency, token use, estimated cost, verifier result, and source row ids. These are PHI-minimized sensitive audit logs, not de-identified logs, because they include user, patient, and source identifiers. Per-stage timing now records evidence-tool, draft, and verification durations in `stage_timings_ms`; aggregation, dashboards, SLOs, and alerting remain unavailable.
 
-The first-principles rule is simple: read narrowly, cite everything, log every read, fail closed, and do not build anything that is not required for the documented physician workflow in `USERS.md`, constrained by `AUDIT.md`. Current docs must not claim production readiness until the remediation epics in `PLAN.md` are completed or explicitly scoped out.
+The first-principles rule is simple: read narrowly, cite everything, log every read, fail closed, and do not build anything that is not required for the documented physician workflow in `USERS.md`, constrained by `AUDIT.md`. Current docs must not claim production readiness while known production-readiness blockers remain open.
 
-## Current Status And Remediation Roadmap
+## Current Status And Blockers
 
 ### Already Implemented Foundation
 
@@ -26,29 +26,19 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Narrow fail-closed authorization gate for session user, active patient, coarse ACL, patient existence, and direct provider/encounter/supervisor relationships.
 - Bounded read-only evidence tools for the demo path with source-carrying evidence.
 - Server-side OpenAI draft provider using structured output, plus deterministic verification and refusal behavior.
-- Structured request logging with request id, user id, patient id, total latency, question type, tools called, source ids, model, token counts, estimated cost, failure reason, and verifier result.
+- Structured request logging with request id, user id, patient id, total latency, per-stage timings, question type, tools called, source ids, model, token counts, estimated cost, failure reason, and verifier result.
 - Fake demo patient data, fixture evals, local/VM manual proof, deployment and rollback documentation.
 
 ### Accepted V1 Limitations
 
 - The current UI and request model are single-turn. They do not preserve transcript, `conversation_id`, turn history, or follow-up grounding.
-- The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is a v1 surfacing fix, not proof of multi-turn state.
-- The handler may call more evidence tools than the question requires; selective PHI-minimizing routing is planned.
+- The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is proof of source surfacing, not proof of multi-turn state.
+- The handler may call more evidence tools than the question requires; selective PHI-minimizing routing remains incomplete.
 - Medication evidence checks active prescriptions, active medication-list entries, and linked medication extension rows, but it does not reconcile duplicates or conflicts into clinical truth.
-- Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are deferred.
-- Observability now includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain deferred.
+- Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
+- Observability now includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
 - Fixture evals prove deterministic orchestration and verifier behavior, but not the full live LLM, SQL, browser, deployed endpoint, or real session path.
-- The VM A1c request baseline is about 10.693 seconds, which requires a documented latency budget and optimization plan before production-readiness claims.
-
-### Planned Remediation Before Production Readiness
-
-- Epic 8: reviewer packaging and root artifact map.
-- Epic 9: cost analysis rewrite at 100 / 1K / 10K / 100K users.
-- Epic 10: live-path eval tiers and evaluation honesty.
-- Epic 11: conversation scope correction, minimum multi-turn design, and citation UI surfacing.
-- Epic 12: verifier hardening and PHI-minimizing tool routing.
-- Epic 13: medication completeness, authorization expansion, and data/index remediation.
-- Epic 14: sensitive audit-log policy, per-step observability, SLOs, alerting, and latency budget.
+- The VM A1c request baseline is about 10.693 seconds. Production readiness requires a latency budget, p95 proof under that budget, and a measured optimization plan.
 
 ### Production-Readiness Blockers
 
@@ -59,6 +49,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Citations must be visible in the physician UI.
 - Verification must not trust model-supplied claim labels for factuality.
 - Logs must have retention/access controls appropriate for PHI-minimized sensitive audit data.
+- Production readiness must not be claimed until latency has measured p95 proof under the accepted budget and per-stage timings identify bottlenecks.
 - Authorization scope, index migration proof, and latency must be remediated or disclosed as blockers.
 
 ## Traceability To Users And Audit
@@ -68,7 +59,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 | Agent capability | User source | Why it exists |
 | --- | --- | --- |
 | Visit briefing summary | Use Case 1 - Visit Briefing | The physician needs fast chart orientation before entering the room. |
-| Multi-turn follow-up drill-down | Use Case 2 - Follow-Up Drill-Down | Target capability; current v1 is single-shot until Epic 11 adds conversation state. |
+| Multi-turn follow-up drill-down | Use Case 2 - Follow-Up Drill-Down | Target capability; current v1 is single-shot and has no persistent conversation state. |
 | Missing or unclear data reporting | Use Case 3 - Missing Or Unclear Data | Incomplete records must be surfaced explicitly instead of inferred away. |
 | Unsupported request refusal | Use Case 1 boundary, Use Case 2 boundary, Use Case 3 boundary, Non-Goals | The agent must remain a chart-orientation aid, not a diagnosis or treatment engine. |
 | Patient demographics tool | Workflow questions 1 and 4; Use Case 1 | The physician needs to know who the current patient is and what basic chart facts matter. |
@@ -77,7 +68,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 | Recent labs tool | Use Case 1; Use Case 2 | Recent labs support "what changed" and the A1c-trend example. |
 | Recent encounters and notes tool | Use Case 1; Use Case 2 | The last note and recent encounters support last-plan and change-since-last-visit questions. |
 | Last plan extraction | Use Case 1; Use Case 2 | The last plan is named in the briefing need and follow-up examples. |
-| Source-cited answer display | Use Case 2 boundary; Success Standard | Every factual answer must be traceable to the patient's chart; citation UI surfacing is planned in Epic 11. |
+| Source-cited answer display | Use Case 2 boundary; Success Standard | Every factual answer must be traceable to the patient's chart; citation UI surfacing is implemented for the current response payload. |
 | Structured draft plus deterministic verifier | Use Case 2 boundary; Use Case 3 boundary; Success Standard | Draft text is useful only if unsupported chart claims are blocked before display. |
 | Agent request log | Success Standard; Use Case 3 boundary | Trust requires explaining what was checked, what failed, and which source rows supported the answer. |
 | Public request and response contracts | Workflow; Use Case 2 | The interface must support a current-chart question, citations, missing sections, and warnings. |
@@ -87,7 +78,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 
 | Boundary or constraint | Audit source | Required design response |
 | --- | --- | --- |
-| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. Epic 4's demo gate is intentionally narrow; see `epics/EPIC4-AGENT-REQUEST-SHELL.md` for included and deferred relationship shapes. |
+| Patient-specific authorization gate | Security S1 | Coarse ACL is not enough; no chart data is read until current-user/current-patient access is resolved. The current gate is intentionally narrow and allows only direct provider, encounter provider, and supervisor relationships. |
 | Session-bound identity binding | Security S2 | The OpenEMR server endpoint binds each request to the active session user before agent handling. |
 | Browser treated as untrusted surface | Security S3 | The browser only sends input and displays output; it does not hold model credentials or make access decisions. |
 | Narrow OpenEMR integration | Architecture A1 and A2 | The first version uses a small chart-embedded endpoint instead of broad OpenEMR rewrites. |
@@ -126,7 +117,7 @@ Delete for v1:
 
 What survives:
 
-- A read-only chart-orientation assistant. It is single-shot today; persistent conversation is planned.
+- A read-only chart-orientation assistant. It is single-shot today; persistent conversation is not implemented.
 - Current patient only.
 - Server-controlled tools only.
 - Source-cited answers only.
@@ -140,7 +131,7 @@ Flow:
 2. Agent panel sends `patient_id` and `question` to a server-side OpenEMR endpoint.
 3. OpenEMR validates the active session user.
 4. A patient-specific authorization gate checks whether that user may read that patient chart.
-5. Server invokes allowlisted read-only chart tools. Selective routing is the target; current remediation work must reduce over-broad tool calls.
+5. Server invokes allowlisted read-only chart tools. Selective routing is the target; the current handler can still call more chart tools than a question requires.
 6. Tools fetch bounded rows for the current patient only.
 7. Evidence bundle is built with source table, row id, date, label, and value.
 8. LLM receives the question and evidence bundle only.
@@ -162,7 +153,7 @@ The browser is only a display and input surface. It does not decide access. It d
 
 If any boundary is unclear, the agent refuses or degrades visibly.
 
-Epic 4 proves only a narrow patient-specific authorization gate: `patient_data.providerID`, `form_encounter.provider_id`, and `form_encounter.supervisor_id`. Care-team membership, facility-scoped access, group-based patient assignment, scheduling-based access, and broader delegation rules are deferred and fail closed until explicitly designed.
+The current patient-specific authorization gate allows only `patient_data.providerID`, `form_encounter.provider_id`, and `form_encounter.supervisor_id`. Care-team membership, facility-scoped access, group-based patient assignment, scheduling-based access, and broader delegation rules are unavailable and fail closed until explicitly designed.
 
 ## Data Access
 
@@ -182,7 +173,7 @@ Tool rules:
 - Every returned fact includes source metadata.
 - The model cannot request arbitrary SQL.
 - The model cannot access patients outside the active chart.
-- Broad search and panel-level precomputation are deferred.
+- Broad search and panel-level precomputation are not implemented.
 
 Minimum tool result shape:
 
@@ -205,10 +196,10 @@ Verification happens after model drafting and before user display.
 
 Rules:
 
-- Every patient-specific factual sentence must cite source rows; Epic 12 hardens this so factuality does not depend on model-supplied claim type.
+- Every patient-specific factual sentence must cite source rows; factuality does not depend on model-supplied claim type.
 - Unsupported claims are removed or replaced with "not found in the chart."
 - If claims cannot be mapped to evidence, the response is blocked.
-- Current source matching is conservative and partly substring-based; Epic 12 plans stronger grounding and unsupported-tail protection.
+- Current source matching is conservative token-set matching; broader semantic paraphrase verification remains unavailable.
 - The verifier refuses diagnosis, treatment advice, dosing advice, medication-change recommendations, and unsupported clinical rule claims.
 - If data is incomplete, the answer says what was checked and what was not found.
 
@@ -237,14 +228,14 @@ Current local model configuration:
 - Structured output: JSON-schema draft with sentences, claims, missing sections, refusals/warnings, and source IDs.
 - Pricing: see `operations/COST-ANALYSIS.md` for the exact source and measured local request cost.
 
-Current structured logs answer most request-level questions. Target observability must answer:
+Current structured logs answer most request-level questions and include `stage_timings_ms` for evidence-tool collection, draft, and verification stages. Target observability must answer:
 
 - What request happened?
 - Who asked?
 - Which patient chart was involved?
 - Which tools ran?
 - Which source rows were used?
-- How long did each step take? Current logs capture total latency; per-step timing is planned in Epic 14.
+- How long did each measured stage take? Current logs capture total latency plus `stage_timings_ms`; authorization timing, serialization timing, aggregation, and percentile queries are unavailable.
 - Did anything fail?
 - Which model was used?
 - How many tokens were used?
@@ -261,6 +252,7 @@ Minimum log fields:
 - `tools_called`
 - `source_ids`
 - `latency_ms`
+- `stage_timings_ms`
 - `model`
 - `input_tokens`
 - `output_tokens`
@@ -268,7 +260,13 @@ Minimum log fields:
 - `failure_reason`
 - `verifier_result`
 
-Do not log full prompts, full chart text, or raw PHI unless there is a specific audited reason. Treat `user_id`, `patient_id`, and `source_ids` as sensitive audit metadata with retention and access controls.
+Do not log raw questions, full answers, full prompts, full chart text, patient names, credentials, or raw exception internals unless there is a specific audited reason. Treat `user_id`, `patient_id`, and `source_ids` as sensitive audit metadata with restricted operational access, retention governance, and review responsibility before production readiness.
+
+Latency budget:
+
+- Demo gate: the measured local A1c path at `2,989 ms` and VM A1c path at `10,693 ms` are acceptable as demo evidence only because the answer was verified and cited.
+- Production-readiness gate: production claims remain blocked until production-shaped telemetry shows p95 verified-answer-or-clear-failure latency under 10 seconds for the demo path, with `stage_timings_ms` available to identify the slow stage.
+- Optimization plan: reduce unnecessary evidence with selective routing, shrink evidence bundles without weakening citations, tune model timeouts, evaluate prompt caching only when citation integrity is preserved, add query/index proof before database changes, and remeasure on production-shaped infrastructure.
 
 ## Public Interfaces
 
@@ -279,13 +277,13 @@ Agent request:
   "patient_id": "current OpenEMR patient id",
   "question": "physician question",
   "session_user": "active OpenEMR session user",
-  "conversation_id": "planned; not implemented in the current single-shot path"
+  "conversation_id": "not implemented in the current single-shot path"
 }
 ```
 
 ### Planned Minimum Multi-Turn Contract
 
-This contract is planned only. The current runtime API remains single-shot and does not accept or return a live `conversation_id`.
+This is a target contract only. The current runtime API remains single-shot and does not accept or return a live `conversation_id`.
 
 - First turn: the server issues a `conversation_id` after session user, active patient, authorization, evidence, and verification succeed.
 - Follow-up turns: the browser sends the server-owned `conversation_id`; the server rejects the request if the conversation is expired, missing, owned by another user, or bound to another patient.
@@ -334,7 +332,7 @@ Minimum target eval set:
 - Tool failure is disclosed in the answer.
 - Hallucinated claim is blocked by the verifier.
 
-Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Epic 10 defines the proof boundary and live-path gates in `evaluation/EVALUATION-TIERS.md`: Tier 0 is implemented fixture/orchestration proof, while seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
+Current evaluation status: the fixture suite is valuable deterministic proof for orchestration and verifier behavior, but it is not a full live-agent evaluation. Tier 0 fixture/orchestration proof is repeatable; seeded SQL, live model, local browser/session, and deployed browser/session tiers require captured results or explicit documented gaps before live-agent evaluation can be claimed.
 
 Pass condition:
 

@@ -13,7 +13,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 
 ## Supporting Folders
 
-- [epics/](epics/) - Completed and planned epic narratives, proof notes, and acceptance traces.
+- [epics/](epics/) - Epic narratives, proof notes, and acceptance traces.
 - [evaluation/](evaluation/) - Evaluation tier taxonomy, instructor reviews, and captured test output.
 - [operations/](operations/) - Cost analysis and operational facts/needs.
 - [submission/](submission/) - Reviewer packaging pointers and demo submission script.

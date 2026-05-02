@@ -1,6 +1,6 @@
 # Reviewer packaging plan
 
-**Canonical narrative:** Full Epic 8 scope, tasks, proof commands, and acceptance checklist live in [EPIC8-REVIEWER-SUBMISSION-PACKAGING.md](../epics/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md). This file is a short entry point only.
+**Canonical narrative:** Full reviewer-packaging scope, proof commands, and acceptance checklist live in [EPIC8-REVIEWER-SUBMISSION-PACKAGING.md](../epics/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md). This file is a short entry point only.
 
 **Reviewer landing:** Start at repository-root `AGENTFORGE-REVIEWER-GUIDE.md` when that packaging artifact is present.
 
@@ -12,4 +12,4 @@ cmp USERS.md agent-forge/docs/USERS.md
 cmp ARCHITECTURE.md agent-forge/docs/ARCHITECTURE.md
 ```
 
-Pending remediation items called out in Epic 8 and the reviewer guide (cost tiers, live-path evals, production readiness) remain tracked in [PLAN.md](../PLAN.md).
+Open production-readiness blockers include cost tiers, live-path evals, and production readiness proof. The execution backlog is tracked in [PLAN.md](../PLAN.md).

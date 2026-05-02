@@ -42,7 +42,7 @@ final class MedicationAuthIndexRemediationDocumentTest extends TestCase
                 'candidate composite index `prescriptions(patient_id, active)`',
                 'candidate composite index `lists(pid, type, activity)`',
                 'before/after `EXPLAIN`',
-                'No migration is created in Epic 13',
+                'No migration is created in this pass',
                 'rollback',
             ] as $requiredText
         ) {

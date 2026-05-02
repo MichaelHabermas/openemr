@@ -71,7 +71,7 @@ Early Submission stays narrow:
 
 There are real limitations:
 
-- Observability is structured logging, not dashboards with Service Level Objectives (SLOs) and alerts.
+- Observability is structured logging with per-stage timing, not dashboards with Service Level Objectives (SLOs) and alerts.
 - But it does share PHP's general error log today;
 - I intend to tighten discoverability with a dedicated sink or documented grep path before calling observability "reviewer-ready."
 - Also, the current experience is single-shot constrained RAG, without a grounded multi-turn transcript.
