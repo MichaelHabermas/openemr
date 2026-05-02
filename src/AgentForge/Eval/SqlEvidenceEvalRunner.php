@@ -237,8 +237,9 @@ final readonly class SqlEvidenceEvalRunner
     /** @param list<string> $haystack */
     private function containsFragment(array $haystack, string $needle): bool
     {
+        $needle = strtolower($needle);
         foreach ($haystack as $value) {
-            if (str_contains($value, $needle)) {
+            if (str_contains(strtolower($value), $needle)) {
                 return true;
             }
         }
