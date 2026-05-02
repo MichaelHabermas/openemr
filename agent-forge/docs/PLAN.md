@@ -1983,6 +1983,163 @@ Human verification:
 
 - A reviewer can trace expected answers to seeded rows rather than fixture objects.
 
+Completed 2026-05-02:
+
+- Added a dedicated Tier 1 SQL evidence runner separate from fixture/orchestration evals.
+- Captured local Docker SQL proof after seeding and verification: `docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/run-sql-evidence-evals.php` returned `7 passed, 0 failed`.
+- SQL-backed result path: `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/sql-evidence-eval-results-20260502-205810.json`.
+- Detailed traceability and proof log live in `agent-forge/docs/epics/EPIC_SEEDED_SQL_EVIDENCE_EVAL_TIER.md`.
+
+## Epic 22 - High-Signal Evidence Coverage
+
+Status: Planned. Detailed execution plan lives in `agent-forge/docs/epics/EPIC_HIGH_SIGNAL_EVIDENCE_COVERAGE.md`.
+
+Goal: expand AgentForge evidence coverage only where it materially improves visit briefing and focused follow-up usefulness, without turning the agent into broad chart search or weakening source verification.
+
+First-principles constraint:
+
+- The problem is not "read more SQL." The problem is "surface the minimum additional chart facts a physician needs before the visit, with citations and explicit stale/inactive labels."
+- More data is rejected unless it improves one of the supported use cases: visit briefing, medication follow-up, lab/vital follow-up, or sparse-chart missing-data handling.
+- Every added fact must remain source-carrying evidence. No diagnosis, treatment, dosing, medication-change, reconciliation truth, or unsupported clinical-rule inference is added.
+
+### Feature 22.1 - Standalone Encounter Reason Evidence
+
+#### Task 22.1.1 - Surface Encounter Reasons Without Requiring Notes
+
+Why: `form_encounter.reason` is a core visit-briefing ingredient, but reason-only encounters can be missed when evidence starts from `form_clinical_notes`.
+
+Start with eval/test:
+
+- Add repository and evidence-tool tests for a reason-only encounter with no linked clinical note.
+- Add a SQL eval expectation for sparse-patient encounter reason evidence.
+
+Implementation:
+
+- Add patient-scoped, bounded recent encounter retrieval.
+- Emit `Reason for visit` evidence from `form_encounter`.
+- Keep last-plan/note evidence separate from encounter evidence.
+
+Definition of done:
+
+- Encounter reason appears as source-cited evidence when present, even if no note exists.
+- Empty reasons are omitted, not invented.
+- Patient scoping remains tested.
+
+### Feature 22.2 - Medication Detail Evidence
+
+#### Task 22.2.1 - Include Medication Instructions As Chart Evidence
+
+Why: active medication names without instructions are weak for visit prep, and current SQL already reads instruction fields that the tool discards.
+
+Start with eval/test:
+
+- Add tests for prescription instructions and linked `lists_medication` instructions.
+- Add bounding tests for long free-text instructions.
+
+Implementation:
+
+- Include `drug_dosage_instructions` when present.
+- Include category/intent only if it adds source value without bloating the evidence bundle.
+- Label medication details as chart evidence, not reconciled medication truth.
+
+Definition of done:
+
+- Active medication evidence can cite dose/instructions when present.
+- Duplicate/conflicting rows remain separate cited rows.
+- No medication-change or dosing advice is enabled.
+
+### Feature 22.3 - Stale Vitals Last-Known Signal
+
+#### Task 22.3.1 - Report Last Available Stale Vitals Separately
+
+Why: for sparse charts, "no recent vitals" is true but less useful than "no recent vitals; last available BP was stale on DATE."
+
+Start with eval/test:
+
+- Add tests proving stale vitals are not promoted as recent.
+- Add sparse-chart SQL eval expectations for both recent-vitals missing and stale last-known evidence.
+
+Implementation:
+
+- Add repository support for last available authorized active vitals outside the recent window.
+- Emit stale evidence with labels that cannot be mistaken for recent vitals.
+
+Definition of done:
+
+- Recent vitals remain strict.
+- Stale vitals are clearly labeled as last-known/stale evidence.
+- Sparse-chart answers can cite stale values without implying current status.
+
+### Feature 22.4 - Inactive Medication History For Reconciliation
+
+#### Task 22.4.1 - Add Inactive Medication History Evidence
+
+Why: stopped medications can matter for medication reconciliation, but they must never appear under active medications.
+
+Start with eval/test:
+
+- Add tests proving inactive rows remain absent from active medications.
+- Add tests and SQL evals requiring inactive history under a distinct evidence section.
+
+Implementation:
+
+- Add a bounded inactive medication history repository method.
+- Add a clearly labeled `Inactive medication history` evidence section.
+- Keep active and inactive evidence paths separate.
+
+Definition of done:
+
+- Riley's stopped warfarin can be cited as inactive history.
+- The same row is still forbidden as active medication evidence.
+- The model receives labels that reduce current-medication confusion.
+
+### Feature 22.5 - Diagnosis And Lab Code Context
+
+#### Task 22.5.1 - Surface Codes As Source Metadata
+
+Why: diagnosis and lab codes improve provenance and follow-up precision when already present, but they do not license clinical interpretation.
+
+Start with eval/test:
+
+- Add problem tool tests for diagnosis codes.
+- Add lab tool tests for available result/order codes.
+- Add tests proving empty codes are omitted, not invented.
+
+Implementation:
+
+- Surface problem diagnosis codes from `lists` where present.
+- Surface lab/result/order codes from the procedure chain where present.
+- Document codes as source metadata only.
+
+Definition of done:
+
+- Code values can be cited when present.
+- Missing codes are reported by omission, not guessed.
+- No diagnosis/rule interpretation is added.
+
+### Feature 22.6 - Ground Truth, SQL Evals, And Docs
+
+#### Task 22.6.1 - Lock Coverage With Ground Truth And Evals
+
+Why: evidence gaps should not be rediscovered by a manual run after the docs have promised coverage.
+
+Start with eval/test:
+
+- Update seeded ground truth before implementation claims are made.
+- Add SQL eval expected citations, values, and forbidden promotions for each new evidence boundary.
+
+Implementation:
+
+- Update `demo-patient-ground-truth.json`.
+- Update SQL eval cases and evaluation docs.
+- Update architecture docs to name covered, stale, inactive, and intentionally excluded data.
+
+Definition of done:
+
+- Isolated AgentForge tests pass.
+- Fixture evals pass.
+- SQL evals pass against a seeded DB, or the exact DB blocker is recorded without marking acceptance complete.
+
 ## Epic Final - Demo, Cost Analysis, And Final Packaging
 
 Goal: produce the artifacts needed to defend the system, not just run it.
