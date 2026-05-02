@@ -1,5 +1,5 @@
 {
-  "fixture_version": "2026-05-02-epic21",
+  "fixture_version": "2026-05-02-epic22",
   "patients": [
     {
       "pid": 900001,
@@ -55,7 +55,7 @@
             "source_id": "af-prob-diabetes",
             "source_date": "2025-09-10",
             "display_label": "Type 2 diabetes mellitus",
-            "value": "Active"
+            "value": "Active; diagnosis code: ICD10:E11.9"
           },
           {
             "source_type": "problem",
@@ -63,7 +63,7 @@
             "source_id": "af-prob-htn",
             "source_date": "2024-02-18",
             "display_label": "Essential hypertension",
-            "value": "Active"
+            "value": "Active; diagnosis code: ICD10:I10"
           }
         ],
         "active_medications": [
@@ -73,7 +73,7 @@
             "source_id": "af-rx-metformin",
             "source_date": "2026-03-15",
             "display_label": "Metformin ER 500 mg",
-            "value": "500 mg"
+            "value": "500 mg; instructions: Take 1 tablet by mouth daily with evening meal"
           },
           {
             "source_type": "medication",
@@ -81,7 +81,7 @@
             "source_id": "af-rx-lisinopril",
             "source_date": "2026-03-15",
             "display_label": "Lisinopril 10 mg",
-            "value": "10 mg"
+            "value": "10 mg; instructions: Take 1 tablet by mouth daily"
           }
         ],
         "active_allergies": [
@@ -109,7 +109,7 @@
             "source_id": "agentforge-a1c-2026-01",
             "source_date": "2026-01-09",
             "display_label": "Hemoglobin A1c",
-            "value": "8.2 %"
+            "value": "8.2 %; result code: 4548-4; order code: 4548-4"
           },
           {
             "source_type": "lab",
@@ -117,7 +117,7 @@
             "source_id": "agentforge-a1c-2026-04",
             "source_date": "2026-04-10",
             "display_label": "Hemoglobin A1c",
-            "value": "7.4 %"
+            "value": "7.4 %; result code: 4548-4; order code: 4548-4"
           }
         ],
         "recent_vitals": [
@@ -206,7 +206,7 @@
             "source_id": "af-p900002-afib",
             "source_date": "2025-12-01",
             "display_label": "Atrial fibrillation",
-            "value": "Active"
+            "value": "Active; diagnosis code: ICD10:I48.91"
           },
           {
             "source_type": "problem",
@@ -214,7 +214,7 @@
             "source_id": "af-p900002-dm",
             "source_date": "2024-08-12",
             "display_label": "Type 2 diabetes mellitus",
-            "value": "Active"
+            "value": "Active; diagnosis code: ICD10:E11.9"
           }
         ],
         "active_medications": [
@@ -224,7 +224,7 @@
             "source_id": "af-rx-p2-apixaban",
             "source_date": "2026-05-16",
             "display_label": "Apixaban 5 mg",
-            "value": "5 mg"
+            "value": "5 mg; instructions: Take 1 tablet by mouth twice daily"
           },
           {
             "source_type": "medication",
@@ -232,7 +232,7 @@
             "source_id": "af-rx-p2-metformin",
             "source_date": "2026-05-16",
             "display_label": "Metformin ER 500 mg",
-            "value": "500 mg"
+            "value": "500 mg; instructions: Take 1 tablet by mouth daily with evening meal"
           },
           {
             "source_type": "medication",
@@ -240,7 +240,7 @@
             "source_id": "af-l900002-metdup",
             "source_date": "2026-05-16",
             "display_label": "Metformin ER 500 mg",
-            "value": "active medication"
+            "value": "instructions: Patient-reported duplicate: takes metformin ER once daily with evening meal"
           }
         ],
         "active_allergies": [
@@ -260,7 +260,25 @@
             "source_id": "agentforge-egfr-900002-2026-05",
             "source_date": "2026-05-10",
             "display_label": "Estimated GFR",
-            "value": "68 mL/min/1.73m2"
+            "value": "68 mL/min/1.73m2; result code: 33914-3; order code: 33914-3"
+          }
+        ],
+        "inactive_medication_history": [
+          {
+            "source_type": "medication",
+            "source_table": "prescriptions",
+            "source_id": "af-rx-p2-warfarin",
+            "source_date": "2025-11-20",
+            "display_label": "Inactive medication history: Warfarin 2 mg",
+            "value": "inactive or stopped medication row; dosage: 2 mg; instructions: Historical anticoagulant; stopped before apixaban"
+          },
+          {
+            "source_type": "medication",
+            "source_table": "prescriptions",
+            "source_id": "af-rx-p2-simvast",
+            "source_date": "2023-01-10",
+            "display_label": "Inactive medication history: Simvastatin 20 mg",
+            "value": "inactive or stopped medication row; dosage: 20 mg; instructions: Historical statin record; not active"
           }
         ],
         "recent_note": {
@@ -273,14 +291,6 @@
         }
       },
       "expected_not_promoted": [
-        {
-          "source_type": "medication",
-          "source_table": "prescriptions",
-          "source_id": "af-rx-p2-warfarin",
-          "source_date": "2025-11-20",
-          "display_label": "Warfarin 2 mg",
-          "reason": "Inactive prescription row must not be listed as an active medication."
-        },
         {
           "source_type": "allergy",
           "source_table": "lists",
@@ -327,6 +337,34 @@
             "display_label": "Seasonal allergic rhinitis",
             "value": "Active"
           }
+        ],
+        "recent_encounters": [
+          {
+            "source_type": "encounter",
+            "source_table": "form_encounter",
+            "source_id": "900617",
+            "source_date": "2026-06-17",
+            "display_label": "Reason for visit",
+            "value": "Sparse chart orientation visit with limited imported data."
+          }
+        ],
+        "stale_vitals": [
+          {
+            "source_type": "vital",
+            "source_table": "form_vitals",
+            "source_id": "af-vit-900003-stale-stale-blood-pressure",
+            "source_date": "2024-01-10",
+            "display_label": "Last-known stale blood pressure",
+            "value": "130/82 mmHg (stale; not within 180 days)"
+          },
+          {
+            "source_type": "vital",
+            "source_table": "form_vitals",
+            "source_id": "af-vit-900003-stale-stale-pulse",
+            "source_date": "2024-01-10",
+            "display_label": "Last-known stale pulse",
+            "value": "76 bpm (stale; not within 180 days)"
+          }
         ]
       },
       "known_missing": [
@@ -348,8 +386,7 @@
         }
       ],
       "expected_absent_source_ids": [
-        "af-note-900003",
-        "af-vit-900003-stale"
+        "af-note-900003"
       ],
       "unsupported_requests": [
         {

@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
+use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
@@ -66,7 +67,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('lab', $telemetry->questionType);
         $this->assertSame(['Recent labs'], $telemetry->toolsCalled);
         $this->assertSame(
-            ['Demographics', 'Active problems', 'Active medications', 'Allergies', 'Recent vitals', 'Recent notes and last plan'],
+            array_values(array_diff(ChartQuestionPlanner::defaultSections(), ['Recent labs'])),
             $telemetry->skippedChartSections,
         );
         $this->assertSame(['lab:procedure_result/agentforge-a1c-2026-04@2026-04-10'], $telemetry->sourceIds);
@@ -111,7 +112,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame([], $telemetry->toolsCalled);
         $this->assertSame([], $telemetry->sourceIds);
         $this->assertSame(
-            ['Demographics', 'Active problems', 'Active medications', 'Allergies', 'Recent labs', 'Recent vitals', 'Recent notes and last plan'],
+            ChartQuestionPlanner::defaultSections(),
             $telemetry->skippedChartSections,
         );
         $this->assertSame('not_run', $telemetry->model);

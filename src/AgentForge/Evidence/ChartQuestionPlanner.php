@@ -19,11 +19,14 @@ use OpenEMR\AgentForge\Verification\ClinicalAdviceRefusalPolicy;
 final readonly class ChartQuestionPlanner
 {
     public const SECTION_DEMOGRAPHICS = 'Demographics';
+    public const SECTION_ENCOUNTERS = 'Recent encounters';
     public const SECTION_PROBLEMS = 'Active problems';
     public const SECTION_MEDICATIONS = 'Active medications';
+    public const SECTION_INACTIVE_MEDICATIONS = 'Inactive medication history';
     public const SECTION_ALLERGIES = 'Allergies';
     public const SECTION_LABS = 'Recent labs';
     public const SECTION_VITALS = 'Recent vitals';
+    public const SECTION_STALE_VITALS = 'Last-known stale vitals';
     public const SECTION_NOTES = 'Recent notes and last plan';
 
     /** @return list<string> */
@@ -31,11 +34,14 @@ final readonly class ChartQuestionPlanner
     {
         return [
             self::SECTION_DEMOGRAPHICS,
+            self::SECTION_ENCOUNTERS,
             self::SECTION_PROBLEMS,
             self::SECTION_MEDICATIONS,
+            self::SECTION_INACTIVE_MEDICATIONS,
             self::SECTION_ALLERGIES,
             self::SECTION_LABS,
             self::SECTION_VITALS,
+            self::SECTION_STALE_VITALS,
             self::SECTION_NOTES,
         ];
     }
@@ -52,13 +58,17 @@ final readonly class ChartQuestionPlanner
             return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['medication', 'medications', 'meds', 'prescription', 'prescriptions', 'metformin'])) {
-            return $this->buildPlan('medication', [self::SECTION_MEDICATIONS], $deadlineMs);
+            return $this->buildPlan(
+                'medication',
+                [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
+                $deadlineMs,
+            );
         }
         if ($this->containsAny($normalized, ['a1c', 'lab', 'labs', 'laboratory', 'microalbumin', 'glucose', 'result'])) {
             return $this->buildPlan('lab', [self::SECTION_LABS], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['vital', 'vitals', 'blood pressure', 'bp', 'pulse', 'temperature', 'weight', 'height', 'oxygen', 'o2'])) {
-            return $this->buildPlan('vital', [self::SECTION_VITALS], $deadlineMs);
+            return $this->buildPlan('vital', [self::SECTION_VITALS, self::SECTION_STALE_VITALS], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up'])) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs);
@@ -114,9 +124,9 @@ final readonly class ChartQuestionPlanner
     {
         return match ($questionType) {
             'allergy' => [self::SECTION_ALLERGIES],
-            'medication' => [self::SECTION_MEDICATIONS],
+            'medication' => [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
             'lab' => [self::SECTION_LABS],
-            'vital' => [self::SECTION_VITALS],
+            'vital' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
             'last_plan' => [self::SECTION_NOTES],
             default => [],
         };

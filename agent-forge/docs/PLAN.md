@@ -1992,7 +1992,7 @@ Completed 2026-05-02:
 
 ## Epic 22 - High-Signal Evidence Coverage
 
-Status: Planned. Detailed execution plan lives in `agent-forge/docs/epics/EPIC_HIGH_SIGNAL_EVIDENCE_COVERAGE.md`.
+Status: Implemented with local proof. Detailed execution log lives in `agent-forge/docs/epics/EPIC_HIGH_SIGNAL_EVIDENCE_COVERAGE.md`.
 
 Goal: expand AgentForge evidence coverage only where it materially improves visit briefing and focused follow-up usefulness, without turning the agent into broad chart search or weakening source verification.
 

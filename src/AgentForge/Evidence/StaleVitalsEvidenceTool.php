@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Read-only recent vital-sign evidence for the active patient.
+ * Read-only stale last-known vital-sign evidence for sparse charts.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -14,24 +14,24 @@ namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
 
-final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
+final readonly class StaleVitalsEvidenceTool implements ChartEvidenceTool
 {
     public function __construct(
         private ChartEvidenceRepository $repository,
-        private int $limit = 3,
+        private int $limit = 1,
         private int $staleAfterDays = 180,
     ) {
     }
 
     public function section(): string
     {
-        return 'Recent vitals';
+        return 'Last-known stale vitals';
     }
 
     public function collect(PatientId $patientId): EvidenceResult
     {
         $items = [];
-        foreach ($this->repository->recentVitals($patientId, $this->limit, $this->staleAfterDays) as $row) {
+        foreach ($this->repository->staleVitals($patientId, $this->limit, $this->staleAfterDays) as $row) {
             if (!EvidenceRowValue::truthy($row, 'activity') || !EvidenceRowValue::truthy($row, 'authorized')) {
                 continue;
             }
@@ -42,10 +42,10 @@ final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
                 $items[] = new EvidenceItem(
                     'vital',
                     'form_vitals',
-                    sprintf('%s-%s', $rowId, $field),
+                    sprintf('%s-stale-%s', $rowId, $field),
                     $sourceDate,
-                    $evidence['label'],
-                    $evidence['value'],
+                    sprintf('Last-known stale %s', lcfirst($evidence['label'])),
+                    sprintf('%s (stale; not within %d days)', $evidence['value'], $this->staleAfterDays),
                 );
             }
         }
@@ -53,7 +53,7 @@ final readonly class RecentVitalsEvidenceTool implements ChartEvidenceTool
         if ($items === []) {
             return EvidenceResult::missing(
                 $this->section(),
-                sprintf('Recent vitals not found in the chart within %d days.', $this->staleAfterDays),
+                sprintf('Last-known stale vitals not found outside the %d day recent window.', $this->staleAfterDays),
             );
         }
 

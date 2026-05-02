@@ -38,7 +38,7 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     public function activeProblems(PatientId $patientId, int $limit): array
     {
         return $this->executor->fetchRecords(
-            'SELECT id, external_id, date, title, begdate, activity FROM lists '
+            'SELECT id, external_id, date, title, begdate, diagnosis, activity FROM lists '
             . 'WHERE pid = ? AND type = ? AND activity = 1 '
             . 'ORDER BY COALESCE(begdate, date) DESC LIMIT ' . $this->limit($limit),
             [$patientId->value, 'medical_problem'],
@@ -80,6 +80,41 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
         return array_slice($medications, 0, $limit);
     }
 
+    public function inactiveMedications(PatientId $patientId, int $limit): array
+    {
+        $limit = $this->limit($limit);
+        $prescriptions = $this->executor->fetchRecords(
+            'SELECT id, external_id, start_date, date_added, drug, dosage, drug_dosage_instructions, active, '
+            . '\'prescriptions\' AS source_table '
+            . 'FROM prescriptions WHERE patient_id = ? AND active = 0 '
+            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit,
+            [$patientId->value],
+        );
+
+        $listMedications = $this->executor->fetchRecords(
+            'SELECT l.id AS list_id, l.external_id AS list_external_id, l.date, l.begdate, l.title, '
+            . 'l.activity, lm.id AS lists_medication_id, lm.drug_dosage_instructions, '
+            . 'lm.usage_category_title, lm.request_intent_title, '
+            . 'CASE WHEN lm.id IS NULL THEN \'lists\' ELSE \'lists_medication\' END AS source_table '
+            . 'FROM lists l '
+            . 'LEFT JOIN lists_medication lm ON lm.list_id = l.id '
+            . 'WHERE l.pid = ? AND l.type = ? AND l.activity = 0 '
+            . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit,
+            [$patientId->value, 'medication'],
+        );
+
+        $medications = array_merge($prescriptions, $listMedications);
+        usort(
+            $medications,
+            static fn (array $left, array $right): int => strcmp(
+                self::medicationSortDate($right),
+                self::medicationSortDate($left),
+            ),
+        );
+
+        return array_slice($medications, 0, $limit);
+    }
+
     public function activeAllergies(PatientId $patientId, int $limit): array
     {
         return $this->executor->fetchRecords(
@@ -94,10 +129,12 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     public function recentLabs(PatientId $patientId, int $limit): array
     {
         return $this->executor->fetchRecords(
-            'SELECT pr.procedure_result_id, pr.comments, pr.result_text, pr.result, pr.units, pr.date '
+            'SELECT pr.procedure_result_id, pr.comments, pr.result_text, pr.result, pr.units, pr.date, '
+            . 'pr.result_code, poc.procedure_code '
             . 'FROM procedure_result pr '
             . 'INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id '
             . 'INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id '
+            . 'LEFT JOIN procedure_order_code poc ON poc.procedure_order_id = po.procedure_order_id '
             . 'WHERE po.patient_id = ? '
             . 'ORDER BY pr.date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
@@ -112,6 +149,30 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'FROM form_vitals '
             . 'WHERE pid = ? AND activity = 1 AND authorized = 1 '
             . 'AND date >= DATE_SUB(CURRENT_DATE, INTERVAL ' . $this->days($staleAfterDays) . ' DAY) '
+            . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
+            [$patientId->value],
+        );
+    }
+
+    public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+    {
+        return $this->executor->fetchRecords(
+            'SELECT id, external_id, date, bps, bpd, weight, height, temperature, pulse, respiration, BMI, '
+            . 'oxygen_saturation, activity, authorized '
+            . 'FROM form_vitals '
+            . 'WHERE pid = ? AND activity = 1 AND authorized = 1 '
+            . 'AND date < DATE_SUB(CURRENT_DATE, INTERVAL ' . $this->days($staleAfterDays) . ' DAY) '
+            . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
+            [$patientId->value],
+        );
+    }
+
+    public function recentEncounters(PatientId $patientId, int $limit): array
+    {
+        return $this->executor->fetchRecords(
+            'SELECT encounter, date AS encounter_date, reason '
+            . 'FROM form_encounter '
+            . 'WHERE pid = ? '
             . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
         );

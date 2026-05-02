@@ -19,11 +19,14 @@ final class EvidenceToolFactory
     {
         return [
             new DemographicsEvidenceTool($repository),
+            new RecentEncountersEvidenceTool($repository),
             new ProblemsEvidenceTool($repository),
             new ActiveMedicationsEvidenceTool($repository),
+            new InactiveMedicationHistoryEvidenceTool($repository),
             new AllergiesEvidenceTool($repository),
             new LabsEvidenceTool($repository),
             new RecentVitalsEvidenceTool($repository),
+            new StaleVitalsEvidenceTool($repository),
             new EncountersNotesEvidenceTool($repository),
         ];
     }

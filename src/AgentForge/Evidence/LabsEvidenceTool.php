@@ -42,7 +42,7 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
                 $this->sourceId($row),
                 EvidenceRowValue::dateOnly($row, 'date'),
                 $label,
-                trim($result . ' ' . $units),
+                EvidenceText::bounded($this->value($row, $result, $units), 300),
             );
         }
 
@@ -53,5 +53,19 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
     private function sourceId(array $row): string
     {
         return EvidenceRowValue::firstString($row, 'comments', 'procedure_result_id');
+    }
+
+    /** @param array<string, mixed> $row */
+    private function value(array $row, string $result, string $units): string
+    {
+        $parts = [trim($result . ' ' . $units)];
+        foreach (['result_code' => 'result code', 'procedure_code' => 'order code'] as $key => $label) {
+            $value = EvidenceRowValue::string($row, $key);
+            if ($value !== '') {
+                $parts[] = sprintf('%s: %s', $label, $value);
+            }
+        }
+
+        return implode('; ', $parts);
     }
 }

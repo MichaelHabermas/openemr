@@ -33,7 +33,7 @@ final class SqlEvidenceEvalRunnerTest extends TestCase
 
         $cases = $repository->load($path);
 
-        $this->assertSame('2026-05-02-epic21', $repository->fixtureVersion($path));
+        $this->assertSame('2026-05-02-epic22', $repository->fixtureVersion($path));
         $this->assertSame(
             [
                 'visit_briefing_900001',
@@ -52,7 +52,15 @@ final class SqlEvidenceEvalRunnerTest extends TestCase
             $cases[0]->expectedCitations,
         );
         $this->assertContains('Recent vitals', $cases[2]->expectedMissing);
-        $this->assertContains('af-vit-900003-stale', $cases[3]->forbiddenCitations);
+        $this->assertContains(
+            'medication:prescriptions/af-rx-p2-warfarin@2025-11-20',
+            $cases[2]->expectedCitations,
+        );
+        $this->assertContains(
+            'vital:form_vitals/af-vit-900003-stale-stale-blood-pressure@2024-01-10',
+            $cases[3]->expectedCitations,
+        );
+        $this->assertNotContains('af-vit-900003-stale', $cases[3]->forbiddenCitations);
     }
 
     public function testRunnerPassesWhenExpectedEvidenceAndMissingSignalsArePresent(): void

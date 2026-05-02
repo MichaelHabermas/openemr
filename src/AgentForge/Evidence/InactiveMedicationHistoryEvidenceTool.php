@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Read-only active medication evidence for the active patient.
+ * Read-only inactive medication history evidence for reconciliation context.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -14,7 +14,7 @@ namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
 
-final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
+final readonly class InactiveMedicationHistoryEvidenceTool implements ChartEvidenceTool
 {
     public function __construct(
         private ChartEvidenceRepository $repository,
@@ -25,14 +25,14 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
 
     public function section(): string
     {
-        return 'Active medications';
+        return 'Inactive medication history';
     }
 
     public function collect(PatientId $patientId): EvidenceResult
     {
         $items = [];
-        foreach ($this->repository->activeMedications($patientId, $this->limit) as $row) {
-            if (!$this->active($row)) {
+        foreach ($this->repository->inactiveMedications($patientId, $this->limit) as $row) {
+            if ($this->active($row)) {
                 continue;
             }
 
@@ -46,7 +46,7 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
                 $this->sourceTable($row),
                 $this->sourceId($row),
                 EvidenceRowValue::dateOnly($row, 'start_date', 'date_added', 'begdate', 'date'),
-                EvidenceText::bounded($label, 120),
+                EvidenceText::bounded(sprintf('Inactive medication history: %s', $label), 160),
                 EvidenceText::bounded($this->value($row), $this->maxValueLength),
             );
         }
@@ -54,7 +54,7 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
         if ($items === []) {
             return EvidenceResult::missing(
                 $this->section(),
-                'Active medications not found in checked chart sources: prescriptions, lists, lists_medication.',
+                'Inactive medication history not found in checked chart sources: prescriptions, lists, lists_medication.',
             );
         }
 
@@ -94,14 +94,14 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function value(array $row): string
     {
-        $parts = [];
+        $parts = ['inactive or stopped medication row'];
         foreach (['dosage' => 'dosage', 'drug_dosage_instructions' => 'instructions'] as $key => $label) {
             $value = EvidenceRowValue::string($row, $key);
             if ($value !== '') {
-                $parts[] = $key === 'dosage' ? $value : sprintf('%s: %s', $label, $value);
+                $parts[] = sprintf('%s: %s', $label, $value);
             }
         }
 
-        return $parts === [] ? 'active medication' : implode('; ', $parts);
+        return implode('; ', $parts);
     }
 }

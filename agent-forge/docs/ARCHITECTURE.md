@@ -10,7 +10,7 @@ The agent lives inside the OpenEMR patient chart. A small browser panel sends th
 
 The audit shows the critical constraint: OpenEMR's existing ACL checks are capability-oriented, not patient-resource-oriented. That means coarse permission to read patient data is not enough. The agent needs an explicit patient authorization gate before any chart data is read. The model never gets direct database access. It can only use allowlisted, read-only chart tools controlled by the server.
 
-Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active medications, active allergies, recent labs, recent vitals, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available; allergy evidence checks active `lists` allergy rows; vital evidence checks recent authorized `form_vitals` rows. Duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
+Those tools fetch narrow evidence from the current patient's chart: demographics, standalone recent encounter reasons, active problems, active medications, inactive medication history, active allergies, recent labs, recent vitals, last-known stale vitals, recent notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, medication rows in `lists`, and linked `lists_medication` extension rows where available; inactive medication history is labeled separately and is not reconciled into active medications. Allergy evidence checks active `lists` allergy rows; vital evidence separates recent authorized `form_vitals` rows from stale last-known values. Diagnosis and lab codes are surfaced only as source metadata when already present. Duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
 
 The LLM is not trusted. It receives only the evidence bundle and must produce a structured draft answer from that evidence. The verifier no longer trusts model-supplied claim types for factuality: unsupported tails are blocked, and the substring matcher has been replaced by `EvidenceMatcher` token-set matching with English-month -> ISO date canonicalization (so `April 12, 1976` grounds against stored value `1976-04-12` without weakening exact-value enforcement). Broader semantic paraphrase verification remains a known limitation.
 
@@ -35,7 +35,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - The current UI and request model support same-patient follow-up with a server-owned `conversation_id`, but do not preserve a persistent transcript.
 - The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is proof of source surfacing for each turn.
 - The handler may call more evidence tools than the question requires; selective PHI-minimizing routing remains incomplete.
-- Medication evidence checks active prescriptions, active medication-list entries, and linked medication extension rows, but it does not reconcile duplicates or conflicts into clinical truth.
+- Medication evidence checks active prescriptions, active medication-list entries, linked medication extension rows, and separately labeled inactive medication history, but it does not reconcile duplicates or conflicts into clinical truth.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
 - Observability lives under `src/AgentForge/Observability` and includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
 - Fixture evals prove deterministic orchestration and verifier behavior, but not the full live LLM, SQL, browser, deployed endpoint, or real session path.
@@ -66,8 +66,10 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 | Patient demographics tool | Workflow questions 1 and 4; Use Case 1 | The physician needs to know who the current patient is and what basic chart facts matter. |
 | Active problems tool | Use Case 1; Use Case 2 | Problems are part of the visit briefing and common follow-up context. |
 | Active medications and prescriptions tool | Use Case 1; Use Case 2 | Current medications are explicitly part of the briefing and follow-up examples. |
+| Inactive medication history tool | Use Case 1; Use Case 2 | Stopped medication rows can support medication reconciliation context only when clearly separated from active medications. |
 | Recent labs tool | Use Case 1; Use Case 2 | Recent labs support "what changed" and the A1c-trend example. |
-| Recent encounters and notes tool | Use Case 1; Use Case 2 | The last note and recent encounters support last-plan and change-since-last-visit questions. |
+| Recent encounters and notes tools | Use Case 1; Use Case 2 | Standalone encounter reasons, the last note, and recent encounters support reason-for-visit, last-plan, and change-since-last-visit questions. |
+| Last-known stale vitals tool | Use Case 3 | Sparse charts should distinguish no recent vitals from older cited vitals that are explicitly stale. |
 | Last plan extraction | Use Case 1; Use Case 2 | The last plan is named in the briefing need and follow-up examples. |
 | Source-cited answer display | Use Case 2 boundary; Success Standard | Every factual answer must be traceable to the patient's chart; citation UI surfacing is implemented for the current response payload. |
 | Structured draft plus deterministic verifier | Use Case 2 boundary; Use Case 3 boundary; Success Standard | Draft text is useful only if unsupported chart claims are blocked before display. |
@@ -162,11 +164,14 @@ Start with read-only tools:
 
 - Patient demographics.
 - Active problems.
-- Active medications across `prescriptions`, active `lists` medication rows, and linked `lists_medication` extension rows where available.
+- Active medications across `prescriptions`, active `lists` medication rows, and linked `lists_medication` extension rows where available; instructions are chart evidence, not medication advice.
+- Inactive medication history across the same medication sources, labeled separately from active medications.
 - Active allergies from active `lists` allergy rows.
-- Recent labs.
+- Recent labs, including result/order codes as source metadata when present.
 - Recent authorized vitals from `form_vitals`.
-- Recent encounters and notes.
+- Last-known stale authorized vitals from `form_vitals`, labeled as stale and not recent.
+- Recent encounter reasons from `form_encounter`, independent of clinical notes.
+- Recent notes.
 - Last plan when available.
 
 Tool rules:

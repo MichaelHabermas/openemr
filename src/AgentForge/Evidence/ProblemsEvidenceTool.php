@@ -46,7 +46,7 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
                 $this->sourceId($row),
                 EvidenceRowValue::dateOnly($row, 'begdate', 'date'),
                 EvidenceText::bounded($title, 120),
-                'Active',
+                EvidenceText::bounded($this->value($row), 200),
             );
         }
 
@@ -57,5 +57,16 @@ final readonly class ProblemsEvidenceTool implements ChartEvidenceTool
     private function sourceId(array $row): string
     {
         return EvidenceRowValue::firstString($row, 'external_id', 'id');
+    }
+
+    /** @param array<string, mixed> $row */
+    private function value(array $row): string
+    {
+        $diagnosis = EvidenceRowValue::string($row, 'diagnosis');
+        if ($diagnosis === '') {
+            return 'Active';
+        }
+
+        return sprintf('Active; diagnosis code: %s', $diagnosis);
     }
 }

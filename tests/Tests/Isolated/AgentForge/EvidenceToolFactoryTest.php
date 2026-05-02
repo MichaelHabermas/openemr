@@ -26,11 +26,14 @@ final class EvidenceToolFactoryTest extends TestCase
         $this->assertSame(
             [
                 'Demographics',
+                'Recent encounters',
                 'Active problems',
                 'Active medications',
+                'Inactive medication history',
                 'Allergies',
                 'Recent labs',
                 'Recent vitals',
+                'Last-known stale vitals',
                 'Recent notes and last plan',
             ],
             array_map(static fn ($tool): string => $tool->section(), $tools),
@@ -55,6 +58,11 @@ final class EvidenceToolFactoryTest extends TestCase
                 return [];
             }
 
+            public function inactiveMedications(PatientId $patientId, int $limit): array
+            {
+                return [];
+            }
+
             public function activeAllergies(PatientId $patientId, int $limit): array
             {
                 return [];
@@ -66,6 +74,16 @@ final class EvidenceToolFactoryTest extends TestCase
             }
 
             public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+            {
+                return [];
+            }
+
+            public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+            {
+                return [];
+            }
+
+            public function recentEncounters(PatientId $patientId, int $limit): array
             {
                 return [];
             }

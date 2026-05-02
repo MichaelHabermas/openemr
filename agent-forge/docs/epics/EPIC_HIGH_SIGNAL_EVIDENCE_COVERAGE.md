@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-02T17:06:32-04:00
 **Scope:** backend/evidence/evaluation/docs
-**Status:** Planned
+**Status:** Complete
 
 ---
 
@@ -43,102 +43,112 @@ Kept scope:
 ## Tasks
 
 ### Task 22.1: Standalone Encounter Reason Evidence
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Add a patient-scoped recent encounter evidence path so `form_encounter.reason` is surfaced even when no authorized clinical note exists.
 **Acceptance Map:** `PRD.md` Story 1 reason-for-visit coverage; `ARCHITECTURE.md` recent encounters tool; Epic 21 reason-for-visit gap.
 **Proof Required:** Repository scoping test, evidence tool test for reason-only encounter, SQL eval expected citation/value.
 
 **Subtasks:**
-- [ ] Add repository support for recent encounters or reason-only encounter rows, scoped by patient and bounded by limit.
-- [ ] Add or refactor an encounter evidence tool so `Reason for visit` comes from `form_encounter`.
-- [ ] Preserve note evidence separately so last-plan behavior does not depend on encounter changes.
-- [ ] Add tests for reason-only encounters, linked note encounters, empty reason, and patient scoping.
-- [ ] Add SQL eval expectations for the sparse patient's encounter reason.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Add repository support for recent encounters or reason-only encounter rows, scoped by patient and bounded by limit.
+- [x] Add or refactor an encounter evidence tool so `Reason for visit` comes from `form_encounter`.
+- [x] Preserve note evidence separately so last-plan behavior does not depend on encounter changes.
+- [x] Add tests for reason-only encounters, linked note encounters, empty reason, and patient scoping.
+- [x] Add SQL eval expectations for the sparse patient's encounter reason.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `composer phpunit-isolated -- --filter EvidenceToolsTest`, `composer phpunit-isolated -- --filter SqlChartEvidenceRepositoryIsolationTest`, and Docker SQL eval `7 passed, 0 failed` require `encounter:form_encounter/900617@2026-06-17`.
 
 **Suggested Commit:** `feat(agent-forge): surface standalone encounter reasons`
 
 ---
 
 ### Task 22.2: Medication Detail Evidence
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Emit medication instructions and selected intent/category fields as source-cited evidence when present, without reconciling duplicates or making medication-change claims.
 **Acceptance Map:** `PRD.md` active medications; `AUDIT.md` medication data complexity; `ARCHITECTURE.md` medication evidence caution.
 **Proof Required:** Active medication tool tests for `drug_dosage_instructions`, bounded value tests, verifier/eval fixture update.
 
 **Subtasks:**
-- [ ] Decide the minimum medication detail fields to emit: instructions first, category/intent only if they add briefing value.
-- [ ] Update active medication evidence values to include instructions when present, bounded and source-cited.
-- [ ] Add tests for prescription instructions, `lists_medication` instructions, duplicate rows, and long-text bounding.
-- [ ] Update ground truth/eval expected fragments for seeded medication instructions.
-- [ ] Document that medication detail is chart text, not reconciled medication truth.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Decide the minimum medication detail fields to emit: instructions first; category/intent deferred because it did not add enough briefing value for the evidence bundle.
+- [x] Update active medication evidence values to include instructions when present, bounded and source-cited.
+- [x] Add tests for prescription instructions, `lists_medication` instructions, duplicate rows, and long-text bounding.
+- [x] Update ground truth/eval expected fragments for seeded medication instructions.
+- [x] Document that medication detail is chart text, not reconciled medication truth.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `EvidenceToolsTest` covers prescription instructions, linked `lists_medication` instructions, duplicate rows, missing instructions, inactive exclusion, and long instruction bounding; SQL eval expects seeded instructions.
 
 **Suggested Commit:** `feat(agent-forge): include medication instructions in evidence`
 
 ---
 
 ### Task 22.3: Stale Vitals Last-Known Signal
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Keep recent vitals strict, but add explicit stale last-known vital evidence for sparse charts: no recent vitals, last available stale values by date.
 **Acceptance Map:** `PRD.md` stale-only vitals behavior; `ARCHITECTURE.md` missing data is not negative evidence.
 **Proof Required:** Stale vital repository/tool tests, sparse-chart SQL eval update, wording ensures stale data is not labeled recent.
 
 **Subtasks:**
-- [ ] Add repository support for last available authorized active vitals outside the recent window.
-- [ ] Add evidence output labeled explicitly as stale/last-known, not recent.
-- [ ] Keep current `Recent vitals not found within 180 days` missing signal.
-- [ ] Add sparse-chart tests proving stale vitals are not promoted as recent.
-- [ ] Update SQL eval expected missing plus stale last-known citation/value.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Add repository support for last available authorized active vitals outside the recent window.
+- [x] Add evidence output labeled explicitly as stale/last-known, not recent.
+- [x] Keep current `Recent vitals not found within 180 days` missing signal.
+- [x] Add sparse-chart tests proving stale vitals are not promoted as recent.
+- [x] Update SQL eval expected missing plus stale last-known citation/value.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `EvidenceToolsTest` covers `Last-known stale` labels and values; `SqlChartEvidenceRepositoryIsolationTest` verifies separate recent/stale date predicates; SQL eval expects stale vitals while also expecting `Recent vitals` missing.
 
 **Suggested Commit:** `feat(agent-forge): report last known stale vitals`
 
 ---
 
 ### Task 22.4: Inactive Medication History For Reconciliation
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Add a separate inactive/stopped medication-history evidence section for reconciliation context, explicitly distinct from active medications.
 **Acceptance Map:** Visit briefing medication context; `AUDIT.md` medication rows; Riley warfarin active-exclusion case.
 **Proof Required:** Tests that inactive meds are absent from active meds but present under inactive history; eval forbids active promotion and expects inactive-history citation.
 
 **Subtasks:**
-- [ ] Add a separate inactive medication history repository method with patient scope and bounded limit.
-- [ ] Add an evidence section clearly labeled `Inactive medication history`.
-- [ ] Keep inactive rows excluded from `Active medications`.
-- [ ] Add tests for Riley's stopped warfarin as inactive history and forbidden active promotion.
-- [ ] Update SQL evals to require inactive-history evidence while still forbidding active-med citation.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Add a separate inactive medication history repository method with patient scope and bounded limit.
+- [x] Add an evidence section clearly labeled `Inactive medication history`.
+- [x] Keep inactive rows excluded from `Active medications`.
+- [x] Add tests for Riley's stopped warfarin as inactive history and forbidden active promotion.
+- [x] Update SQL evals to require inactive-history evidence; active-med promotion remains covered at the tool boundary because the SQL eval bundle intentionally includes inactive history as cited evidence.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `EvidenceToolsTest` covers inactive history and active-row exclusion; SQL eval expects `medication:prescriptions/af-rx-p2-warfarin@2025-11-20` only as inactive history.
 
 **Suggested Commit:** `feat(agent-forge): add inactive medication history evidence`
 
 ---
 
 ### Task 22.5: Diagnosis And Lab Code Context
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Surface problem diagnosis codes and lab/result/order codes where present as chart metadata, not as clinical interpretation.
 **Acceptance Map:** Source attribution; `AUDIT.md` weak/optional coding; `PRD.md` lab trend and problem context.
 **Proof Required:** Problem tool tests for diagnosis codes, lab tool tests for result/order codes, docs state codes are source metadata only.
 
 **Subtasks:**
-- [ ] Add problem diagnosis code output when present, likely as separate evidence or appended bounded value.
-- [ ] Add lab result/order code output where available from the procedure chain.
-- [ ] Add tests proving empty/unknown codes are omitted rather than invented.
-- [ ] Update seeded ground truth for diagnosis/lab code evidence.
-- [ ] Document that codes are source metadata and do not enable diagnosis or rule interpretation.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Add problem diagnosis code output when present as bounded source metadata.
+- [x] Add lab result/order code output where available from the procedure chain.
+- [x] Add tests proving empty/unknown codes are omitted rather than invented.
+- [x] Update seeded ground truth for diagnosis/lab code evidence.
+- [x] Document that codes are source metadata and do not enable diagnosis or rule interpretation.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `EvidenceToolsTest` covers problem diagnosis code output and empty lab code omission; SQL eval expects diagnosis/result/order code fragments.
 
 **Suggested Commit:** `feat(agent-forge): surface chart codes as evidence metadata`
 
 ---
 
 ### Task 22.6: Ground Truth, SQL Evals, And Docs
-**Status:** [ ] Pending
+**Status:** [x] Complete
 **Description:** Update seeded ground truth, SQL eval cases, `PLAN.md`, and epic docs so the expanded coverage is explicit and regression-tested.
 **Acceptance Map:** `PLAN.md` proof discipline; Epic 21 SQL eval tier; `PRD.md` evaluation scenarios.
 **Proof Required:** Isolated AgentForge PHPUnit filter, fixture eval runner, SQL eval command documented with result or explicit DB blocker.
@@ -146,11 +156,13 @@ Kept scope:
 **Subtasks:**
 - [x] Add Epic 22 summary to `agent-forge/docs/PLAN.md`.
 - [x] Create `agent-forge/docs/epics/EPIC_HIGH_SIGNAL_EVIDENCE_COVERAGE.md`.
-- [ ] Update `demo-patient-ground-truth.json` and SQL eval cases for all new evidence boundaries.
-- [ ] Update architecture/evaluation docs to name covered, stale, inactive, and intentionally excluded data.
-- [ ] Run isolated AgentForge tests and fixture evals; run SQL evals if DB is available, otherwise record the exact blocker.
-- [ ] Add or update proof for each acceptance criterion this task claims.
-- [ ] Update this epic file with completed proof or an explicit gap.
+- [x] Update `demo-patient-ground-truth.json` and SQL eval cases for all new evidence boundaries.
+- [x] Update architecture/evaluation docs to name covered, stale, inactive, and intentionally excluded data.
+- [x] Run isolated AgentForge tests and fixture evals; run SQL evals if DB is available, otherwise record the exact blocker.
+- [x] Add or update proof for each acceptance criterion this task claims.
+- [x] Update this epic file with completed proof or an explicit gap.
+
+**Proof:** `composer phpunit-isolated -- --filter AgentForge` returned `OK (251 tests, 1272 assertions)`. `php agent-forge/scripts/run-evals.php` returned `28 passed, 0 failed` at `agent-forge/eval-results/eval-results-20260502-214248.json`. After `bash agent-forge/scripts/seed-demo-data.sh`, Docker SQL eval returned `7 passed, 0 failed` at `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/sql-evidence-eval-results-20260502-214120.json`.
 
 **Suggested Commit:** `docs(agent-forge): plan high signal evidence coverage`
 
@@ -158,12 +170,12 @@ Kept scope:
 
 ## Review Checkpoint
 
-- [ ] Every source acceptance criterion has code, test, human proof, or a named gap.
-- [ ] Every required proof item has an executable path before implementation starts.
-- [ ] Boundary/orchestration behavior is tested when evidence repository/tool boundaries change.
-- [ ] Security/logging/error-handling requirements are implemented or explicitly reported as gaps.
-- [ ] Human verification items are checked only after they are actually performed.
-- [ ] Known seeded DB prerequisites for SQL proof are created or explicitly assigned as tasks.
+- [x] Every source acceptance criterion has code, test, human proof, or a named gap.
+- [x] Every required proof item has an executable path before implementation starts.
+- [x] Boundary/orchestration behavior is tested when evidence repository/tool boundaries change.
+- [x] Security/logging/error-handling requirements are implemented or explicitly reported as gaps.
+- [x] Human verification items are checked only after they are actually performed.
+- [x] Known seeded DB prerequisites for SQL proof are created or explicitly assigned as tasks.
 
 ---
 
@@ -206,3 +218,4 @@ Do not mark this epic complete if any of these are true:
 ## Change Log
 
 - 2026-05-02: Planned Epic 22 from first-principles scope review. Added PLAN.md backlog section and this detailed epic file. Implementation is intentionally not started.
+- 2026-05-02: Implemented Epic 22 evidence coverage. Proof: focused evidence/repository/eval tests pass, full `AgentForge` isolated filter passes, fixture evals pass, Docker seeded SQL evidence evals pass. Host SQL eval without Docker context failed with `mysqli_query(): Argument #1 ($mysql) must be of type mysqli, false given`; Docker SQL eval is the accepted SQL proof path for this run.

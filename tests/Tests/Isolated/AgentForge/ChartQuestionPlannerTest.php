@@ -41,11 +41,11 @@ final class ChartQuestionPlannerTest extends TestCase
             $planner->plan(new AgentQuestion('Show me the recent A1c trend.'), 8000)->sections,
         );
         $this->assertSame(
-            [ChartQuestionPlanner::SECTION_MEDICATIONS],
+            [ChartQuestionPlanner::SECTION_MEDICATIONS, ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS],
             $planner->plan(new AgentQuestion('What medications are active?'), 8000)->sections,
         );
         $this->assertSame(
-            [ChartQuestionPlanner::SECTION_MEDICATIONS],
+            [ChartQuestionPlanner::SECTION_MEDICATIONS, ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS],
             $planner->plan(new AgentQuestion('List current prescriptions.'), 8000)->sections,
         );
         $this->assertSame(
@@ -61,7 +61,7 @@ final class ChartQuestionPlannerTest extends TestCase
             $planner->plan(new AgentQuestion('What was the last plan?'), 8000)->sections,
         );
         $this->assertSame(
-            [ChartQuestionPlanner::SECTION_VITALS],
+            [ChartQuestionPlanner::SECTION_VITALS, ChartQuestionPlanner::SECTION_STALE_VITALS],
             $planner->plan(new AgentQuestion('Show me recent blood pressure and pulse.'), 8000)->sections,
         );
         $this->assertSame(
@@ -82,10 +82,13 @@ final class ChartQuestionPlannerTest extends TestCase
         $this->assertSame(
             [
                 ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                ChartQuestionPlanner::SECTION_ENCOUNTERS,
                 ChartQuestionPlanner::SECTION_PROBLEMS,
                 ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS,
                 ChartQuestionPlanner::SECTION_ALLERGIES,
                 ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_STALE_VITALS,
                 ChartQuestionPlanner::SECTION_NOTES,
             ],
             $plan->skippedSections,

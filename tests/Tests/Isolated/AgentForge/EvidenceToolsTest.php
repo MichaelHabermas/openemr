@@ -18,9 +18,12 @@ use OpenEMR\AgentForge\Evidence\AllergiesEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\DemographicsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EncountersNotesEvidenceTool;
+use OpenEMR\AgentForge\Evidence\InactiveMedicationHistoryEvidenceTool;
 use OpenEMR\AgentForge\Evidence\LabsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ProblemsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\RecentEncountersEvidenceTool;
 use OpenEMR\AgentForge\Evidence\RecentVitalsEvidenceTool;
+use OpenEMR\AgentForge\Evidence\StaleVitalsEvidenceTool;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolsTest extends TestCase
@@ -89,7 +92,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Type 2 diabetes mellitus', $result->items[0]->displayLabel);
-        $this->assertSame('Active', $result->items[0]->value);
+        $this->assertSame('Active; diagnosis code: ICD10:E11.9', $result->items[0]->value);
         $this->assertSame('problem:lists/af-prob-diabetes@2025-09-10', $result->items[0]->citation());
     }
 
@@ -139,7 +142,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Metformin ER 500 mg', $result->items[0]->displayLabel);
-        $this->assertSame('500 mg', $result->items[0]->value);
+        $this->assertSame('500 mg; instructions: Take 1 tablet by mouth daily with evening meal', $result->items[0]->value);
         $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
     }
 
@@ -178,7 +181,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(1, $result->items);
         $this->assertSame('Albuterol inhaler', $result->items[0]->displayLabel);
-        $this->assertSame('active medication', $result->items[0]->value);
+        $this->assertSame('instructions: Use 2 puffs every 6 hours as needed', $result->items[0]->value);
         $this->assertSame('medication:lists_medication/22@2026-02-02', $result->items[0]->citation());
     }
 
@@ -226,8 +229,8 @@ final class EvidenceToolsTest extends TestCase
         $this->assertCount(2, $result->items);
         $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
         $this->assertSame('medication:lists_medication/af-list-metformin@2026-03-16', $result->items[1]->citation());
-        $this->assertSame('500 mg', $result->items[0]->value);
-        $this->assertSame('active medication', $result->items[1]->value);
+        $this->assertSame('500 mg; instructions: Take 1 tablet by mouth daily with evening meal', $result->items[0]->value);
+        $this->assertSame('instructions: Patient reports taking twice daily', $result->items[1]->value);
     }
 
     public function testActiveMedicationsToolDoesNotInventMissingInstructions(): void
@@ -303,6 +306,69 @@ final class EvidenceToolsTest extends TestCase
         $this->assertStringEndsWith('...', $result->items[0]->value);
     }
 
+    public function testActiveMedicationsToolBoundsLongInstructions(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'id' => 1,
+                'external_id' => 'af-rx-long-instructions',
+                'start_date' => '2026-03-15',
+                'drug' => 'Long Instruction Medication',
+                'drug_dosage_instructions' => str_repeat('i', 1000),
+                'active' => 1,
+                'source_table' => 'prescriptions',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame(303, strlen($result->items[0]->value));
+        $this->assertStringStartsWith('instructions: ', $result->items[0]->value);
+        $this->assertStringEndsWith('...', $result->items[0]->value);
+    }
+
+    public function testInactiveMedicationHistoryToolSurfacesInactiveMedicationSeparately(): void
+    {
+        $result = (new InactiveMedicationHistoryEvidenceTool($this->repository(inactiveMedications: [
+            [
+                'id' => 10,
+                'external_id' => 'af-rx-warfarin-stopped',
+                'start_date' => '2025-11-20',
+                'drug' => 'Warfarin 2 mg',
+                'dosage' => '2 mg',
+                'drug_dosage_instructions' => 'Stopped after apixaban started',
+                'active' => 0,
+                'source_table' => 'prescriptions',
+            ],
+        ])))->collect(new PatientId(900002));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Inactive medication history: Warfarin 2 mg', $result->items[0]->displayLabel);
+        $this->assertSame(
+            'inactive or stopped medication row; dosage: 2 mg; instructions: Stopped after apixaban started',
+            $result->items[0]->value,
+        );
+        $this->assertSame('medication:prescriptions/af-rx-warfarin-stopped@2025-11-20', $result->items[0]->citation());
+    }
+
+    public function testInactiveMedicationHistoryToolDoesNotSurfaceActiveRows(): void
+    {
+        $result = (new InactiveMedicationHistoryEvidenceTool($this->repository(inactiveMedications: [
+            [
+                'id' => 10,
+                'external_id' => 'af-rx-active',
+                'start_date' => '2025-11-20',
+                'drug' => 'Active medication',
+                'active' => 1,
+                'source_table' => 'prescriptions',
+            ],
+        ])))->collect(new PatientId(900002));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(
+            ['Inactive medication history not found in checked chart sources: prescriptions, lists, lists_medication.'],
+            $result->missingSections,
+        );
+    }
+
     public function testAllergiesToolReturnsActiveAllergyEvidence(): void
     {
         $result = (new AllergiesEvidenceTool($this->repository()))->collect(new PatientId(900001));
@@ -344,8 +410,26 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Hemoglobin A1c', $result->items[0]->displayLabel);
-        $this->assertSame('8.2 %', $result->items[0]->value);
+        $this->assertSame('8.2 %; result code: 4548-4; order code: 4548-4', $result->items[0]->value);
         $this->assertSame('lab:procedure_result/agentforge-a1c-2026-01@2026-01-09', $result->items[0]->citation());
+    }
+
+    public function testLabsToolOmitsEmptyCodes(): void
+    {
+        $result = (new LabsEvidenceTool($this->repository(labs: [
+            [
+                'procedure_result_id' => 1,
+                'comments' => 'agentforge-lab-no-code',
+                'result_text' => 'Glucose',
+                'date' => '2026-04-10 12:00:00',
+                'units' => 'mg/dL',
+                'result' => '101',
+                'result_code' => '',
+                'procedure_code' => '',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertSame('101 mg/dL', $result->items[0]->value);
     }
 
     public function testLabsToolReturnsMissingWhenNoLabsExist(): void
@@ -383,6 +467,28 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertSame([], $result->items);
         $this->assertSame(['Recent vitals not found in the chart within 180 days.'], $result->missingSections);
+    }
+
+    public function testStaleVitalsToolReturnsLastKnownStaleEvidenceSeparately(): void
+    {
+        $result = (new StaleVitalsEvidenceTool($this->repository(staleVitals: [
+            [
+                'id' => 9,
+                'external_id' => 'af-vit-900003-stale',
+                'date' => '2025-01-03',
+                'bps' => '130',
+                'bpd' => '82',
+                'pulse' => '76',
+                'activity' => 1,
+                'authorized' => 1,
+            ],
+        ])))->collect(new PatientId(900003));
+
+        $this->assertCount(2, $result->items);
+        $this->assertSame('Last-known stale blood pressure', $result->items[0]->displayLabel);
+        $this->assertSame('130/82 mmHg (stale; not within 180 days)', $result->items[0]->value);
+        $this->assertSame('vital:form_vitals/af-vit-900003-stale-stale-blood-pressure@2025-01-03', $result->items[0]->citation());
+        $this->assertSame('Last-known stale pulse', $result->items[1]->displayLabel);
     }
 
     public function testRecentVitalsToolDoesNotSurfaceUnauthorizedRows(): void
@@ -439,7 +545,37 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('note:form_clinical_notes/af-note-20260415@2026-04-15', $result->items[0]->citation());
     }
 
-    public function testNotesToolReturnsEncounterReasonEvidenceWhenLinked(): void
+    public function testRecentEncountersToolReturnsReasonOnlyEncounterEvidence(): void
+    {
+        $result = (new RecentEncountersEvidenceTool($this->repository(encounters: [
+            [
+                'encounter' => 900617,
+                'encounter_date' => '2026-06-17',
+                'reason' => 'Sparse chart orientation visit with limited imported data.',
+            ],
+        ])))->collect(new PatientId(900003));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Reason for visit', $result->items[0]->displayLabel);
+        $this->assertSame('Sparse chart orientation visit with limited imported data.', $result->items[0]->value);
+        $this->assertSame('encounter:form_encounter/900617@2026-06-17', $result->items[0]->citation());
+    }
+
+    public function testRecentEncountersToolOmitsEmptyReasons(): void
+    {
+        $result = (new RecentEncountersEvidenceTool($this->repository(encounters: [
+            [
+                'encounter' => 900617,
+                'encounter_date' => '2026-06-17',
+                'reason' => '',
+            ],
+        ])))->collect(new PatientId(900003));
+
+        $this->assertSame([], $result->items);
+        $this->assertSame(['Recent encounter reasons not found in the chart.'], $result->missingSections);
+    }
+
+    public function testNotesToolKeepsLastPlanSeparateFromEncounterReasonEvidence(): void
     {
         $result = (new EncountersNotesEvidenceTool($this->repository(notes: [
             [
@@ -456,11 +592,9 @@ final class EvidenceToolsTest extends TestCase
             ],
         ])))->collect(new PatientId(900001));
 
-        $this->assertCount(2, $result->items);
-        $this->assertSame('Reason for visit', $result->items[0]->displayLabel);
-        $this->assertSame('Follow-up for diabetes and blood pressure before a scheduled primary care visit.', $result->items[0]->value);
-        $this->assertSame('encounter:form_encounter/900415@2026-04-15', $result->items[0]->citation());
-        $this->assertSame('Last plan', $result->items[1]->displayLabel);
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Last plan', $result->items[0]->displayLabel);
+        $this->assertSame('note:form_clinical_notes/af-note-20260415@2026-04-15', $result->items[0]->citation());
     }
 
     public function testNotesToolReturnsMissingWhenNoLastPlanExists(): void
@@ -501,19 +635,36 @@ final class EvidenceToolsTest extends TestCase
         ?array $demographics = null,
         ?array $problems = null,
         ?array $medications = null,
+        ?array $inactiveMedications = null,
         ?array $allergies = null,
         ?array $labs = null,
         ?array $vitals = null,
+        ?array $staleVitals = null,
+        ?array $encounters = null,
         ?array $notes = null,
     ): ChartEvidenceRepository {
-        return new class ($demographics, $problems, $medications, $allergies, $labs, $vitals, $notes) implements ChartEvidenceRepository {
+        return new class (
+            $demographics,
+            $problems,
+            $medications,
+            $inactiveMedications,
+            $allergies,
+            $labs,
+            $vitals,
+            $staleVitals,
+            $encounters,
+            $notes
+        ) implements ChartEvidenceRepository {
             /**
              * @param array<string, mixed>|null $demographics
              * @param list<array<string, mixed>>|null $problems
              * @param list<array<string, mixed>>|null $medications
+             * @param list<array<string, mixed>>|null $inactiveMedications
              * @param list<array<string, mixed>>|null $allergies
              * @param list<array<string, mixed>>|null $labs
              * @param list<array<string, mixed>>|null $vitals
+             * @param list<array<string, mixed>>|null $staleVitals
+             * @param list<array<string, mixed>>|null $encounters
              * @param list<array<string, mixed>>|null $notes
              */
             public function __construct(
@@ -524,11 +675,17 @@ final class EvidenceToolsTest extends TestCase
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $medications,
                 /** @var list<array<string, mixed>>|null */
+                private readonly ?array $inactiveMedications,
+                /** @var list<array<string, mixed>>|null */
                 private readonly ?array $allergies,
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $labs,
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $vitals,
+                /** @var list<array<string, mixed>>|null */
+                private readonly ?array $staleVitals,
+                /** @var list<array<string, mixed>>|null */
+                private readonly ?array $encounters,
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $notes,
             ) {
@@ -557,6 +714,7 @@ final class EvidenceToolsTest extends TestCase
                         'title' => 'Type 2 diabetes mellitus',
                         'begdate' => '2025-09-10 00:00:00',
                         'date' => '2025-09-10 09:00:00',
+                        'diagnosis' => 'ICD10:E11.9',
                         'activity' => 1,
                     ],
                     [
@@ -565,6 +723,7 @@ final class EvidenceToolsTest extends TestCase
                         'title' => 'Essential hypertension',
                         'begdate' => '2024-02-18 00:00:00',
                         'date' => '2024-02-18 09:00:00',
+                        'diagnosis' => 'ICD10:I10',
                         'activity' => 1,
                     ],
                 ];
@@ -595,6 +754,12 @@ final class EvidenceToolsTest extends TestCase
                         'source_table' => 'prescriptions',
                     ],
                 ];
+            }
+
+            /** @return list<array<string, mixed>> */
+            public function inactiveMedications(PatientId $patientId, int $limit): array
+            {
+                return array_slice($this->inactiveMedications ?? [], 0, $limit);
             }
 
             /** @return list<array<string, mixed>> */
@@ -636,6 +801,8 @@ final class EvidenceToolsTest extends TestCase
                         'date' => '2026-01-09 12:00:00',
                         'units' => '%',
                         'result' => '8.2',
+                        'result_code' => '4548-4',
+                        'procedure_code' => '4548-4',
                     ],
                     [
                         'procedure_result_id' => 90000102,
@@ -644,6 +811,8 @@ final class EvidenceToolsTest extends TestCase
                         'date' => '2026-04-10 12:00:00',
                         'units' => '%',
                         'result' => '7.4',
+                        'result_code' => '4548-4',
+                        'procedure_code' => '4548-4',
                     ],
                 ];
             }
@@ -677,6 +846,24 @@ final class EvidenceToolsTest extends TestCase
                         'pulse' => '80',
                         'activity' => 1,
                         'authorized' => 1,
+                    ],
+                ], 0, $limit);
+            }
+
+            /** @return list<array<string, mixed>> */
+            public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
+            {
+                return array_slice($this->staleVitals ?? [], 0, $limit);
+            }
+
+            /** @return list<array<string, mixed>> */
+            public function recentEncounters(PatientId $patientId, int $limit): array
+            {
+                return array_slice($this->encounters ?? [
+                    [
+                        'encounter' => 900415,
+                        'encounter_date' => '2026-04-15',
+                        'reason' => 'Follow-up for diabetes and blood pressure before a scheduled primary care visit.',
                     ],
                 ], 0, $limit);
             }

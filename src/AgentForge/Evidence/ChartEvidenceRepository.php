@@ -26,6 +26,9 @@ interface ChartEvidenceRepository
     public function activeMedications(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
+    public function inactiveMedications(PatientId $patientId, int $limit): array;
+
+    /** @return list<array<string, mixed>> */
     public function activeAllergies(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
@@ -33,6 +36,12 @@ interface ChartEvidenceRepository
 
     /** @return list<array<string, mixed>> */
     public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array;
+
+    /** @return list<array<string, mixed>> */
+    public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array;
+
+    /** @return list<array<string, mixed>> */
+    public function recentEncounters(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
     public function recentNotes(PatientId $patientId, int $limit): array;
