@@ -118,7 +118,7 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('not_run', $telemetry->verifierResult);
     }
 
-    public function testAmbiguousQuestionIsRefusedBeforeEvidenceAccess(): void
+    public function testUnmatchedQuestionFallsBackToVisitBriefingAndCollectsEvidence(): void
     {
         $tool = new VerifiedRecordingEvidenceTool();
         $handler = new VerifiedAgentHandler(
@@ -127,19 +127,15 @@ final class VerifiedAgentHandlerTest extends TestCase
             new DraftVerifier(),
         );
 
-        $response = $handler->handle($this->request('What should I know?'));
+        $response = $handler->handle($this->request('Tell me about this patient.'));
         $telemetry = $handler->lastTelemetry();
 
-        $this->assertSame('refused', $response->status);
-        $this->assertFalse($tool->called);
-        $this->assertStringContainsString('specific chart question', $response->refusalsOrWarnings[0]);
+        $this->assertSame('ok', $response->status);
+        $this->assertTrue($tool->called);
         $this->assertNotNull($telemetry);
-        $this->assertSame('ambiguous_question', $telemetry->questionType);
-        $this->assertSame('ambiguous_question', $telemetry->failureReason);
-        $this->assertSame(
-            ['Demographics', 'Active problems', 'Active medications', 'Recent labs', 'Recent notes and last plan'],
-            $telemetry->skippedChartSections,
-        );
+        $this->assertSame('visit_briefing', $telemetry->questionType);
+        $this->assertNull($telemetry->failureReason);
+        $this->assertContains('Recent labs', $telemetry->toolsCalled);
     }
 
     public function testToolFailureIsVisibleWithoutLeakingInternalError(): void

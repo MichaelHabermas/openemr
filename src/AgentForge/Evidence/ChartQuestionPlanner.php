@@ -52,16 +52,8 @@ final readonly class ChartQuestionPlanner
         if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up'])) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs);
         }
-        if ($this->containsAny($normalized, ['briefing', 'summary', 'summarize', 'overview', 'changed', 'full chart'])) {
-            return $this->buildPlan('visit_briefing', self::defaultSections(), $deadlineMs);
-        }
 
-        return $this->buildPlan(
-            'ambiguous_question',
-            [],
-            $deadlineMs,
-            'Please ask a specific chart question, such as recent labs, active medications, or the last plan.',
-        );
+        return $this->buildPlan('visit_briefing', self::defaultSections(), $deadlineMs);
     }
 
     /** @param list<string> $sections */

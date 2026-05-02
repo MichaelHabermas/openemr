@@ -77,14 +77,24 @@ final class ChartQuestionPlannerTest extends TestCase
         );
     }
 
-    public function testAmbiguousChartQuestionUsesConservativeMinimalRoute(): void
+    public function testUnmatchedChartQuestionFallsBackToVisitBriefing(): void
     {
-        $plan = (new ChartQuestionPlanner())->plan(new AgentQuestion('What should I know?'), 8000);
+        $planner = new ChartQuestionPlanner();
 
-        $this->assertSame('ambiguous_question', $plan->questionType);
-        $this->assertTrue($plan->refused());
-        $this->assertSame([], $plan->sections);
-        $this->assertSame(ChartQuestionPlanner::defaultSections(), $plan->skippedSections);
-        $this->assertStringContainsString('specific chart question', (string) $plan->refusal);
+        foreach (
+            [
+                'What should I know?',
+                'Tell me about this patient.',
+                'Give me a summary of this patient\'s chart.',
+            ] as $question
+        ) {
+            $plan = $planner->plan(new AgentQuestion($question), 8000);
+
+            $this->assertSame('visit_briefing', $plan->questionType, $question);
+            $this->assertFalse($plan->refused(), $question);
+            $this->assertSame(ChartQuestionPlanner::defaultSections(), $plan->sections, $question);
+            $this->assertSame([], $plan->skippedSections, $question);
+            $this->assertNull($plan->refusal, $question);
+        }
     }
 }

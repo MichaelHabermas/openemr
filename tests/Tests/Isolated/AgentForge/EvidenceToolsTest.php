@@ -114,7 +114,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Metformin ER 500 mg', $result->items[0]->displayLabel);
-        $this->assertSame('Take 1 tablet by mouth daily with evening meal', $result->items[0]->value);
+        $this->assertSame('500 mg', $result->items[0]->value);
         $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
     }
 
@@ -133,7 +133,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(1, $result->items);
         $this->assertSame('Atorvastatin 20 mg', $result->items[0]->displayLabel);
-        $this->assertSame('Active medication-list entry; instructions not found in the chart.', $result->items[0]->value);
+        $this->assertSame('active medication', $result->items[0]->value);
         $this->assertSame('medication:lists/af-med-list-only@2026-02-01', $result->items[0]->citation());
     }
 
@@ -153,7 +153,7 @@ final class EvidenceToolsTest extends TestCase
 
         $this->assertCount(1, $result->items);
         $this->assertSame('Albuterol inhaler', $result->items[0]->displayLabel);
-        $this->assertSame('Use 2 puffs every 6 hours as needed', $result->items[0]->value);
+        $this->assertSame('active medication', $result->items[0]->value);
         $this->assertSame('medication:lists_medication/22@2026-02-02', $result->items[0]->citation());
     }
 
@@ -165,6 +165,7 @@ final class EvidenceToolsTest extends TestCase
                 'external_id' => 'af-rx-metformin',
                 'start_date' => '2026-03-15',
                 'drug' => 'Metformin ER 500 mg',
+                'dosage' => '500 mg',
                 'drug_dosage_instructions' => 'Take 1 tablet by mouth daily with evening meal',
                 'active' => 1,
                 'source_table' => 'prescriptions',
@@ -183,7 +184,8 @@ final class EvidenceToolsTest extends TestCase
         $this->assertCount(2, $result->items);
         $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
         $this->assertSame('medication:lists_medication/af-list-metformin@2026-03-16', $result->items[1]->citation());
-        $this->assertSame('Patient reports taking twice daily', $result->items[1]->value);
+        $this->assertSame('500 mg', $result->items[0]->value);
+        $this->assertSame('active medication', $result->items[1]->value);
     }
 
     public function testActiveMedicationsToolDoesNotInventMissingInstructions(): void
@@ -200,7 +202,7 @@ final class EvidenceToolsTest extends TestCase
             ],
         ])))->collect(new PatientId(900001));
 
-        $this->assertSame('Active prescription; instructions not found in the chart.', $result->items[0]->value);
+        $this->assertSame('active medication', $result->items[0]->value);
     }
 
     public function testActiveMedicationsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
@@ -241,15 +243,15 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('medication:lists/13@2026-02-03', $result->items[0]->citation());
     }
 
-    public function testActiveMedicationsToolBoundsLongInstructions(): void
+    public function testActiveMedicationsToolBoundsLongDosage(): void
     {
         $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
             [
                 'id' => 1,
                 'external_id' => 'af-rx-long',
                 'start_date' => '2026-03-15',
-                'drug' => 'Long Instruction Medication',
-                'drug_dosage_instructions' => str_repeat('a', 1000),
+                'drug' => 'Long Dosage Medication',
+                'dosage' => str_repeat('a', 1000),
                 'active' => 1,
                 'source_table' => 'prescriptions',
             ],
@@ -396,6 +398,7 @@ final class EvidenceToolsTest extends TestCase
                         'external_id' => 'af-rx-metformin',
                         'start_date' => '2026-03-15',
                         'drug' => 'Metformin ER 500 mg',
+                        'dosage' => '500 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily with evening meal',
                         'active' => 1,
                         'source_table' => 'prescriptions',
@@ -405,6 +408,7 @@ final class EvidenceToolsTest extends TestCase
                         'external_id' => 'af-rx-lisinopril',
                         'start_date' => '2026-03-15',
                         'drug' => 'Lisinopril 10 mg',
+                        'dosage' => '10 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily',
                         'active' => 1,
                         'source_table' => 'prescriptions',

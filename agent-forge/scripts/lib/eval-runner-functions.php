@@ -173,8 +173,8 @@ function agentforge_eval_tools(string $scenario): array
             new EvidenceItem('problem', 'lists', 'af-prob-diabetes', '2025-09-10', 'Type 2 diabetes mellitus', 'Active problem since 2025-09-10'),
         ]),
         new EvalEvidenceTool('Active medications', [
-            new EvidenceItem('medication', 'prescriptions', 'af-rx-metformin', '2026-03-15', 'Metformin ER 500 mg', 'Take 1 tablet by mouth daily with evening meal'),
-            new EvidenceItem('medication', 'prescriptions', 'af-rx-lisinopril', '2026-03-15', 'Lisinopril 10 mg', 'Take 1 tablet by mouth daily'),
+            new EvidenceItem('medication', 'prescriptions', 'af-rx-metformin', '2026-03-15', 'Metformin ER 500 mg', '500 mg'),
+            new EvidenceItem('medication', 'prescriptions', 'af-rx-lisinopril', '2026-03-15', 'Lisinopril 10 mg', '10 mg'),
         ]),
         new EvalEvidenceTool('Recent labs', [
             new EvidenceItem('lab', 'procedure_result', 'agentforge-a1c-2026-01', '2026-01-09', 'Hemoglobin A1c', '8.2 %'),

@@ -94,22 +94,11 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
     /** @param array<string, mixed> $row */
     private function value(array $row): string
     {
-        $instructions = EvidenceRowValue::string($row, 'drug_dosage_instructions');
-        if ($instructions !== '') {
-            return $instructions;
+        $dosage = EvidenceRowValue::string($row, 'dosage');
+        if ($dosage !== '') {
+            return $dosage;
         }
 
-        $metadata = array_filter([
-            EvidenceRowValue::string($row, 'usage_category_title'),
-            EvidenceRowValue::string($row, 'request_intent_title'),
-        ]);
-
-        if ($metadata !== []) {
-            return 'Active medication; ' . implode('; ', $metadata) . '.';
-        }
-
-        return $this->sourceTable($row) === 'prescriptions'
-            ? 'Active prescription; instructions not found in the chart.'
-            : 'Active medication-list entry; instructions not found in the chart.';
+        return 'active medication';
     }
 }

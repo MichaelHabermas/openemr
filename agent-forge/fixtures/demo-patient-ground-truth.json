@@ -47,7 +47,7 @@
         "source_id": "af-rx-metformin",
         "source_date": "2026-03-15",
         "display_label": "Metformin ER 500 mg",
-        "value": "Take 1 tablet by mouth daily with evening meal"
+        "value": "500 mg"
       },
       {
         "source_type": "medication",
@@ -55,7 +55,7 @@
         "source_id": "af-rx-lisinopril",
         "source_date": "2026-03-15",
         "display_label": "Lisinopril 10 mg",
-        "value": "Take 1 tablet by mouth daily"
+        "value": "10 mg"
       }
     ],
     "recent_labs": [

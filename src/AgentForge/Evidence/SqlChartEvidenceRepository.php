@@ -49,7 +49,7 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     {
         $limit = $this->limit($limit);
         $prescriptions = $this->executor->fetchRecords(
-            'SELECT id, external_id, start_date, date_added, drug, drug_dosage_instructions, active, '
+            'SELECT id, external_id, start_date, date_added, drug, dosage, drug_dosage_instructions, active, '
             . '\'prescriptions\' AS source_table '
             . 'FROM prescriptions WHERE patient_id = ? AND active = 1 '
             . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit,

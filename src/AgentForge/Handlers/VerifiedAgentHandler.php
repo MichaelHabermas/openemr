@@ -43,7 +43,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         DraftVerifier $verifier,
         LoggerInterface $logger = new NullLogger(),
         ?AgentForgeClock $clock = null,
-        private readonly int $deadlineMs = 8000,
+        private readonly int $deadlineMs = 20000,
     ) {
         $this->clock = $clock ?? new SystemAgentForgeClock();
         $this->planner = new ChartQuestionPlanner();
