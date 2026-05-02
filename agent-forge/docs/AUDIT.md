@@ -40,8 +40,8 @@ Already implemented:
 Accepted v1 limitations:
 
 - Authorization currently covers direct provider, encounter provider, and supervisor relationships only. Care-team membership, facility scope, schedule-derived access, group assignment, and broader delegation are deferred and must fail closed.
-- Medication evidence currently covers active prescriptions for the demo path. Complete "current medications" support still needs `lists` and `lists_medication` coverage.
-- Performance P1 is identified but not remediated; composite-index work is planned, not closed.
+- Medication evidence now checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available. It still treats duplicates, conflicts, uncoded rows, and missing instructions as chart evidence rather than reconciled clinical truth.
+- Performance P1 has a remediation plan but no migration in this pass; composite-index implementation still requires query-plan proof and OpenEMR migration review.
 - Observability is structured logging, not full observability. Per-step timing, aggregation, SLOs, and alerting remain planned work.
 
 Planned remediation:
@@ -128,7 +128,14 @@ Planned remediation:
 
 **Risk for the agent:** The first implementation should use a small number of bounded, patient-specific queries. Broad chart scans, panel-wide precomputation, and open-ended search should be deferred.
 
-**Remediation status:** Open. The audit finding is not closed by documentation or implementation. Future work must list the exact agent query predicates, propose OpenEMR-compatible composite indexes where justified, capture before/after query evidence, and include rollback considerations. No migration is created as part of the documentation-only remediation plan.
+**Remediation status:** Planned, not migrated. The active agent predicates are now documented for:
+
+- Active prescriptions: `prescriptions.patient_id = ? AND prescriptions.active = 1`, candidate composite index `prescriptions(patient_id, active)`.
+- Active medication-list entries: `lists.pid = ? AND lists.type = 'medication' AND lists.activity = 1`, candidate composite index `lists(pid, type, activity)`.
+- Linked medication extensions: `lists_medication.list_id = lists.id`, already supported by `lists_medication_list_idx`.
+- Recent notes and encounters: current query remains bounded by `form_clinical_notes.pid` and joins `form_encounter`; future index work must inspect deployed `EXPLAIN` output before proposing changes.
+
+No migration is created in Epic 13. Future implementation must capture before/after `EXPLAIN`, review the migration against OpenEMR conventions, and document rollback.
 
 ### P2. No runtime latency benchmark has been established
 
@@ -177,7 +184,7 @@ Planned remediation:
 
 **Risk for the agent:** "Current medications" is not a single trivial table read. The agent must define exactly which medication sources it reads and cite the rows used.
 
-**Remediation status:** Open for complete medication coverage. The current demo path reads active prescriptions, but complete medication evidence must also cover medication rows in `lists` and extension rows in `lists_medication`, with explicit handling for inactive, uncoded, duplicate, and conflicting records.
+**Remediation status:** Implemented for bounded evidence coverage. The active medication evidence path checks active rows in `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available. Inactive rows are not surfaced as active evidence. Uncoded, duplicate, conflicting, and instruction-missing records are displayed as source-cited chart evidence without reconciliation or medication-change advice.
 
 ### D4. Coded fields are optional
 

@@ -23,7 +23,7 @@ interface ChartEvidenceRepository
     public function activeProblems(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
-    public function activePrescriptions(PatientId $patientId, int $limit): array;
+    public function activeMedications(PatientId $patientId, int $limit): array;
 
     /** @return list<array<string, mixed>> */
     public function recentLabs(PatientId $patientId, int $limit): array;

@@ -12,12 +12,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Evidence\ActiveMedicationsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\DemographicsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EncountersNotesEvidenceTool;
 use OpenEMR\AgentForge\Evidence\LabsEvidenceTool;
-use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Evidence\PrescriptionsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ProblemsEvidenceTool;
 use PHPUnit\Framework\TestCase;
 
@@ -108,9 +108,9 @@ final class EvidenceToolsTest extends TestCase
         $this->assertStringEndsWith('...', $result->items[0]->displayLabel);
     }
 
-    public function testPrescriptionsToolReturnsActivePrescriptionEvidence(): void
+    public function testActiveMedicationsToolReturnsPrescriptionEvidence(): void
     {
-        $result = (new PrescriptionsEvidenceTool($this->repository()))->collect(new PatientId(900001));
+        $result = (new ActiveMedicationsEvidenceTool($this->repository()))->collect(new PatientId(900001));
 
         $this->assertCount(2, $result->items);
         $this->assertSame('Metformin ER 500 mg', $result->items[0]->displayLabel);
@@ -118,9 +118,77 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
     }
 
-    public function testPrescriptionsToolDoesNotInventMissingInstructions(): void
+    public function testActiveMedicationsToolReturnsListOnlyMedicationEvidence(): void
     {
-        $result = (new PrescriptionsEvidenceTool($this->repository(prescriptions: [
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'list_id' => 10,
+                'list_external_id' => 'af-med-list-only',
+                'begdate' => '2026-02-01',
+                'title' => 'Atorvastatin 20 mg',
+                'activity' => 1,
+                'source_table' => 'lists',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Atorvastatin 20 mg', $result->items[0]->displayLabel);
+        $this->assertSame('Active medication-list entry; instructions not found in the chart.', $result->items[0]->value);
+        $this->assertSame('medication:lists/af-med-list-only@2026-02-01', $result->items[0]->citation());
+    }
+
+    public function testActiveMedicationsToolReturnsLinkedListsMedicationEvidence(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'list_id' => 11,
+                'lists_medication_id' => 22,
+                'begdate' => '2026-02-02',
+                'title' => 'Albuterol inhaler',
+                'drug_dosage_instructions' => 'Use 2 puffs every 6 hours as needed',
+                'activity' => 1,
+                'source_table' => 'lists_medication',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Albuterol inhaler', $result->items[0]->displayLabel);
+        $this->assertSame('Use 2 puffs every 6 hours as needed', $result->items[0]->value);
+        $this->assertSame('medication:lists_medication/22@2026-02-02', $result->items[0]->citation());
+    }
+
+    public function testActiveMedicationsToolSurfacesDuplicateMedicationRowsAsSeparateEvidence(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'id' => 1,
+                'external_id' => 'af-rx-metformin',
+                'start_date' => '2026-03-15',
+                'drug' => 'Metformin ER 500 mg',
+                'drug_dosage_instructions' => 'Take 1 tablet by mouth daily with evening meal',
+                'active' => 1,
+                'source_table' => 'prescriptions',
+            ],
+            [
+                'list_id' => 12,
+                'list_external_id' => 'af-list-metformin',
+                'begdate' => '2026-03-16',
+                'title' => 'Metformin ER 500 mg',
+                'drug_dosage_instructions' => 'Patient reports taking twice daily',
+                'activity' => 1,
+                'source_table' => 'lists_medication',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(2, $result->items);
+        $this->assertSame('medication:prescriptions/af-rx-metformin@2026-03-15', $result->items[0]->citation());
+        $this->assertSame('medication:lists_medication/af-list-metformin@2026-03-16', $result->items[1]->citation());
+        $this->assertSame('Patient reports taking twice daily', $result->items[1]->value);
+    }
+
+    public function testActiveMedicationsToolDoesNotInventMissingInstructions(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
             [
                 'id' => 1,
                 'external_id' => 'af-rx-empty',
@@ -128,15 +196,16 @@ final class EvidenceToolsTest extends TestCase
                 'drug' => 'Medication Without Instructions',
                 'drug_dosage_instructions' => '',
                 'active' => 1,
+                'source_table' => 'prescriptions',
             ],
         ])))->collect(new PatientId(900001));
 
         $this->assertSame('Active prescription; instructions not found in the chart.', $result->items[0]->value);
     }
 
-    public function testPrescriptionsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
+    public function testActiveMedicationsToolDoesNotInferActivityWhenRepositoryReturnsInactiveRow(): void
     {
-        $result = (new PrescriptionsEvidenceTool($this->repository(prescriptions: [
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
             [
                 'id' => 1,
                 'external_id' => 'af-rx-inactive',
@@ -144,16 +213,37 @@ final class EvidenceToolsTest extends TestCase
                 'drug' => 'Inactive medication',
                 'drug_dosage_instructions' => 'Do not surface this.',
                 'active' => 0,
+                'source_table' => 'prescriptions',
             ],
         ])))->collect(new PatientId(900001));
 
         $this->assertSame([], $result->items);
-        $this->assertSame(['Active prescriptions not found in the chart.'], $result->missingSections);
+        $this->assertSame(
+            ['Active medications not found in checked chart sources: prescriptions, lists, lists_medication.'],
+            $result->missingSections,
+        );
     }
 
-    public function testPrescriptionsToolBoundsLongInstructions(): void
+    public function testActiveMedicationsToolSurfacesUncodedMedicationAsChartEvidence(): void
     {
-        $result = (new PrescriptionsEvidenceTool($this->repository(prescriptions: [
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
+            [
+                'list_id' => 13,
+                'begdate' => '2026-02-03',
+                'title' => 'Patient-reported supplement',
+                'activity' => 1,
+                'source_table' => 'lists',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Patient-reported supplement', $result->items[0]->displayLabel);
+        $this->assertSame('medication:lists/13@2026-02-03', $result->items[0]->citation());
+    }
+
+    public function testActiveMedicationsToolBoundsLongInstructions(): void
+    {
+        $result = (new ActiveMedicationsEvidenceTool($this->repository(medications: [
             [
                 'id' => 1,
                 'external_id' => 'af-rx-long',
@@ -161,6 +251,7 @@ final class EvidenceToolsTest extends TestCase
                 'drug' => 'Long Instruction Medication',
                 'drug_dosage_instructions' => str_repeat('a', 1000),
                 'active' => 1,
+                'source_table' => 'prescriptions',
             ],
         ])))->collect(new PatientId(900001));
 
@@ -227,22 +318,22 @@ final class EvidenceToolsTest extends TestCase
     /**
      * @param array<string, mixed>|null $demographics
      * @param list<array<string, mixed>>|null $problems
-     * @param list<array<string, mixed>>|null $prescriptions
+     * @param list<array<string, mixed>>|null $medications
      * @param list<array<string, mixed>>|null $labs
      * @param list<array<string, mixed>>|null $notes
      */
     private function repository(
         ?array $demographics = null,
         ?array $problems = null,
-        ?array $prescriptions = null,
+        ?array $medications = null,
         ?array $labs = null,
         ?array $notes = null,
     ): ChartEvidenceRepository {
-        return new class ($demographics, $problems, $prescriptions, $labs, $notes) implements ChartEvidenceRepository {
+        return new class ($demographics, $problems, $medications, $labs, $notes) implements ChartEvidenceRepository {
             /**
              * @param array<string, mixed>|null $demographics
              * @param list<array<string, mixed>>|null $problems
-             * @param list<array<string, mixed>>|null $prescriptions
+             * @param list<array<string, mixed>>|null $medications
              * @param list<array<string, mixed>>|null $labs
              * @param list<array<string, mixed>>|null $notes
              */
@@ -252,7 +343,7 @@ final class EvidenceToolsTest extends TestCase
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $problems,
                 /** @var list<array<string, mixed>>|null */
-                private readonly ?array $prescriptions,
+                private readonly ?array $medications,
                 /** @var list<array<string, mixed>>|null */
                 private readonly ?array $labs,
                 /** @var list<array<string, mixed>>|null */
@@ -297,9 +388,9 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function activePrescriptions(PatientId $patientId, int $limit): array
+            public function activeMedications(PatientId $patientId, int $limit): array
             {
-                return $this->prescriptions ?? [
+                return $this->medications ?? [
                     [
                         'id' => 1,
                         'external_id' => 'af-rx-metformin',
@@ -307,6 +398,7 @@ final class EvidenceToolsTest extends TestCase
                         'drug' => 'Metformin ER 500 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily with evening meal',
                         'active' => 1,
+                        'source_table' => 'prescriptions',
                     ],
                     [
                         'id' => 2,
@@ -315,6 +407,7 @@ final class EvidenceToolsTest extends TestCase
                         'drug' => 'Lisinopril 10 mg',
                         'drug_dosage_instructions' => 'Take 1 tablet by mouth daily',
                         'active' => 1,
+                        'source_table' => 'prescriptions',
                     ],
                 ];
             }

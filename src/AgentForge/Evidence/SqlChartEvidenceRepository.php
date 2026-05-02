@@ -45,14 +45,39 @@ final class SqlChartEvidenceRepository implements ChartEvidenceRepository
         );
     }
 
-    public function activePrescriptions(PatientId $patientId, int $limit): array
+    public function activeMedications(PatientId $patientId, int $limit): array
     {
-        return $this->executor->fetchRecords(
-            'SELECT id, external_id, start_date, date_added, drug, drug_dosage_instructions, active '
+        $limit = $this->limit($limit);
+        $prescriptions = $this->executor->fetchRecords(
+            'SELECT id, external_id, start_date, date_added, drug, drug_dosage_instructions, active, '
+            . '\'prescriptions\' AS source_table '
             . 'FROM prescriptions WHERE patient_id = ? AND active = 1 '
-            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $this->limit($limit),
+            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit,
             [$patientId->value],
         );
+
+        $listMedications = $this->executor->fetchRecords(
+            'SELECT l.id AS list_id, l.external_id AS list_external_id, l.date, l.begdate, l.title, '
+            . 'l.activity, lm.id AS lists_medication_id, lm.drug_dosage_instructions, '
+            . 'lm.usage_category_title, lm.request_intent_title, '
+            . 'CASE WHEN lm.id IS NULL THEN \'lists\' ELSE \'lists_medication\' END AS source_table '
+            . 'FROM lists l '
+            . 'LEFT JOIN lists_medication lm ON lm.list_id = l.id '
+            . 'WHERE l.pid = ? AND l.type = ? AND l.activity = 1 '
+            . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit,
+            [$patientId->value, 'medication'],
+        );
+
+        $medications = array_merge($prescriptions, $listMedications);
+        usort(
+            $medications,
+            static fn (array $left, array $right): int => strcmp(
+                self::medicationSortDate($right),
+                self::medicationSortDate($left),
+            ),
+        );
+
+        return array_slice($medications, 0, $limit);
     }
 
     public function recentLabs(PatientId $patientId, int $limit): array
@@ -85,5 +110,11 @@ final class SqlChartEvidenceRepository implements ChartEvidenceRepository
     private function limit(int $limit): int
     {
         return max(1, min(50, $limit));
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function medicationSortDate(array $row): string
+    {
+        return EvidenceRowValue::dateOnly($row, 'start_date', 'date_added', 'begdate', 'date');
     }
 }

@@ -1430,6 +1430,11 @@ Human verification:
 
 - A reviewer can compare medication output to all relevant OpenEMR medication surfaces.
 
+Implementation status:
+
+- Epic 13 implementation now uses an `Active medications` evidence path that checks active `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available.
+- Medication proof covers prescription-only, list-only, linked extension, inactive, uncoded, duplicate/conflicting, missing-instruction, and bounded-text cases.
+
 ### Feature 13.2 - Authorization Scope Expansion
 
 #### Task 13.2.1 - Plan Care-Team, Facility, Schedule, And Delegation Authorization
@@ -1456,6 +1461,11 @@ Human verification:
 
 - A reviewer can see why the current narrow gate is safer for v1 and insufficient for production.
 
+Implementation status:
+
+- Authorization remains fail-closed outside direct provider, encounter provider, and supervisor relationships.
+- Candidate care-team, facility, schedule, group assignment, supervision, and delegation shapes are documented as production authorization inputs, not allowed access paths in this epic.
+
 ### Feature 13.3 - Audit P1 Composite-Index Remediation
 
 #### Task 13.3.1 - Plan Agent Query Indexes And Data-Access Performance Proof
@@ -1481,6 +1491,11 @@ Definition of done:
 Human verification:
 
 - A reviewer can explain which audited performance finding remains open and what work will close it.
+
+Implementation status:
+
+- `AUDIT.md` now lists current agent query predicates, candidate indexes for `prescriptions(patient_id, active)` and `lists(pid, type, activity)`, linked `lists_medication` index coverage, future `EXPLAIN` proof, migration review, and rollback requirements.
+- No database migration is created in Epic 13.
 
 ## Epic 14 - Observability, Latency Budget, And Sensitive Audit Logs
 

@@ -20,7 +20,7 @@ final class EvidenceToolFactory
         return [
             new DemographicsEvidenceTool($repository),
             new ProblemsEvidenceTool($repository),
-            new PrescriptionsEvidenceTool($repository),
+            new ActiveMedicationsEvidenceTool($repository),
             new LabsEvidenceTool($repository),
             new EncountersNotesEvidenceTool($repository),
         ];

@@ -55,7 +55,7 @@ final class EvaluationTiersDocumentTest extends TestCase
         foreach (
             [
                 'Visit briefing',
-                'Active prescriptions',
+                'Active medications',
                 'A1c trend',
                 'Missing microalbumin',
                 'Last plan',

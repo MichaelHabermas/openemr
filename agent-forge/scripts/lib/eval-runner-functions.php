@@ -172,7 +172,7 @@ function agentforge_eval_tools(string $scenario): array
         new EvalEvidenceTool('Active problems', [
             new EvidenceItem('problem', 'lists', 'af-prob-diabetes', '2025-09-10', 'Type 2 diabetes mellitus', 'Active problem since 2025-09-10'),
         ]),
-        new EvalEvidenceTool('Active prescriptions', [
+        new EvalEvidenceTool('Active medications', [
             new EvidenceItem('medication', 'prescriptions', 'af-rx-metformin', '2026-03-15', 'Metformin ER 500 mg', 'Take 1 tablet by mouth daily with evening meal'),
             new EvidenceItem('medication', 'prescriptions', 'af-rx-lisinopril', '2026-03-15', 'Lisinopril 10 mg', 'Take 1 tablet by mouth daily'),
         ]),

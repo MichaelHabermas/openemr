@@ -10,7 +10,7 @@ The agent lives inside the OpenEMR patient chart. A small browser panel sends th
 
 The audit shows the critical constraint: OpenEMR's existing ACL checks are capability-oriented, not patient-resource-oriented. That means coarse permission to read patient data is not enough. The agent needs an explicit patient authorization gate before any chart data is read. The model never gets direct database access. It can only use allowlisted, read-only chart tools controlled by the server.
 
-Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active prescriptions, recent labs, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence remains incomplete for production because OpenEMR medication data also appears in `lists` and `lists_medication`; Epic 13 plans that remediation. Missing data is treated as missing data, not as proof that something is false.
+Those tools fetch narrow evidence from the current patient's chart: demographics, active problems, active medications, recent labs, recent encounters or notes, and the last plan when available. Each returned fact carries source metadata: source type, source table, source row id, source date, display label, and value. Medication evidence checks `prescriptions`, active medication rows in `lists`, and linked `lists_medication` extension rows where available; duplicate or conflicting records are surfaced as chart evidence, not reconciled into unsupported clinical truth. Missing data is treated as missing data, not as proof that something is false.
 
 The LLM is not trusted. It receives only the evidence bundle and must produce a structured draft answer from that evidence. A deterministic verifier then checks patient-specific claims against source rows. The current verifier is useful but not final: instructor review identified over-trust in model-supplied claim types and brittle substring matching. Epic 12 plans the hardening needed before production-readiness claims.
 
@@ -34,7 +34,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - The current UI and request model are single-turn. They do not preserve transcript, `conversation_id`, turn history, or follow-up grounding.
 - The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is a v1 surfacing fix, not proof of multi-turn state.
 - The handler may call more evidence tools than the question requires; selective PHI-minimizing routing is planned.
-- Medication evidence currently relies on active prescriptions for the demo path and does not cover all OpenEMR medication table shapes.
+- Medication evidence checks active prescriptions, active medication-list entries, and linked medication extension rows, but it does not reconcile duplicates or conflicts into clinical truth.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are deferred.
 - Observability is structured logging, not full observability. Per-step timing, aggregation, dashboards, SLOs, and alerts are not yet present.
 - Fixture evals prove deterministic orchestration and verifier behavior, but not the full live LLM, SQL, browser, deployed endpoint, or real session path.
@@ -59,7 +59,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Citations must be visible in the physician UI.
 - Verification must not trust model-supplied claim labels for factuality.
 - Logs must have retention/access controls appropriate for PHI-minimized sensitive audit data.
-- Medication evidence, authorization scope, indexing, and latency must be remediated or disclosed as blockers.
+- Authorization scope, index migration proof, and latency must be remediated or disclosed as blockers.
 
 ## Traceability To Users And Audit
 
@@ -93,7 +93,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 | Narrow OpenEMR integration | Architecture A1 and A2 | The first version uses a small chart-embedded endpoint instead of broad OpenEMR rewrites. |
 | Bounded patient reads | Performance P1 and P2 | Tools read only the current patient's required rows and latency remains a measured implementation concern. |
 | Source-carrying evidence bundle | Data Quality D1, D2, D3, D4, D5 | Every returned fact carries source metadata; missing or weakly coded data is not treated as clean truth. |
-| Medication evidence caution | Data Quality D3 and D4 | Current demo evidence checks active prescriptions; Epic 13 must cover `lists` and `lists_medication` before complete-medication claims. |
+| Medication evidence caution | Data Quality D3 and D4 | Active medication evidence checks `prescriptions`, `lists`, and linked `lists_medication`; it still surfaces duplicates and conflicts without clinical reconciliation. |
 | Missing-data behavior | Data Quality D1 and D5 | Empty or absent fields produce "not found in the chart" rather than negative clinical conclusions. |
 | Deterministic verification | Security S1; Data Quality D1-D5 | The model does not grade itself; unsupported patient-specific claims are blocked or rewritten as missing. |
 | Agent-specific logging | Compliance C1 and C2 | Agent reads, source ids, failures, verifier result, total latency, tokens, and cost are logged even if OpenEMR query audit is disabled. These are sensitive audit logs. |
@@ -170,7 +170,7 @@ Start with read-only tools:
 
 - Patient demographics.
 - Active problems.
-- Active prescriptions today; broader active medication evidence across `prescriptions`, `lists`, and `lists_medication` is planned.
+- Active medications across `prescriptions`, active `lists` medication rows, and linked `lists_medication` extension rows where available.
 - Recent labs.
 - Recent encounters and notes.
 - Last plan when available.

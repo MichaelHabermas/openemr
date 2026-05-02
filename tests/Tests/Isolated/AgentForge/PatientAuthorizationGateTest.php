@@ -85,6 +85,19 @@ final class PatientAuthorizationGateTest extends TestCase
         $this->assertSame('patient_specific_access_could_not_be_verified_for_this_user', $decision->code);
     }
 
+    public function testUnsupportedExpandedRelationshipShapesRemainFailClosed(): void
+    {
+        $decision = $this->gate(patientExists: true, hasRelationship: false)
+            ->decide($this->request(), 900001, 7, true);
+
+        $this->assertFalse($decision->allowed);
+        $this->assertSame(
+            'Patient-specific access could not be verified for this user.',
+            $decision->reason,
+        );
+        $this->assertSame('patient_specific_access_could_not_be_verified_for_this_user', $decision->code);
+    }
+
     public function testRefusesUnclearRepositoryState(): void
     {
         $decision = $this->gate(throws: true)->decide($this->request(), 900001, 7, true);

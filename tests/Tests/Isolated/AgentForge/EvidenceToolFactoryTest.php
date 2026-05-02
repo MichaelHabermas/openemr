@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
-use OpenEMR\AgentForge\Auth\PatientId;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolFactoryTest extends TestCase
@@ -27,7 +27,7 @@ final class EvidenceToolFactoryTest extends TestCase
             [
                 'Demographics',
                 'Active problems',
-                'Active prescriptions',
+                'Active medications',
                 'Recent labs',
                 'Recent notes and last plan',
             ],
@@ -48,7 +48,7 @@ final class EvidenceToolFactoryTest extends TestCase
                 return [];
             }
 
-            public function activePrescriptions(PatientId $patientId, int $limit): array
+            public function activeMedications(PatientId $patientId, int $limit): array
             {
                 return [];
             }

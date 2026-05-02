@@ -240,7 +240,7 @@ To complete `SPECS.txt`, the project must contain:
 - Session-bound identity may not carry into any sidecar, worker, or external service unless passed deliberately.
 - PHI read auditing is configurable, so agent-specific logging is required.
 - Medication facts span more than one table shape and may contain optional coded fields.
-- Current medication evidence covers the demo prescription path; complete `lists` and `lists_medication` coverage is planned.
+- Current medication evidence checks active prescriptions, active medication-list entries, and linked `lists_medication` extension rows where available. It does not reconcile duplicate or conflicting medication rows into clinical truth.
 - Missing, stale, duplicate, or weakly constrained chart data can cause unsafe inferred answers.
 - Response latency has limited local/VM baseline measurements only; the VM A1c path is around 10.693 seconds and needs a latency budget plus per-step timing before production-readiness claims.
 - VM deployment details are not fully known, so deploy automation must avoid destructive assumptions.
