@@ -107,15 +107,76 @@ final readonly class OpenAiToolSelectionProvider implements ToolSelectionProvide
             'conversation_summary' => $request->conversationSummary?->toPromptArray(),
             'allowed_sections' => $request->allowedSections,
             'question_type_guidance' => [
-                'visit_briefing',
-                'follow_up_change_review',
-                'medication',
-                'allergy',
-                'lab',
-                'vital',
-                'last_plan',
-                'problem',
-                'missing_data',
+                'visit_briefing' => [
+                    'use_when' => 'The physician asks for a visit briefing, patient summary, or full chart overview.',
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                        ChartQuestionPlanner::SECTION_ENCOUNTERS,
+                        ChartQuestionPlanner::SECTION_PROBLEMS,
+                        ChartQuestionPlanner::SECTION_MEDICATIONS,
+                        ChartQuestionPlanner::SECTION_ALLERGIES,
+                        ChartQuestionPlanner::SECTION_LABS,
+                        ChartQuestionPlanner::SECTION_VITALS,
+                        ChartQuestionPlanner::SECTION_NOTES,
+                    ],
+                ],
+                'follow_up_change_review' => [
+                    'use_when' => 'The physician asks what changed since the last or previous visit.',
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_ENCOUNTERS,
+                        ChartQuestionPlanner::SECTION_LABS,
+                        ChartQuestionPlanner::SECTION_VITALS,
+                        ChartQuestionPlanner::SECTION_NOTES,
+                    ],
+                ],
+                'pre_prescribing_chart_check' => [
+                    'use_when' => 'The physician asks what to double-check before prescribing.',
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_PROBLEMS,
+                        ChartQuestionPlanner::SECTION_MEDICATIONS,
+                        ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS,
+                        ChartQuestionPlanner::SECTION_ALLERGIES,
+                        ChartQuestionPlanner::SECTION_LABS,
+                        ChartQuestionPlanner::SECTION_VITALS,
+                        ChartQuestionPlanner::SECTION_STALE_VITALS,
+                    ],
+                ],
+                'medication' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_MEDICATIONS,
+                        ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS,
+                    ],
+                ],
+                'allergy' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_ALLERGIES,
+                    ],
+                ],
+                'lab' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_LABS,
+                    ],
+                ],
+                'vital' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_VITALS,
+                        ChartQuestionPlanner::SECTION_STALE_VITALS,
+                    ],
+                ],
+                'last_plan' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_NOTES,
+                    ],
+                ],
+                'problem' => [
+                    'required_sections' => [
+                        ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                        ChartQuestionPlanner::SECTION_PROBLEMS,
+                    ],
+                ],
+                'missing_data' => [
+                    'use_when' => 'The physician asks for a chart fact that may be absent; still select the section where that fact would be documented.',
+                ],
             ],
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
     }

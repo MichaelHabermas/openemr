@@ -68,6 +68,27 @@ final class ChartQuestionPlannerTest extends TestCase
             [ChartQuestionPlanner::SECTION_VITALS, ChartQuestionPlanner::SECTION_STALE_VITALS],
             $planner->plan(new AgentQuestion('Show me recent blood pressure and pulse.'), 8000)->sections,
         );
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_ENCOUNTERS,
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_NOTES,
+            ],
+            $planner->plan(new AgentQuestion('Has anything changed since last visit?'), 8000)->sections,
+        );
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_PROBLEMS,
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_ALLERGIES,
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_STALE_VITALS,
+            ],
+            $planner->plan(new AgentQuestion('Anything I should double-check before prescribing?'), 8000)->sections,
+        );
         $birthWeightPlan = $planner->plan(new AgentQuestion('What was Alex birth weight?'), 8000);
         $this->assertSame('unsupported_fact', $birthWeightPlan->questionType);
         $this->assertSame([], $birthWeightPlan->sections);
@@ -193,15 +214,92 @@ final class ChartQuestionPlannerTest extends TestCase
         $this->assertSame('pre_prescribing_chart_check', $plan->questionType);
         $this->assertSame(
             [
+                ChartQuestionPlanner::SECTION_PROBLEMS,
                 ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_INACTIVE_MEDICATIONS,
                 ChartQuestionPlanner::SECTION_ALLERGIES,
                 ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_STALE_VITALS,
             ],
             $plan->sections,
         );
         $this->assertSame('test_selector', $plan->selectorMode);
         $this->assertSame('selected', $plan->selectorResult);
         $this->assertNull($plan->selectorFallbackReason);
+    }
+
+    public function testLlmSelectorLabRouteIsNormalizedToMinimumLabEvidence(): void
+    {
+        $planner = new ChartQuestionPlanner(new FixedToolSelectionProvider(new ToolSelectionResult(
+            'lab',
+            [
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_PROBLEMS,
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+            ],
+        )));
+
+        $plan = $planner->plan(new AgentQuestion('Show me the recent A1c trend.'), 8000);
+
+        $this->assertSame('lab', $plan->questionType);
+        $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $plan->sections);
+        $this->assertSame('selected', $plan->selectorResult);
+    }
+
+    public function testLlmSelectorVisitBriefingRouteRequiresNotesAndCoreContext(): void
+    {
+        $planner = new ChartQuestionPlanner(new FixedToolSelectionProvider(new ToolSelectionResult(
+            'visit_briefing',
+            [
+                ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                ChartQuestionPlanner::SECTION_LABS,
+            ],
+        )));
+
+        $plan = $planner->plan(new AgentQuestion('Give me a visit briefing.'), 8000);
+
+        $this->assertSame('visit_briefing', $plan->questionType);
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                ChartQuestionPlanner::SECTION_ENCOUNTERS,
+                ChartQuestionPlanner::SECTION_PROBLEMS,
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_ALLERGIES,
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_NOTES,
+            ],
+            $plan->sections,
+        );
+        $this->assertSame('selected', $plan->selectorResult);
+    }
+
+    public function testLlmSelectorChangeReviewRouteRequiresNotesVitalsLabsAndEncounters(): void
+    {
+        $planner = new ChartQuestionPlanner(new FixedToolSelectionProvider(new ToolSelectionResult(
+            'visit_briefing',
+            [
+                ChartQuestionPlanner::SECTION_DEMOGRAPHICS,
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+            ],
+        )));
+
+        $plan = $planner->plan(new AgentQuestion('Has anything changed since last visit?'), 8000);
+
+        $this->assertSame('follow_up_change_review', $plan->questionType);
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_ENCOUNTERS,
+                ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_VITALS,
+                ChartQuestionPlanner::SECTION_NOTES,
+            ],
+            $plan->sections,
+        );
+        $this->assertSame('selected', $plan->selectorResult);
     }
 
     public function testLlmSelectorFailureFallsBackToDeterministicPlanner(): void

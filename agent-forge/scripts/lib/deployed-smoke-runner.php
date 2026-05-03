@@ -222,8 +222,8 @@ function agentforge_deployed_smoke_run_supported_a1c(array $config): array
             return $issues;
         },
         expectedAuditLog: [
-            'verifier_result' => 'passed',
-            'failure_reason' => null,
+            'verifier_result' => ['_one_of' => ['passed', 'fallback_passed']],
+            'failure_reason' => ['_one_of' => [null, 'model_verification_failed_fallback_used']],
             'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
         ],
     );

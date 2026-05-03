@@ -114,14 +114,116 @@ final readonly class ChartQuestionPlanner
             );
         }
 
-        return $this->buildPlan(
+        $normalizedSelection = $this->normalizeSelectedSections(
+            $question,
             $selection->questionType,
             $sections,
+            $conversationSummary,
+        );
+
+        return $this->buildPlan(
+            $normalizedSelection['question_type'],
+            $normalizedSelection['sections'],
             $deadlineMs,
             null,
             $this->selector->mode(),
             'selected',
         );
+    }
+
+    /**
+     * LLM section selection is the primary planner path, but high-risk chart questions still need
+     * deterministic minimum/required evidence guardrails before the plan can reach the agent.
+     *
+     * @param list<string> $sections
+     * @return array{question_type: string, sections: list<string>}
+     */
+    private function normalizeSelectedSections(
+        AgentQuestion $question,
+        string $questionType,
+        array $sections,
+        ?ConversationTurnSummary $conversationSummary,
+    ): array {
+        $normalized = strtolower($question->value);
+        $selectedType = strtolower(trim($questionType));
+
+        if ($this->selectorIndicatesChangeReview($selectedType, $normalized)) {
+            return [
+                'question_type' => 'follow_up_change_review',
+                'sections' => self::changeReviewSections(),
+            ];
+        }
+
+        if ($this->selectorIndicatesPrescribingCheck($selectedType, $normalized)) {
+            return [
+                'question_type' => 'pre_prescribing_chart_check',
+                'sections' => self::prescribingCheckSections(),
+            ];
+        }
+
+        if ($this->selectorIndicatesLab($selectedType, $normalized)) {
+            return [
+                'question_type' => 'lab',
+                'sections' => [self::SECTION_LABS],
+            ];
+        }
+
+        if ($this->selectorIndicatesAllergy($selectedType, $normalized)) {
+            return [
+                'question_type' => 'allergy',
+                'sections' => [self::SECTION_ALLERGIES],
+            ];
+        }
+
+        if ($this->selectorIndicatesMedication($selectedType, $normalized)) {
+            return [
+                'question_type' => 'medication',
+                'sections' => [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
+            ];
+        }
+
+        if ($this->selectorIndicatesVital($selectedType, $normalized)) {
+            return [
+                'question_type' => 'vital',
+                'sections' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
+            ];
+        }
+
+        if ($this->selectorIndicatesProblem($selectedType, $normalized)) {
+            return [
+                'question_type' => 'problem',
+                'sections' => [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS],
+            ];
+        }
+
+        if ($this->selectorIndicatesLastPlan($selectedType, $normalized)) {
+            return [
+                'question_type' => 'last_plan',
+                'sections' => [self::SECTION_NOTES],
+            ];
+        }
+
+        if ($conversationSummary !== null && $this->looksLikeFollowUp($normalized)) {
+            $priorSections = $this->sectionsForPriorQuestionType($conversationSummary->questionType);
+            if ($priorSections !== []) {
+                return [
+                    'question_type' => $conversationSummary->questionType,
+                    'sections' => $priorSections,
+                ];
+            }
+        }
+
+        if ($selectedType === 'visit_briefing' || $this->looksLikeVisitBriefing($normalized)) {
+            return [
+                'question_type' => 'visit_briefing',
+                'sections' => self::visitBriefingSections(),
+            ];
+        }
+
+        return [
+            'question_type' => trim($questionType) === '' ? 'visit_briefing' : $questionType,
+            'sections' => $sections,
+        ];
     }
 
     private function planDeterministically(
@@ -135,6 +237,28 @@ final readonly class ChartQuestionPlanner
         $normalized = strtolower($question->value);
         if ($this->containsAny($normalized, ['birth weight', 'birthweight'])) {
             return $this->buildPlan('unsupported_fact', [], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
+        }
+        if ($this->selectorIndicatesChangeReview('', $normalized)) {
+            return $this->buildPlan(
+                'follow_up_change_review',
+                self::changeReviewSections(),
+                $deadlineMs,
+                null,
+                $selectorMode,
+                $selectorResult,
+                $selectorFallbackReason,
+            );
+        }
+        if ($this->selectorIndicatesPrescribingCheck('', $normalized)) {
+            return $this->buildPlan(
+                'pre_prescribing_chart_check',
+                self::prescribingCheckSections(),
+                $deadlineMs,
+                null,
+                $selectorMode,
+                $selectorResult,
+                $selectorFallbackReason,
+            );
         }
         if ($this->containsAny($normalized, ['allergy', 'allergies', 'allergic', 'reaction', 'reactions'])) {
             return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
@@ -262,6 +386,139 @@ final readonly class ChartQuestionPlanner
         );
     }
 
+    private function selectorIndicatesChangeReview(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'follow_up_change_review'
+            || $this->containsAny($value, [
+                'changed since',
+                'change since',
+                'changes since',
+                'anything changed',
+                'what changed',
+                'new since',
+                'since last visit',
+                'since previous visit',
+            ]);
+    }
+
+    private function selectorIndicatesPrescribingCheck(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'pre_prescribing_chart_check'
+            || $this->containsAny($value, [
+                'before prescribing',
+                'before i prescribe',
+                'double-check before prescribing',
+                'double check before prescribing',
+                'prescribing',
+                'prescribe',
+            ]);
+    }
+
+    private function selectorIndicatesLab(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'lab'
+            || $this->containsAny($value, [
+                'a1c',
+                'lab',
+                'labs',
+                'laboratory',
+                'microalbumin',
+                'glucose',
+                'result',
+                'sodium',
+                'potassium',
+                'creatinine',
+                'cholesterol',
+                'hemoglobin',
+                'panel',
+            ]);
+    }
+
+    private function selectorIndicatesMedication(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'medication'
+            || $this->containsAny($value, [
+                'medication',
+                'medications',
+                'meds',
+                'prescription',
+                'prescriptions',
+                'metformin',
+            ]);
+    }
+
+    private function selectorIndicatesAllergy(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'allergy'
+            || $this->containsAny($value, [
+                'allergy',
+                'allergies',
+                'allergic',
+                'reaction',
+                'reactions',
+            ]);
+    }
+
+    private function selectorIndicatesVital(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'vital'
+            || $this->containsAny($value, [
+                'vital',
+                'vitals',
+                'blood pressure',
+                'bp',
+                'pulse',
+                'temperature',
+                'weight',
+                'height',
+                'oxygen',
+                'o2',
+            ]);
+    }
+
+    private function selectorIndicatesProblem(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'problem'
+            || $this->containsAny($value, [
+                'problem',
+                'problems',
+                'condition',
+                'conditions',
+                'comorbid',
+                'comorbidities',
+            ]);
+    }
+
+    private function selectorIndicatesLastPlan(string $selectedType, string $value): bool
+    {
+        return $selectedType === 'last_plan'
+            || $this->containsAny($value, [
+                'plan',
+                'note',
+                'notes',
+                'assessment',
+                'follow-up',
+                'follow up',
+                'last visit',
+                'previous visit',
+                'history of present illness',
+                'hpi',
+            ]);
+    }
+
+    private function looksLikeVisitBriefing(string $value): bool
+    {
+        return $this->containsAny($value, [
+            'visit briefing',
+            'briefing',
+            'summary of this patient',
+            'summarize this patient',
+            'tell me about this patient',
+            'what should i know',
+            'full chart',
+        ]);
+    }
+
     /** @return list<string> */
     private function sectionsForPriorQuestionType(string $questionType): array
     {
@@ -272,7 +529,50 @@ final readonly class ChartQuestionPlanner
             'vital' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
             'problem' => [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS],
             'last_plan' => [self::SECTION_NOTES],
+            'visit_briefing' => self::visitBriefingSections(),
+            'follow_up_change_review' => self::changeReviewSections(),
+            'pre_prescribing_chart_check' => self::prescribingCheckSections(),
             default => [],
         };
+    }
+
+    /** @return list<string> */
+    private static function visitBriefingSections(): array
+    {
+        return [
+            self::SECTION_DEMOGRAPHICS,
+            self::SECTION_ENCOUNTERS,
+            self::SECTION_PROBLEMS,
+            self::SECTION_MEDICATIONS,
+            self::SECTION_ALLERGIES,
+            self::SECTION_LABS,
+            self::SECTION_VITALS,
+            self::SECTION_NOTES,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function changeReviewSections(): array
+    {
+        return [
+            self::SECTION_ENCOUNTERS,
+            self::SECTION_LABS,
+            self::SECTION_VITALS,
+            self::SECTION_NOTES,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function prescribingCheckSections(): array
+    {
+        return [
+            self::SECTION_PROBLEMS,
+            self::SECTION_MEDICATIONS,
+            self::SECTION_INACTIVE_MEDICATIONS,
+            self::SECTION_ALLERGIES,
+            self::SECTION_LABS,
+            self::SECTION_VITALS,
+            self::SECTION_STALE_VITALS,
+        ];
     }
 }
