@@ -121,32 +121,29 @@ final readonly class DraftProviderRetryMiddleware
      */
     private function planRetry(array $options, ?ResponseInterface $response, ?Throwable $reason): ?array
     {
-        if (!$this->isRetryable($options, $response, $reason)) {
+        if ($this->retryCount($options) >= self::MAX_RETRIES) {
+            return null;
+        }
+
+        if (!$this->responseIsRetryable($response, $reason)) {
             return null;
         }
 
         $nextAttempt = $this->retryCount($options) + 1;
         $delayMs = $this->computeDelayMs($nextAttempt);
         $deadline = $options[self::DEADLINE_OPTION] ?? null;
-        if ($deadline instanceof Deadline && !$this->hasRetryBudget($deadline, $delayMs)) {
-            return null;
+        if ($deadline instanceof Deadline && $deadline->budgetMs >= 0) {
+            $remaining = $deadline->remainingMs();
+            if ($remaining <= 0 || $remaining < $delayMs + self::MIN_CALL_BUDGET_MS) {
+                return null;
+            }
         }
 
         return ['attempt' => $nextAttempt, 'delayMs' => $delayMs];
     }
 
-    /** @param array<string, mixed> $options */
-    private function isRetryable(array $options, ?ResponseInterface $response, ?Throwable $reason): bool
+    private function responseIsRetryable(?ResponseInterface $response, ?Throwable $reason): bool
     {
-        if ($this->retryCount($options) >= self::MAX_RETRIES) {
-            return false;
-        }
-
-        $deadline = $options[self::DEADLINE_OPTION] ?? null;
-        if ($deadline instanceof Deadline && $deadline->exceeded()) {
-            return false;
-        }
-
         if ($reason instanceof ConnectException) {
             return true;
         }
@@ -156,15 +153,6 @@ final readonly class DraftProviderRetryMiddleware
         }
 
         return in_array($response->getStatusCode(), self::RETRYABLE_STATUS_CODES, true);
-    }
-
-    private function hasRetryBudget(Deadline $deadline, int $delayMs): bool
-    {
-        if ($deadline->budgetMs < 0) {
-            return true;
-        }
-
-        return $deadline->remainingMs() >= $delayMs + self::MIN_CALL_BUDGET_MS;
     }
 
     /**

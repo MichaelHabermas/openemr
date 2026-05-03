@@ -95,8 +95,8 @@ final class DraftProviderRetryMiddlewareTest extends TestCase
 
     public function testAbortsRetryWhenDeadlineExhausted(): void
     {
-        $clock = new RetryAdvancingClock([0, 50, 5000]);
-        $deadline = new Deadline($clock, 100);
+        $clock = new RetryAdvancingClock([0, 100, 5000]);
+        $deadline = new Deadline($clock, 400);
         $mock = new MockHandler([
             new Response(429),
             new Response(429),
@@ -112,6 +112,26 @@ final class DraftProviderRetryMiddlewareTest extends TestCase
 
         $this->assertSame(429, $response->getStatusCode());
         $this->assertCount(1, $sleeps);
+    }
+
+    public function testAbortsRetryWhenRemainingBudgetCannotAffordCallPlusBackoff(): void
+    {
+        $clock = new RetryAdvancingClock([0, 50]);
+        $deadline = new Deadline($clock, 200);
+        $mock = new MockHandler([
+            new Response(429),
+            new Response(200, [], '{"ok":true}'),
+        ]);
+        $sleeps = [];
+        $client = $this->buildClient($mock, $sleeps);
+
+        $response = $client->request('POST', '/v1/messages', [
+            DraftProviderRetryMiddleware::DEADLINE_OPTION => $deadline,
+            'http_errors' => false,
+        ]);
+
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertSame([], $sleeps);
     }
 
     public function testBackoffIsExponentialWithJitter(): void
