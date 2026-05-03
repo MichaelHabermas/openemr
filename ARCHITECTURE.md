@@ -36,7 +36,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 
 - The current UI and request model support same-patient follow-up with a server-owned `conversation_id`, but do not preserve a persistent transcript.
 - The response payload includes citations and the chart panel renders those citation strings visibly outside answer prose. Citation display is proof of source surfacing for each turn.
-- The handler may call more evidence tools than the question requires; selective PHI-minimizing routing remains incomplete.
+- Chart-section selection now uses an LLM-backed `ToolSelectionProvider` when provider credentials are configured, with deterministic fallback when selection is unavailable or invalid. High-risk scopes are still normalized by server-side guardrails so the model cannot expand beyond allowlisted chart sections or request arbitrary data access.
 - Medication evidence checks active prescriptions, active medication-list entries, linked medication extension rows, and separately labeled inactive medication history, but it does not reconcile duplicates or conflicts into clinical truth.
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
 - Observability lives under `src/AgentForge/Observability` and includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
@@ -136,7 +136,7 @@ Flow:
 2. Agent panel sends `patient_id` and `question` to a server-side OpenEMR endpoint.
 3. OpenEMR validates the active session user.
 4. A patient-specific authorization gate checks whether that user may read that patient chart.
-5. Server invokes allowlisted read-only chart tools. Section selection is performed by `ChartQuestionPlanner`; tool invocation goes through a `ChartEvidenceCollector` interface (Strategy). The default `SerialChartEvidenceCollector` runs tools sequentially; an alternate `ConcurrentChartEvidenceCollector` is wired when a `PrefetchableChartEvidenceRepository` is available, which performs a single combined repository fetch before per-section dehydration. Selective routing of *which* sections to call remains the target; the current handler can still call more chart tools than a question requires.
+5. Server invokes allowlisted read-only chart tools. Section selection is performed by `ChartQuestionPlanner`: it asks the configured `ToolSelectionProvider` for a structured section plan first, filters the result to allowlisted sections, applies deterministic safety guardrails for high-risk clinical scopes, and falls back to deterministic routing if selector output is unavailable or invalid. Tool invocation goes through a `ChartEvidenceCollector` interface (Strategy). The default `SerialChartEvidenceCollector` runs tools sequentially; an alternate `ConcurrentChartEvidenceCollector` is wired when a `PrefetchableChartEvidenceRepository` is available, which performs a single combined repository fetch before per-section dehydration.
 6. Tools fetch bounded rows for the current patient only.
 7. Evidence bundle is built with source table, row id, date, label, and value.
 8. LLM receives the question and evidence bundle only.

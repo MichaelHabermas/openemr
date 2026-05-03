@@ -6,10 +6,12 @@ This pack is the reviewer-facing evidence map for the final AgentForge submissio
 
 | Context | Version |
 | --- | --- |
-| Final remediation commit | `6769aa908` |
-| Deployed proof build | `6769aa908887` |
+| Checked-in Tier 0 fixture/orchestration proof | `6736aed89fc2` |
+| Checked-in Tier 1 SQL evidence proof | `d04b11e22014` |
+| Checked-in Tier 2 live-model proof | `bd8dd6d05ce8` |
+| Checked-in Tier 4 deployed-smoke proof | `81c870a6aecb` |
 
-The green VM artifacts below are the final proof targets for reviewer packaging. If the full JSON result files are copied into the checkout, keep their filenames unchanged and store them under `agent-forge/eval-results/`.
+The proof rows below now distinguish checked-in repository artifacts from later VM-only artifacts. Reviewers can inspect the checked-in `LATEST-SUMMARY` files directly from the repository; later VM-only proof is referenced only when the corresponding JSON is not present in this checkout.
 
 ## Automated Proof
 
@@ -17,11 +19,13 @@ The green VM artifacts below are the final proof targets for reviewer packaging.
 | --- | --- | --- | --- |
 | Tier 0 deterministic fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-185620.json`; `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed | Planner, selector fallback, refusal policy, verifier/fallback behavior, fixture orchestration |
 | Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-161657.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed | Real `SqlChartEvidenceRepository` and evidence tools against seeded fake OpenEMR data |
-| Tier 2 live model | VM artifact `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-183646.json`; `LATEST-SUMMARY-TIER2.md` when copied locally | 14 passed, 0 failed; tokens in/out `5943/2584`; estimated cost `$0.016085`; provider `openai/gpt-5.4-mini` | Live provider path, safety-critical refusal/hallucination/prompt-injection cases, selector behavior, token/cost telemetry |
-| Tier 4 deployed smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-190049.json`; `LATEST-SUMMARY-TIER4.md` when copied locally | 5 passed, 0 failed, 0 skipped; aggregate latency `11604 ms`; audit assertions enabled; code version `6769aa908887` | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
+| Tier 2 live model | `agent-forge/eval-results/tier2-live-20260503-173557.json`; `LATEST-SUMMARY-TIER2.md` | 14 passed, 0 failed; tokens in/out `5697/2810`; estimated cost `$0.002541`; provider `openai/gpt-5.4-mini` | Live provider path, safety-critical refusal/hallucination/prompt-injection cases, selector behavior, token/cost telemetry |
+| Tier 4 deployed smoke | `LATEST-SUMMARY-TIER4.md`; VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-042413.json` | 4 passed, 0 failed; audit assertions enabled; code version `81c870a6aecb` | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
 | Deployed latency trace | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json`; `agent-forge/docs/operations/LATENCY-RESULTS.md` | A1c 20/20, p95 `3212 ms`; visit briefing 20/20, p95 `8309 ms`; both under `10000 ms` budget | Deployed demo latency across repeated A1c and visit-briefing requests |
 
-The final green Tier 4 smoke command was run from the VM host on 2026-05-03 at `19:00:49+00:00`:
+Additional later VM-only Tier 2 and Tier 4 runs were captured after the checked-in summaries, but their JSON artifacts are not present in this checkout. The table above is the synchronized repository-local proof set.
+
+The checked-in Tier 4 smoke command was run against the deployed app on 2026-05-03:
 
 ```sh
 php agent-forge/scripts/run-deployed-smoke.php

@@ -30,6 +30,18 @@ The model is not reading the database. The server collects the evidence, the mod
 
 The Sources section is the important part. It shows where the patient-specific facts came from in OpenEMR.
 
+### Agentic Boundary
+
+The agentic boundary is intentionally narrow.
+
+The model selects among allowlisted chart tools, but the server validates and normalizes tool selection.
+
+That is intentional because this is clinical software.
+
+The model can help decide which bounded chart sections are relevant, but it cannot request arbitrary SQL, expand patient scope, bypass authorization, or turn a chart-orientation question into clinical advice.
+
+If selector output is unavailable, invalid, or unsafe, the server falls back to deterministic routing or refuses before patient data is exposed.
+
 ### Missing Data And Refusals
 
 This fake chart intentionally does not include a urine microalbumin result.
@@ -108,6 +120,14 @@ The final submission shows a safer path forward: a bounded, deployed, evaluated,
 - The model drafts from that evidence.
 - The verifier checks the draft before display. ([Verified drafting pipeline](../../../src/AgentForge/Handlers/VerifiedDraftingPipeline.php))
 - Sources show where the facts came from in OpenEMR.
+
+### Agentic Boundary
+
+- The model selects among allowlisted chart tools. ([Tool selection provider](../../../src/AgentForge/Evidence/ToolSelectionProvider.php))
+- The server validates and normalizes tool selection. ([Chart question planner](../../../src/AgentForge/Evidence/ChartQuestionPlanner.php))
+- That is intentional because this is clinical software.
+- The model cannot request arbitrary SQL, expand patient scope, bypass authorization, or turn chart orientation into clinical advice.
+- Invalid or unsafe selector output falls back to deterministic routing or refusal.
 
 ### Safety
 

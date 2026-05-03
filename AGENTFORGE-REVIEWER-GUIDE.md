@@ -52,18 +52,32 @@ Expected A1c facts for the fake patient are `8.2 %` on `2026-01-09` and `7.4 %` 
 
 Canonical final proof pack: [agent-forge/docs/submission/FINAL-PROOF-PACK.md](agent-forge/docs/submission/FINAL-PROOF-PACK.md).
 
-Current local proof snapshot:
+### Final Delta From Early Review
+
+The early submission review identified three priority gaps. The current final package addresses them as follows:
+
+| Early review gap | Final remediation | Reviewer proof |
+| --- | --- | --- |
+| `ChartQuestionPlanner` looked like keyword routing, not agentic tool selection | Added LLM-backed chart-section selection through `ToolSelectionProvider` with OpenAI/Anthropic implementations, structured JSON output, deterministic fallback, and server-side normalization guardrails for high-risk clinical scopes | `src/AgentForge/Evidence/ToolSelectionProvider.php`, `src/AgentForge/Evidence/OpenAiToolSelectionProvider.php`, `src/AgentForge/Evidence/ChartQuestionPlanner.php`, `ChartQuestionPlannerTest`, Tier 0 selector cases, Tier 2 selector cases |
+| `USERS.md` had only three use cases | Expanded to seven traceable use cases: visit briefing, follow-up drill-down, missing/unclear data, vital trends, medication reconciliation context, allergy review, and encounter/last-plan review | Root `USERS.md` capability matrix |
+| `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` were not reviewer-rooted; README lacked the app URL | Moved/kept required artifacts at repo root and added the deployed app URL plus reviewer entry point to root `README.md` | Root `README.md`, `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md` |
+
+The planner remains deliberately bounded. The model selects among allowlisted chart tools, but the server validates and normalizes tool selection. That is intentional because this is clinical software. The model can help choose relevant bounded chart sections, but it cannot request arbitrary SQL, expand patient scope, bypass authorization, or turn chart orientation into clinical advice.
+
+Current checked-in proof snapshot:
 
 | Check | Latest local artifact or result | Status |
 | --- | --- | --- |
-| Code version | Final remediation commit: `6769aa908`; green VM proof captured after this deployment | Current checkout includes the final Tier 2/Tier 4 remediation work |
+| Code version | Checked-in proof artifacts span the final remediation window; exact per-run hashes are recorded in each eval summary | Current checkout includes the final reviewer remediation work |
 | Deployed health | `agent-forge/scripts/health-check.sh` returned public app HTTP 200 and readiness HTTP 200 on 2026-05-03 | Passed |
 | Tier 0 fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-185620.json`; `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed |
-| Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-032517.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed |
-| Tier 2 live-provider proof | VM artifact `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-183646.json`; `LATEST-SUMMARY-TIER2.md` when copied locally | 14 passed, 0 failed; tokens in/out `5943/2584`; estimated cost `$0.016085`; provider `openai/gpt-5.4-mini` |
-| Tier 4 deployed HTTP/session/audit smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-190049.json`; `LATEST-SUMMARY-TIER4.md` when copied locally | 5 passed, 0 failed, 0 skipped; aggregate latency `11604 ms`; audit assertions enabled; code version `6769aa908887` |
+| Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-161657.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed |
+| Tier 2 live-provider proof | `agent-forge/eval-results/tier2-live-20260503-173557.json`; `LATEST-SUMMARY-TIER2.md` | 14 passed, 0 failed; tokens in/out `5697/2810`; estimated cost `$0.002541`; provider `openai/gpt-5.4-mini` |
+| Tier 4 deployed HTTP/session/audit smoke | `LATEST-SUMMARY-TIER4.md`; VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-042413.json` | 4 passed, 0 failed; audit assertions enabled |
 | Deployed latency trace | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json`; `agent-forge/docs/operations/LATENCY-RESULTS.md` | A1c 20/20, p95 `3212 ms`; visit briefing 20/20, p95 `8309 ms`; both under `10000 ms` demo budget |
 | Deployed browser proof pack | `agent-forge/docs/submission/browser-proof/` | Four attached browser proof screenshots for A1c trend, visit briefing, missing microalbumin, and clinical-advice refusal |
+
+Additional later VM proof was captured after the checked-in Tier 2/Tier 4 summaries, but the corresponding JSON files are not present in this checkout. The checked-in summaries above are the local artifacts a reviewer can inspect directly from the repository.
 
 To reproduce the deployed smoke proof from the VM host:
 
@@ -76,7 +90,7 @@ export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
 php agent-forge/scripts/run-deployed-smoke.php
 ```
 
-Deployed Tier 4 request ids from the green run: A1c `7cf183f7-5607-403e-9559-e2689a0769aa`, visit briefing `bbbddd92-df71-4835-951b-f14279abe18c`, dosing refusal `ee2fe6c2-56cc-47ac-8731-a3fd885ad9e3`, missing microalbumin `e4ca6da4-9cd9-4222-a9c3-06651098fb49`, and cross-patient refusal `7489b25d-2af1-42d8-9c04-ec7ee3166dbc`.
+Browser proof request ids from the later deployed UI proof pass: A1c `7cf183f7-5607-403e-9559-e2689a0769aa`, visit briefing `bbbddd92-df71-4835-951b-f14279abe18c`, dosing refusal `ee2fe6c2-56cc-47ac-8731-a3fd885ad9e3`, missing microalbumin `e4ca6da4-9cd9-4222-a9c3-06651098fb49`, and cross-patient refusal `7489b25d-2af1-42d8-9c04-ec7ee3166dbc`.
 
 Browser proof files are stored under `agent-forge/docs/submission/browser-proof/`, with request ids listed in `agent-forge/docs/submission/FINAL-PROOF-PACK.md` and `agent-forge/docs/submission/browser-proof/MANIFEST.md`. The stale/cross-patient conversation boundary is covered by the deployed smoke runner and should return HTTP 403 with `tools_called=[]` and `verifier_result=not_run`.
 
