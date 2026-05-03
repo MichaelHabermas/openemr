@@ -25,6 +25,17 @@ if [[ -z "${SSH_HOST}" ]]; then
     exit 1
 fi
 
+# agent-forge/.env.sample sets AGENTFORGE_VM_SSH_HOST=docker-compose for Tier 4 PHP smoke only
+# (see deployed-smoke-runner.php: audit log via compose exec). That value is not an SSH host.
+readonly SSH_HOST_LOWER="$(printf '%s' "${SSH_HOST}" | tr '[:upper:]' '[:lower:]')"
+if [[ "${SSH_HOST_LOWER}" == 'docker-compose' || "${SSH_HOST_LOWER}" == 'local' ]]; then
+    printf 'AGENTFORGE_VM_SSH_HOST=%s is for run-deployed-smoke.php audit-log mode only, not for this script.\n' "${SSH_HOST}" >&2
+    printf 'Unset it or override: AGENTFORGE_VM_SSH_HOST=user@your-vm bash agent-forge/scripts/run-evals-vm.sh\n' >&2
+    printf 'On the VM host itself, run tiers without SSH, from repo root:\n' >&2
+    printf '  cd docker/development-easy && docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/run-evals.php\n' >&2
+    exit 1
+fi
+
 resolve_remote_home() {
     REMOTE_HOME="$(ssh "${SSH_HOST}" 'printf "%s" "$HOME"')"
     if [[ -z "${REMOTE_HOME}" ]]; then
