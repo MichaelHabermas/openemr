@@ -48,6 +48,10 @@ jobs:
         AGENTFORGE_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: php agent-forge/scripts/run-tier2-evals.php
 
+    - name: Append Tier 2 summary to GitHub Actions
+      if: ${{ !cancelled() }}
+      run: bash agent-forge/scripts/ci/append-eval-step-summary.sh "Tier 2 — Live LLM evals" "agent-forge/eval-results/tier2-live-*.json"
+
     - name: Upload Tier 2 results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7

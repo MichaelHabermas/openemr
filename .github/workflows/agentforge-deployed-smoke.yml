@@ -94,6 +94,10 @@ jobs:
         AGENTFORGE_SMOKE_EXECUTOR: ${{ github.event.inputs.executor_tag || 'github-actions-scheduled' }}
       run: php agent-forge/scripts/run-deployed-smoke.php
 
+    - name: Append Tier 4 summary to GitHub Actions
+      if: ${{ !cancelled() }}
+      run: bash agent-forge/scripts/ci/append-eval-step-summary.sh "Tier 4 — Deployed HTTP and session smoke" "agent-forge/eval-results/deployed-smoke-*.json"
+
     - name: Upload deployed smoke results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7

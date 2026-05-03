@@ -47,72 +47,42 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
 
     public function activeMedications(PatientId $patientId, int $limit): array
     {
-        $limit = $this->limit($limit);
-        $prescriptions = $this->executor->fetchRecords(
-            'SELECT id, external_id, start_date, date_added, drug, dosage, drug_dosage_instructions, active, '
-            . '\'prescriptions\' AS source_table '
-            . 'FROM prescriptions WHERE patient_id = ? AND active = 1 '
-            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit,
-            [$patientId->value],
-        );
-
-        $listMedications = $this->executor->fetchRecords(
-            'SELECT l.id AS list_id, l.external_id AS list_external_id, l.date, l.begdate, l.title, '
-            . 'l.activity, lm.id AS lists_medication_id, lm.drug_dosage_instructions, '
-            . 'lm.usage_category_title, lm.request_intent_title, '
-            . 'CASE WHEN lm.id IS NULL THEN \'lists\' ELSE \'lists_medication\' END AS source_table '
-            . 'FROM lists l '
-            . 'LEFT JOIN lists_medication lm ON lm.list_id = l.id '
-            . 'WHERE l.pid = ? AND l.type = ? AND l.activity = 1 '
-            . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit,
-            [$patientId->value, 'medication'],
-        );
-
-        $medications = array_merge($prescriptions, $listMedications);
-        usort(
-            $medications,
-            static fn (array $left, array $right): int => strcmp(
-                self::medicationSortDate($right),
-                self::medicationSortDate($left),
-            ),
-        );
-
-        return array_slice($medications, 0, $limit);
+        return $this->fetchMedicationsByActivity($patientId, 1, $limit);
     }
 
     public function inactiveMedications(PatientId $patientId, int $limit): array
     {
-        $limit = $this->limit($limit);
-        $prescriptions = $this->executor->fetchRecords(
-            'SELECT id, external_id, start_date, date_added, drug, dosage, drug_dosage_instructions, active, '
-            . '\'prescriptions\' AS source_table '
-            . 'FROM prescriptions WHERE patient_id = ? AND active = 0 '
-            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit,
-            [$patientId->value],
-        );
+        return $this->fetchMedicationsByActivity($patientId, 0, $limit);
+    }
 
-        $listMedications = $this->executor->fetchRecords(
-            'SELECT l.id AS list_id, l.external_id AS list_external_id, l.date, l.begdate, l.title, '
-            . 'l.activity, lm.id AS lists_medication_id, lm.drug_dosage_instructions, '
-            . 'lm.usage_category_title, lm.request_intent_title, '
-            . 'CASE WHEN lm.id IS NULL THEN \'lists\' ELSE \'lists_medication\' END AS source_table '
+    /** @return list<array<string, mixed>> */
+    private function fetchMedicationsByActivity(PatientId $patientId, int $activity, int $limit): array
+    {
+        $limit = $this->limit($limit);
+
+        return $this->executor->fetchRecords(
+            '('
+            . 'SELECT id, external_id, start_date, date_added, drug, dosage, drug_dosage_instructions, active, '
+            . 'NULL AS list_id, NULL AS list_external_id, NULL AS date, NULL AS begdate, NULL AS title, '
+            . 'NULL AS activity, NULL AS lists_medication_id, '
+            . '\'prescriptions\' AS source_table, '
+            . 'COALESCE(start_date, date_added) AS medication_sort_date '
+            . 'FROM prescriptions WHERE patient_id = ? AND active = ? '
+            . 'ORDER BY COALESCE(start_date, date_added) DESC LIMIT ' . $limit
+            . ') UNION ALL ('
+            . 'SELECT NULL AS id, NULL AS external_id, NULL AS start_date, NULL AS date_added, '
+            . 'NULL AS drug, NULL AS dosage, lm.drug_dosage_instructions, NULL AS active, '
+            . 'l.id AS list_id, l.external_id AS list_external_id, l.date, l.begdate, l.title, '
+            . 'l.activity, lm.id AS lists_medication_id, '
+            . 'CASE WHEN lm.id IS NULL THEN \'lists\' ELSE \'lists_medication\' END AS source_table, '
+            . 'COALESCE(l.begdate, l.date) AS medication_sort_date '
             . 'FROM lists l '
             . 'LEFT JOIN lists_medication lm ON lm.list_id = l.id '
-            . 'WHERE l.pid = ? AND l.type = ? AND l.activity = 0 '
-            . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit,
-            [$patientId->value, 'medication'],
+            . 'WHERE l.pid = ? AND l.type = ? AND l.activity = ? '
+            . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit
+            . ') ORDER BY medication_sort_date DESC LIMIT ' . $limit,
+            [$patientId->value, $activity, $patientId->value, 'medication', $activity],
         );
-
-        $medications = array_merge($prescriptions, $listMedications);
-        usort(
-            $medications,
-            static fn (array $left, array $right): int => strcmp(
-                self::medicationSortDate($right),
-                self::medicationSortDate($left),
-            ),
-        );
-
-        return array_slice($medications, 0, $limit);
     }
 
     public function activeAllergies(PatientId $patientId, int $limit): array
@@ -200,11 +170,5 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
     private function days(int $days): int
     {
         return max(1, min(3650, $days));
-    }
-
-    /** @param array<string, mixed> $row */
-    private static function medicationSortDate(array $row): string
-    {
-        return EvidenceRowValue::dateOnly($row, 'start_date', 'date_added', 'begdate', 'date');
     }
 }

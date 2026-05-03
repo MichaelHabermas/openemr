@@ -35,7 +35,9 @@ final class SessionConversationStore implements ConversationStore
             $patientId,
             $nowMs + $this->ttlMs,
         );
-        $this->writeState($state, $nowMs);
+        $states = $this->pruneExpiredRawStates($this->readRawStates(), $nowMs);
+        $states[$state->id->value] = $this->stateToRaw($state);
+        $this->writeRawStates($states);
 
         return $state;
     }
@@ -65,7 +67,7 @@ final class SessionConversationStore implements ConversationStore
     public function recordTurn(ConversationState $state, ConversationTurnSummary $summary, int $nowMs): ConversationState
     {
         $updated = $state->withTurn($summary, $nowMs + $this->ttlMs);
-        $this->writeState($updated, $nowMs);
+        $this->writeState($updated);
 
         return $updated;
     }
@@ -121,10 +123,17 @@ final class SessionConversationStore implements ConversationStore
         );
     }
 
-    private function writeState(ConversationState $state, int $nowMs): void
+    private function writeState(ConversationState $state): void
     {
-        $states = $this->pruneExpiredRawStates($this->readRawStates(), $nowMs);
-        $states[$state->id->value] = [
+        $states = $this->readRawStates();
+        $states[$state->id->value] = $this->stateToRaw($state);
+        $this->writeRawStates($states);
+    }
+
+    /** @return array<string, mixed> */
+    private function stateToRaw(ConversationState $state): array
+    {
+        return [
             'user_id' => $state->userId,
             'patient_id' => $state->patientId->value,
             'expires_at_ms' => $state->expiresAtMs,
@@ -136,7 +145,6 @@ final class SessionConversationStore implements ConversationStore
                 'refusals_or_warnings' => $state->summary->refusalsOrWarnings,
             ],
         ];
-        $this->writeRawStates($states);
     }
 
     /**

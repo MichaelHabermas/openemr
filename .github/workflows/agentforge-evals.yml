@@ -37,6 +37,10 @@ jobs:
     - name: Run Tier 0 evals
       run: php agent-forge/scripts/run-evals.php
 
+    - name: Append Tier 0 summary to GitHub Actions
+      if: ${{ !cancelled() }}
+      run: bash agent-forge/scripts/ci/append-eval-step-summary.sh "Tier 0 — Fixture and orchestration evals" "agent-forge/eval-results/eval-results-*.json"
+
     - name: Upload Tier 0 results
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -93,6 +97,10 @@ jobs:
       env:
         AGENTFORGE_SQL_EVAL_ENVIRONMENT: ci
       run: php agent-forge/scripts/run-sql-evidence-evals.php
+
+    - name: Append Tier 1 summary to GitHub Actions
+      if: ${{ !cancelled() }}
+      run: bash agent-forge/scripts/ci/append-eval-step-summary.sh "Tier 1 — Seeded SQL evidence evals" "agent-forge/eval-results/sql-evidence-eval-results-*.json"
 
     - name: Upload Tier 1 results
       if: ${{ !cancelled() }}

@@ -18,11 +18,6 @@ final class DefaultQueryExecutor implements QueryExecutor
 {
     public function fetchRecords(string $sql, array $binds = []): array
     {
-        $records = [];
-        foreach (QueryUtils::fetchRecords($sql, $binds) as $record) {
-            $records[] = StringKeyedArray::filter($record);
-        }
-
-        return $records;
+        return QueryUtils::fetchRecords($sql, $binds);
     }
 }
