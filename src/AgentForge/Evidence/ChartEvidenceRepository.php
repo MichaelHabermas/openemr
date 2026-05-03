@@ -13,36 +13,47 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 
 interface ChartEvidenceRepository
 {
     /** @return array<string, mixed>|null */
-    public function demographics(PatientId $patientId): ?array;
+    public function demographics(PatientId $patientId, ?Deadline $deadline = null): ?array;
 
     /** @return list<array<string, mixed>> */
-    public function activeProblems(PatientId $patientId, int $limit): array;
+    public function activeProblems(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function activeMedications(PatientId $patientId, int $limit): array;
+    public function activeMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function inactiveMedications(PatientId $patientId, int $limit): array;
+    public function inactiveMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function activeAllergies(PatientId $patientId, int $limit): array;
+    public function activeAllergies(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function recentLabs(PatientId $patientId, int $limit): array;
+    public function recentLabs(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array;
+    public function recentVitals(
+        PatientId $patientId,
+        int $limit,
+        int $staleAfterDays,
+        ?Deadline $deadline = null,
+    ): array;
 
     /** @return list<array<string, mixed>> */
-    public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array;
+    public function staleVitals(
+        PatientId $patientId,
+        int $limit,
+        int $staleAfterDays,
+        ?Deadline $deadline = null,
+    ): array;
 
     /** @return list<array<string, mixed>> */
-    public function recentEncounters(PatientId $patientId, int $limit): array;
+    public function recentEncounters(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 
     /** @return list<array<string, mixed>> */
-    public function recentNotes(PatientId $patientId, int $limit): array;
+    public function recentNotes(PatientId $patientId, int $limit, ?Deadline $deadline = null): array;
 }

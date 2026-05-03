@@ -107,8 +107,32 @@ final readonly class AnthropicDraftProvider implements DraftProvider
             'messages' => [
                 [
                     'role' => 'user',
-                    'content' => $this->promptComposer->userMessage($request, $bundle),
+                    'content' => $this->userMessageContent($request, $bundle),
                 ],
+            ],
+        ];
+    }
+
+    /**
+     * Emits the user message as two text blocks. The stable evidence prefix carries an
+     * ephemeral cache_control breakpoint so the next turn within the cache window only pays
+     * for the delta question's tokens.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function userMessageContent(AgentRequest $request, EvidenceBundle $bundle): array
+    {
+        $parts = $this->promptComposer->userMessageParts($request, $bundle);
+
+        return [
+            [
+                'type' => 'text',
+                'text' => $parts->stableEvidence,
+                'cache_control' => ['type' => 'ephemeral'],
+            ],
+            [
+                'type' => 'text',
+                'text' => $parts->deltaQuestion,
             ],
         ];
     }

@@ -98,16 +98,33 @@ final readonly class PromptComposer
     /** @throws JsonException */
     public function userMessage(AgentRequest $request, EvidenceBundle $bundle): string
     {
-        $message = [
-            'question' => $request->question->value,
-            'patient_id' => $request->patientId->value,
-            'bounded_evidence' => $bundle->toPromptArray(),
-        ];
+        return $this->userMessageParts($request, $bundle)->joined();
+    }
 
+    /**
+     * Splits the user message into a stable cacheable evidence prefix and a per-turn delta.
+     *
+     * The stable part contains patient_id and bounded_evidence — the same across consecutive
+     * turns of a conversation about identical evidence. The delta carries the new question
+     * and conversation context, which change every turn.
+     *
+     * @throws JsonException
+     */
+    public function userMessageParts(AgentRequest $request, EvidenceBundle $bundle): PromptParts
+    {
+        $stable = json_encode(
+            [
+                'patient_id' => $request->patientId->value,
+                'bounded_evidence' => $bundle->toPromptArray(),
+            ],
+            JSON_THROW_ON_ERROR,
+        );
+
+        $delta = ['question' => $request->question->value];
         if ($request->conversationSummary !== null) {
-            $message['conversation_context'] = $request->conversationSummary->toPromptArray();
+            $delta['conversation_context'] = $request->conversationSummary->toPromptArray();
         }
 
-        return json_encode($message, JSON_THROW_ON_ERROR);
+        return new PromptParts($stable, json_encode($delta, JSON_THROW_ON_ERROR));
     }
 }

@@ -18,5 +18,5 @@ interface QueryExecutor
      * @param list<mixed> $binds
      * @return list<array<string, mixed>>
      */
-    public function fetchRecords(string $sql, array $binds = []): array;
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array;
 }

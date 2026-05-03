@@ -86,10 +86,21 @@ final class AnthropicDraftProviderTest extends TestCase
         );
 
         $this->assertSame('user', $this->stringPath($payload, ['messages', 0, 'role']));
-        $this->assertStringContainsString(
-            'Hemoglobin A1c',
-            $this->stringPath($payload, ['messages', 0, 'content']),
-        );
+
+        $stableBlock = $this->arrayPath($payload, ['messages', 0, 'content', 0]);
+        $this->assertSame('text', $stableBlock['type']);
+        $this->assertSame(['type' => 'ephemeral'], $stableBlock['cache_control']);
+        $this->assertIsString($stableBlock['text']);
+        $this->assertStringContainsString('Hemoglobin A1c', $stableBlock['text']);
+        $this->assertStringContainsString('"patient_id":900001', $stableBlock['text']);
+        $this->assertStringNotContainsString('Show me recent A1c.', $stableBlock['text']);
+
+        $deltaBlock = $this->arrayPath($payload, ['messages', 0, 'content', 1]);
+        $this->assertSame('text', $deltaBlock['type']);
+        $this->assertArrayNotHasKey('cache_control', $deltaBlock);
+        $this->assertIsString($deltaBlock['text']);
+        $this->assertStringContainsString('Show me recent A1c.', $deltaBlock['text']);
+        $this->assertStringNotContainsString('Hemoglobin A1c', $deltaBlock['text']);
 
         $headers = $client->lastHeaders();
         $this->assertSame('test-anthropic-key', $headers['x-api-key']);
