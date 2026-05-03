@@ -139,7 +139,8 @@ php agent-forge/scripts/run-deployed-smoke.php
 
 Required environment: `AGENTFORGE_SMOKE_USER`, `AGENTFORGE_SMOKE_PASSWORD`,
 and `AGENTFORGE_VM_SSH_HOST` (an SSH target for remote audit-log grep, or
-`local` when the runner executes directly on the VM). The
+`local` when the runner executes directly on the VM with a host-readable log, or
+`docker-compose` to grep the OpenEMR container log). The
 runner exercises Apache + PHP-FPM dispatch, OpenEMR session establishment,
 `csrf_token_form` validation, session-bound `pid` selection, the
 `agent_request.php` controller, and the deployed PSR-3 `agent_forge_request`

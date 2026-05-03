@@ -713,7 +713,14 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
     $remoteCommand = sprintf('grep -F %s %s | tail -n 1', escapeshellarg($requestId), escapeshellarg($logPath));
     $executionLabel = 'ssh';
     $command = $remoteCommand;
-    if (strtolower(trim($sshHost)) !== 'local') {
+    $auditMode = strtolower(trim($sshHost));
+    if ($auditMode === 'docker-compose') {
+        $executionLabel = 'docker compose grep';
+        $command = sprintf(
+            'docker compose -f docker/development-easy/docker-compose.yml exec -T openemr sh -lc %s',
+            escapeshellarg($remoteCommand),
+        );
+    } elseif ($auditMode !== 'local') {
         $command = sprintf(
             'ssh -o BatchMode=yes -o ConnectTimeout=10 %s %s',
             escapeshellarg($sshHost),

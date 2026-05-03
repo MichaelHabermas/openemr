@@ -66,7 +66,8 @@ Final deployed evidence still required from the environment owner:
 ```sh
 export AGENTFORGE_SMOKE_USER='assigned-smoke-user'
 export AGENTFORGE_SMOKE_PASSWORD='assigned-smoke-password'
-export AGENTFORGE_VM_SSH_HOST='user@host' # or "local" when running directly on the VM
+export AGENTFORGE_VM_SSH_HOST='user@host' # or "docker-compose" on the VM host
+export AGENTFORGE_VM_AUDIT_LOG_PATH='/var/log/apache2/error.log'
 export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
 php agent-forge/scripts/run-deployed-smoke.php
 ```

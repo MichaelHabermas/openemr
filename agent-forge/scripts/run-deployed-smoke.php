@@ -17,7 +17,9 @@
  *                                      case is recorded as skipped.
  *   AGENTFORGE_VM_SSH_HOST           — SSH alias or user@host for the VM. Set
  *                                      to "local" when running on the deployed
- *                                      VM and the audit log path is readable.
+ *                                      VM and the audit log path is readable,
+ *                                      or "docker-compose" to grep the OpenEMR
+ *                                      container log via docker compose.
  *                                      Required unless AGENTFORGE_SMOKE_SKIP_AUDIT_LOG=1.
  *   AGENTFORGE_VM_AUDIT_LOG_PATH     — defaults to /var/log/php-error.log.
  *   AGENTFORGE_SMOKE_SKIP_AUDIT_LOG  — set to a truthy value to skip audit-log
