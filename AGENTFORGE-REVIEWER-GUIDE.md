@@ -77,7 +77,15 @@ Current checked-in proof snapshot:
 | Deployed latency trace | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json`; `agent-forge/docs/operations/LATENCY-RESULTS.md` | A1c 20/20, p95 `3212 ms`; visit briefing 20/20, p95 `8309 ms`; both under `10000 ms` demo budget |
 | Deployed browser proof pack | `agent-forge/docs/submission/browser-proof/` | Four attached browser proof screenshots for A1c trend, visit briefing, missing microalbumin, and clinical-advice refusal |
 
-Additional later VM proof was captured after the checked-in Tier 2/Tier 4 summaries, but the corresponding JSON files are not present in this checkout. The checked-in summaries above are the local artifacts a reviewer can inspect directly from the repository.
+Latest VM proof supplied on 2026-05-03 after the checked-in summaries:
+
+| Check | Latest VM artifact or result | Status |
+| --- | --- | --- |
+| Local AgentForge gate from a normal VM shell | `agent-forge/scripts/check-local.sh`; deterministic eval artifact `/root/repos/openemr/agent-forge/eval-results/eval-results-20260503-201548.json` | PASS; PHP syntax, shell syntax, isolated PHPUnit `298 tests / 1547 assertions`, deterministic evals `32 passed, 0 failed`, PHPStan `161/161`, PHPCS no changed AgentForge PHP files |
+| Tier 2 live-provider proof from the OpenEMR container | `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
+| Tier 4 deployed HTTP/session/audit smoke from the VM | `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
+
+The checked-in summaries above are the local artifacts a reviewer can inspect directly from the repository. The later VM artifacts should be attached to the final submission packet if possible.
 
 To reproduce the deployed smoke proof from the VM host:
 
@@ -89,6 +97,8 @@ export AGENTFORGE_VM_AUDIT_LOG_PATH='/var/log/apache2/error.log'
 export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
 php agent-forge/scripts/run-deployed-smoke.php
 ```
+
+If the current shell is already inside `agent-forge/`, run `php scripts/run-deployed-smoke.php` instead.
 
 Browser proof request ids from the later deployed UI proof pass: A1c `7cf183f7-5607-403e-9559-e2689a0769aa`, visit briefing `bbbddd92-df71-4835-951b-f14279abe18c`, dosing refusal `ee2fe6c2-56cc-47ac-8731-a3fd885ad9e3`, missing microalbumin `e4ca6da4-9cd9-4222-a9c3-06651098fb49`, and cross-patient refusal `7489b25d-2af1-42d8-9c04-ec7ee3166dbc`.
 

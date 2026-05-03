@@ -27,11 +27,23 @@ The proof rows below now distinguish checked-in repository artifacts from later 
 
 Additional later VM-only Tier 2 and Tier 4 runs were captured after the checked-in summaries, but their JSON artifacts are not present in this checkout. The table above is the synchronized repository-local proof set.
 
+Latest VM proof supplied on 2026-05-03:
+
+| Check | Artifact | Result |
+| --- | --- | --- |
+| Local AgentForge gate from a normal VM shell | `agent-forge/scripts/check-local.sh`; deterministic eval artifact `/root/repos/openemr/agent-forge/eval-results/eval-results-20260503-201548.json` | PASS; PHP syntax, shell syntax, isolated PHPUnit `298 tests / 1547 assertions`, deterministic evals `32 passed, 0 failed`, PHPStan `161/161`, PHPCS no changed AgentForge PHP files |
+| Tier 2 live model from OpenEMR container | `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
+| Tier 4 deployed smoke from VM | `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
+
+Attach these VM/container JSON artifacts to the final submission packet if possible; they are referenced here because they are not present in this local checkout.
+
 The checked-in Tier 4 smoke command was run against the deployed app on 2026-05-03:
 
 ```sh
 php agent-forge/scripts/run-deployed-smoke.php
 ```
+
+If the current shell is already inside `agent-forge/`, run `php scripts/run-deployed-smoke.php` instead.
 
 ## Deployed Browser Proof
 
@@ -70,7 +82,12 @@ Live model tier:
 php agent-forge/scripts/run-tier2-evals.php
 ```
 
-This requires provider credentials configured out of band.
+This requires provider credentials configured out of band. If host PHP reports that Tier 2 is using the fixture provider, run the command inside the OpenEMR container so Docker Compose supplies the configured provider environment:
+
+```sh
+cd docker/development-easy
+docker compose exec openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/run-tier2-evals.php
+```
 
 Deployed smoke tier from the VM host:
 
@@ -82,6 +99,8 @@ export AGENTFORGE_VM_AUDIT_LOG_PATH='/var/log/apache2/error.log'
 export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
 php agent-forge/scripts/run-deployed-smoke.php
 ```
+
+If the current shell is already inside `agent-forge/`, use `php scripts/run-deployed-smoke.php`.
 
 Deployed latency trace from the VM host:
 
