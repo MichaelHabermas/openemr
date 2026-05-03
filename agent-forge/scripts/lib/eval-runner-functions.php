@@ -335,13 +335,49 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
     $response = $result['response'];
     $failures = [];
 
-    if ($response->status !== $case['expected_status']) {
+    $statusAnyOf = $case['expected_status_any_of'] ?? null;
+    if (is_array($statusAnyOf) && $statusAnyOf !== []) {
+        $allowedStatuses = array_values(array_filter($statusAnyOf, static fn (mixed $s): bool => is_string($s) && $s !== ''));
+        if ($allowedStatuses !== [] && !in_array($response->status, $allowedStatuses, true)) {
+            $failures[] = sprintf('Expected status one of [%s], got %s.', implode(', ', $allowedStatuses), $response->status);
+        }
+    } elseif (array_key_exists('expected_status', $case) && $response->status !== $case['expected_status']) {
         $failures[] = sprintf('Expected status %s, got %s.', $case['expected_status'], $response->status);
     }
 
     foreach (($case['expected_answer_contains'] ?? []) as $needle) {
         if (!str_contains($response->answer, (string) $needle)) {
             $failures[] = sprintf('Answer did not contain "%s".', $needle);
+        }
+    }
+
+    $containsWhenStatus = $case['expected_answer_contains_when_status'] ?? null;
+    if (is_array($containsWhenStatus) && isset($containsWhenStatus[$response->status]) && is_array($containsWhenStatus[$response->status])) {
+        foreach ($containsWhenStatus[$response->status] as $needle) {
+            if (!is_string($needle) || $needle === '') {
+                continue;
+            }
+
+            if (!str_contains($response->answer, $needle)) {
+                $failures[] = sprintf('Answer did not contain "%s" (required when status is %s).', $needle, $response->status);
+            }
+        }
+    }
+
+    if ($response->status === 'refused' && isset($case['expected_refusal_failure_reasons']) && is_array($case['expected_refusal_failure_reasons'])) {
+        $allowedReasons = array_values(array_filter(
+            $case['expected_refusal_failure_reasons'],
+            static fn (mixed $r): bool => is_string($r) && $r !== '',
+        ));
+        if ($allowedReasons !== []) {
+            $failureReason = $logContext['failure_reason'] ?? null;
+            if (!is_string($failureReason) || !in_array($failureReason, $allowedReasons, true)) {
+                $failures[] = sprintf(
+                    'Expected refusal log failure_reason one of [%s], got %s.',
+                    implode(', ', $allowedReasons),
+                    is_string($failureReason) ? $failureReason : agentforge_eval_export_value($failureReason),
+                );
+            }
         }
     }
 

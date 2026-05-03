@@ -579,13 +579,21 @@ function agentforge_deployed_smoke_login(
     }
 
     $body = strtolower($loginPost['body']);
-    if (str_contains($body, 'invalid username or password')
-        || str_contains($body, 'login.php')
-        && !str_contains($body, 'main_screen')) {
+    if (str_contains($body, 'invalid username or password')) {
         return false;
     }
 
-    return is_file($cookieJarPath) && filesize($cookieJarPath) > 0;
+    if (!is_file($cookieJarPath) || filesize($cookieJarPath) === 0) {
+        return false;
+    }
+
+    $jar = (string) file_get_contents($cookieJarPath);
+
+    // After a successful login the jar contains a session OpenEMR cookie (not the
+    // "OpenEMR=deleted" line from clearing a prior session). Do not treat every page
+    // that links to login.php (e.g. logout) as a failed login — that false-negative
+    // broke local smoke against current OpenEMR HTML.
+    return str_contains($jar, "\tOpenEMR\t") && !str_contains($jar, "\tOpenEMR\tdeleted");
 }
 
 function agentforge_deployed_smoke_set_pid(
@@ -891,12 +899,10 @@ function agentforge_deployed_smoke_curl_request(array $request): array
     $body = curl_exec($ch);
     if ($body === false) {
         $err = curl_error($ch);
-        curl_close($ch);
         throw new RuntimeException('curl error: ' . $err);
     }
 
     $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
 
     return [
         'http_status' => $status,
