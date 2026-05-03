@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\Reporting;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use Throwable;
 
 final class EvalLatestSummaryWriter
 {
@@ -63,7 +62,7 @@ final class EvalLatestSummaryWriter
             if (file_put_contents($outPath, $payload) === false) {
                 fwrite(STDERR, sprintf("AgentForge latest summary: write failed: %s\n", $outPath));
             }
-        } catch (Throwable $e) {
+        } catch (\JsonException | \InvalidArgumentException $e) {
             fwrite(STDERR, sprintf("AgentForge latest summary: skipped (%s)\n", $e->getMessage()));
         }
     }

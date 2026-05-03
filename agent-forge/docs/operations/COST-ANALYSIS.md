@@ -80,7 +80,7 @@ Nightly cadence: ~$0.12 per month. The cost is small enough that the eval suite 
 | model output size | 200 output tokens | 300 output tokens | 600 output tokens | Estimated from measured 173-token A1c output |
 | model input/output tokens | 1,000 / 200 | 1,800 / 300 | 3,500 / 600 | Estimated; must be replaced by live tier telemetry |
 | retry rate | 0% | 5% | 10% | Estimated; malformed-output and provider-retry rates unmeasured |
-| cache hit rate | 25% input-token reduction | 15% input-token reduction | 0% input-token reduction | Estimated; prompt caching not yet implemented as a product guarantee |
+| cache hit rate | 25% input-token reduction | 15% input-token reduction | 0% input-token reduction | Estimated. Provider-dependent: `AnthropicDraftProvider` ships two prompt-cache breakpoints (system + tool schema, and the stable evidence prefix) as of the May 2026 latency pass; `OpenAiDraftProvider` does not. The numbers above assume the OpenAI path (the deployed VM today). When the production tier targets Anthropic, replace these estimates with live `cache_read_input_tokens / cache_creation_input_tokens` telemetry. |
 | live-provider pricing source | OpenAI `gpt-4o-mini` model page | OpenAI `gpt-4o-mini` model page | OpenAI `gpt-4o-mini` model page | Measured source, verified 2026-05-01 |
 | hosting | Scenario range by tier | Scenario range by tier | Scenario range by tier | Estimated until vendor bills exist |
 | storage | Sensitive audit-log volume by tier | Sensitive audit-log volume by tier | Sensitive audit-log volume by tier | Estimated until retention policy and log volume are measured |

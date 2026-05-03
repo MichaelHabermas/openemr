@@ -53,7 +53,7 @@ Per-stage VM timings were not captured into the repository at the time of the `1
 **Why the VM `draft` is much slower than the local `draft`:** the most likely contributors, in order:
 
 1. Network round-trip from the VM region to OpenAI's API endpoint.
-2. TLS handshake / DNS resolution overhead per request, since prompt-cache and connection-reuse are not yet implemented as product guarantees (see [COST-ANALYSIS.md](COST-ANALYSIS.md) cache assumptions).
+2. TLS handshake / DNS resolution overhead per request. Prompt-prefix caching shipped on the Anthropic path in the May 2026 latency pass (see [LATENCY-OPTIMIZATION-2026-05.md](LATENCY-OPTIMIZATION-2026-05.md) item #3); the OpenAI path still has neither prompt-cache nor connection-reuse guarantees, and the deployed VM described above runs against OpenAI. Cache assumptions per provider are summarized in [COST-ANALYSIS.md](COST-ANALYSIS.md).
 3. PHP-FPM cold-start or session bootstrap on a low-traffic VM.
 4. DB query path differences against the deployed MariaDB versus the local Docker MariaDB.
 
@@ -75,18 +75,19 @@ Until step 1 lands, the inferred decomposition above is the best available evide
 If the captured numbers confirm `draft` dominance (most likely, per the inference):
 
 - Move the deployed VM's egress closer to the OpenAI API region, or front the call with a regional reverse proxy that keeps a warm TLS connection pool.
-- Add prompt-prefix caching (the `gpt-4o-mini` model page documents cached input pricing at half rate) so the static system prompt and tool-allowlist preamble do not re-tokenize on each request.
+- Add prompt-prefix caching for the OpenAI path (the `gpt-4o-mini` model page documents cached input pricing at half rate) so the static system prompt and tool-allowlist preamble do not re-tokenize on each request. *Status: shipped for Anthropic via `PromptComposer::userMessageParts()` + `AnthropicDraftProvider` cache breakpoints; OpenAI path still uses the legacy single-document `userMessage()`.*
 - Consider a cheaper / lower-latency model for the short-lookup question class (briefing and explicit refusal cases), gated on Tier 2 live evals continuing to pass.
-- Add request-level retries with backoff distinct from any provider-side retry, so a single slow round trip does not push a clinically interactive request past the budget.
+- Request-level retries with backoff distinct from any provider-side retry, so a single slow round trip does not push a clinically interactive request past the budget. *Status: shipped as `DraftProviderRetryMiddleware` with deadline-aware planning (`MIN_CALL_BUDGET_MS = 250`).*
 
 If `evidence:*` is meaningfully larger than expected:
 
 - Add the candidate composite indexes documented in [AUDIT.md](../AUDIT.md) §P1: `prescriptions(patient_id, active)` and `lists(pid, type, activity)`. Capture before/after `EXPLAIN` per AUDIT §P1 current status.
 - Implement the selective tool-routing changes (planned in the parent remediation plan) so non-briefing requests skip evidence tools the question does not need.
+- Per-tool round-trip reduction has partially shipped: medication evidence is now a single `UNION ALL` against `prescriptions` + `lists_medication` in `SqlChartEvidenceRepository`; per-query `MAX_EXECUTION_TIME` hints are applied via `SqlDeadlineHint::apply()` from the plumbed `Deadline`; and an alternate `ConcurrentChartEvidenceCollector` is available where a `PrefetchableChartEvidenceRepository` is wired (see [LATENCY-OPTIMIZATION-2026-05.md](LATENCY-OPTIMIZATION-2026-05.md) items #1, #4, #6). Before/after `StageTimer` proof per section is still owed.
 
 If `request:authorize` or `request:parse` is meaningfully larger than expected:
 
-- Cache `SqlPatientAccessRepository` lookups at request scope. The current path issues at least one DB round trip per request even when the same user/patient pair was just resolved.
+- Cache `SqlPatientAccessRepository` lookups at request scope. *Status: shipped as `MemoizingPatientAccessRepository` (Decorator) in the May 2026 latency pass.*
 - Profile `AgentRequestParser` against malformed or oversized payloads; the request body is `1000`-char-bounded by the chart panel but server-side validation is not assumed to scale to large bodies.
 
 If `verify` is meaningfully larger than expected (unlikely given the bundle size):

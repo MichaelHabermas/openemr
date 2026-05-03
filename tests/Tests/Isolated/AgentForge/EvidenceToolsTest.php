@@ -695,8 +695,8 @@ final class EvidenceToolsTest extends TestCase
             ) {
             }
 
-            /** @return array<string, mixed>|null */
-            public function demographics(PatientId $patientId, ?Deadline $deadline = null): ?array
+            /** @return array<string, mixed> */
+            public function demographics(PatientId $patientId, ?Deadline $deadline = null): array
             {
                 return $this->demographics ?? [
                     'pid' => 900001,

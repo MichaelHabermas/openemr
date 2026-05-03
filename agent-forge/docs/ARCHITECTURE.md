@@ -134,7 +134,7 @@ Flow:
 2. Agent panel sends `patient_id` and `question` to a server-side OpenEMR endpoint.
 3. OpenEMR validates the active session user.
 4. A patient-specific authorization gate checks whether that user may read that patient chart.
-5. Server invokes allowlisted read-only chart tools. Selective routing is the target; the current handler can still call more chart tools than a question requires.
+5. Server invokes allowlisted read-only chart tools. Section selection is performed by `ChartQuestionPlanner`; tool invocation goes through a `ChartEvidenceCollector` interface (Strategy). The default `SerialChartEvidenceCollector` runs tools sequentially; an alternate `ConcurrentChartEvidenceCollector` is wired when a `PrefetchableChartEvidenceRepository` is available, which performs a single combined repository fetch before per-section dehydration. Selective routing of *which* sections to call remains the target; the current handler can still call more chart tools than a question requires.
 6. Tools fetch bounded rows for the current patient only.
 7. Evidence bundle is built with source table, row id, date, label, and value.
 8. LLM receives the question and evidence bundle only.
@@ -274,7 +274,7 @@ Latency budget:
 
 - Demo gate: the measured local A1c path at `2,989 ms` and VM A1c path at `10,693 ms` are acceptable as demo evidence only because the answer was verified and cited.
 - Production-readiness gate: production claims remain blocked until production-shaped telemetry shows p95 verified-answer-or-clear-failure latency under 10 seconds for the demo path, with `stage_timings_ms` available to identify the slow stage.
-- Optimization plan: reduce unnecessary evidence with selective routing, shrink evidence bundles without weakening citations, tune model timeouts, evaluate prompt caching only when citation integrity is preserved, add query/index proof before database changes, and remeasure on production-shaped infrastructure.
+- Optimization plan: reduce unnecessary evidence with selective routing, shrink evidence bundles without weakening citations, tune model timeouts, add query/index proof before database changes, and remeasure on production-shaped infrastructure. Prompt-prefix caching landed for the Anthropic provider as of the May 2026 latency pass — `AnthropicDraftProvider` consumes `PromptComposer::userMessageParts()` and sets a second cache breakpoint on the stable evidence prefix; the OpenAI provider still uses the legacy single-document `userMessage()` path. See [`operations/LATENCY-OPTIMIZATION-2026-05.md`](operations/LATENCY-OPTIMIZATION-2026-05.md) for what shipped and what is still owed (cache hit-rate telemetry, before/after `StageTimer` proof).
 
 ## Public Interfaces
 

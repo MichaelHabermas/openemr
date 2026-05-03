@@ -70,8 +70,8 @@ final class EvalResultNormalizer
      */
     private function fromTierZeroFixture(array $json): NormalizedEvalRun
     {
-        /** @var list<array<string, mixed>> $results */
-        $results = is_array($json['results'] ?? null) ? $json['results'] : [];
+        /** @var list<mixed> $results */
+        $results = is_array($json['results'] ?? null) ? array_values($json['results']) : [];
         $caseRows = [];
         foreach ($results as $row) {
             if (!is_array($row)) {
@@ -112,7 +112,7 @@ final class EvalResultNormalizer
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<mixed> $row
      */
     private function tierZeroDetail(array $row): string
     {
@@ -131,8 +131,8 @@ final class EvalResultNormalizer
      */
     private function fromTier1SqlEvidence(array $json): NormalizedEvalRun
     {
-        /** @var list<array<string, mixed>> $results */
-        $results = is_array($json['results'] ?? null) ? $json['results'] : [];
+        /** @var list<mixed> $results */
+        $results = is_array($json['results'] ?? null) ? array_values($json['results']) : [];
         $caseRows = [];
         foreach ($results as $row) {
             if (!is_array($row)) {
@@ -176,8 +176,8 @@ final class EvalResultNormalizer
      */
     private function fromTier2LiveModel(array $json): NormalizedEvalRun
     {
-        /** @var list<array<string, mixed>> $results */
-        $results = is_array($json['results'] ?? null) ? $json['results'] : [];
+        /** @var list<mixed> $results */
+        $results = is_array($json['results'] ?? null) ? array_values($json['results']) : [];
         $caseRows = [];
         foreach ($results as $row) {
             if (!is_array($row)) {
@@ -236,8 +236,8 @@ final class EvalResultNormalizer
      */
     private function fromTier4DeployedSmoke(array $json): NormalizedEvalRun
     {
-        /** @var list<array<string, mixed>> $cases */
-        $cases = is_array($json['cases'] ?? null) ? $json['cases'] : [];
+        /** @var list<mixed> $cases */
+        $cases = is_array($json['cases'] ?? null) ? array_values($json['cases']) : [];
         $caseRows = [];
         $passed = 0;
         $failed = 0;

@@ -18,7 +18,7 @@ Listed in the order they landed on `master`. Commit hashes link the change.
 
 | # | Change | Commit | Pattern / Surface |
 | --- | --- | --- | --- |
-| 9 | Strip `StringKeyedArray::filter` from `DefaultQueryExecutor` hot path; restored a lean private `stringKeyed()` helper to keep the `array<string, mixed>` contract | `e54a3b3a5` (within larger PHPStan/type pass) | Hot-path simplification |
+| 9 | Strip `StringKeyedArray::filter` from `DefaultQueryExecutor` hot path; introduced a lean private `stringKeyed()` helper to keep the `array<string, mixed>` contract | `e54a3b3a5` (within larger PHPStan/type pass) | Hot-path simplification |
 | 10 | Delta-write conversation state in `SessionConversationStore` instead of read-prune-rewrite per turn | landed alongside store cleanup | Store hygiene |
 | 6 | Consolidate the two medication queries in `SqlChartEvidenceRepository` into one `UNION ALL` with server-side `ORDER BY` / `LIMIT` | `704bafe0f` | Round-trip reduction |
 | 5 | New `MemoizingPatientAccessRepository` (Decorator) wrapping `SqlPatientAccessRepository` for per-request memoization | `7bc3589bc` | Decorator pattern |
@@ -38,7 +38,7 @@ Carried forward from the plan, restated here so the next pass does not re-litiga
 - **#11 — Trim `ConversationTurnSummary` fields.** Re-examined and skipped: all four fields (`questionType`, `sourceIds`, `missingOrUncheckedSections`, `refusalsOrWarnings`) are consumed by the LLM via `PromptComposer::userMessage()` as `conversation_context`. Trimming would change LLM behavior. The earlier "hygiene" framing was a misdiagnosis.
 - **#12 — Defer post-response writes via `fastcgi_finish_request()`.** SAPI-dependent; would silently no-op on CLI/PHP-FPM-less environments. Worth doing later behind capability detection.
 - **Architecture A — Semantic / exact-match cache for repeat questions.** Highest aggregate-latency win but needs a key strategy, an invalidation hook on chart writes, and a storage tier. Separate design.
-- **Architecture B — Speculative pre-fetch on chart open.** Requires a chart-open hook surface outside AgentForge. Separate design.
+- **Architecture B — Speculative pre-fetch on chart open.** The prefetch *primitive* now exists as `PrefetchableChartEvidenceRepository` (landed with item #1). What is still missing is the chart-open trigger surface outside AgentForge. Separate design.
 
 ## Regression Caught Mid-Execution
 

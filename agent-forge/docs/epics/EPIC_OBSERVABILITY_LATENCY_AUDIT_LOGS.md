@@ -3,6 +3,7 @@
 **Generated:** 2026-05-02
 **Scope:** AgentForge documentation, proof, sensitive audit-log policy, observability maturity plan, and latency budget
 **Status:** Implemented as documentation-and-proof remediation; human log-policy review remains unchecked until actually performed
+**Latency budget update (2026-05-02):** A first-principles latency review produced a 12-item recommendation list; eight items shipped against `src/AgentForge` in the May 2026 latency pass. See [`../operations/LATENCY-OPTIMIZATION-2026-05.md`](../operations/LATENCY-OPTIMIZATION-2026-05.md) for what shipped, the regression caught mid-pass, and what is still owed (cache hit-rate telemetry, before/after `StageTimer` proof, Tier 4 deployed smoke verification).
 
 ---
 
