@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Evidence\SerialChartEvidenceCollector;
+use OpenEMR\AgentForge\Evidence\ToolSelectionProvider;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
@@ -47,9 +48,10 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         ?AgentForgeClock $clock = null,
         private readonly int $deadlineMs = 20000,
         ?ChartEvidenceCollector $collector = null,
+        ?ToolSelectionProvider $toolSelectionProvider = null,
     ) {
         $this->clock = $clock ?? new SystemAgentForgeClock();
-        $this->planner = new ChartQuestionPlanner();
+        $this->planner = new ChartQuestionPlanner($toolSelectionProvider, $logger);
         $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $logger);
     }
@@ -95,6 +97,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             $deadline,
         );
         $this->lastTelemetry = $draftingResult->telemetry
+            ->withToolSelection($plan->selectorMode, $plan->selectorResult, $plan->selectorFallbackReason)
             ->withMergedStageTimings($plannerTimer->timings())
             ->withMergedStageTimings($timer->timings());
 

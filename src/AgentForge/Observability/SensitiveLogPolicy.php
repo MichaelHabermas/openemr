@@ -36,6 +36,9 @@ final class SensitiveLogPolicy
         'failure_reason' => true,
         'verifier_result' => true,
         'stage_timings_ms' => true,
+        'selector_mode' => true,
+        'selector_result' => true,
+        'selector_fallback_reason' => true,
     ];
 
     /** @var array<string, true> */

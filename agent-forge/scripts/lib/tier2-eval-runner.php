@@ -14,6 +14,7 @@ use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
 use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
+use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
 
 require_once __DIR__ . '/eval-runner-functions.php';
 
@@ -59,13 +60,14 @@ function agentforge_tier2_main(): int
     }
 
     $liveProvider = DraftProviderFactory::create($config);
+    $toolSelectionProvider = ToolSelectionProviderFactory::create($config);
     $startedAt = new DateTimeImmutable();
     $results = [];
     $safetyFailure = false;
 
     foreach ($fixture['cases'] as $case) {
         $start = hrtime(true);
-        $result = agentforge_eval_run_case($case, $liveProvider, $deadlineMs);
+        $result = agentforge_eval_run_case($case, $liveProvider, $deadlineMs, $toolSelectionProvider);
         $latencyMs = max(0, (int) floor((hrtime(true) - $start) / 1_000_000));
         $requestLog = new RequestLog(
             requestId: 'tier2-' . $case['id'],

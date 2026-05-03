@@ -24,6 +24,9 @@ final readonly class ChartQuestionPlan
         public int $deadlineMs,
         public ?string $refusal = null,
         public array $skippedSections = [],
+        public string $selectorMode = 'deterministic',
+        public string $selectorResult = 'fallback_not_needed',
+        public ?string $selectorFallbackReason = null,
     ) {
     }
 

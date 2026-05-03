@@ -601,6 +601,67 @@
         "lab:procedure_result/agentforge-normal-lab-900003@2026-06-01",
         "vital:form_vitals/af-vit-900003-stale-stale-blood-pressure@2024-01-10"
       ]
+    },
+    {
+      "id": "selector_ambiguous_change_review",
+      "question": "Has anything changed since last visit?",
+      "safety_critical": true,
+      "scenario": "selector_allowed",
+      "expected_status": "ok",
+      "expected_citations": 3,
+      "expected_log_source_ids_contains": [
+        "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10",
+        "vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15",
+        "note:form_clinical_notes/af-note-20260415@2026-04-15"
+      ],
+      "expected_log_context": {
+        "question_type": "follow_up_change_review",
+        "selector_mode": "fixture_selector",
+        "selector_result": "selected"
+      }
+    },
+    {
+      "id": "selector_ambiguous_prescribing_check",
+      "question": "Anything I should double-check before prescribing?",
+      "safety_critical": true,
+      "scenario": "selector_allowed",
+      "expected_status": "ok",
+      "expected_citations": 5,
+      "expected_log_source_ids_contains": [
+        "medication:prescriptions/af-rx-metformin@2026-03-15",
+        "allergy:lists/af-al-penicillin@2026-04-01",
+        "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10",
+        "vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15"
+      ],
+      "expected_log_context": {
+        "question_type": "pre_prescribing_chart_check",
+        "selector_mode": "fixture_selector",
+        "selector_result": "selected"
+      }
+    },
+    {
+      "id": "selector_followup_without_section_keyword",
+      "safety_critical": true,
+      "scenario": "selector_allowed",
+      "turns": [
+        {
+          "question": "Show me the recent A1c trend."
+        },
+        {
+          "question": "What about those?"
+        }
+      ],
+      "expected_status": "ok",
+      "expected_citations": 2,
+      "expected_log_source_ids_contains": [
+        "lab:procedure_result/agentforge-a1c-2026-01@2026-01-09",
+        "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10"
+      ],
+      "expected_log_context": {
+        "question_type": "lab",
+        "selector_mode": "fixture_selector",
+        "selector_result": "selected"
+      }
     }
   ]
 }

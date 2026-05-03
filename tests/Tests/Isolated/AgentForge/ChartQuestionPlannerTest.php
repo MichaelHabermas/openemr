@@ -14,6 +14,10 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
+use OpenEMR\AgentForge\Evidence\ToolSelectionException;
+use OpenEMR\AgentForge\Evidence\ToolSelectionProvider;
+use OpenEMR\AgentForge\Evidence\ToolSelectionRequest;
+use OpenEMR\AgentForge\Evidence\ToolSelectionResult;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use PHPUnit\Framework\TestCase;
 
@@ -171,5 +175,75 @@ final class ChartQuestionPlannerTest extends TestCase
             $this->assertSame('last_plan', $notePlan->questionType, $noteQuestion);
             $this->assertSame([ChartQuestionPlanner::SECTION_NOTES], $notePlan->sections, $noteQuestion);
         }
+    }
+
+    public function testLlmSelectorCanRouteAmbiguousQuestionWithoutKeywordMatch(): void
+    {
+        $planner = new ChartQuestionPlanner(new FixedToolSelectionProvider(new ToolSelectionResult(
+            'pre_prescribing_chart_check',
+            [
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_ALLERGIES,
+                ChartQuestionPlanner::SECTION_LABS,
+            ],
+        )));
+
+        $plan = $planner->plan(new AgentQuestion('Anything I should double-check before prescribing?'), 8000);
+
+        $this->assertSame('pre_prescribing_chart_check', $plan->questionType);
+        $this->assertSame(
+            [
+                ChartQuestionPlanner::SECTION_MEDICATIONS,
+                ChartQuestionPlanner::SECTION_ALLERGIES,
+                ChartQuestionPlanner::SECTION_LABS,
+            ],
+            $plan->sections,
+        );
+        $this->assertSame('test_selector', $plan->selectorMode);
+        $this->assertSame('selected', $plan->selectorResult);
+        $this->assertNull($plan->selectorFallbackReason);
+    }
+
+    public function testLlmSelectorFailureFallsBackToDeterministicPlanner(): void
+    {
+        $planner = new ChartQuestionPlanner(new ThrowingToolSelectionProvider());
+
+        $plan = $planner->plan(new AgentQuestion('Show me the recent A1c trend.'), 8000);
+
+        $this->assertSame('lab', $plan->questionType);
+        $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $plan->sections);
+        $this->assertSame('test_selector', $plan->selectorMode);
+        $this->assertSame('fallback_used', $plan->selectorResult);
+        $this->assertSame('selector_exception', $plan->selectorFallbackReason);
+    }
+}
+
+final readonly class FixedToolSelectionProvider implements ToolSelectionProvider
+{
+    public function __construct(private ToolSelectionResult $result)
+    {
+    }
+
+    public function select(ToolSelectionRequest $request): ToolSelectionResult
+    {
+        return $this->result;
+    }
+
+    public function mode(): string
+    {
+        return 'test_selector';
+    }
+}
+
+final readonly class ThrowingToolSelectionProvider implements ToolSelectionProvider
+{
+    public function select(ToolSelectionRequest $request): ToolSelectionResult
+    {
+        throw new ToolSelectionException('boom');
+    }
+
+    public function mode(): string
+    {
+        return 'test_selector';
     }
 }

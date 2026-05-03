@@ -32,6 +32,9 @@ final readonly class AgentTelemetry
         public ?string $failureReason,
         public string $verifierResult,
         public array $stageTimingsMs = [],
+        public string $selectorMode = 'deterministic',
+        public string $selectorResult = 'fallback_not_needed',
+        public ?string $selectorFallbackReason = null,
     ) {
     }
 
@@ -47,7 +50,10 @@ final readonly class AgentTelemetry
      *     estimated_cost: ?float,
      *     failure_reason: ?string,
      *     verifier_result: string,
-     *     stage_timings_ms: array<string, int>
+     *     stage_timings_ms: array<string, int>,
+     *     selector_mode: string,
+     *     selector_result: string,
+     *     selector_fallback_reason: ?string
      * }
      */
     public function toContext(): array
@@ -64,6 +70,9 @@ final readonly class AgentTelemetry
             'failure_reason' => $this->failureReason,
             'verifier_result' => $this->verifierResult,
             'stage_timings_ms' => $this->stageTimingsMs,
+            'selector_mode' => $this->selectorMode,
+            'selector_result' => $this->selectorResult,
+            'selector_fallback_reason' => $this->selectorFallbackReason,
         ];
     }
 
@@ -82,6 +91,29 @@ final readonly class AgentTelemetry
             $this->failureReason,
             $this->verifierResult,
             $stageTimingsMs,
+            $this->selectorMode,
+            $this->selectorResult,
+            $this->selectorFallbackReason,
+        );
+    }
+
+    public function withToolSelection(string $selectorMode, string $selectorResult, ?string $selectorFallbackReason = null): self
+    {
+        return new self(
+            $this->questionType,
+            $this->toolsCalled,
+            $this->skippedChartSections,
+            $this->sourceIds,
+            $this->model,
+            $this->inputTokens,
+            $this->outputTokens,
+            $this->estimatedCost,
+            $this->failureReason,
+            $this->verifierResult,
+            $this->stageTimingsMs,
+            $selectorMode,
+            $selectorResult,
+            $selectorFallbackReason,
         );
     }
 

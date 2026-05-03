@@ -18,8 +18,10 @@ use OpenEMR\AgentForge\Eval\EvalHallucinatingDraftProvider;
 use OpenEMR\AgentForge\Eval\EvalMaliciousChartTextTool;
 use OpenEMR\AgentForge\Eval\EvalMissingTool;
 use OpenEMR\AgentForge\Eval\EvalPatientAccessRepository;
+use OpenEMR\AgentForge\Eval\EvalToolSelectionProvider;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
+use OpenEMR\AgentForge\Evidence\ToolSelectionProvider;
 use OpenEMR\AgentForge\Handlers\AgentHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
@@ -96,10 +98,10 @@ function agentforge_eval_main(): int
  * @param array<string, mixed> $case
  * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
  */
-function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): array
+function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000, ?ToolSelectionProvider $toolSelectionProvider = null): array
 {
     if (isset($case['turns']) && is_array($case['turns'])) {
-        return agentforge_eval_run_multi_turn_case($case, $draftProvider, $deadlineMs);
+        return agentforge_eval_run_multi_turn_case($case, $draftProvider, $deadlineMs, $toolSelectionProvider);
     }
 
     $scenario = (string) $case['scenario'];
@@ -109,7 +111,7 @@ function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = n
     $handler = new AgentRequestHandler(
         new AgentRequestParser(),
         new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
-        agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs),
+        agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs, $toolSelectionProvider),
         conversationStore: $store,
     );
 
@@ -136,7 +138,7 @@ function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = n
  * @param array<string, mixed> $case
  * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
  */
-function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): array
+function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000, ?ToolSelectionProvider $toolSelectionProvider = null): array
 {
     $store = new InMemoryConversationStore(
         ttlMs: (int) ($case['conversation_ttl_ms'] ?? 1_800_000),
@@ -163,7 +165,7 @@ function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftP
         $handler = new AgentRequestHandler(
             new AgentRequestParser(),
             new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
-            agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs),
+            agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs, $toolSelectionProvider),
             conversationStore: $store,
         );
         $lastResult = $handler->handle(
@@ -191,7 +193,7 @@ function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftP
     ];
 }
 
-function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): AgentHandler
+function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000, ?ToolSelectionProvider $toolSelectionProvider = null): AgentHandler
 {
     $draftProvider ??= $scenario === 'hallucinated_draft'
         ? new EvalHallucinatingDraftProvider()
@@ -202,6 +204,7 @@ function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftPr
         $draftProvider,
         new DraftVerifier(),
         deadlineMs: $deadlineMs,
+        toolSelectionProvider: $toolSelectionProvider ?? (str_starts_with($scenario, 'selector_') ? new EvalToolSelectionProvider() : null),
     );
 }
 

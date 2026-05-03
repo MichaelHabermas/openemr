@@ -20,6 +20,7 @@ use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Conversation\SessionConversationStore;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
+use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
@@ -76,6 +77,7 @@ $handler = new AgentRequestLifecycle(
             DraftProviderFactory::createDefault(),
             new DraftVerifier(),
             ServiceContainer::getLogger(),
+            toolSelectionProvider: ToolSelectionProviderFactory::createDefault(),
         ),
         ServiceContainer::getLogger(),
         new SessionConversationStore(),

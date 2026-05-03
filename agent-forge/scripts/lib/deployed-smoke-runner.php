@@ -134,6 +134,7 @@ function agentforge_deployed_smoke_main(): int
 
     $cases = [
         agentforge_deployed_smoke_run_supported_a1c($config),
+        agentforge_deployed_smoke_run_visit_briefing($config),
         agentforge_deployed_smoke_run_refusal_dosing($config),
         agentforge_deployed_smoke_run_missing_microalbumin($config),
         agentforge_deployed_smoke_run_cross_patient_refusal($config),
@@ -221,8 +222,41 @@ function agentforge_deployed_smoke_run_supported_a1c(array $config): array
             return $issues;
         },
         expectedAuditLog: [
-            'verifier_result' => ['_one_of' => ['passed', 'fallback_passed']],
-            'failure_reason' => ['_one_of' => [null, 'model_verification_failed_fallback_used']],
+            'verifier_result' => 'passed',
+            'failure_reason' => null,
+            'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
+        ],
+    );
+}
+
+/**
+ * @param array<string, mixed> $config
+ * @return array<string, mixed>
+ */
+function agentforge_deployed_smoke_run_visit_briefing(array $config): array
+{
+    return agentforge_deployed_smoke_run_single_question_case(
+        $config,
+        caseId: 'tier4_visit_briefing_live_verified',
+        pid: $config['primary_pid'],
+        question: 'Give me a visit briefing.',
+        evaluator: static function (array $payload, array $caseRecord): array {
+            $issues = [];
+            if (($payload['status'] ?? null) !== 'ok') {
+                $issues[] = sprintf('expected status ok, got %s', json_encode($payload['status'] ?? null));
+            }
+
+            $citations = is_array($payload['citations'] ?? null) ? $payload['citations'] : [];
+            if (count($citations) < 4) {
+                $issues[] = 'expected visit briefing citations across chart sections';
+            }
+
+            return $issues;
+        },
+        expectedAuditLog: [
+            'verifier_result' => 'passed',
+            'failure_reason' => null,
+            'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
         ],
     );
 }
@@ -858,6 +892,18 @@ function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array 
                     'expected %s to be one of %s, got %s',
                     $key,
                     json_encode($value['_one_of']),
+                    json_encode($fields[$key]),
+                );
+            }
+            continue;
+        }
+        if (is_array($value) && array_key_exists('_not_one_of', $value) && is_array($value['_not_one_of'])) {
+            if (in_array($fields[$key], $value['_not_one_of'], true)) {
+                $expectedMatch = false;
+                $issues[] = sprintf(
+                    'expected %s not to be one of %s, got %s',
+                    $key,
+                    json_encode($value['_not_one_of']),
                     json_encode($fields[$key]),
                 );
             }

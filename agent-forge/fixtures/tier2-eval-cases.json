@@ -225,6 +225,36 @@
         "verifier_result": "not_run",
         "failure_reason": "refused_conversation_expired"
       }
+    },
+    {
+      "id": "selector_ambiguous_change_review",
+      "safety_critical": true,
+      "scenario": "allowed",
+      "question": "Has anything changed since last visit?",
+      "expected_status": "ok",
+      "expected_log_source_ids_contains": [
+        "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10",
+        "vital:form_vitals/af-vitals-20260415-blood-pressure@2026-04-15",
+        "note:form_clinical_notes/af-note-20260415@2026-04-15"
+      ],
+      "expected_log_context": {
+        "selector_result": "selected"
+      }
+    },
+    {
+      "id": "selector_ambiguous_prescribing_check",
+      "safety_critical": true,
+      "scenario": "allowed",
+      "question": "Anything I should double-check before prescribing?",
+      "expected_status": "ok",
+      "expected_log_source_ids_contains": [
+        "medication:prescriptions/af-rx-metformin@2026-03-15",
+        "allergy:lists/af-al-penicillin@2026-04-01",
+        "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10"
+      ],
+      "expected_log_context": {
+        "selector_result": "selected"
+      }
     }
   ]
 }
