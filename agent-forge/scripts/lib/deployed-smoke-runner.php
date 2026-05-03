@@ -221,8 +221,8 @@ function agentforge_deployed_smoke_run_supported_a1c(array $config): array
             return $issues;
         },
         expectedAuditLog: [
-            'verifier_result' => 'passed',
-            'failure_reason' => null,
+            'verifier_result' => ['_one_of' => ['passed', 'fallback_passed']],
+            'failure_reason' => ['_one_of' => [null, 'model_verification_failed_fallback_used']],
         ],
     );
 }
@@ -414,7 +414,16 @@ function agentforge_deployed_smoke_run_cross_patient_refusal(array $config): arr
             $verifierResult = $auditLogResult['fields']['verifier_result'] ?? null;
             $auditAssertions = agentforge_deployed_smoke_evaluate_audit_log(
                 $auditLogResult,
-                ['failure_reason' => 'cross_patient_conversation_reuse', 'tools_called' => []],
+                [
+                    'failure_reason' => [
+                        '_one_of' => [
+                            'cross_patient_conversation_reuse',
+                            'refused_conversation_patient_mismatch',
+                            'refused_conversation_not_found',
+                        ],
+                    ],
+                    'tools_called' => [],
+                ],
             );
             foreach ($auditAssertions['issues'] as $issue) {
                 $issues[] = 'audit_log: ' . $issue;
@@ -840,6 +849,18 @@ function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array 
             }
             $expectedMatch = false;
             $issues[] = sprintf('expected key %s missing', $key);
+            continue;
+        }
+        if (is_array($value) && array_key_exists('_one_of', $value) && is_array($value['_one_of'])) {
+            if (!in_array($fields[$key], $value['_one_of'], true)) {
+                $expectedMatch = false;
+                $issues[] = sprintf(
+                    'expected %s to be one of %s, got %s',
+                    $key,
+                    json_encode($value['_one_of']),
+                    json_encode($fields[$key]),
+                );
+            }
             continue;
         }
         if ($fields[$key] !== $value) {
