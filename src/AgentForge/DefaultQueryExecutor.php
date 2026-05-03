@@ -18,37 +18,25 @@ final class DefaultQueryExecutor implements QueryExecutor
 {
     public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
-        return QueryUtils::fetchRecords(self::applyDeadline($sql, $deadline), $binds);
+        return array_map(
+            self::stringKeyed(...),
+            QueryUtils::fetchRecords(SqlDeadlineHint::apply($sql, $deadline), $binds),
+        );
     }
 
     /**
-     * Inject a `MAX_EXECUTION_TIME(<ms>)` MySQL optimizer hint into the leading SELECT
-     * so a single hung query cannot exceed the request's remaining budget. Handles both
-     * direct `SELECT ...` and parenthesized `(SELECT ...) UNION ALL (...)` forms.
+     * @param array<mixed> $record
+     * @return array<string, mixed>
      */
-    private static function applyDeadline(string $sql, ?Deadline $deadline): string
+    private static function stringKeyed(array $record): array
     {
-        if ($deadline === null || $deadline->budgetMs < 0) {
-            return $sql;
+        $out = [];
+        foreach ($record as $key => $value) {
+            if (is_string($key)) {
+                $out[$key] = $value;
+            }
         }
 
-        $remainingMs = $deadline->remainingMs();
-        if ($remainingMs <= 0) {
-            return $sql;
-        }
-
-        if (stripos($sql, 'MAX_EXECUTION_TIME') !== false) {
-            return $sql;
-        }
-
-        $hint = '/*+ MAX_EXECUTION_TIME(' . $remainingMs . ') */ ';
-        $replacement = 'SELECT ' . $hint;
-
-        $patched = preg_replace('/^(\s*\(*\s*)SELECT\s+/i', '$1' . $replacement, $sql, 1, $count);
-        if ($patched === null || $count === 0) {
-            return $sql;
-        }
-
-        return $patched;
+        return $out;
     }
 }

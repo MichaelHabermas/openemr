@@ -15,11 +15,11 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlan;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
+use OpenEMR\AgentForge\Evidence\SerialChartEvidenceCollector;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -34,7 +34,7 @@ final class ChartEvidenceCollectorTest extends TestCase
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
 
-        $run = (new ChartEvidenceCollector([$labs, $meds]))->collect(
+        $run = (new SerialChartEvidenceCollector([$labs, $meds]))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('lab', ['Recent labs'], 8000, skippedSections: ['Active medications']),
         );
@@ -49,7 +49,7 @@ final class ChartEvidenceCollectorTest extends TestCase
 
     public function testToolFailureIsSanitizedAndPreservedAsFailedSection(): void
     {
-        $run = (new ChartEvidenceCollector([new CollectorThrowingTool()]))->collect(
+        $run = (new SerialChartEvidenceCollector([new CollectorThrowingTool()]))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('lab', ['Recent labs'], 8000),
         );
@@ -63,7 +63,7 @@ final class ChartEvidenceCollectorTest extends TestCase
         $later = new CollectorRecordingTool('Active medications', [
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
-        $run = (new ChartEvidenceCollector([
+        $run = (new SerialChartEvidenceCollector([
             new CollectorRecordingTool('Recent labs', [
                 new EvidenceItem('lab', 'procedure_result', 'a1c', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
             ]),

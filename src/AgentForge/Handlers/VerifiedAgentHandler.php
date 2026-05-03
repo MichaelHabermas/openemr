@@ -17,6 +17,7 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
+use OpenEMR\AgentForge\Evidence\SerialChartEvidenceCollector;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
@@ -45,10 +46,11 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         LoggerInterface $logger = new NullLogger(),
         ?AgentForgeClock $clock = null,
         private readonly int $deadlineMs = 20000,
+        ?ChartEvidenceCollector $collector = null,
     ) {
         $this->clock = $clock ?? new SystemAgentForgeClock();
         $this->planner = new ChartQuestionPlanner();
-        $this->collector = new ChartEvidenceCollector($tools, $logger, $this->clock);
+        $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $logger);
     }
 
