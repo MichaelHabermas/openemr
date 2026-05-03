@@ -63,7 +63,7 @@ SQL-backed result files are named `sql-evidence-eval-results-*.json` and must on
 
 ## Tier 2 - Live Model Contract Evals
 
-This tier is not automated. It must use the real configured draft provider and still keep deterministic verification as the release gate. It requires server-side model credentials and must never expose credentials to the browser.
+This tier is automated by `php agent-forge/scripts/run-tier2-evals.php` and the nightly/on-demand `.github/workflows/agentforge-tier2.yml` workflow. It must use the real configured draft provider and still keep deterministic verification as the release gate. It requires server-side model credentials and must never expose credentials to the browser. If the external provider is unavailable, safe deterministic fallback may be exercised, but that result must be labeled as fallback proof rather than full live-token proof.
 
 Required cases:
 
@@ -185,5 +185,5 @@ Live-path proof is captured as manual/browser evidence, not as a fully automated
 - VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
 - Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by deployed browser/log proof.
 
-Tier 1 now has a dedicated SQL evidence runner, but it only counts as captured proof when `php agent-forge/scripts/run-sql-evidence-evals.php` has actually been executed against seeded SQL data and its result file is available. Tier 2 (live model) is automated and runs nightly. Tier 4 (deployed HTTP/session/CSRF/audit-log path) is now automated by `php agent-forge/scripts/run-deployed-smoke.php` and the
+Tier 1 now has a dedicated SQL evidence runner, but it only counts as captured proof when `php agent-forge/scripts/run-sql-evidence-evals.php` has actually been executed against seeded SQL data and its result file is available. Tier 2 is automated and runs nightly/on demand; if provider calls fall back because the external provider is unavailable, the result is safe fallback proof rather than full live-token proof. Tier 4 (deployed HTTP/session/CSRF/audit-log path) is now automated by `php agent-forge/scripts/run-deployed-smoke.php` and the
 [`agentforge-deployed-smoke.yml`](../../../.github/workflows/agentforge-deployed-smoke.yml) workflow; the browser-rendered citation UI itself remains manual. Tier 3 (local browser/session smoke) is still manual. A final submission may cite captured manual/browser proof in addition to automated tiers, but must not describe manual checks as repeatable automated coverage.

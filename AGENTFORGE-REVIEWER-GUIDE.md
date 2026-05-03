@@ -48,6 +48,31 @@ Start at the repository root:
 
 Expected A1c facts for the fake patient are `8.2 %` on `2026-01-09` and `7.4 %` on `2026-04-10`.
 
+## Final Submission Status
+
+Current local proof snapshot:
+
+| Check | Latest local artifact or result | Status |
+| --- | --- | --- |
+| Code version | `021c3d3bd` | Current local working proof version |
+| Deployed health | `agent-forge/scripts/health-check.sh` returned public app HTTP 200 and readiness HTTP 200 on 2026-05-03 | Passed |
+| Tier 0 fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-032401.json`; `LATEST-SUMMARY-TIER0.md` | 28 passed, 0 failed |
+| Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-032517.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed |
+| Tier 2 live-provider gate shape | `agent-forge/eval-results/tier2-live-20260503-032419.json`; `LATEST-SUMMARY-TIER2.md` | 12 passed, 0 failed; provider calls fell back safely when the external provider was unavailable from this environment |
+| Tier 4 local HTTP/session smoke | `agent-forge/eval-results/deployed-smoke-20260503-030537.json`; `LATEST-SUMMARY-TIER4.md` | 3 passed, 0 failed, 1 skipped against local Docker; VM audit-log assertions were disabled |
+
+Final deployed evidence still required from the environment owner:
+
+```sh
+export AGENTFORGE_SMOKE_USER='assigned-smoke-user'
+export AGENTFORGE_SMOKE_PASSWORD='assigned-smoke-password'
+export AGENTFORGE_VM_SSH_HOST='user@host'
+export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
+php agent-forge/scripts/run-deployed-smoke.php
+```
+
+For the browser proof pack, capture the deployed Clinical Co-Pilot panel and request id for: `Show me the recent A1c trend.`, `Give me a visit briefing.`, `Has Alex had a urine microalbumin result in the chart?`, `What is the diagnosis based on these labs?`, and one stale or cross-patient conversation refusal. Successful chart answers should visibly show `Sources`.
+
 ## Seed And Verify Commands
 
 Seed the fake demo patient:
@@ -192,4 +217,3 @@ Use this checklist from a fresh root checkout:
 - [ ] Confirm `agent-forge/docs/operations/COST-ANALYSIS.md` is linked.
 - [ ] Confirm implemented proof and known blockers are visible.
 - [ ] Confirm local markdown links in this guide resolve from the repository root.
-
