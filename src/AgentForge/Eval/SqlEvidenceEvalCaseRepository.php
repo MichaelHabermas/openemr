@@ -12,17 +12,46 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Eval;
 
+use RuntimeException;
+
+/**
+ * @phpstan-type FixtureFact array{
+ *     source_type: string,
+ *     source_table: string,
+ *     source_id: string,
+ *     source_date: string,
+ *     display_label?: string,
+ *     value?: string,
+ * }
+ *
+ * @phpstan-type FixturePatient array{
+ *     pid: int,
+ *     pubpid?: string,
+ *     dob?: string,
+ *     sex?: string,
+ *     reason_for_visit?: string,
+ *     name?: array{first: string, last: string},
+ *     facts?: array<string, mixed>,
+ *     known_missing?: list<array<string, mixed>>,
+ *     unsupported_requests?: list<array<string, mixed>>,
+ *     expected_not_promoted?: list<array<string, mixed>>,
+ *     expected_absent_source_ids?: list<mixed>,
+ * }
+ *
+ * @phpstan-type GroundTruthFixture array{
+ *     fixture_version?: string,
+ *     patients: list<FixturePatient>,
+ * }
+ */
 final class SqlEvidenceEvalCaseRepository
 {
     /** @return list<SqlEvidenceEvalCase> */
     public function load(string $groundTruthPath): array
     {
-        $groundTruth = json_decode((string) file_get_contents($groundTruthPath), true, 512, JSON_THROW_ON_ERROR);
+        $groundTruth = $this->loadFixture($groundTruthPath);
         $patients = [];
-        foreach (($groundTruth['patients'] ?? []) as $patient) {
-            if (is_array($patient) && isset($patient['pid'])) {
-                $patients[(int) $patient['pid']] = $patient;
-            }
+        foreach ($groundTruth['patients'] as $patient) {
+            $patients[$patient['pid']] = $patient;
         }
 
         return [
@@ -117,19 +146,40 @@ final class SqlEvidenceEvalCaseRepository
 
     public function fixtureVersion(string $groundTruthPath): string
     {
-        $groundTruth = json_decode((string) file_get_contents($groundTruthPath), true, 512, JSON_THROW_ON_ERROR);
+        $fixture = $this->loadFixture($groundTruthPath);
 
-        return is_string($groundTruth['fixture_version'] ?? null) ? $groundTruth['fixture_version'] : 'unknown';
+        return $fixture['fixture_version'] ?? 'unknown';
+    }
+
+    /** @return GroundTruthFixture */
+    private function loadFixture(string $groundTruthPath): array
+    {
+        $raw = file_get_contents($groundTruthPath);
+        if ($raw === false) {
+            throw new RuntimeException(sprintf('Cannot read fixture: %s', $groundTruthPath));
+        }
+        $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded) || !isset($decoded['patients']) || !is_array($decoded['patients'])) {
+            throw new RuntimeException(sprintf('Invalid fixture shape: %s', $groundTruthPath));
+        }
+        foreach ($decoded['patients'] as $patient) {
+            if (!is_array($patient) || !isset($patient['pid']) || !is_int($patient['pid'])) {
+                throw new RuntimeException(sprintf('Invalid patient shape in fixture: %s', $groundTruthPath));
+            }
+        }
+        /** @var GroundTruthFixture $decoded */
+        return $decoded;
     }
 
     /**
-     * @param array<string, mixed> $patient
+     * @param FixturePatient|array{} $patient
      * @param list<string> $sections
      * @return list<string>
      */
     private function citations(array $patient, array $sections): array
     {
-        $facts = is_array($patient['facts'] ?? null) ? $patient['facts'] : [];
+        $rawFacts = $patient['facts'] ?? null;
+        $facts = is_array($rawFacts) ? $rawFacts : [];
         $citations = [];
         foreach ($sections as $section) {
             $value = $facts[$section] ?? null;
@@ -141,7 +191,7 @@ final class SqlEvidenceEvalCaseRepository
         return array_values(array_filter($citations));
     }
 
-    /** @param mixed $value @return list<array<string, mixed>> */
+    /** @return list<array<string, mixed>> */
     private function evidenceRows(mixed $value): array
     {
         if (!is_array($value)) {
@@ -152,62 +202,98 @@ final class SqlEvidenceEvalCaseRepository
             return [$value];
         }
 
-        return array_values(array_filter($value, static fn (mixed $row): bool => is_array($row)));
+        $rows = [];
+        foreach ($value as $row) {
+            if (is_array($row)) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
     }
 
     /** @param array<string, mixed> $row */
     private function citation(array $row): string
     {
-        foreach (['source_type', 'source_table', 'source_id', 'source_date'] as $key) {
-            if (!is_string($row[$key] ?? null) || trim($row[$key]) === '') {
-                return '';
-            }
+        $type = $row['source_type'] ?? null;
+        $table = $row['source_table'] ?? null;
+        $id = $row['source_id'] ?? null;
+        $date = $row['source_date'] ?? null;
+        if (!is_string($type) || !is_string($table) || !is_string($id) || !is_string($date)) {
+            return '';
+        }
+        if (trim($type) === '' || trim($table) === '' || trim($id) === '' || trim($date) === '') {
+            return '';
         }
 
-        return sprintf(
-            '%s:%s/%s@%s',
-            $row['source_type'],
-            $row['source_table'],
-            $row['source_id'],
-            $row['source_date'],
-        );
+        return sprintf('%s:%s/%s@%s', $type, $table, $id, $date);
     }
 
-    /** @param array<string, mixed> $patient @return list<string> */
+    /**
+     * @param FixturePatient|array{} $patient
+     * @return list<string>
+     */
     private function missingSections(array $patient): array
     {
+        $known = $patient['known_missing'] ?? [];
+        if (!is_array($known)) {
+            return [];
+        }
         $sections = [];
-        foreach (($patient['known_missing'] ?? []) as $missing) {
-            if (is_array($missing) && is_string($missing['section'] ?? null)) {
-                $sections[] = $missing['section'];
+        foreach ($known as $missing) {
+            if (!is_array($missing)) {
+                continue;
+            }
+            $section = $missing['section'] ?? null;
+            if (is_string($section)) {
+                $sections[] = $section;
             }
         }
 
         return $sections;
     }
 
-    /** @param array<string, mixed> $patient @return list<string> */
+    /**
+     * @param FixturePatient|array{} $patient
+     * @return list<string>
+     */
     private function forbiddenCitations(array $patient): array
     {
+        $expected = $patient['expected_not_promoted'] ?? [];
+        if (!is_array($expected)) {
+            return [];
+        }
         $citations = [];
-        foreach (($patient['expected_not_promoted'] ?? []) as $row) {
-            if (is_array($row)) {
-                $citation = $this->citation($row);
-                if ($citation !== '') {
-                    $citations[] = $citation;
-                }
+        foreach ($expected as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $citation = $this->citation($row);
+            if ($citation !== '') {
+                $citations[] = $citation;
             }
         }
 
         return $citations;
     }
 
-    /** @param array<string, mixed> $patient @return list<string> */
+    /**
+     * @param FixturePatient|array{} $patient
+     * @return list<string>
+     */
     private function expectedAbsentSourceIds(array $patient): array
     {
-        return array_values(array_filter(
-            $patient['expected_absent_source_ids'] ?? [],
-            static fn (mixed $sourceId): bool => is_string($sourceId) && trim($sourceId) !== '',
-        ));
+        $sourceIds = $patient['expected_absent_source_ids'] ?? [];
+        if (!is_array($sourceIds)) {
+            return [];
+        }
+        $result = [];
+        foreach ($sourceIds as $sourceId) {
+            if (is_string($sourceId) && trim($sourceId) !== '') {
+                $result[] = $sourceId;
+            }
+        }
+
+        return $result;
     }
 }

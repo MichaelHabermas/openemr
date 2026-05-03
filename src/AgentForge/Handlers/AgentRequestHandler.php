@@ -165,6 +165,7 @@ final readonly class AgentRequestHandler
         );
     }
 
+    /** @param array<string, int> $stageTimingsMs */
     private function refusal(
         string $message,
         int $statusCode,

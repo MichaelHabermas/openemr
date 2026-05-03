@@ -20,8 +20,35 @@ use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
-use Throwable;
 
+/**
+ * @phpstan-type SqlEvidenceCaseResult array{
+ *     id: string,
+ *     patient_id: int,
+ *     description: string,
+ *     passed: bool,
+ *     failure_reason: string,
+ *     latency_ms: int,
+ *     citation_count?: int,
+ *     missing_sections?: list<string>,
+ *     failed_sections?: list<string>,
+ *     expected_citations?: list<string>,
+ *     present_citations?: list<string>,
+ *     expected_decision_code?: string,
+ * }
+ *
+ * @phpstan-type SqlEvidenceRunSummary array{
+ *     tier: string,
+ *     fixture_version: string,
+ *     timestamp: string,
+ *     code_version: string,
+ *     environment_label: string,
+ *     total: int,
+ *     passed: int,
+ *     failed: int,
+ *     results: list<SqlEvidenceCaseResult>,
+ * }
+ */
 final readonly class SqlEvidenceEvalRunner
 {
     /**
@@ -33,7 +60,7 @@ final readonly class SqlEvidenceEvalRunner
 
     /**
      * @param list<SqlEvidenceEvalCase> $cases
-     * @return array<string, mixed>
+     * @return SqlEvidenceRunSummary
      */
     public function run(
         array $cases,
@@ -62,7 +89,7 @@ final readonly class SqlEvidenceEvalRunner
         ];
     }
 
-    /** @return array<string, mixed> */
+    /** @return SqlEvidenceCaseResult */
     private function runCase(SqlEvidenceEvalCase $case): array
     {
         $start = hrtime(true);
@@ -77,7 +104,7 @@ final readonly class SqlEvidenceEvalRunner
         foreach ($this->tools as $tool) {
             try {
                 $result = $tool->collect(new PatientId($case->patientId));
-            } catch (Throwable $exception) {
+            } catch (\Exception $exception) {
                 $failures[] = sprintf('%s threw %s.', $tool->section(), $exception::class);
                 continue;
             }
@@ -148,7 +175,7 @@ final readonly class SqlEvidenceEvalRunner
         return implode(' ', [$item->displayLabel, $item->value, $item->citation()]);
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<SqlEvidenceCaseResult> */
     private function runAuthorizationCases(): array
     {
         if ($this->authorizationGate === null) {
@@ -189,7 +216,7 @@ final readonly class SqlEvidenceEvalRunner
         ];
     }
 
-    /** @return array<string, mixed> */
+    /** @return SqlEvidenceCaseResult */
     private function runAuthorizationCase(
         string $id,
         string $description,
@@ -219,7 +246,7 @@ final readonly class SqlEvidenceEvalRunner
                     $failures[] = sprintf('Expected decision code %s, got %s.', $expectedCode, $decision->code);
                 }
             }
-        } catch (Throwable $exception) {
+        } catch (\Exception $exception) {
             $failures[] = sprintf('Authorization case threw %s.', $exception::class);
         }
 

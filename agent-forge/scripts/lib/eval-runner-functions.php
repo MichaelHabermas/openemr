@@ -316,7 +316,17 @@ function agentforge_eval_tools(string $scenario): array
  * @param array<string, mixed> $case
  * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry} $result
  * @param array<string, mixed> $logContext
- * @return array<string, mixed>
+ * @return array{
+ *     id: mixed,
+ *     safety_critical: mixed,
+ *     passed: bool,
+ *     failure_reason: string,
+ *     status: string,
+ *     decision: string,
+ *     latency_ms: int,
+ *     citation_count: int,
+ *     log_context: array<string, mixed>,
+ * }
  */
 function agentforge_eval_evaluate_case(array $case, array $result, array $logContext, int $latencyMs): array
 {

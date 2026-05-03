@@ -48,3 +48,8 @@ parameters:
   - .phpstan/stubs/sasl_constants.php
   # For reasons I can't sort out, using scanDirectories or stubFiles doesn't work here.
   - .phpstan/stubs/pdo_mysql.stub
+  scanDirectories:
+  # Procedural AgentForge eval helpers loaded via require_once at runtime. They
+  # are not analyzed (out of `paths`) but registering the directory lets PHPStan
+  # resolve symbols (e.g. agentforge_eval_evaluate_case) referenced from tests.
+  - agent-forge/scripts/lib

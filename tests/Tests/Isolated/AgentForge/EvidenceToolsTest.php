@@ -626,9 +626,12 @@ final class EvidenceToolsTest extends TestCase
      * @param array<string, mixed>|null $demographics
      * @param list<array<string, mixed>>|null $problems
      * @param list<array<string, mixed>>|null $medications
+     * @param list<array<string, mixed>>|null $inactiveMedications
      * @param list<array<string, mixed>>|null $allergies
      * @param list<array<string, mixed>>|null $labs
      * @param list<array<string, mixed>>|null $vitals
+     * @param list<array<string, mixed>>|null $staleVitals
+     * @param list<array<string, mixed>>|null $encounters
      * @param list<array<string, mixed>>|null $notes
      */
     private function repository(
