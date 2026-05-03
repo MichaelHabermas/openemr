@@ -103,6 +103,14 @@ The 12-case Tier 2 fixture covers four risk shapes:
 
 Output is written to `agent-forge/eval-results/tier2-live-{timestamp}.json` and uploaded as a workflow artifact. The summary records `provider_mode`, `provider_model`, real `aggregate_input_tokens`, real `aggregate_output_tokens`, real `aggregate_estimated_cost_usd`, and per-case verdicts. The nightly schedule lives in [.github/workflows/agentforge-tier2.yml](.github/workflows/agentforge-tier2.yml); per-pass spend is tracked in [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md).
 
+Tier 4 (deployed smoke) exercises the deployed VM end-to-end: Apache + PHP-FPM dispatch, OpenEMR session establishment, `csrf_token_form` validation, session-bound `pid` selection, the `agent_request.php` controller, and the deployed PSR-3 `agent_forge_request` audit-log line. None of those layers are exercised by Tier 0/1/2 or by `run-evals-vm.sh`. Invocation:
+
+```sh
+php agent-forge/scripts/run-deployed-smoke.php
+```
+
+The runner requires `AGENTFORGE_SMOKE_USER`, `AGENTFORGE_SMOKE_PASSWORD`, and `AGENTFORGE_VM_SSH_HOST` (the audit-log assertion uses SSH grep). Output is written to `agent-forge/eval-results/deployed-smoke-{timestamp}.json` with per-case verdicts, HTTP status, `request_id`, latency, verifier result, and audit-log present/forbidden-key assertions. The result file does not record question text, answer text, or chart content. The nightly schedule and post-deploy invocation live in [.github/workflows/agentforge-deployed-smoke.yml](.github/workflows/agentforge-deployed-smoke.yml). The browser-rendered citation UI on the deployed VM is still validated manually under Tier 4 of [agent-forge/docs/evaluation/EVALUATION-TIERS.md](agent-forge/docs/evaluation/EVALUATION-TIERS.md).
+
 ## Artifact Map
 
 Required root submission artifacts:
@@ -162,7 +170,7 @@ Production-Readiness is not claimed.
 
 Known blockers and caveats:
 
-- Tier 0 (fixture) and Tier 1 (seeded SQL) gate every PR; Tier 2 (live model) runs nightly and on demand. Local browser/session, deployed browser/session, and real authorization paths are still manual and not yet automated eval tiers.
+- Tier 0 (fixture) and Tier 1 (seeded SQL) gate every PR; Tier 2 (live model) runs nightly and on demand; Tier 4 (deployed HTTP/session/CSRF/audit-log path) runs nightly and post-deploy via [.github/workflows/agentforge-deployed-smoke.yml](.github/workflows/agentforge-deployed-smoke.yml). The browser-rendered citation UI in Tier 3 (local browser) and the citation UI portion of Tier 4 (deployed browser) are still validated manually.
 - Multi-turn conversation state is implemented as short-lived server-bound state. The endpoint issues a `conversation_id` bound to the active OpenEMR session user and patient; cross-patient or expired reuse is refused before chart tools run. Same-patient follow-up re-fetches current chart evidence and re-cites source rows. There is no persistent transcript; prior-turn text is a planner hint only.
 - Authorization intentionally fails closed outside direct provider, encounter provider, and supervisor relationships.
 - Production latency needs p95 proof under the accepted budget, not single-request demo measurements.

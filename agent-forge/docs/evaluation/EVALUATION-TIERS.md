@@ -126,9 +126,32 @@ Automated multi-turn fixture cases:
 
 ## Tier 4 - Deployed Browser And Session Smoke
 
-This smoke tier is not automated. It validates the public deployment and must be run only when the VM and demo credentials are available.
+The browser-rendered citation UI is still validated manually; the deployed
+HTTP/session/CSRF/audit-log path is now automated by the deployed-smoke
+runner described in
+[TIER4-DEPLOYED-SMOKE-AUTOMATION-SCOPE.md](TIER4-DEPLOYED-SMOKE-AUTOMATION-SCOPE.md).
 
-Checklist:
+Automated runner:
+
+```sh
+php agent-forge/scripts/run-deployed-smoke.php
+```
+
+Required environment: `AGENTFORGE_SMOKE_USER`, `AGENTFORGE_SMOKE_PASSWORD`,
+and `AGENTFORGE_VM_SSH_HOST` (the audit-log assertion uses SSH grep). The
+runner exercises Apache + PHP-FPM dispatch, OpenEMR session establishment,
+`csrf_token_form` validation, session-bound `pid` selection, the
+`agent_request.php` controller, and the deployed PSR-3 `agent_forge_request`
+audit-log line — none of which are exercised by Tier 0/1/2 or by
+`run-evals-vm.sh`.
+
+The runner publishes `deployed-smoke-{timestamp}.json` with per-case verdicts,
+HTTP status, `request_id`, latency, verifier result, and audit-log
+present/forbidden-key assertions. The result file does not record the question
+text, answer text, or chart content.
+
+Manual checklist (for the browser-rendered citation UI, which the runner does
+not exercise):
 
 - Run `agent-forge/scripts/health-check.sh` and capture the public app and readiness results.
 - Verify fake data on the deployed environment with `agent-forge/scripts/verify-demo-data.sh` or a documented VM-equivalent command.
@@ -162,4 +185,5 @@ Live-path proof is captured as manual/browser evidence, not as a fully automated
 - VM browser proof: fake patient `900001`, A1c trend answer with visible citations, `request_id=19f97ce1-f29b-4352-bcb5-319dab4fa5cf`, `latency_ms=10693`, input tokens `836`, output tokens `173`, estimated cost `0.0002292`, and `verifier_result=passed`.
 - Missing microalbumin and clinical-advice refusal were verified locally and on the VM. Ambiguous and unsafe no-tool/no-model refusals are covered by deployed browser/log proof.
 
-Tier 1 now has a dedicated SQL evidence runner, but it only counts as captured proof when `php agent-forge/scripts/run-sql-evidence-evals.php` has actually been executed against seeded SQL data and its result file is available. Tiers 2 through 4 are still not a fully automated live eval framework. A final submission may cite the captured manual/browser proof above, but must not describe it as repeatable automated live eval coverage until those tier runners exist.
+Tier 1 now has a dedicated SQL evidence runner, but it only counts as captured proof when `php agent-forge/scripts/run-sql-evidence-evals.php` has actually been executed against seeded SQL data and its result file is available. Tier 2 (live model) is automated and runs nightly. Tier 4 (deployed HTTP/session/CSRF/audit-log path) is now automated by `php agent-forge/scripts/run-deployed-smoke.php` and the
+[`agentforge-deployed-smoke.yml`](../../../.github/workflows/agentforge-deployed-smoke.yml) workflow; the browser-rendered citation UI itself remains manual. Tier 3 (local browser/session smoke) is still manual. A final submission may cite captured manual/browser proof in addition to automated tiers, but must not describe manual checks as repeatable automated coverage.

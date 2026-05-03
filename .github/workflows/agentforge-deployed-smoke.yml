@@ -1,0 +1,102 @@
+##
+# AgentForge Tier 4 (deployed smoke) — automated smoke proof against the
+# deployed VM that exercises Apache, PHP-FPM, the OpenEMR session, CSRF
+# validation, the agent_request controller, and the PSR-3 audit log.
+#
+# Excluded from PR runs because it depends on the deployed VM being up,
+# valid smoke credentials, and SSH access for audit-log grep. Triggered
+# nightly and on demand via the Actions UI.
+
+name: AgentForge Tier 4 Deployed Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      executor_tag:
+        description: 'Free-form executor tag captured in the result file.'
+        required: false
+        default: 'github-actions-manual'
+  schedule:
+  # Nightly at 09:30 UTC (02:30 PT) — runs after the Tier 2 nightly so
+  # silent deployed-config drift surfaces every morning.
+  - cron: '30 9 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deployed-smoke:
+    name: Tier 4 - Deployed smoke
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PHP and Composer
+      uses: ./.github/actions/setup-php-composer
+      with:
+        php-version: '8.2'
+
+    - name: Verify required secrets are present
+      env:
+        AGENTFORGE_SMOKE_USER: ${{ secrets.AGENTFORGE_SMOKE_USER }}
+        AGENTFORGE_SMOKE_PASSWORD: ${{ secrets.AGENTFORGE_SMOKE_PASSWORD }}
+        AGENTFORGE_VM_SSH_HOST: ${{ secrets.AGENTFORGE_VM_SSH_HOST }}
+        AGENTFORGE_VM_SSH_KEY: ${{ secrets.AGENTFORGE_VM_SSH_KEY }}
+      run: |
+        missing=()
+        [[ -z "${AGENTFORGE_SMOKE_USER}" ]] && missing+=("AGENTFORGE_SMOKE_USER")
+        [[ -z "${AGENTFORGE_SMOKE_PASSWORD}" ]] && missing+=("AGENTFORGE_SMOKE_PASSWORD")
+        [[ -z "${AGENTFORGE_VM_SSH_HOST}" ]] && missing+=("AGENTFORGE_VM_SSH_HOST")
+        [[ -z "${AGENTFORGE_VM_SSH_KEY}" ]] && missing+=("AGENTFORGE_VM_SSH_KEY")
+        if (( ${#missing[@]} > 0 )); then
+          printf 'Missing required secret(s): %s\n' "${missing[*]}" >&2
+          printf 'Refusing to run deployed smoke without all credentials.\n' >&2
+          exit 1
+        fi
+
+    - name: Configure SSH
+      env:
+        AGENTFORGE_VM_SSH_KEY: ${{ secrets.AGENTFORGE_VM_SSH_KEY }}
+        AGENTFORGE_VM_SSH_HOST: ${{ secrets.AGENTFORGE_VM_SSH_HOST }}
+        AGENTFORGE_VM_SSH_HOST_KEY: ${{ secrets.AGENTFORGE_VM_SSH_HOST_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "${AGENTFORGE_VM_SSH_KEY}" > ~/.ssh/id_agentforge_smoke
+        chmod 600 ~/.ssh/id_agentforge_smoke
+        host_only="${AGENTFORGE_VM_SSH_HOST#*@}"
+        cat > ~/.ssh/config <<EOF
+        Host ${AGENTFORGE_VM_SSH_HOST}
+            HostName ${host_only}
+            IdentityFile ~/.ssh/id_agentforge_smoke
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+        EOF
+        chmod 600 ~/.ssh/config
+        if [[ -n "${AGENTFORGE_VM_SSH_HOST_KEY}" ]]; then
+          printf '%s\n' "${AGENTFORGE_VM_SSH_HOST_KEY}" > ~/.ssh/known_hosts
+        else
+          ssh-keyscan -H "${host_only}" >> ~/.ssh/known_hosts 2>/dev/null
+        fi
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Run deployed smoke
+      env:
+        AGENTFORGE_SMOKE_USER: ${{ secrets.AGENTFORGE_SMOKE_USER }}
+        AGENTFORGE_SMOKE_PASSWORD: ${{ secrets.AGENTFORGE_SMOKE_PASSWORD }}
+        AGENTFORGE_VM_SSH_HOST: ${{ secrets.AGENTFORGE_VM_SSH_HOST }}
+        AGENTFORGE_VM_AUDIT_LOG_PATH: ${{ secrets.AGENTFORGE_VM_AUDIT_LOG_PATH }}
+        AGENTFORGE_DEPLOYED_URL: ${{ secrets.AGENTFORGE_DEPLOYED_URL }}
+        AGENTFORGE_SMOKE_PRIMARY_PID: ${{ vars.AGENTFORGE_SMOKE_PRIMARY_PID }}
+        AGENTFORGE_SMOKE_SECONDARY_PID: ${{ vars.AGENTFORGE_SMOKE_SECONDARY_PID }}
+        AGENTFORGE_SMOKE_EXECUTOR: ${{ github.event.inputs.executor_tag || 'github-actions-scheduled' }}
+      run: php agent-forge/scripts/run-deployed-smoke.php
+
+    - name: Upload deployed smoke results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: agentforge-deployed-smoke-results
+        path: agent-forge/eval-results/deployed-smoke-*.json

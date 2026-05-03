@@ -37,6 +37,7 @@ Already implemented:
 - Evidence tools use server-controlled, parameterized, patient-scoped reads.
 - The demo path records request metadata, total latency, source IDs, token usage, estimated cost, and verifier result.
 - Tier 0 fixture and Tier 1 SQL evidence eval suites run on every PR via `.github/workflows/agentforge-evals.yml`; Tier 2 live-LLM evals (12 cases including refusals, hallucination pressure, and prompt injection) run nightly and on demand via `.github/workflows/agentforge-tier2.yml`, with results in `agent-forge/eval-results/tier2-live-*.json`.
+- Tier 4 deployed-smoke proof of the full HTTP/session/CSRF/audit-log path runs nightly and post-deploy via `.github/workflows/agentforge-deployed-smoke.yml` (`php agent-forge/scripts/run-deployed-smoke.php`). The runner exercises Apache, the `agent_request.php` controller, real session establishment, CSRF validation, and the deployed PSR-3 `agent_forge_request` audit-log line — none of which are exercised by Tier 0/1/2 or by the in-container `run-evals-vm.sh`. Results live in `agent-forge/eval-results/deployed-smoke-*.json`.
 
 Accepted v1 limitations:
 
