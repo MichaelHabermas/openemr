@@ -48,7 +48,10 @@ function agentforge_tier2_main(): int
     }
 
     if ($config->mode === DraftProviderConfig::MODE_FIXTURE) {
-        fwrite(STDERR, "Tier 2 refuses to run with the fixture provider. Set AGENTFORGE_OPENAI_API_KEY or AGENTFORGE_ANTHROPIC_API_KEY (or AGENTFORGE_DRAFT_PROVIDER) before invoking.\n");
+        fwrite(STDERR, "Tier 2 refuses to run with the fixture provider.\n");
+        fwrite(STDERR, "Export a real key in this shell (AGENTFORGE_OPENAI_API_KEY or AGENTFORGE_ANTHROPIC_API_KEY), or set AGENTFORGE_DRAFT_PROVIDER.\n");
+        fwrite(STDERR, "Note: docker/development-easy/.env is loaded by Docker Compose into the container only — host `php` does not read it. Run from the container, e.g.:\n");
+        fwrite(STDERR, "  cd docker/development-easy && docker compose exec openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/run-tier2-evals.php\n");
 
         return 2;
     }
