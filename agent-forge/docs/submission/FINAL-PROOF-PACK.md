@@ -23,6 +23,8 @@ The proof rows below now distinguish checked-in repository artifacts from later 
 | Tier 4 deployed smoke | `LATEST-SUMMARY-TIER4.md`; VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-042413.json` | 4 passed, 0 failed; audit assertions enabled; code version `81c870a6aecb` | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
 | Deployed latency trace | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json`; `agent-forge/docs/operations/LATENCY-RESULTS.md` | A1c 20/20, p95 `3212 ms`; visit briefing 20/20, p95 `8309 ms`; both under `10000 ms` budget | Deployed demo latency across repeated A1c and visit-briefing requests |
 
+> **What this proof does not prove:** no real PHI was used; the latency trace is not a production SLO; AgentForge is not a full clinical rules engine; authorization does not cover broad care-team, facility, schedule-derived, or delegated access; and medication evidence is not a medication reconciliation truth engine.
+
 Additional later VM-only Tier 2 and Tier 4 runs were captured after the checked-in summaries, but their JSON artifacts are not present in this checkout. The table above is the synchronized repository-local proof set.
 
 The checked-in Tier 4 smoke command was run against the deployed app on 2026-05-03:

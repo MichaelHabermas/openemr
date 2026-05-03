@@ -41,7 +41,7 @@ The first-principles rule is simple: read narrowly, cite everything, log every r
 - Authorization intentionally fails closed outside direct provider/encounter/supervisor relationships; care-team, facility, schedule, and delegation access are unavailable.
 - Observability lives under `src/AgentForge/Observability` and includes per-stage timings (`StageTimer` records evidence, draft, and verify durations into `AgentTelemetry::stageTimingsMs`) alongside structured logging. Aggregation, dashboards, SLOs, and alerts remain unavailable.
 - Tier 0 fixture and Tier 1 SQL evidence evals run on every PR via `.github/workflows/agentforge-evals.yml`; Tier 2 live-LLM evals (12 cases including refusals, hallucination pressure, prompt injection, and conversation-scope refusals) run nightly and on demand via `.github/workflows/agentforge-tier2.yml`; Tier 4 deployed-smoke evals (HTTP/session/CSRF/audit-log path against the deployed VM) run nightly and post-deploy via `.github/workflows/agentforge-deployed-smoke.yml`. The browser-rendered citation UI (Tier 3 local browser, Tier 4 deployed browser) is still validated manually.
-- The VM A1c request baseline is about 10.693 seconds. Production readiness requires a latency budget, p95 proof under that budget, and a measured optimization plan.
+- Deployed latency proof now covers 20 A1c-trend requests with p95 `3212 ms` and 20 visit-briefing requests with p95 `8309 ms`, both under the `10000 ms` demo budget. This remains demo-grade proof, not a production SLO.
 
 ### Production-Readiness Blockers
 

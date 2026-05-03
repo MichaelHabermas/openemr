@@ -62,7 +62,7 @@ The early submission review identified three priority gaps. The current final pa
 | `USERS.md` had only three use cases | Expanded to seven traceable use cases: visit briefing, follow-up drill-down, missing/unclear data, vital trends, medication reconciliation context, allergy review, and encounter/last-plan review | Root `USERS.md` capability matrix |
 | `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` were not reviewer-rooted; README lacked the app URL | Moved/kept required artifacts at repo root and added the deployed app URL plus reviewer entry point to root `README.md` | Root `README.md`, `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md` |
 
-The planner remains deliberately bounded. The model selects among allowlisted chart tools, but the server validates and normalizes tool selection. That is intentional because this is clinical software. The model can help choose relevant bounded chart sections, but it cannot request arbitrary SQL, expand patient scope, bypass authorization, or turn chart orientation into clinical advice.
+AgentForge is agentic only within bounded chart-section tool selection. The model chooses from allowlisted tools; the server validates and may override high-risk selections. That is intentional because this is clinical software: the model can help choose relevant bounded chart sections, but it cannot request arbitrary SQL, expand patient scope, bypass authorization, or turn chart orientation into clinical advice.
 
 Current checked-in proof snapshot:
 
