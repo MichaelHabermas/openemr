@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\QueryExecutor;
 use PHPUnit\Framework\TestCase;
@@ -105,7 +106,7 @@ final class RecordingQueryExecutor implements QueryExecutor
     /** @var list<array{sql: string, binds: list<mixed>}> */
     public array $queries = [];
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         $this->queries[] = [
             'sql' => $sql,
@@ -118,7 +119,7 @@ final class RecordingQueryExecutor implements QueryExecutor
 
 final class MedicationRowsQueryExecutor implements QueryExecutor
 {
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         if (str_contains($sql, 'UNION ALL')) {
             return [

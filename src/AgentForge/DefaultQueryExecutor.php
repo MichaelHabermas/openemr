@@ -23,7 +23,8 @@ final class DefaultQueryExecutor implements QueryExecutor
 
     /**
      * Inject a `MAX_EXECUTION_TIME(<ms>)` MySQL optimizer hint into the leading SELECT
-     * so a single hung query cannot exceed the request's remaining budget.
+     * so a single hung query cannot exceed the request's remaining budget. Handles both
+     * direct `SELECT ...` and parenthesized `(SELECT ...) UNION ALL (...)` forms.
      */
     private static function applyDeadline(string $sql, ?Deadline $deadline): string
     {
@@ -36,18 +37,18 @@ final class DefaultQueryExecutor implements QueryExecutor
             return $sql;
         }
 
-        $trimmed = ltrim($sql);
-        if (stripos($trimmed, 'SELECT ') !== 0) {
-            return $sql;
-        }
-        if (stripos($trimmed, 'MAX_EXECUTION_TIME') !== false) {
+        if (stripos($sql, 'MAX_EXECUTION_TIME') !== false) {
             return $sql;
         }
 
-        $prefixLength = strlen($sql) - strlen($trimmed);
+        $hint = '/*+ MAX_EXECUTION_TIME(' . $remainingMs . ') */ ';
+        $replacement = 'SELECT ' . $hint;
 
-        return substr($sql, 0, $prefixLength)
-            . 'SELECT /*+ MAX_EXECUTION_TIME(' . $remainingMs . ') */ '
-            . substr($trimmed, 7);
+        $patched = preg_replace('/^(\s*\(*\s*)SELECT\s+/i', '$1' . $replacement, $sql, 1, $count);
+        if ($patched === null || $count === 0) {
+            return $sql;
+        }
+
+        return $patched;
     }
 }

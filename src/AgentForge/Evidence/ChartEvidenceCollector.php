@@ -59,7 +59,7 @@ final class ChartEvidenceCollector
             $stageKey = 'evidence:' . $tool->section();
             $timer?->start($stageKey);
             $toolsCalled[] = $tool->section();
-            $results[] = ChartEvidenceToolInvoker::collectOrFailure($tool, $patientId, $this->logger);
+            $results[] = ChartEvidenceToolInvoker::collectOrFailure($tool, $patientId, $this->logger, $deadline);
             $timer?->stop($stageKey);
 
             if ($deadline->exceeded()) {

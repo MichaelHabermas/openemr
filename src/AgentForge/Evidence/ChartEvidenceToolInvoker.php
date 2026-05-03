@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Evidence;
 
 use DomainException;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -23,9 +24,10 @@ final class ChartEvidenceToolInvoker
         ChartEvidenceTool $tool,
         PatientId $patientId,
         LoggerInterface $logger,
+        ?Deadline $deadline = null,
     ): EvidenceResult {
         try {
-            return $tool->collect($patientId);
+            return $tool->collect($patientId, $deadline);
         } catch (DomainException | RuntimeException $exception) {
             $logger->error(
                 'AgentForge evidence tool failed unexpectedly.',

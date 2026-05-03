@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ActiveMedicationsEvidenceTool;
 use OpenEMR\AgentForge\Evidence\AllergiesEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
@@ -694,8 +695,8 @@ final class EvidenceToolsTest extends TestCase
             ) {
             }
 
-            /** @return array<string, mixed> */
-            public function demographics(PatientId $patientId): array
+            /** @return array<string, mixed>|null */
+            public function demographics(PatientId $patientId, ?Deadline $deadline = null): ?array
             {
                 return $this->demographics ?? [
                     'pid' => 900001,
@@ -708,7 +709,7 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function activeProblems(PatientId $patientId, int $limit): array
+            public function activeProblems(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return $this->problems ?? [
                     [
@@ -733,7 +734,7 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function activeMedications(PatientId $patientId, int $limit): array
+            public function activeMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return $this->medications ?? [
                     [
@@ -760,13 +761,13 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function inactiveMedications(PatientId $patientId, int $limit): array
+            public function inactiveMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return array_slice($this->inactiveMedications ?? [], 0, $limit);
             }
 
             /** @return list<array<string, mixed>> */
-            public function activeAllergies(PatientId $patientId, int $limit): array
+            public function activeAllergies(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return array_slice($this->allergies ?? [
                     [
@@ -794,7 +795,7 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function recentLabs(PatientId $patientId, int $limit): array
+            public function recentLabs(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return $this->labs ?? [
                     [
@@ -821,8 +822,12 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
-            {
+            public function recentVitals(
+                PatientId $patientId,
+                int $limit,
+                int $staleAfterDays,
+                ?Deadline $deadline = null,
+            ): array {
                 return array_slice($this->vitals ?? [
                     [
                         'id' => 1,
@@ -854,13 +859,17 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
-            {
+            public function staleVitals(
+                PatientId $patientId,
+                int $limit,
+                int $staleAfterDays,
+                ?Deadline $deadline = null,
+            ): array {
                 return array_slice($this->staleVitals ?? [], 0, $limit);
             }
 
             /** @return list<array<string, mixed>> */
-            public function recentEncounters(PatientId $patientId, int $limit): array
+            public function recentEncounters(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return array_slice($this->encounters ?? [
                     [
@@ -872,7 +881,7 @@ final class EvidenceToolsTest extends TestCase
             }
 
             /** @return list<array<string, mixed>> */
-            public function recentNotes(PatientId $patientId, int $limit): array
+            public function recentNotes(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
             {
                 return $this->notes ?? [
                     [
