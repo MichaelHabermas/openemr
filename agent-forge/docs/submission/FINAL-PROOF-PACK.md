@@ -6,34 +6,38 @@ This pack is the reviewer-facing evidence map for the final AgentForge submissio
 
 | Context | Version |
 | --- | --- |
-| Current checked-in base observed by latest local eval artifacts | `d04b11e22014` |
-| Current working tree | Includes final remediation changes after that base revision |
+| Final remediation commit | `6769aa908` |
+| Deployed proof build | `6769aa908887` |
 
-The latest local artifacts record the checked-in base revision. The current working tree includes final remediation changes that must be committed before the final live proof is recaptured.
+The green VM artifacts below are the final proof targets for reviewer packaging. If the full JSON result files are copied into the checkout, keep their filenames unchanged and store them under `agent-forge/eval-results/`.
 
 ## Automated Proof
 
 | Tier | Artifact | Result | What It Proves |
 | --- | --- | --- | --- |
-| Tier 0 deterministic fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-161844.json`; `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed | Planner, selector fallback, refusal policy, verifier/fallback behavior, fixture orchestration |
+| Tier 0 deterministic fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-185620.json`; `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed | Planner, selector fallback, refusal policy, verifier/fallback behavior, fixture orchestration |
 | Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-161657.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed | Real `SqlChartEvidenceRepository` and evidence tools against seeded fake OpenEMR data |
-| Tier 2 live model | `agent-forge/eval-results/tier2-live-20260503-034230.json`; `LATEST-SUMMARY-TIER2.md` | Local artifact: 12 passed, 0 failed | Live provider path, safety-critical refusal/hallucination/prompt-injection cases, token/cost telemetry |
-| Tier 4 deployed smoke | `agent-forge/eval-results/deployed-smoke-20260503-030537.json`; `agent-forge/eval-results/deployed-smoke-20260503-033855.json`; `LATEST-SUMMARY-TIER4.md` | Current checkout contains historical smoke artifacts; green live proof must be recaptured with credentials | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
+| Tier 2 live model | VM artifact `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-183646.json`; `LATEST-SUMMARY-TIER2.md` when copied locally | 14 passed, 0 failed; tokens in/out `5943/2584`; estimated cost `$0.016085`; provider `openai/gpt-5.4-mini` | Live provider path, safety-critical refusal/hallucination/prompt-injection cases, selector behavior, token/cost telemetry |
+| Tier 4 deployed smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-190049.json`; `LATEST-SUMMARY-TIER4.md` when copied locally | 5 passed, 0 failed, 0 skipped; aggregate latency `11604 ms`; audit assertions enabled; code version `6769aa908887` | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
 
-Final green Tier 4 request ids must be recorded here after `php agent-forge/scripts/run-deployed-smoke.php` is rerun with smoke credentials against the committed remediation build.
+The final green Tier 4 smoke command was run from the VM host on 2026-05-03 at `19:00:49+00:00`:
+
+```sh
+php agent-forge/scripts/run-deployed-smoke.php
+```
 
 ## Deployed Browser Proof
 
-Manual screenshots or HTML captures must be attached under `agent-forge/docs/submission/browser-proof/` when supplied. They are not present in this checkout.
+Manual browser screenshots were supplied for the four UI scenarios and should be attached under `agent-forge/docs/submission/browser-proof/` with the filenames below.
 
 | Browser Proof | Request ID | Expected Visible Evidence |
 | --- | --- | --- |
-| A1c trend | pending | Deployed URL, fake patient header, `8.2 %` and `7.4 %`, lab Sources |
-| Visit briefing | pending | Deployed URL, fake patient header, demographics/problems/medications/allergies/labs/vitals/notes with citations |
-| Missing microalbumin | pending | Missing-data response without invented normal/never-ordered claim |
-| Diagnosis refusal | pending | Clinical diagnosis/advice refusal before tools/model |
+| `a1c-trend.png` | Tier 4 supporting request `7cf183f7-5607-403e-9559-e2689a0769aa` | Deployed URL, fake patient header, `8.2 %` and `7.4 %`, lab Sources |
+| `visit-briefing.png` | Tier 4 supporting request `bbbddd92-df71-4835-951b-f14279abe18c` | Deployed URL, fake patient header, demographics/problems/medications/allergies/labs/vitals/notes with citations |
+| `missing-microalbumin.png` | Tier 4 supporting request `e4ca6da4-9cd9-4222-a9c3-06651098fb49` | Missing-data response without invented normal/never-ordered claim |
+| `clinical-advice-refusal.png` | Tier 4 supporting request `ee2fe6c2-56cc-47ac-8731-a3fd885ad9e3` | Clinical diagnosis/dosing/advice refusal before tools/model |
 
-The deployed cross-patient/stale conversation boundary should be covered by the Tier 4 smoke case with HTTP 403, `tools_called=[]`, `model=not_run`, and `verifier_result=not_run`.
+The deployed cross-patient/stale conversation boundary is covered by the green Tier 4 smoke case with HTTP 403, `tools_called=[]`, `model=not_run`, and `verifier_result=not_run`.
 
 ## Reproduce Tests
 

@@ -64,13 +64,13 @@ That gives the physician a useful follow-up experience without letting browser m
 
 The final submission is backed by layered proof.
 
-Tier 0 is deterministic fixture and orchestration evaluation. The latest run passed 28 of 28 cases. It covers planner behavior, refusals, verifier behavior, citation counting, conversation scope, and logging guardrails.
+Tier 0 is deterministic fixture and orchestration evaluation. The latest final-remediation run passed 32 of 32 cases. It covers planner behavior, refusals, verifier behavior, citation counting, conversation scope, and logging guardrails.
 
 Tier 1 is seeded SQL evidence evaluation. The latest run passed 7 of 7 cases. It proves the real OpenEMR fake-data evidence path.
 
-Tier 2 is live model evaluation. The final VM run passed 12 of 12 cases. It proves the live provider path and records token and cost telemetry.
+Tier 2 is live model evaluation. The final green VM run passed 14 of 14 cases with `openai/gpt-5.4-mini`, recording `5943` input tokens, `2584` output tokens, and `$0.016085` estimated cost.
 
-Tier 4 is deployed smoke evaluation. The latest run passed 4 of 4 cases. It proves the deployed HTTP path, OpenEMR session handling, CSRF handling, chart endpoint behavior, and audit-log assertions.
+Tier 4 is deployed smoke evaluation. The final green VM run passed 5 of 5 cases. It proves the deployed HTTP path, OpenEMR session handling, CSRF handling, chart endpoint behavior, cross-patient refusal, and audit-log assertions.
 
 So the final proof is not just that the UI worked once. It covers the request path, the SQL evidence path, the live model path, and the deployed session path.
 
@@ -129,10 +129,10 @@ The final submission shows a safer path forward: a bounded, deployed, evaluated,
 
 ### Proof
 
-- Tier 0 passed 28 of 28 deterministic fixture and orchestration cases. ([Evaluation tiers](../evaluation/EVALUATION-TIERS.md))
+- Tier 0 passed 32 of 32 deterministic fixture and orchestration cases. ([Evaluation tiers](../evaluation/EVALUATION-TIERS.md))
 - Tier 1 passed 7 of 7 seeded SQL evidence cases.
-- Tier 2 passed 12 of 12 live model cases on the VM.
-- Tier 4 passed 4 of 4 deployed smoke cases. ([Deployed smoke runner](../../scripts/run-deployed-smoke.php))
+- Tier 2 passed 14 of 14 live model cases on the VM.
+- Tier 4 passed 5 of 5 deployed smoke cases. ([Deployed smoke runner](../../scripts/run-deployed-smoke.php))
 - The proof covers the request path, SQL evidence path, live model path, and deployed session path. ([Final proof pack](FINAL-PROOF-PACK.md))
 
 ### Limits
