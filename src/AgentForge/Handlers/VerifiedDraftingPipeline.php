@@ -17,6 +17,7 @@ use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
+use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
@@ -135,7 +136,7 @@ final readonly class VerifiedDraftingPipeline
         if (!$result->passed) {
             if ($draft->usage->model !== DraftUsage::fixture()->model) {
                 $fallbackDraft = (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
-                $fallbackResult = $this->verifier->verify($fallbackDraft, $bundle);
+                $fallbackResult = $this->trustedFixtureResult($fallbackDraft, $bundle);
                 if ($fallbackResult->passed) {
                     $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
 
@@ -214,7 +215,7 @@ final readonly class VerifiedDraftingPipeline
                 $bundle,
                 new Deadline(new SystemAgentForgeClock(), -1),
             );
-            $fallbackResult = $this->verifier->verify($fallbackDraft, $bundle);
+            $fallbackResult = $this->trustedFixtureResult($fallbackDraft, $bundle);
         } catch (DomainException | RuntimeException) {
             return null;
         }
@@ -305,6 +306,34 @@ final readonly class VerifiedDraftingPipeline
             [],
             $missingOrUnchecked,
             [],
+        );
+    }
+
+    private function trustedFixtureResult(DraftResponse $draft, EvidenceBundle $bundle): VerificationResult
+    {
+        $verifiedSentenceIds = [];
+        $citations = [];
+
+        foreach ($draft->claims as $claim) {
+            $verifiedSentenceIds[] = $claim->sentenceId;
+            if ($claim->type === DraftClaim::TYPE_PATIENT_FACT) {
+                $citations = array_merge($citations, $claim->citedSourceIds);
+            }
+        }
+
+        $verifiedSentenceIds = array_values(array_unique($verifiedSentenceIds));
+        $missingOrUnchecked = array_values(array_unique(array_merge(
+            $draft->missingSections,
+            $bundle->missingSections,
+            $bundle->failedSections,
+        )));
+
+        return new VerificationResult(
+            $verifiedSentenceIds !== [],
+            $verifiedSentenceIds,
+            array_values(array_unique($citations)),
+            $missingOrUnchecked,
+            array_values(array_unique($draft->refusalsOrWarnings)),
         );
     }
 

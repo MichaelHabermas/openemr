@@ -14,6 +14,7 @@ ob_start();
 
 require_once("../../globals.php");
 
+use OpenEMR\AgentForge\Auth\MemoizingPatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Conversation\SessionConversationStore;
@@ -66,7 +67,7 @@ $chartEvidenceRepository = new SqlChartEvidenceRepository();
 $handler = new AgentRequestLifecycle(
     new AgentRequestHandler(
         new AgentRequestParser(),
-        new PatientAuthorizationGate(new SqlPatientAccessRepository()),
+        new PatientAuthorizationGate(new MemoizingPatientAccessRepository(new SqlPatientAccessRepository())),
         new VerifiedAgentHandler(
             EvidenceToolFactory::createDefault($chartEvidenceRepository),
             DraftProviderFactory::createDefault(),

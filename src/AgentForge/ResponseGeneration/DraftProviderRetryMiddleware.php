@@ -29,6 +29,7 @@ final readonly class DraftProviderRetryMiddleware
     public const MAX_RETRIES = 2;
     public const BASE_DELAY_MS = 50;
     public const MAX_DELAY_MS = 200;
+    public const MIN_CALL_BUDGET_MS = 250;
 
     /** @var list<int> */
     public const RETRYABLE_STATUS_CODES = [408, 425, 429, 500, 502, 503, 504];
@@ -84,16 +85,18 @@ final readonly class DraftProviderRetryMiddleware
     {
         return $this->invokeNextHandler($request, $options)->then(
             function (ResponseInterface $response) use ($request, $options) {
-                if ($this->shouldRetry($options, $response, null)) {
-                    return $this->scheduleRetry($request, $options);
+                $retry = $this->planRetry($options, $response, null);
+                if ($retry !== null) {
+                    return $this->scheduleRetry($request, $options, $retry);
                 }
 
                 return $response;
             },
             function ($reason) use ($request, $options) {
                 $exception = $reason instanceof Throwable ? $reason : null;
-                if ($exception !== null && $this->shouldRetry($options, null, $exception)) {
-                    return $this->scheduleRetry($request, $options);
+                $retry = $exception === null ? null : $this->planRetry($options, null, $exception);
+                if ($retry !== null) {
+                    return $this->scheduleRetry($request, $options, $retry);
                 }
 
                 return PromiseCreate::rejectionFor($reason);
@@ -112,11 +115,30 @@ final readonly class DraftProviderRetryMiddleware
         return $promise;
     }
 
-    /** @param array<string, mixed> $options */
-    private function shouldRetry(array $options, ?ResponseInterface $response, ?Throwable $reason): bool
+    /**
+     * @param array<string, mixed> $options
+     * @return array{attempt: int, delayMs: int}|null
+     */
+    private function planRetry(array $options, ?ResponseInterface $response, ?Throwable $reason): ?array
     {
-        $attempts = $this->retryCount($options);
-        if ($attempts >= self::MAX_RETRIES) {
+        if (!$this->isRetryable($options, $response, $reason)) {
+            return null;
+        }
+
+        $nextAttempt = $this->retryCount($options) + 1;
+        $delayMs = $this->computeDelayMs($nextAttempt);
+        $deadline = $options[self::DEADLINE_OPTION] ?? null;
+        if ($deadline instanceof Deadline && !$this->hasRetryBudget($deadline, $delayMs)) {
+            return null;
+        }
+
+        return ['attempt' => $nextAttempt, 'delayMs' => $delayMs];
+    }
+
+    /** @param array<string, mixed> $options */
+    private function isRetryable(array $options, ?ResponseInterface $response, ?Throwable $reason): bool
+    {
+        if ($this->retryCount($options) >= self::MAX_RETRIES) {
             return false;
         }
 
@@ -136,14 +158,24 @@ final readonly class DraftProviderRetryMiddleware
         return in_array($response->getStatusCode(), self::RETRYABLE_STATUS_CODES, true);
     }
 
-    /** @param array<string, mixed> $options */
-    private function scheduleRetry(RequestInterface $request, array $options): PromiseInterface
+    private function hasRetryBudget(Deadline $deadline, int $delayMs): bool
     {
-        $nextAttempt = $this->retryCount($options) + 1;
-        $delayMs = $this->computeDelayMs($nextAttempt);
-        ($this->sleeperUs)($delayMs * 1000);
+        if ($deadline->budgetMs < 0) {
+            return true;
+        }
 
-        $options[self::RETRY_COUNT_OPTION] = $nextAttempt;
+        return $deadline->remainingMs() >= $delayMs + self::MIN_CALL_BUDGET_MS;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @param array{attempt: int, delayMs: int} $plan
+     */
+    private function scheduleRetry(RequestInterface $request, array $options, array $plan): PromiseInterface
+    {
+        ($this->sleeperUs)($plan['delayMs'] * 1000);
+
+        $options[self::RETRY_COUNT_OPTION] = $plan['attempt'];
 
         return $this->dispatch($request, $options);
     }
