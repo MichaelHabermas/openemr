@@ -28,7 +28,7 @@ php agent-forge/scripts/run-deployed-smoke.php
 
 ## Deployed Browser Proof
 
-Manual browser screenshots were supplied for the four UI scenarios and should be attached under `agent-forge/docs/submission/browser-proof/` with the filenames below.
+Manual browser screenshots are attached under `agent-forge/docs/submission/browser-proof/` for the four deployed UI scenarios below. They were captured on 2026-05-03 against fake patient `900001 / AF-DEMO-900001` only.
 
 | Browser Proof | Request ID | Expected Visible Evidence |
 | --- | --- | --- |

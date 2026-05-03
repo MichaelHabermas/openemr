@@ -62,7 +62,7 @@ Current local proof snapshot:
 | Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-032517.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed |
 | Tier 2 live-provider proof | VM artifact `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-183646.json`; `LATEST-SUMMARY-TIER2.md` when copied locally | 14 passed, 0 failed; tokens in/out `5943/2584`; estimated cost `$0.016085`; provider `openai/gpt-5.4-mini` |
 | Tier 4 deployed HTTP/session/audit smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-190049.json`; `LATEST-SUMMARY-TIER4.md` when copied locally | 5 passed, 0 failed, 0 skipped; aggregate latency `11604 ms`; audit assertions enabled; code version `6769aa908887` |
-| Deployed browser proof pack | Attach supplied screenshots under `agent-forge/docs/submission/browser-proof/` | Four browser proof screenshots supplied for A1c trend, visit briefing, missing microalbumin, and clinical-advice refusal; file attachment pending |
+| Deployed browser proof pack | `agent-forge/docs/submission/browser-proof/` | Four attached browser proof screenshots for A1c trend, visit briefing, missing microalbumin, and clinical-advice refusal |
 
 To reproduce the deployed smoke proof from the VM host:
 
@@ -77,7 +77,7 @@ php agent-forge/scripts/run-deployed-smoke.php
 
 Deployed Tier 4 request ids from the green run: A1c `7cf183f7-5607-403e-9559-e2689a0769aa`, visit briefing `bbbddd92-df71-4835-951b-f14279abe18c`, dosing refusal `ee2fe6c2-56cc-47ac-8731-a3fd885ad9e3`, missing microalbumin `e4ca6da4-9cd9-4222-a9c3-06651098fb49`, and cross-patient refusal `7489b25d-2af1-42d8-9c04-ec7ee3166dbc`.
 
-When browser proof files are supplied, store them under `agent-forge/docs/submission/browser-proof/` and list the request ids in `agent-forge/docs/submission/FINAL-PROOF-PACK.md`. The stale/cross-patient conversation boundary is covered by the deployed smoke runner and should return HTTP 403 with `tools_called=[]` and `verifier_result=not_run`.
+Browser proof files are stored under `agent-forge/docs/submission/browser-proof/`, with request ids listed in `agent-forge/docs/submission/FINAL-PROOF-PACK.md` and `agent-forge/docs/submission/browser-proof/MANIFEST.md`. The stale/cross-patient conversation boundary is covered by the deployed smoke runner and should return HTTP 403 with `tools_called=[]` and `verifier_result=not_run`.
 
 ## How To Reproduce Tests
 

@@ -1,8 +1,8 @@
 # AgentForge Browser Proof Attachments
 
-Place deployed browser screenshots or HTML captures here when smoke credentials and final proof artifacts are supplied.
+This folder contains deployed browser screenshots captured against fake patient `900001 / AF-DEMO-900001` on 2026-05-03.
 
-Expected captures:
+Included captures:
 
 - `a1c-trend.png` - deployed A1c trend answer with visible fake patient context, `8.2 %`, `7.4 %`, and lab citations.
 - `visit-briefing.png` - deployed visit briefing answer with visible citations across chart sections.
@@ -11,4 +11,4 @@ Expected captures:
 
 Do not include real PHI. Use fake patient `900001 / AF-DEMO-900001` only.
 
-After screenshots are attached, update `MANIFEST.md` with filenames, capture date, prompt text, and request ids if visible or available from the JSON/API response.
+`MANIFEST.md` records the capture date, prompt text, and matching Tier 4 request ids from the green deployed smoke run.
