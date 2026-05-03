@@ -18,7 +18,7 @@ final class MedicationAuthIndexRemediationDocumentTest extends TestCase
 {
     public function testAuditDocumentsMedicationCompletenessWithoutClinicalReconciliation(): void
     {
-        $audit = $this->readRepoFile('/agent-forge/docs/AUDIT.md');
+        $audit = $this->readRepoFile('/AUDIT.md');
 
         foreach (
             [
@@ -35,7 +35,7 @@ final class MedicationAuthIndexRemediationDocumentTest extends TestCase
 
     public function testAuditDocumentsCompositeIndexPlanWithoutMigration(): void
     {
-        $audit = $this->readRepoFile('/agent-forge/docs/AUDIT.md');
+        $audit = $this->readRepoFile('/AUDIT.md');
 
         foreach (
             [

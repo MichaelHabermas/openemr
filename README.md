@@ -22,9 +22,13 @@
 
 ### AgentForge Reviewer Entry Point
 
-AgentForge is the Clinical Co-Pilot submission built inside this OpenEMR fork. Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the documented deployed URL, current health-check command, fake patient, demo path, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
+AgentForge is the Clinical Co-Pilot submission built inside this OpenEMR fork.
 
-Required root submission artifacts are also present here:
+Deployed reviewer URL: [https://openemr.titleredacted.cc/](https://openemr.titleredacted.cc/)
+
+Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patient, demo path, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
+
+Required root submission artifacts are readable on their own here:
 
 - [AUDIT.md](AUDIT.md)
 - [USERS.md](USERS.md)

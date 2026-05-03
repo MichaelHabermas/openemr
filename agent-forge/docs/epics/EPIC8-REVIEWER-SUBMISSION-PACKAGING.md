@@ -35,24 +35,22 @@ Optimization sequence:
 **Acceptance Map:**
 
 - Root-level `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` are present.
-- Root docs must not drift from canonical docs.
+- Root docs are the canonical reviewer artifacts.
 - Packaging choice is reviewer-visible.
 
 **Implementation:**
 
-- Verified root `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` are byte-for-byte identical to `agent-forge/docs/AUDIT.md`, `agent-forge/docs/USERS.md`, and `agent-forge/docs/ARCHITECTURE.md`.
-- Documented the copy-based packaging decision in `AGENTFORGE-REVIEWER-GUIDE.md`.
-- Added explicit drift-check commands to the reviewer guide.
+- Verified root `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md` are present and readable on their own.
+- Documented the root-canonical packaging decision in `AGENTFORGE-REVIEWER-GUIDE.md`.
+- Removed duplicate subfolder copies of the canonical reviewer docs.
 
 **Proof:**
 
 ```sh
-cmp -s AUDIT.md agent-forge/docs/AUDIT.md
-cmp -s USERS.md agent-forge/docs/USERS.md
-cmp -s ARCHITECTURE.md agent-forge/docs/ARCHITECTURE.md
+test -f AUDIT.md && test -f USERS.md && test -f ARCHITECTURE.md
 ```
 
-All three checks returned exit code `0` during this Epic 8 pass.
+The root artifact check returned exit code `0` during this packaging pass.
 
 ### Task 8.1.2: Add Reviewer Landing Page And Artifact Map
 

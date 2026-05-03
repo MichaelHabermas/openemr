@@ -18,7 +18,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
 {
     public function testSensitiveAuditLogPolicyDocumentsAllowedForbiddenAndAccessControls(): void
     {
-        $architecture = $this->readRepoFile('/agent-forge/docs/ARCHITECTURE.md');
+        $architecture = $this->readRepoFile('/ARCHITECTURE.md');
         $plan = $this->readRepoFile('/agent-forge/docs/PLAN.md');
         $epic = $this->epicDocument();
         $combined = $architecture . "\n" . $plan . "\n" . $epic;
@@ -70,8 +70,8 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
     public function testObservabilityDocsDistinguishStageTimingFromFullObservability(): void
     {
         $combined = implode("\n", [
-            $this->readRepoFile('/agent-forge/docs/ARCHITECTURE.md'),
-            $this->readRepoFile('/agent-forge/docs/AUDIT.md'),
+            $this->readRepoFile('/ARCHITECTURE.md'),
+            $this->readRepoFile('/AUDIT.md'),
             $this->readRepoFile('/agent-forge/docs/PRD.md'),
             $this->epicDocument(),
         ]);
@@ -102,8 +102,8 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
     public function testLatencyBudgetIncludesBaselinesAndProductionReadinessGate(): void
     {
         $combined = implode("\n", [
-            $this->readRepoFile('/agent-forge/docs/ARCHITECTURE.md'),
-            $this->readRepoFile('/agent-forge/docs/AUDIT.md'),
+            $this->readRepoFile('/ARCHITECTURE.md'),
+            $this->readRepoFile('/AUDIT.md'),
             $this->readRepoFile('/agent-forge/docs/PRD.md'),
             $this->readRepoFile('/agent-forge/docs/operations/COST-ANALYSIS.md'),
             $this->epicDocument(),
@@ -181,8 +181,8 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
     private function currentClaimDocuments(): array
     {
         $paths = [
-            '/agent-forge/docs/ARCHITECTURE.md',
-            '/agent-forge/docs/AUDIT.md',
+            '/ARCHITECTURE.md',
+            '/AUDIT.md',
             '/agent-forge/docs/PRD.md',
             '/agent-forge/docs/operations/COST-ANALYSIS.md',
             '/agent-forge/docs/epics/EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md',
@@ -204,11 +204,11 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
     private function stableReviewerDocuments(): array
     {
         $paths = [
-            '/agent-forge/docs/ARCHITECTURE.md',
-            '/agent-forge/docs/AUDIT.md',
+            '/ARCHITECTURE.md',
+            '/AUDIT.md',
             '/agent-forge/docs/PRD.md',
             '/agent-forge/docs/README.md',
-            '/agent-forge/docs/USERS.md',
+            '/USERS.md',
             '/agent-forge/docs/evaluation/EVALUATION-TIERS.md',
             '/agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md',
             '/agent-forge/docs/operations/COST-ANALYSIS.md',

@@ -138,10 +138,10 @@ If any safety-critical proof is missing, the status is `implemented but not acce
 
 - `agent-forge/docs/SPECS.txt`
 - `agent-forge/docs/PRD.md`
-- `agent-forge/docs/USERS.md`
-- `agent-forge/docs/AUDIT.md`
+- `USERS.md`
+- `AUDIT.md`
 - `agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md`
-- `agent-forge/docs/ARCHITECTURE.md`
+- `ARCHITECTURE.md`
 - `agent-forge/docs/operations/COST-ANALYSIS.md`
 - `agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md` (short pointer; canonical Epic 8 narrative in `agent-forge/docs/epics/EPIC8-REVIEWER-SUBMISSION-PACKAGING.md`)
 
@@ -206,7 +206,7 @@ Why: `SPECS.txt` requires `AUDIT.md`, a user document, and `ARCHITECTURE.md` bef
 
 Start with eval/test:
 
-- Run a file-existence check for `agent-forge/docs/AUDIT.md`, `agent-forge/docs/USERS.md`, and `agent-forge/docs/ARCHITECTURE.md`.
+- Run a file-existence check for root `AUDIT.md`, `USERS.md`, and `ARCHITECTURE.md`.
 - Record which required files are present or missing.
 
 Implementation:
@@ -239,7 +239,7 @@ Implementation:
 
 Definition of done:
 
-- `agent-forge/docs/AUDIT.md` exists.
+- Root `AUDIT.md` exists.
 - It begins with a concise key-findings summary.
 - It covers all required audit categories.
 - Each major finding cites accepted evidence from the repo, schema, `SPECS.txt`, or observed command output.
@@ -262,7 +262,7 @@ Implementation:
 
 Definition of done:
 
-- `agent-forge/docs/USERS.md` exists.
+- Root `USERS.md` exists.
 - It defines one narrow user.
 - Every use case includes why an agent is better than a static dashboard for that moment.
 - No unsupported users are added.

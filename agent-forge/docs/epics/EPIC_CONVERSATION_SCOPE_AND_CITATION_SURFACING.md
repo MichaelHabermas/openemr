@@ -46,7 +46,7 @@ Epic 11 corrects the single-turn versus multi-turn mismatch and surfaces citatio
 - [x] Add planned eval case metadata for safe follow-up behavior.
 - [x] Update this epic file with completed proof or an explicit gap.
 
-**Proof:** `agent-forge/docs/ARCHITECTURE.md` contains the planned minimum multi-turn contract. `agent-forge/fixtures/eval-cases.json` contains planned-not-runtime-claimed follow-up cases. `EvaluationTiersDocumentTest::testMultiTurnEvalCasesArePlannedWithoutRuntimeClaim` covers both.
+**Proof:** Root `ARCHITECTURE.md` contains the planned minimum multi-turn contract. `agent-forge/fixtures/eval-cases.json` contains planned-not-runtime-claimed follow-up cases. `EvaluationTiersDocumentTest::testMultiTurnEvalCasesArePlannedWithoutRuntimeClaim` covers both.
 
 **Suggested Commit:** `docs(agent-forge): define planned multi-turn contract`
 

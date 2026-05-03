@@ -12,12 +12,10 @@
 - Confirm the reviewer guide links resolve from the repository root.
 - Confirm the guide exposes the documented deployed URL, fake patient, demo path, seed command, eval command, cost analysis, implemented proof, and known blockers without needing tribal knowledge.
 
-**Root artifact drift check** (required docs must match canonical copies under `agent-forge/docs/`):
+**Root artifact check** (required docs are canonical at the repository root):
 
 ```sh
-cmp AUDIT.md agent-forge/docs/AUDIT.md
-cmp USERS.md agent-forge/docs/USERS.md
-cmp ARCHITECTURE.md agent-forge/docs/ARCHITECTURE.md
+test -f AUDIT.md && test -f USERS.md && test -f ARCHITECTURE.md
 ```
 
 Open production-readiness blockers include cost tiers, live-path evals, and production readiness proof. The execution backlog is tracked in [PLAN.md](../PLAN.md).

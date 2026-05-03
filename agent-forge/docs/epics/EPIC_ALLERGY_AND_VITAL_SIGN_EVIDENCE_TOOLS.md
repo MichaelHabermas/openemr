@@ -14,7 +14,7 @@ Acceptance sources:
 
 - `agent-forge/docs/SPECS.txt`: source-cited patient claims, tool failure/missing-data behavior, PHI-minimized read-only tools, logging/proof expectations.
 - `agent-forge/docs/PLAN.md` Epic 17: allergies and vitals tool requirements.
-- `agent-forge/docs/ARCHITECTURE.md` and `agent-forge/docs/PRD.md`: evidence contract and fail-closed verifier behavior.
+- Root `ARCHITECTURE.md` and `agent-forge/docs/PRD.md`: evidence contract and fail-closed verifier behavior.
 
 ---
 
