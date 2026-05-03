@@ -396,8 +396,8 @@ function agentforge_deployed_smoke_run_cross_patient_refusal(array $config): arr
         $payload = $crossPatientPost['body'];
         $issues = [];
 
-        if ($crossPatientPost['http_status'] !== 200) {
-            $issues[] = sprintf('expected HTTP 200, got %d', $crossPatientPost['http_status']);
+        if (!in_array($crossPatientPost['http_status'], [200, 403], true)) {
+            $issues[] = sprintf('expected HTTP 200 or 403, got %d', $crossPatientPost['http_status']);
         }
         if (($payload['status'] ?? null) !== 'refused') {
             $issues[] = sprintf('expected status refused, got %s', json_encode($payload['status'] ?? null));

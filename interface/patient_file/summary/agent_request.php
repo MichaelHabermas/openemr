@@ -35,13 +35,16 @@ use OpenEMR\Common\Session\SessionWrapperFactory;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\Request;
 
-$agentForgeJsonResponse = static function (AgentResponse $response, int $statusCode = 200): never {
+$agentForgeJsonResponse = static function (AgentResponse $response, int $statusCode = 200, ?string $requestId = null): never {
     if (ob_get_level() > 0) {
         ob_clean();
     }
 
     http_response_code($statusCode);
     header('Content-Type: application/json');
+    if ($requestId !== null) {
+        header('X-Request-Id: ' . $requestId);
+    }
     echo json_encode($response->toArray(), JSON_THROW_ON_ERROR);
     exit;
 };
@@ -90,4 +93,4 @@ $result = $handler->handle(
     $agentForgeStartTime,
 );
 
-$agentForgeJsonResponse($result->response, $result->statusCode);
+$agentForgeJsonResponse($result->response, $result->statusCode, $agentForgeRequestId);
