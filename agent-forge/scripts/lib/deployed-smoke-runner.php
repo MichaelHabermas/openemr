@@ -711,11 +711,17 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
     }
 
     $remoteCommand = sprintf('grep -F %s %s | tail -n 1', escapeshellarg($requestId), escapeshellarg($logPath));
-    $command = sprintf(
-        'ssh -o BatchMode=yes -o ConnectTimeout=10 %s %s',
-        escapeshellarg($sshHost),
-        escapeshellarg($remoteCommand),
-    );
+    $executionLabel = 'ssh';
+    $command = $remoteCommand;
+    if (strtolower(trim($sshHost)) !== 'local') {
+        $command = sprintf(
+            'ssh -o BatchMode=yes -o ConnectTimeout=10 %s %s',
+            escapeshellarg($sshHost),
+            escapeshellarg($remoteCommand),
+        );
+    } else {
+        $executionLabel = 'local grep';
+    }
 
     $descriptors = [
         1 => ['pipe', 'w'],
@@ -737,7 +743,7 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
             'found' => false,
             'fields' => [],
             'raw_line' => null,
-            'error' => sprintf('ssh exit %d: %s', $exitCode, trim($stderr) !== '' ? trim($stderr) : 'no output'),
+            'error' => sprintf('%s exit %d: %s', $executionLabel, $exitCode, trim($stderr) !== '' ? trim($stderr) : 'no output'),
         ];
     }
 
