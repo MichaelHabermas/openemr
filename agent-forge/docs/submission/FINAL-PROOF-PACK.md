@@ -19,6 +19,7 @@ The green VM artifacts below are the final proof targets for reviewer packaging.
 | Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-161657.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed | Real `SqlChartEvidenceRepository` and evidence tools against seeded fake OpenEMR data |
 | Tier 2 live model | VM artifact `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-183646.json`; `LATEST-SUMMARY-TIER2.md` when copied locally | 14 passed, 0 failed; tokens in/out `5943/2584`; estimated cost `$0.016085`; provider `openai/gpt-5.4-mini` | Live provider path, safety-critical refusal/hallucination/prompt-injection cases, selector behavior, token/cost telemetry |
 | Tier 4 deployed smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-190049.json`; `LATEST-SUMMARY-TIER4.md` when copied locally | 5 passed, 0 failed, 0 skipped; aggregate latency `11604 ms`; audit assertions enabled; code version `6769aa908887` | Public deployed HTTP path, login/session, CSRF, chart endpoint, JSON response, sanitized audit-log assertions |
+| Deployed latency trace | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json`; `agent-forge/docs/operations/LATENCY-RESULTS.md` | A1c 20/20, p95 `3212 ms`; visit briefing 20/20, p95 `8309 ms`; both under `10000 ms` budget | Deployed demo latency across repeated A1c and visit-briefing requests |
 
 The final green Tier 4 smoke command was run from the VM host on 2026-05-03 at `19:00:49+00:00`:
 
@@ -82,12 +83,12 @@ Deployed latency trace from the VM host:
 php agent-forge/scripts/run-deployed-latency-trace.php
 ```
 
-This writes `agent-forge/eval-results/deployed-latency-trace-{timestamp}.json` and updates `agent-forge/docs/operations/LATENCY-RESULTS.md`.
+The final captured run wrote VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-latency-trace-20260503-190443.json` and updated `agent-forge/docs/operations/LATENCY-RESULTS.md`.
 
 ## Limits Not Claimed
 
 - Not production-ready or a medical device.
-- No p95 production latency proof; current latency evidence is demo-grade.
+- Deployed p95 latency proof is demo-grade and covers the A1c and visit-briefing request shapes only; it is not a production SLO claim.
 - Multi-turn behavior is intentionally shallow and safety-scoped.
 - Verifier is useful for source-grounded demo data, but not a full clinical truth layer.
 - Observability includes structured request logs and timings, but not dashboards, alerting, SLO operations, retention governance, or incident workflows.
