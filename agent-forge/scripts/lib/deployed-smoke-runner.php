@@ -760,7 +760,8 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
     if ($auditMode === 'docker-compose') {
         $executionLabel = 'docker compose grep';
         $command = sprintf(
-            'docker compose -f docker/development-easy/docker-compose.yml exec -T openemr sh -lc %s',
+            'docker compose -f %s exec -T openemr sh -lc %s',
+            escapeshellarg(agentforge_deployed_smoke_compose_file_path()),
             escapeshellarg($remoteCommand),
         );
     } elseif ($auditMode !== 'local') {
@@ -805,6 +806,26 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
     $fields = agentforge_deployed_smoke_extract_log_fields($line);
 
     return ['found' => true, 'fields' => $fields, 'raw_line' => $line, 'error' => null];
+}
+
+function agentforge_deployed_smoke_compose_file_path(): string
+{
+    $composeFile = getenv('AGENTFORGE_COMPOSE_FILE');
+    if (is_string($composeFile) && $composeFile !== '') {
+        return $composeFile;
+    }
+
+    $repoRoot = dirname(__DIR__, 3);
+    $composeDir = getenv('AGENTFORGE_COMPOSE_DIR');
+    $composeDir = is_string($composeDir) && $composeDir !== ''
+        ? $composeDir
+        : 'docker/development-easy';
+
+    if (str_starts_with($composeDir, '/')) {
+        return rtrim($composeDir, '/') . '/docker-compose.yml';
+    }
+
+    return $repoRoot . '/' . trim($composeDir, '/') . '/docker-compose.yml';
 }
 
 /**
