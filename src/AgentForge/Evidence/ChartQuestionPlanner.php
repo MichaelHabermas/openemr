@@ -225,7 +225,10 @@ final readonly class ChartQuestionPlanner
         ];
     }
 
-    /** @param list<string> $sections @return list<string> */
+    /**
+     * @param list<string> $sections
+     * @return list<string>
+     */
     private function validSelectedSections(array $sections): array
     {
         $allowed = self::allowedSections();

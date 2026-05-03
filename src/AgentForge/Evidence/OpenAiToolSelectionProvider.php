@@ -167,10 +167,13 @@ final readonly class OpenAiToolSelectionProvider implements ToolSelectionProvide
             throw new ToolSelectionException(sprintf('%s was not an object.', $label));
         }
 
-        return $decoded;
+        return self::stringKeyedObject($decoded, $label);
     }
 
-    /** @param array<string, mixed> $object @return list<mixed> */
+    /**
+     * @param array<string, mixed> $object
+     * @return list<mixed>
+     */
     private static function arrayField(array $object, string $field): array
     {
         $value = $object[$field] ?? null;
@@ -181,7 +184,10 @@ final readonly class OpenAiToolSelectionProvider implements ToolSelectionProvide
         return array_values($value);
     }
 
-    /** @param array<string, mixed> $object @return array<string, mixed> */
+    /**
+     * @param array<mixed, mixed> $object
+     * @return array<string, mixed>
+     */
     private static function objectField(array $object, string $field): array
     {
         $value = $object[$field] ?? null;
@@ -189,6 +195,23 @@ final readonly class OpenAiToolSelectionProvider implements ToolSelectionProvide
             throw new ToolSelectionException(sprintf('Selector field %s must be an object.', $field));
         }
 
-        return $value;
+        return self::stringKeyedObject($value, sprintf('Selector field %s', $field));
+    }
+
+    /**
+     * @param array<mixed, mixed> $value
+     * @return array<string, mixed>
+     */
+    public static function stringKeyedObject(array $value, string $label): array
+    {
+        $object = [];
+        foreach ($value as $key => $field) {
+            if (!is_string($key)) {
+                throw new ToolSelectionException(sprintf('%s contained a non-string key.', $label));
+            }
+            $object[$key] = $field;
+        }
+
+        return $object;
     }
 }

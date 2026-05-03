@@ -60,9 +60,9 @@ Current local proof snapshot:
 | Deployed health | `agent-forge/scripts/health-check.sh` returned public app HTTP 200 and readiness HTTP 200 on 2026-05-03 | Passed |
 | Tier 0 fixture/orchestration | `agent-forge/eval-results/eval-results-20260503-034628.json`; `LATEST-SUMMARY-TIER0.md` | 28 passed, 0 failed |
 | Tier 1 seeded SQL evidence | `agent-forge/eval-results/sql-evidence-eval-results-20260503-032517.json`; `LATEST-SUMMARY-TIER1.md` | 7 passed, 0 failed |
-| Tier 2 live-provider proof | VM artifact `/root/repos/openemr/agent-forge/eval-results/tier2-live-20260503-035542.json`; local artifact `agent-forge/eval-results/tier2-live-20260503-034230.json`; `LATEST-SUMMARY-TIER2.md` | VM: 12 passed, 0 failed, safety-critical failure `false`, live OpenAI tokens `3888/2176` |
-| Tier 4 deployed HTTP/session/audit smoke | VM artifact `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-042413.json`; `LATEST-SUMMARY-TIER4.md` | 4 passed, 0 failed, 0 skipped; audit-log assertions enabled; aggregate latency 6568 ms |
-| Deployed browser proof pack | Manual screenshots captured externally against `https://openemr.titleredacted.cc/` on 2026-05-03; request ids listed below | A1c trend, visit briefing, missing microalbumin, and clinical diagnosis refusal verified in the chart UI |
+| Tier 2 live-provider proof | Local artifact `agent-forge/eval-results/tier2-live-20260503-034230.json`; `LATEST-SUMMARY-TIER2.md` | Historical local artifact: 12 passed, 0 failed |
+| Tier 4 deployed HTTP/session/audit smoke | Local historical artifacts `agent-forge/eval-results/deployed-smoke-20260503-030537.json` and `agent-forge/eval-results/deployed-smoke-20260503-033855.json`; `LATEST-SUMMARY-TIER4.md` | Green live proof must be recaptured with smoke credentials and attached as a present file |
+| Deployed browser proof pack | Attach screenshots or HTML captures under `agent-forge/docs/submission/browser-proof/` when supplied | Pending local artifact attachment |
 
 To reproduce the deployed smoke proof from the VM host:
 
@@ -77,7 +77,7 @@ php agent-forge/scripts/run-deployed-smoke.php
 
 Deployed Tier 4 request ids from the green run: A1c `a1fc75ea-7f5b-4496-920c-98d93ba58530`, dosing refusal `405dfab6-1eec-40bd-8664-49801d7c4655`, missing microalbumin `3b12ad5c-8930-4a19-b052-3b0ff62f58b3`, and cross-patient refusal `3c243d4f-afb2-487a-9682-864436f104d8`.
 
-Deployed browser proof request ids from the manual screenshots: A1c trend `106f8c38-43b0-483d-82ce-825f59b38dd1`, visit briefing `571e91f3-daad-4794-9124-e38cbe72395f`, missing microalbumin `ea02e9a5-a309-4c37-ac42-844bd2348cc6`, and diagnosis refusal `e3f938db-0d9a-4539-92b9-7c6845899b2e`. The browser screenshots were captured externally for the final submission rather than committed to this checkout; attach those image files with matching request ids if the submission portal supports uploads. The screenshots show the public deployed URL, fake patient `900001 / AF-DEMO-900001`, scoped answers/refusals, and visible Sources for supported chart answers. The stale/cross-patient conversation boundary is covered by the green deployed Tier 4 smoke case `3c243d4f-afb2-487a-9682-864436f104d8`, which returned HTTP 403 with `tools_called=[]` and `verifier_result=not_run`.
+When browser proof files are supplied, store them under `agent-forge/docs/submission/browser-proof/` and list the request ids in `agent-forge/docs/submission/FINAL-PROOF-PACK.md`. The stale/cross-patient conversation boundary is covered by the deployed smoke runner and should return HTTP 403 with `tools_called=[]` and `verifier_result=not_run`.
 
 ## How To Reproduce Tests
 

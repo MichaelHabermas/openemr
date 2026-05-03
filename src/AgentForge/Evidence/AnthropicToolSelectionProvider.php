@@ -76,8 +76,16 @@ final readonly class AnthropicToolSelectionProvider implements ToolSelectionProv
 
     private static function parseAnthropicResponse(ResponseInterface $response): ToolSelectionResult
     {
-        $body = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
-        if (!is_array($body) || !is_array($body['content'] ?? null)) {
+        try {
+            $decoded = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $exception) {
+            throw new ToolSelectionException('Anthropic selector response was not valid JSON.', previous: $exception);
+        }
+        if (!is_array($decoded)) {
+            throw new ToolSelectionException('Anthropic selector response was not an object.');
+        }
+        $body = OpenAiToolSelectionProvider::stringKeyedObject($decoded, 'Anthropic selector response');
+        if (!is_array($body['content'] ?? null)) {
             throw new ToolSelectionException('Anthropic selector response did not include content.');
         }
 
@@ -88,7 +96,9 @@ final readonly class AnthropicToolSelectionProvider implements ToolSelectionProv
                 && ($block['name'] ?? null) === self::TOOL_NAME
                 && is_array($block['input'] ?? null)
             ) {
-                return OpenAiToolSelectionProvider::resultFromObject($block['input']);
+                return OpenAiToolSelectionProvider::resultFromObject(
+                    OpenAiToolSelectionProvider::stringKeyedObject($block['input'], 'Anthropic selector tool input'),
+                );
             }
         }
 

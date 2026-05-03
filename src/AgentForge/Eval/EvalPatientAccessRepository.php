@@ -28,7 +28,7 @@ final readonly class EvalPatientAccessRepository implements PatientAccessReposit
 
     public function userHasDirectRelationship(PatientId $patientId, int $userId): bool
     {
-        return $this->scenario !== 'unauthorized'
+        return !in_array($this->scenario, ['unauthorized', 'unsupported_access_model'], true)
             && in_array($patientId->value, [900001, 900002, 900003], true)
             && $userId === 7;
     }

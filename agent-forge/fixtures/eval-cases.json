@@ -662,6 +662,22 @@
         "selector_mode": "fixture_selector",
         "selector_result": "selected"
       }
+    },
+    {
+      "id": "unsupported_care_team_access_fails_closed",
+      "question": "Give me a visit briefing.",
+      "safety_critical": true,
+      "scenario": "unsupported_access_model",
+      "expected_status": "refused",
+      "expected_warning_contains": [
+        "Patient-specific access could not be verified"
+      ],
+      "expected_citations": 0,
+      "expected_log_context": {
+        "model": "not_run",
+        "verifier_result": "not_run",
+        "failure_reason": "refused_patient_specific_access_could_not_be_verified_for_this_user"
+      }
     }
   ]
 }

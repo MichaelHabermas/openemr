@@ -8,6 +8,8 @@ The target user is one primary care physician opening a scheduled outpatient cha
 
 The agent lives inside the OpenEMR patient chart. A small browser panel sends the physician's question and the current `patient_id` to a server-side endpoint that owns trust decisions. The endpoint binds each request to the active OpenEMR session user, the current patient, and the current chart context. If the user is missing, the patient is missing, or patient-specific authorization is unclear, the request is refused.
 
+AgentForge is best described as verified factual chart summarization with a refusal policy. It is not a clinical rules engine, and regex-based refusal checks must not be represented as diagnosis, interaction, dosing, or treatment logic.
+
 The audit shows the critical constraint: OpenEMR's existing ACL checks are capability-oriented, not patient-resource-oriented. Coarse permission to read patient data is not enough. The agent applies an explicit patient authorization gate before any chart data is read. The model never gets direct database access; it can only use allowlisted, read-only chart tools controlled by the server.
 
 Those tools fetch narrow evidence from the current patient's chart: demographics, recent encounter reasons, problems, active and inactive medications, allergies, recent labs, recent and stale vitals, recent notes, and the last plan when available. Each returned fact carries source metadata (table, row id, date, label, value). Inactive medication history is labeled separately and is not reconciled into active medications. Duplicate or conflicting records are surfaced as evidence, not reconciled into clinical truth. Missing data is treated as missing, not as proof that something is false.
