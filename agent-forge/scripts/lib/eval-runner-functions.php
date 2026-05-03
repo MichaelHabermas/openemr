@@ -25,6 +25,7 @@ use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\Observability\RequestLog;
+use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
@@ -79,6 +80,7 @@ function agentforge_eval_main(): int
 
     $resultPath = sprintf('%s/eval-results-%s.json', $resultsDir, $startedAt->format('Ymd-His'));
     file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
 
     printf(
         "AgentForge evals: %d passed, %d failed. Results: %s\n",

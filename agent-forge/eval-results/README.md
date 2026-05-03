@@ -2,6 +2,8 @@
 
 Human-readable Markdown summaries (local CLI and GitHub Actions job summaries) are documented in [../docs/evaluation/EVAL-REPORTING.md](../docs/evaluation/EVAL-REPORTING.md).
 
+After each tier run, the repo also overwrites **stable** per-tier Markdown files here (same content shape as the CLI renderer): `LATEST-SUMMARY-TIER0.md`, `LATEST-SUMMARY-TIER1.md`, `LATEST-SUMMARY-TIER2.md`, and `LATEST-SUMMARY-TIER4.md`. They are gitignored; open the one matching the tier you last ran for a quick human digest. Set `AGENTFORGE_SKIP_LATEST_SUMMARY` to a non-empty value to disable that write.
+
 Running `php agent-forge/scripts/run-evals.php` writes a **timestamped** JSON summary here (for example `eval-results-20260501-120000.json`). Those files are gitignored.
 
 **Committed reference:** [`canonical.json`](canonical.json) is the checked-in snapshot from a full passing Tier 0 deterministic fixture/orchestration proof run (`13` passed, `0` failed). Refresh it when `agent-forge/fixtures/eval-cases.json` or eval-runner semantics change intentionally.

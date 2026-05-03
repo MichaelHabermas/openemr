@@ -33,6 +33,7 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/deployed-smoke-runner.php';
 
 exit(agentforge_deployed_smoke_main());

@@ -14,6 +14,8 @@
 
 declare(strict_types=1);
 
+use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
+
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S = 90;
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_PRIMARY_PID = 900001;
 const AGENTFORGE_DEPLOYED_SMOKE_USER_AGENT = 'AgentForge-DeployedSmoke/1.0';
@@ -172,6 +174,7 @@ function agentforge_deployed_smoke_main(): int
         $startedAt->format('Ymd-His'),
     );
     file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
+    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
 
     printf(
         "Deployed smoke: %d passed, %d failed, %d skipped. Aggregate latency: %d ms. Results: %s\n",

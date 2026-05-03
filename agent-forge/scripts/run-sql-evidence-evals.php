@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
+use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/eval-runner-functions.php';
@@ -55,6 +56,7 @@ $summary = $runner->run(
 
 $resultPath = sprintf('%s/sql-evidence-eval-results-%s.json', $resultsDir, date('Ymd-His'));
 file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
 
 printf(
     "AgentForge seeded SQL evidence evals: %d passed, %d failed. Results: %s\n",

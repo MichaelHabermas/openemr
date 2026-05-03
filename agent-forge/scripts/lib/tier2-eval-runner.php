@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
+use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
 
 require_once __DIR__ . '/eval-runner-functions.php';
@@ -104,6 +105,7 @@ function agentforge_tier2_main(): int
 
     $resultPath = sprintf('%s/tier2-live-%s.json', $resultsDir, $startedAt->format('Ymd-His'));
     file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
 
     printf(
         "AgentForge Tier 2 (%s/%s): %d passed, %d failed. Tokens in/out: %d/%d. Estimated cost: $%.6f. Results: %s\n",

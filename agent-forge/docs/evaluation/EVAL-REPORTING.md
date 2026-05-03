@@ -11,6 +11,21 @@ This project adds a small **Markdown summary** path:
 
 Full JSON artifacts remain the source of truth for timings, log context, and verifier fields.
 
+## Stable latest Markdown (per tier, auto-overwrite)
+
+Whenever a tier runner writes its timestamped JSON into the results directory, it also overwrites a **stable** Markdown file in that **same directory** (implemented by `OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter`):
+
+| Tier | File |
+|------|------|
+| 0 | `LATEST-SUMMARY-TIER0.md` |
+| 1 | `LATEST-SUMMARY-TIER1.md` |
+| 2 | `LATEST-SUMMARY-TIER2.md` |
+| 4 | `LATEST-SUMMARY-TIER4.md` |
+
+The first line is an HTML comment recording the source JSON basename and generation time (UTC). These files are **gitignored** (`eval-results/LATEST-SUMMARY-TIER*.md`).
+
+To skip writing them (for example when debugging), set a non-empty **`AGENTFORGE_SKIP_LATEST_SUMMARY`** environment variable. Write failures never change the eval process exit code; a one-line message is printed to `STDERR`.
+
 ## Tier taxonomy
 
 See [EVALUATION-TIERS.md](EVALUATION-TIERS.md). The normalizer recognizes Tier **0** (fixture/orchestration), **1** (seeded SQL evidence), **2** (live LLM), and **4** (deployed HTTP/session smoke) JSON shapes.
