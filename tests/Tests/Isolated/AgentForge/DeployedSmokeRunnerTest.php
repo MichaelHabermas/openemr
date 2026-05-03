@@ -65,4 +65,32 @@ final class DeployedSmokeRunnerTest extends TestCase
 
         $this->assertSame('/tmp/agentforge-compose.yml', \agentforge_deployed_smoke_compose_file_path());
     }
+
+    public function testAuditExpectationAllowsEmptyStringForNoFailureReason(): void
+    {
+        $result = \agentforge_deployed_smoke_evaluate_audit_log(
+            [
+                'found' => true,
+                'fields' => [
+                    'user_id' => 7,
+                    'patient_id' => 900001,
+                    'decision' => 'allowed',
+                    'latency_ms' => 1234,
+                    'model' => 'gpt-5.4-mini',
+                    'verifier_result' => 'passed',
+                    'failure_reason' => '',
+                ],
+                'raw_line' => '{"failure_reason":""}',
+                'error' => null,
+            ],
+            [
+                'verifier_result' => 'passed',
+                'failure_reason' => ['_one_of' => [null, '']],
+                'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
+            ],
+        );
+
+        $this->assertTrue($result['expected_match']);
+        $this->assertSame([], $result['issues']);
+    }
 }

@@ -223,7 +223,7 @@ function agentforge_deployed_smoke_run_supported_a1c(array $config): array
         },
         expectedAuditLog: [
             'verifier_result' => ['_one_of' => ['passed', 'fallback_passed']],
-            'failure_reason' => ['_one_of' => [null, 'model_verification_failed_fallback_used']],
+            'failure_reason' => ['_one_of' => [null, '', 'model_verification_failed_fallback_used']],
             'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
         ],
     );
@@ -255,7 +255,7 @@ function agentforge_deployed_smoke_run_visit_briefing(array $config): array
         },
         expectedAuditLog: [
             'verifier_result' => 'passed',
-            'failure_reason' => null,
+            'failure_reason' => ['_one_of' => [null, '']],
             'model' => ['_not_one_of' => ['fixture-draft-provider', 'not_run', 'disabled-draft-provider']],
         ],
     );
