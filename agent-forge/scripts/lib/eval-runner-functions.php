@@ -314,7 +314,7 @@ function agentforge_eval_tools(string $scenario): array
 
 /**
  * @param array<string, mixed> $case
- * @param array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry} $result
+ * @param array{response: OpenEMR\AgentForge\Handlers\AgentResponse, conversation_id?: ?string, patient_id?: ?int, decision?: string, telemetry?: ?OpenEMR\AgentForge\Observability\AgentTelemetry} $result
  * @param array<string, mixed> $logContext
  * @return array{
  *     id: mixed,

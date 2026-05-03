@@ -191,7 +191,7 @@ final class SqlEvidenceEvalCaseRepository
         return array_values(array_filter($citations));
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array<array-key, mixed>> */
     private function evidenceRows(mixed $value): array
     {
         if (!is_array($value)) {
@@ -212,7 +212,7 @@ final class SqlEvidenceEvalCaseRepository
         return $rows;
     }
 
-    /** @param array<string, mixed> $row */
+    /** @param array<array-key, mixed> $row */
     private function citation(array $row): string
     {
         $type = $row['source_type'] ?? null;
@@ -236,14 +236,8 @@ final class SqlEvidenceEvalCaseRepository
     private function missingSections(array $patient): array
     {
         $known = $patient['known_missing'] ?? [];
-        if (!is_array($known)) {
-            return [];
-        }
         $sections = [];
         foreach ($known as $missing) {
-            if (!is_array($missing)) {
-                continue;
-            }
             $section = $missing['section'] ?? null;
             if (is_string($section)) {
                 $sections[] = $section;
@@ -260,14 +254,8 @@ final class SqlEvidenceEvalCaseRepository
     private function forbiddenCitations(array $patient): array
     {
         $expected = $patient['expected_not_promoted'] ?? [];
-        if (!is_array($expected)) {
-            return [];
-        }
         $citations = [];
         foreach ($expected as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
             $citation = $this->citation($row);
             if ($citation !== '') {
                 $citations[] = $citation;
@@ -284,9 +272,6 @@ final class SqlEvidenceEvalCaseRepository
     private function expectedAbsentSourceIds(array $patient): array
     {
         $sourceIds = $patient['expected_absent_source_ids'] ?? [];
-        if (!is_array($sourceIds)) {
-            return [];
-        }
         $result = [];
         foreach ($sourceIds as $sourceId) {
             if (is_string($sourceId) && trim($sourceId) !== '') {

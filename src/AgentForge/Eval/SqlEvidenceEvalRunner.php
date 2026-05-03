@@ -104,7 +104,7 @@ final readonly class SqlEvidenceEvalRunner
         foreach ($this->tools as $tool) {
             try {
                 $result = $tool->collect(new PatientId($case->patientId));
-            } catch (\Exception $exception) {
+            } catch (\LogicException | \RuntimeException $exception) {
                 $failures[] = sprintf('%s threw %s.', $tool->section(), $exception::class);
                 continue;
             }
@@ -246,7 +246,7 @@ final readonly class SqlEvidenceEvalRunner
                     $failures[] = sprintf('Expected decision code %s, got %s.', $expectedCode, $decision->code);
                 }
             }
-        } catch (\Exception $exception) {
+        } catch (\LogicException | \RuntimeException $exception) {
             $failures[] = sprintf('Authorization case threw %s.', $exception::class);
         }
 
