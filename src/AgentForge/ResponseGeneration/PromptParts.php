@@ -19,9 +19,4 @@ final readonly class PromptParts
         public string $deltaQuestion,
     ) {
     }
-
-    public function joined(): string
-    {
-        return $this->stableEvidence . "\n\n" . $this->deltaQuestion;
-    }
 }

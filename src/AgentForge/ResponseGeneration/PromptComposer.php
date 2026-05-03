@@ -98,7 +98,17 @@ final readonly class PromptComposer
     /** @throws JsonException */
     public function userMessage(AgentRequest $request, EvidenceBundle $bundle): string
     {
-        return $this->userMessageParts($request, $bundle)->joined();
+        $message = [
+            'question' => $request->question->value,
+            'patient_id' => $request->patientId->value,
+            'bounded_evidence' => $bundle->toPromptArray(),
+        ];
+
+        if ($request->conversationSummary !== null) {
+            $message['conversation_context'] = $request->conversationSummary->toPromptArray();
+        }
+
+        return json_encode($message, JSON_THROW_ON_ERROR);
     }
 
     /**
