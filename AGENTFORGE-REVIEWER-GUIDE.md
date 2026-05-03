@@ -6,6 +6,15 @@ Documented public app URL:
 
 `https://openemr.titleredacted.cc/`
 
+Final submission links:
+
+| Artifact | URL |
+| --- | --- |
+| Gauntlet Labs submission | https://labs.gauntletai.com/michaelhabermas/openemr |
+| Deployed app | https://openemr.titleredacted.cc/ |
+| Demo video | https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32 |
+| Social post | https://x.com/habermoose/status/2050766281515700369 |
+
 Current health and readiness check:
 
 ```sh
@@ -82,10 +91,10 @@ Latest VM proof supplied on 2026-05-03 after the checked-in summaries:
 | Check | Latest VM artifact or result | Status |
 | --- | --- | --- |
 | Local AgentForge gate from a normal VM shell | `agent-forge/scripts/check-local.sh`; deterministic eval artifact `/root/repos/openemr/agent-forge/eval-results/eval-results-20260503-201548.json` | PASS; PHP syntax, shell syntax, isolated PHPUnit `298 tests / 1547 assertions`, deterministic evals `32 passed, 0 failed`, PHPStan `161/161`, PHPCS no changed AgentForge PHP files |
-| Tier 2 live-provider proof from the OpenEMR container | `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
-| Tier 4 deployed HTTP/session/audit smoke from the VM | `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
+| Tier 2 live-provider proof from the OpenEMR container | `agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
+| Tier 4 deployed HTTP/session/audit smoke from the VM | `agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
 
-The checked-in summaries above are the local artifacts a reviewer can inspect directly from the repository. The later VM artifacts should be attached to the final submission packet if possible.
+The checked-in summaries above are the local artifacts a reviewer can inspect directly from the repository. The latest Tier 2 live-provider JSON and Tier 4 deployed smoke JSON are also checked in. The latest local gate artifact should be attached to the final submission packet if possible.
 
 To reproduce the deployed smoke proof from the VM host:
 
@@ -238,7 +247,7 @@ Current implemented proof is demo-grade and deterministic-regression-grade, not 
 - VM proof has been recorded for the fake patient A1c trend with `verifier_result=passed`.
 - Citation surfacing is implemented for current response payloads; it is not persistent conversation memory.
 - Structured sensitive request logging records request id, user id, patient id, decision, latency, model, token counts, estimated cost, source ids, and verifier result while avoiding full prompts and full chart text.
-- Cost evidence includes one measured A1c request: `836` input tokens, `173` output tokens, estimated model cost `$0.0002292`, local latency `2,989 ms`, and VM latency `10,693 ms`.
+- Cost evidence includes the original measured A1c request (`836` input tokens, `173` output tokens, estimated model cost `$0.0002292`) plus later deployed p95 latency proof for A1c and visit briefing. The original local `2,989 ms` and VM `10,693 ms` A1c latencies are historical baselines, not the final latency proof.
 
 Primary proof references:
 

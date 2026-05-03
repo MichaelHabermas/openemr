@@ -11,7 +11,7 @@ This pack is the reviewer-facing evidence map for the final AgentForge submissio
 | Checked-in Tier 2 live-model proof | `bd8dd6d05ce8` |
 | Checked-in Tier 4 deployed-smoke proof | `81c870a6aecb` |
 
-The proof rows below now distinguish checked-in repository artifacts from later VM-only artifacts. Reviewers can inspect the checked-in `LATEST-SUMMARY` files directly from the repository; later VM-only proof is referenced only when the corresponding JSON is not present in this checkout.
+The proof rows below distinguish checked-in repository artifacts from later VM/container artifacts. Reviewers can inspect the checked-in `LATEST-SUMMARY` files directly from the repository; the latest Tier 2 live-provider JSON and latest deployed-smoke JSON are also checked in.
 
 ## Automated Proof
 
@@ -25,17 +25,26 @@ The proof rows below now distinguish checked-in repository artifacts from later 
 
 > **What this proof does not prove:** no real PHI was used; the latency trace is not a production SLO; AgentForge is not a full clinical rules engine; authorization does not cover broad care-team, facility, schedule-derived, or delegated access; and medication evidence is not a medication reconciliation truth engine.
 
-Additional later VM-only Tier 2 and Tier 4 runs were captured after the checked-in summaries, but their JSON artifacts are not present in this checkout. The table above is the synchronized repository-local proof set.
+Additional later VM/container runs were captured after the checked-in summaries. The latest Tier 2 live-provider JSON and Tier 4 deployed smoke JSON are checked into this repository; the latest local gate artifact is referenced below and should be attached to the final submission packet if possible.
 
 Latest VM proof supplied on 2026-05-03:
 
 | Check | Artifact | Result |
 | --- | --- | --- |
 | Local AgentForge gate from a normal VM shell | `agent-forge/scripts/check-local.sh`; deterministic eval artifact `/root/repos/openemr/agent-forge/eval-results/eval-results-20260503-201548.json` | PASS; PHP syntax, shell syntax, isolated PHPUnit `298 tests / 1547 assertions`, deterministic evals `32 passed, 0 failed`, PHPStan `161/161`, PHPCS no changed AgentForge PHP files |
-| Tier 2 live model from OpenEMR container | `/var/www/localhost/htdocs/openemr/agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
-| Tier 4 deployed smoke from VM | `/root/repos/openemr/agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
+| Tier 2 live model from OpenEMR container | `agent-forge/eval-results/tier2-live-20260503-202550.json` | 14 passed, 0 failed; tokens in/out `5943/2476`; estimated cost `$0.015599`; provider `openai/gpt-5.4-mini` |
+| Tier 4 deployed smoke from VM | `agent-forge/eval-results/deployed-smoke-20260503-201547.json` | 5 passed, 0 failed; aggregate latency `14734 ms`; audit assertions enabled; includes `tier4_visit_briefing_live_verified`; code version `6769aa908887` |
 
-Attach these VM/container JSON artifacts to the final submission packet if possible; they are referenced here because they are not present in this local checkout.
+Attach the latest local gate artifact to the final submission packet if possible; the latest Tier 2 and Tier 4 JSON artifacts are checked in here.
+
+## Final Submission Links
+
+| Artifact | URL |
+| --- | --- |
+| Gauntlet Labs submission | https://labs.gauntletai.com/michaelhabermas/openemr |
+| Deployed app | https://openemr.titleredacted.cc/ |
+| Demo video | https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32 |
+| Social post | https://x.com/habermoose/status/2050766281515700369 |
 
 The checked-in Tier 4 smoke command was run against the deployed app on 2026-05-03:
 

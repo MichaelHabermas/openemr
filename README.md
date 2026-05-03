@@ -26,6 +26,12 @@ AgentForge is the Clinical Co-Pilot submission built inside this OpenEMR fork.
 
 Deployed reviewer URL: [https://openemr.titleredacted.cc/](https://openemr.titleredacted.cc/)
 
+Final submission links:
+
+- Gauntlet Labs submission: [https://labs.gauntletai.com/michaelhabermas/openemr](https://labs.gauntletai.com/michaelhabermas/openemr)
+- Demo video: [Loom demo](https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32)
+- Social post: [X post](https://x.com/habermoose/status/2050766281515700369)
+
 Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patient, demo path, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
 
 Required root submission artifacts are readable on their own here:

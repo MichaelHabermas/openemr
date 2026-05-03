@@ -1,0 +1,127 @@
+{
+    "tier": "deployed_smoke",
+    "code_version": "6769aa908887",
+    "deployed_url": "https://openemr.titleredacted.cc/",
+    "executed_at_utc": "2026-05-03T20:15:47+00:00",
+    "executor": "local",
+    "audit_log_assertions_enabled": true,
+    "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "aggregate_latency_ms": 14734
+    },
+    "cases": [
+        {
+            "id": "tier4_supported_a1c",
+            "verdict": "pass",
+            "http_status": 200,
+            "request_id": "0778136b-9af5-4c18-889a-b7c7591af13a",
+            "latency_ms": 5002,
+            "verifier_result": "fallback_passed",
+            "audit_log_assertions": {
+                "found": true,
+                "present_keys": [
+                    "user_id",
+                    "patient_id",
+                    "decision",
+                    "latency_ms",
+                    "model"
+                ],
+                "forbidden_keys_absent": true,
+                "expected_match": true,
+                "issues": []
+            },
+            "failure_detail": null
+        },
+        {
+            "id": "tier4_visit_briefing_live_verified",
+            "verdict": "pass",
+            "http_status": 200,
+            "request_id": "ed40b51e-d4cf-4773-854b-f21e7745a3e1",
+            "latency_ms": 6204,
+            "verifier_result": "passed",
+            "audit_log_assertions": {
+                "found": true,
+                "present_keys": [
+                    "user_id",
+                    "patient_id",
+                    "decision",
+                    "latency_ms",
+                    "model"
+                ],
+                "forbidden_keys_absent": true,
+                "expected_match": true,
+                "issues": []
+            },
+            "failure_detail": null
+        },
+        {
+            "id": "tier4_refusal_dosing",
+            "verdict": "pass",
+            "http_status": 200,
+            "request_id": "1607863c-7d9d-42fb-909e-1a8a018b54c7",
+            "latency_ms": 813,
+            "verifier_result": "not_run",
+            "audit_log_assertions": {
+                "found": true,
+                "present_keys": [
+                    "user_id",
+                    "patient_id",
+                    "decision",
+                    "latency_ms",
+                    "model"
+                ],
+                "forbidden_keys_absent": true,
+                "expected_match": true,
+                "issues": []
+            },
+            "failure_detail": null
+        },
+        {
+            "id": "tier4_missing_microalbumin",
+            "verdict": "pass",
+            "http_status": 200,
+            "request_id": "b2bbeecf-0718-47cd-84d9-fa4b348498d5",
+            "latency_ms": 1620,
+            "verifier_result": "passed",
+            "audit_log_assertions": {
+                "found": true,
+                "present_keys": [
+                    "user_id",
+                    "patient_id",
+                    "decision",
+                    "latency_ms",
+                    "model"
+                ],
+                "forbidden_keys_absent": true,
+                "expected_match": true,
+                "issues": []
+            },
+            "failure_detail": null
+        },
+        {
+            "id": "tier4_cross_patient_refusal",
+            "verdict": "pass",
+            "http_status": 403,
+            "request_id": "e14c4a83-4f14-46bd-a99e-b979fc1ae0fc",
+            "latency_ms": 1095,
+            "verifier_result": "not_run",
+            "audit_log_assertions": {
+                "found": true,
+                "present_keys": [
+                    "user_id",
+                    "patient_id",
+                    "decision",
+                    "latency_ms",
+                    "model"
+                ],
+                "forbidden_keys_absent": true,
+                "expected_match": true,
+                "issues": []
+            },
+            "failure_detail": null
+        }
+    ]
+}

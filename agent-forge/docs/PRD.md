@@ -247,7 +247,7 @@ To complete `SPECS.txt`, the project must contain:
 - Medication facts span more than one table shape and may contain optional coded fields.
 - Current medication evidence checks active prescriptions, active medication-list entries, and linked `lists_medication` extension rows where available. It does not reconcile duplicate or conflicting medication rows into clinical truth.
 - Missing, stale, duplicate, or weakly constrained chart data can cause unsafe inferred answers.
-- Response latency has limited local/VM baseline measurements only; the local A1c path is `2,989 ms` and the VM A1c path is `10,693 ms`. The VM result is accepted for demo evidence only; production-readiness claims remain blocked until p95 latency is under the accepted budget and `stage_timings_ms` identifies bottlenecks.
+- Response latency now has deployed demo p95 proof for two supported request shapes: A1c p95 `3212 ms` across 20 requests and visit-briefing p95 `8309 ms` across 20 requests, both under the `10000 ms` demo budget. The earlier local A1c path at `2,989 ms` and VM A1c path at `10,693 ms` remain historical baselines only; production-readiness claims remain blocked until broader p95/p99 measurement, SLOs, alerting, and operations are in place.
 - VM deployment details are not fully known, so deploy automation must avoid destructive assumptions.
 
 ### Critical Bottleneck
