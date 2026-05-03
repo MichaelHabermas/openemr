@@ -15,6 +15,45 @@ run_step() {
     "$@"
 }
 
+host_php_has_phpunit_extensions() {
+    php -r '
+        $required = ["dom", "json", "libxml", "mbstring", "tokenizer", "xml", "xmlwriter"];
+        foreach ($required as $ext) {
+            if (!extension_loaded($ext)) {
+                exit(1);
+            }
+        }
+        exit(0);
+    ' 2>/dev/null
+}
+
+run_agentforge_isolated_phpunit() {
+    local compose_file="${REPO_DIR}/docker/development-easy/docker-compose.yml"
+
+    if host_php_has_phpunit_extensions; then
+        composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+        return
+    fi
+
+    if [[ ! -f "${compose_file}" ]]; then
+        printf 'Host PHP is missing extensions required by PHPUnit (dom, xml, xmlwriter, etc.).\n' >&2
+        printf 'No %s found; install PHP dev extensions on this host or run checks from a full dev environment.\n' "${compose_file}" >&2
+        return 1
+    fi
+
+    if ! docker compose -f "${compose_file}" ps --status running -q openemr 2>/dev/null | grep -q .; then
+        printf 'Host PHP is missing extensions required by PHPUnit, and the openemr compose service is not running.\n' >&2
+        printf 'Either: apt-get install -y php-xml php-mbstring (or your OS equivalent), or start the stack:\n' >&2
+        printf '  cd docker/development-easy && docker compose up -d openemr\n' >&2
+        printf 'Then re-run %s (PHPUnit will run inside the container automatically).\n' "${BASH_SOURCE[0]}" >&2
+        return 1
+    fi
+
+    printf 'Host PHP lacks PHPUnit extensions; running isolated PHPUnit in the openemr container.\n'
+    docker compose -f "${compose_file}" exec -T -w /var/www/localhost/htdocs/openemr openemr \
+        composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+}
+
 phpcs_changed_agentforge_files() {
     local files
 
@@ -43,8 +82,7 @@ run_step "Check PHP syntax" bash -c \
 run_step "Check AgentForge shell script syntax" bash -c \
     "find agent-forge/scripts -name '*.sh' -print0 | xargs -0 -n 1 bash -n"
 
-run_step "Run AgentForge isolated PHPUnit" \
-    composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+run_step "Run AgentForge isolated PHPUnit" run_agentforge_isolated_phpunit
 
 run_step "Run AgentForge deterministic evals" \
     php agent-forge/scripts/run-evals.php
