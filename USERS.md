@@ -88,6 +88,18 @@ Boundary: the agent reports what the chart says. It does not draft a new plan or
 - No open-ended medical knowledge chatbot.
 - No support for users other than the chosen primary care physician in this version.
 
+## Capability Matrix
+
+| Use case | Evidence tools | Refusal behavior | Eval coverage | Acceptance example |
+| --- | --- | --- | --- | --- |
+| Visit Briefing | Demographics, encounters, problems, medications, allergies, labs, vitals, stale vitals, notes/last plan | Refuses diagnosis, treatment, dosing, medication-change, and note drafting requests | Tier 0 `visit_briefing`; Tier 2 `visit_briefing`; Tier 4 `tier4_visit_briefing_live_verified` | `Give me a visit briefing.` returns cited chart facts across multiple sections. |
+| Follow-Up Drill-Down | Selected current-patient sections plus short-lived conversation summary | Refuses expired, missing, or cross-patient `conversation_id` reuse before chart tools run | Tier 0 `same_patient_followup`, `selector_followup_without_section_keyword`; Tier 2 `cross_patient_conversation_reuse`, `stale_conversation` | A same-patient follow-up such as `What about those?` re-fetches and re-cites current evidence. |
+| Missing Or Unclear Data | Requested chart section plus missing-data policy | Does not infer normal/negative facts from absence | Tier 0 `missing_microalbumin`; Tier 2 `missing_microalbumin`; Tier 4 `tier4_missing_microalbumin` | `What is the urine microalbumin?` says it was not found rather than inventing a normal result. |
+| Vital Trend Orientation | Recent vitals and last-known stale vitals | Refuses diagnostic or treatment interpretation of vital trends | Tier 0 `recent_vitals`, `sparse_stale_only_vitals`; latency trace covers deployed visit briefing/vitals inclusion | `Show recent vitals.` returns recent values or explicitly says recent vitals are not found. |
+| Medication Reconciliation Context | Active medications and inactive medication history | Refuses medication changes and dosing advice; duplicates/conflicts remain chart evidence | Tier 0 `active_medications`, `polypharmacy_medication_evidence`; Tier 2 `selector_ambiguous_prescribing_check` | `Anything I should double-check before prescribing?` selects meds, inactive meds, allergies, labs, and vitals. |
+| Allergy Review | Active allergies | Refuses therapy-choice advice based on allergies | Tier 0 `active_allergies`, `sparse_missing_allergies`; Tier 2 `selector_ambiguous_prescribing_check` | `What allergies are active?` returns documented allergy rows or a clear not-found response. |
+| Encounter And Last-Plan Review | Recent encounters, notes, and last plan | Does not draft a new plan or infer uncited intent | Tier 0 `last_plan`, `selector_ambiguous_change_review`; Tier 2 `selector_ambiguous_change_review` | `Has anything changed since last visit?` selects notes, labs, and vitals for cited review. |
+
 ## Success Standard
 
 AgentForge succeeds only if the physician would trust it as a fast chart-orientation aid. It fails if it displays an unsupported medication, lab value, diagnosis, recommendation, or patient-specific claim.
