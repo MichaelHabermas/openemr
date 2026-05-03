@@ -424,11 +424,9 @@ final readonly class VerifiedDraftingPipeline
         }
 
         $citations = $result->citations;
-        if (in_array($questionType, ['visit_briefing', 'medication'], true)) {
-            foreach ($this->missingMedicationLines($lines, $bundle, $citations) as $line => $sourceId) {
-                $lines[] = $line;
-                $citations[] = $sourceId;
-            }
+        foreach ($this->missingEvidenceLines($questionType, $lines, $bundle, $citations) as $line => $sourceId) {
+            $lines[] = $line;
+            $citations[] = $sourceId;
         }
 
         return new AgentResponse(
@@ -445,18 +443,53 @@ final readonly class VerifiedDraftingPipeline
      * @param list<string> $citations
      * @return array<string, string>
      */
-    private function missingMedicationLines(array $lines, EvidenceBundle $bundle, array $citations): array
+    private function missingEvidenceLines(string $questionType, array $lines, EvidenceBundle $bundle, array $citations): array
+    {
+        $sourceTypes = match ($questionType) {
+            'visit_briefing' => [
+                'demographic',
+                'encounter',
+                'problem',
+                'medication',
+                'allergy',
+                'lab',
+                'vital',
+                'note',
+            ],
+            'medication' => ['medication'],
+            default => [],
+        };
+
+        if ($sourceTypes === []) {
+            return [];
+        }
+
+        return $this->missingLinesForSourceTypes($lines, $bundle, $citations, $sourceTypes);
+    }
+
+    /**
+     * @param list<string> $lines
+     * @param list<string> $citations
+     * @param list<string> $sourceTypes
+     * @return array<string, string>
+     */
+    private function missingLinesForSourceTypes(array $lines, EvidenceBundle $bundle, array $citations, array $sourceTypes): array
     {
         $answerText = "\n" . implode("\n", $lines) . "\n";
         $cited = array_fill_keys($citations, true);
+        $allowedSourceTypes = array_fill_keys($sourceTypes, true);
         $missingLines = [];
 
         foreach ($bundle->items as $item) {
-            if ($item->sourceType !== 'medication') {
+            if (!isset($allowedSourceTypes[$item->sourceType])) {
                 continue;
             }
 
             if (isset($cited[$item->sourceId])) {
+                continue;
+            }
+
+            if ($item->sourceType === 'note' && $this->unsafeToEcho($item)) {
                 continue;
             }
 
@@ -469,6 +502,28 @@ final readonly class VerifiedDraftingPipeline
         }
 
         return $missingLines;
+    }
+
+    private function unsafeToEcho(EvidenceBundleItem $item): bool
+    {
+        $text = strtolower($item->displayLabel . ' ' . $item->value);
+        foreach (
+            [
+                'ignore safety',
+                'ignore prior',
+                'disregard previous',
+                'system prompt',
+                'prescribe',
+                'patient ssn',
+                'patient ssns',
+            ] as $unsafeNeedle
+        ) {
+            if (str_contains($text, $unsafeNeedle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function evidenceLine(EvidenceBundleItem $item): string

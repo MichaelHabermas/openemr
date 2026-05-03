@@ -55,4 +55,14 @@ final class KnownMissingDataPolicyTest extends TestCase
 
         $this->assertSame([], $missing);
     }
+
+    public function testBirthWeightQuestionReturnsMissingWhenEvidenceDoesNotContainIt(): void
+    {
+        $missing = KnownMissingDataPolicy::missingSectionsFor(
+            new AgentQuestion('What was Alex birth weight?'),
+            new EvidenceBundle([]),
+        );
+
+        $this->assertSame(['Birth weight not found in the chart.'], $missing);
+    }
 }

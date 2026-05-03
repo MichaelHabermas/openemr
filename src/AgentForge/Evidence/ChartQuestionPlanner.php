@@ -54,6 +54,9 @@ final readonly class ChartQuestionPlanner
         }
 
         $normalized = strtolower($question->value);
+        if ($this->containsAny($normalized, ['birth weight', 'birthweight'])) {
+            return $this->buildPlan('unsupported_fact', [], $deadlineMs);
+        }
         if ($this->containsAny($normalized, ['allergy', 'allergies', 'allergic', 'reaction', 'reactions'])) {
             return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs);
         }

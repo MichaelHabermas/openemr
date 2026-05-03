@@ -64,6 +64,9 @@ final class ChartQuestionPlannerTest extends TestCase
             [ChartQuestionPlanner::SECTION_VITALS, ChartQuestionPlanner::SECTION_STALE_VITALS],
             $planner->plan(new AgentQuestion('Show me recent blood pressure and pulse.'), 8000)->sections,
         );
+        $birthWeightPlan = $planner->plan(new AgentQuestion('What was Alex birth weight?'), 8000);
+        $this->assertSame('unsupported_fact', $birthWeightPlan->questionType);
+        $this->assertSame([], $birthWeightPlan->sections);
         $this->assertSame(
             ChartQuestionPlanner::defaultSections(),
             $planner->plan(new AgentQuestion('Give me a visit briefing.'), 8000)->sections,
