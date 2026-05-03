@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\DefaultQueryExecutor;
 use OpenEMR\AgentForge\QueryExecutor;
 
@@ -25,39 +26,45 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
         $this->executor = $executor ?? new DefaultQueryExecutor();
     }
 
-    public function demographics(PatientId $patientId): ?array
+    public function demographics(PatientId $patientId, ?Deadline $deadline = null): ?array
     {
         $records = $this->executor->fetchRecords(
             'SELECT pid, fname, lname, DOB, sex, date FROM patient_data WHERE pid = ? LIMIT 1',
             [$patientId->value],
+            $deadline,
         );
 
         return $records[0] ?? null;
     }
 
-    public function activeProblems(PatientId $patientId, int $limit): array
+    public function activeProblems(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
         return $this->executor->fetchRecords(
             'SELECT id, external_id, date, title, begdate, diagnosis, activity FROM lists '
             . 'WHERE pid = ? AND type = ? AND activity = 1 '
             . 'ORDER BY COALESCE(begdate, date) DESC LIMIT ' . $this->limit($limit),
             [$patientId->value, 'medical_problem'],
+            $deadline,
         );
     }
 
-    public function activeMedications(PatientId $patientId, int $limit): array
+    public function activeMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
-        return $this->fetchMedicationsByActivity($patientId, 1, $limit);
+        return $this->fetchMedicationsByActivity($patientId, 1, $limit, $deadline);
     }
 
-    public function inactiveMedications(PatientId $patientId, int $limit): array
+    public function inactiveMedications(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
-        return $this->fetchMedicationsByActivity($patientId, 0, $limit);
+        return $this->fetchMedicationsByActivity($patientId, 0, $limit, $deadline);
     }
 
     /** @return list<array<string, mixed>> */
-    private function fetchMedicationsByActivity(PatientId $patientId, int $activity, int $limit): array
-    {
+    private function fetchMedicationsByActivity(
+        PatientId $patientId,
+        int $activity,
+        int $limit,
+        ?Deadline $deadline,
+    ): array {
         $limit = $this->limit($limit);
 
         return $this->executor->fetchRecords(
@@ -82,10 +89,11 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'ORDER BY COALESCE(l.begdate, l.date) DESC LIMIT ' . $limit
             . ') ORDER BY medication_sort_date DESC LIMIT ' . $limit,
             [$patientId->value, $activity, $patientId->value, 'medication', $activity],
+            $deadline,
         );
     }
 
-    public function activeAllergies(PatientId $patientId, int $limit): array
+    public function activeAllergies(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
         return $this->executor->fetchRecords(
             'SELECT id, external_id, date, begdate, title, reaction, severity_al, verification, comments, activity '
@@ -93,10 +101,11 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'WHERE pid = ? AND type = ? AND activity = 1 '
             . 'ORDER BY COALESCE(begdate, date) DESC LIMIT ' . $this->limit($limit),
             [$patientId->value, 'allergy'],
+            $deadline,
         );
     }
 
-    public function recentLabs(PatientId $patientId, int $limit): array
+    public function recentLabs(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
         return $this->executor->fetchRecords(
             'SELECT pr.procedure_result_id, pr.comments, pr.result_text, pr.result, pr.units, pr.date, '
@@ -108,11 +117,16 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'WHERE po.patient_id = ? '
             . 'ORDER BY pr.date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
+            $deadline,
         );
     }
 
-    public function recentVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
-    {
+    public function recentVitals(
+        PatientId $patientId,
+        int $limit,
+        int $staleAfterDays,
+        ?Deadline $deadline = null,
+    ): array {
         return $this->executor->fetchRecords(
             'SELECT id, external_id, date, bps, bpd, weight, height, temperature, pulse, respiration, BMI, '
             . 'oxygen_saturation, activity, authorized '
@@ -121,11 +135,16 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'AND date >= DATE_SUB(CURRENT_DATE, INTERVAL ' . $this->days($staleAfterDays) . ' DAY) '
             . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
+            $deadline,
         );
     }
 
-    public function staleVitals(PatientId $patientId, int $limit, int $staleAfterDays): array
-    {
+    public function staleVitals(
+        PatientId $patientId,
+        int $limit,
+        int $staleAfterDays,
+        ?Deadline $deadline = null,
+    ): array {
         return $this->executor->fetchRecords(
             'SELECT id, external_id, date, bps, bpd, weight, height, temperature, pulse, respiration, BMI, '
             . 'oxygen_saturation, activity, authorized '
@@ -134,10 +153,11 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'AND date < DATE_SUB(CURRENT_DATE, INTERVAL ' . $this->days($staleAfterDays) . ' DAY) '
             . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
+            $deadline,
         );
     }
 
-    public function recentEncounters(PatientId $patientId, int $limit): array
+    public function recentEncounters(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
         return $this->executor->fetchRecords(
             'SELECT encounter, date AS encounter_date, reason '
@@ -145,10 +165,11 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'WHERE pid = ? '
             . 'ORDER BY date DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
+            $deadline,
         );
     }
 
-    public function recentNotes(PatientId $patientId, int $limit): array
+    public function recentNotes(PatientId $patientId, int $limit, ?Deadline $deadline = null): array
     {
         return $this->executor->fetchRecords(
             'SELECT n.id, n.external_id, n.date AS note_date, n.codetext, n.description, '
@@ -159,6 +180,7 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'WHERE n.pid = ? AND n.activity = 1 AND n.authorized = 1 '
             . 'ORDER BY COALESCE(n.date, e.date) DESC LIMIT ' . $this->limit($limit),
             [$patientId->value],
+            $deadline,
         );
     }
 

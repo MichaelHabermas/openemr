@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 
 final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
 {
@@ -28,10 +29,10 @@ final readonly class ActiveMedicationsEvidenceTool implements ChartEvidenceTool
         return 'Active medications';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         $items = [];
-        foreach ($this->repository->activeMedications($patientId, $this->limit) as $row) {
+        foreach ($this->repository->activeMedications($patientId, $this->limit, $deadline) as $row) {
             if (!$this->active($row)) {
                 continue;
             }

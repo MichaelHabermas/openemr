@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 
 final readonly class LabsEvidenceTool implements ChartEvidenceTool
 {
@@ -25,10 +26,10 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         $items = [];
-        foreach ($this->repository->recentLabs($patientId, $this->limit) as $row) {
+        foreach ($this->repository->recentLabs($patientId, $this->limit, $deadline) as $row) {
             $label = EvidenceRowValue::string($row, 'result_text');
             $result = EvidenceRowValue::string($row, 'result');
             if ($label === '' || $result === '') {

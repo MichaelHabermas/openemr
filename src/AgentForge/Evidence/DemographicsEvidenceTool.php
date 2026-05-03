@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 
 final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
 {
@@ -25,9 +26,9 @@ final readonly class DemographicsEvidenceTool implements ChartEvidenceTool
         return 'Demographics';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
-        $row = $this->repository->demographics($patientId);
+        $row = $this->repository->demographics($patientId, $deadline);
         if ($row === null) {
             return EvidenceResult::missing($this->section(), 'Demographics not found in the chart.');
         }

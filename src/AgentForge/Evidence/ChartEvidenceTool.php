@@ -13,10 +13,11 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 
 interface ChartEvidenceTool
 {
     public function section(): string;
 
-    public function collect(PatientId $patientId): EvidenceResult;
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult;
 }

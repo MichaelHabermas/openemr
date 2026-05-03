@@ -39,6 +39,8 @@ try {
 } catch (Throwable $exception) {
     fwrite(STDERR, sprintf("SQL evidence eval preflight failed: %s\n", $exception->getMessage()));
     fwrite(STDERR, "No SQL evidence result file was written.\n");
+    fwrite(STDERR, "Hint: this script needs OpenEMR's PHP DB bootstrap (not only mysql CLI seeding). From docker/development-easy run:\n");
+    fwrite(STDERR, "  docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/run-sql-evidence-evals.php\n");
     exit(2);
 }
 
