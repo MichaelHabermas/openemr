@@ -23,8 +23,40 @@ use RuntimeException;
 
 final class DraftProviderFactoryTest extends TestCase
 {
+    /** @var array<string, string|false> */
+    private array $providerEnv = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        foreach ($this->providerEnvNames() as $name) {
+            $this->providerEnv[$name] = getenv($name, true);
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->providerEnv as $name => $value) {
+            if ($value === false) {
+                putenv($name);
+                continue;
+            }
+
+            putenv($name . '=' . $value);
+        }
+
+        $this->providerEnv = [];
+
+        parent::tearDown();
+    }
+
     public function testDefaultProviderIsFixtureFirst(): void
     {
+        foreach ($this->providerEnvNames() as $name) {
+            putenv($name);
+        }
+
         $this->assertInstanceOf(FixtureDraftProvider::class, DraftProviderFactory::createDefault());
     }
 
@@ -110,5 +142,19 @@ final class DraftProviderFactoryTest extends TestCase
         $this->expectExceptionMessage('not configured');
 
         DraftProviderFactory::create(new DraftProviderConfig('external-model'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function providerEnvNames(): array
+    {
+        return [
+            'AGENTFORGE_DRAFT_PROVIDER',
+            'AGENTFORGE_OPENAI_API_KEY',
+            'OPENAI_API_KEY',
+            'AGENTFORGE_ANTHROPIC_API_KEY',
+            'ANTHROPIC_API_KEY',
+        ];
     }
 }

@@ -51,7 +51,7 @@ run_agentforge_isolated_phpunit() {
 
     printf 'Host PHP lacks PHPUnit extensions; running isolated PHPUnit in the openemr container.\n'
     docker compose -f "${compose_file}" exec -T -w /var/www/localhost/htdocs/openemr openemr \
-        composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+        bash -lc 'git config --global --add safe.directory "$PWD" 2>/dev/null || true; composer phpunit-isolated -- --filter '"'"'OpenEMR\\Tests\\Isolated\\AgentForge'"'"''
 }
 
 phpcs_changed_agentforge_files() {
