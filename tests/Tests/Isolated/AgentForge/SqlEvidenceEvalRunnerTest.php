@@ -16,6 +16,7 @@ use DateTimeImmutable;
 use OpenEMR\AgentForge\Auth\PatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCase;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCaseRepository;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalRunner;
@@ -148,7 +149,7 @@ final readonly class StaticSqlEvalTool implements ChartEvidenceTool
         return $this->section;
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         return $this->result;
     }

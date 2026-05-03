@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Eval;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use RuntimeException;
@@ -24,7 +25,7 @@ final readonly class EvalFailingTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         throw new RuntimeException('SQLSTATE hidden internals');
     }

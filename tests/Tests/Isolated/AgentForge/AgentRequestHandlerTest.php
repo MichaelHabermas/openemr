@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Conversation\ConversationStore;
 use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
@@ -430,7 +431,7 @@ final class RecordingEvidenceTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         $this->called = true;
 
@@ -457,7 +458,7 @@ final class ThrowingEvidenceTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         throw new RuntimeException('SQLSTATE internal chart evidence failure');
     }

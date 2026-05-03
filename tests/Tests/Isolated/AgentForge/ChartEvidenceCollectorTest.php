@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlan;
@@ -92,7 +93,7 @@ final class CollectorRecordingTool implements ChartEvidenceTool
         return $this->section;
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         $this->called = true;
 
@@ -107,7 +108,7 @@ final class CollectorThrowingTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         throw new RuntimeException('SQLSTATE hidden internals');
     }

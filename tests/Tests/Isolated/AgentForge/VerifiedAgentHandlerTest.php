@@ -394,7 +394,7 @@ final class VerifiedRecordingEvidenceTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         $this->called = true;
 
@@ -418,7 +418,7 @@ final class VerifiedThrowingEvidenceTool implements ChartEvidenceTool
         return 'Recent labs';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         throw new RuntimeException('SQLSTATE private database internals');
     }
@@ -431,7 +431,7 @@ final class VerifiedMissingLastPlanEvidenceTool implements ChartEvidenceTool
         return 'Recent notes and last plan';
     }
 
-    public function collect(PatientId $patientId): EvidenceResult
+    public function collect(PatientId $patientId, ?Deadline $deadline = null): EvidenceResult
     {
         return EvidenceResult::missing(
             'Recent notes and last plan',
