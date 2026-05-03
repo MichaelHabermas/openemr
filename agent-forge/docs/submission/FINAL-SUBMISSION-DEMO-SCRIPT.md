@@ -99,41 +99,41 @@ The final submission shows a safer path forward: a bounded, deployed, evaluated,
 
 ### Evidence
 
-- The evidence layer now covers demographics, problems, medications, allergies, labs, vitals, encounter reasons, notes, and last plan when available.
+- The evidence layer now covers demographics, problems, medications, allergies, labs, vitals, encounter reasons, notes, and last plan when available. ([High-signal evidence coverage](../epics/EPIC_HIGH_SIGNAL_EVIDENCE_COVERAGE.md))
 - Inactive medications stay separate from active medications.
 - Stale vitals are labeled as stale.
 - Missing data is reported as missing.
 - The model does not read the database.
-- The server builds the evidence bundle.
+- The server builds the evidence bundle. ([SQL chart evidence repository](../../../src/AgentForge/Evidence/SqlChartEvidenceRepository.php))
 - The model drafts from that evidence.
-- The verifier checks the draft before display.
+- The verifier checks the draft before display. ([Verified drafting pipeline](../../../src/AgentForge/Handlers/VerifiedDraftingPipeline.php))
 - Sources show where the facts came from in OpenEMR.
 
 ### Safety
 
-- The urine microalbumin example shows missing-data behavior.
+- The urine microalbumin example shows missing-data behavior. ([Known missing data policy](../../../src/AgentForge/Verification/KnownMissingDataPolicy.php))
 - The agent says what was checked and what was not found.
 - It does not invent a normal result.
-- The diagnosis example shows refusal behavior.
-- Diagnosis, treatment, dosing, and medication-change requests are outside scope.
+- The diagnosis example shows refusal behavior. ([Clinical advice refusal policy](../../../src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php))
+- Diagnosis, treatment, dosing, and medication-change requests are outside scope. ([Tier 2 live eval cases](../../fixtures/tier2-eval-cases.json))
 
 ### Follow-Up
 
-- Same-patient follow-up uses a short-lived server-owned `conversation_id`.
-- The id is bound to the OpenEMR session user and active patient.
+- Same-patient follow-up uses a short-lived server-owned `conversation_id`. ([Server-bound multi-turn epic](../epics/EPIC_SERVER_BOUND_MULTI_TURN_CONVERSATION_STATE.md))
+- The id is bound to the OpenEMR session user and active patient. ([Session conversation store](../../../src/AgentForge/Conversation/SessionConversationStore.php))
 - Follow-up can use prior context for planning.
 - Prior answer text is not evidence.
 - Every factual follow-up re-fetches current chart evidence.
 - Every factual follow-up needs fresh citations.
-- Cross-patient or expired conversation reuse is refused before tools or model work.
+- Cross-patient or expired conversation reuse is refused before tools or model work. ([Verified agent handler](../../../src/AgentForge/Handlers/VerifiedAgentHandler.php))
 
 ### Proof
 
-- Tier 0 passed 28 of 28 deterministic fixture and orchestration cases.
+- Tier 0 passed 28 of 28 deterministic fixture and orchestration cases. ([Evaluation tiers](../evaluation/EVALUATION-TIERS.md))
 - Tier 1 passed 7 of 7 seeded SQL evidence cases.
 - Tier 2 passed 12 of 12 live model cases on the VM.
-- Tier 4 passed 4 of 4 deployed smoke cases.
-- The proof covers the request path, SQL evidence path, live model path, and deployed session path.
+- Tier 4 passed 4 of 4 deployed smoke cases. ([Deployed smoke runner](../../scripts/run-deployed-smoke.php))
+- The proof covers the request path, SQL evidence path, live model path, and deployed session path. ([Final proof pack](FINAL-PROOF-PACK.md))
 
 ### Limits
 
@@ -142,3 +142,41 @@ The final submission shows a safer path forward: a bounded, deployed, evaluated,
 - It is not hospital-ready.
 - Remaining gaps include p95 latency proof, dashboards, alerting, broader authorization rules, sensitive-log retention governance, and deeper medication reconciliation.
 - The main final claim is that AgentForge is now bounded, deployed, evaluated, and reviewable.
+
+## Diagrams
+
+### Evidence And Verification Path
+
+```mermaid
+flowchart LR
+    A["OpenEMR chart"] --> B["Server endpoint"]
+    B --> C["Session + patient auth"]
+    C --> D["Read-only evidence tools"]
+    D --> E["Bounded evidence bundle"]
+    E --> F["Model draft"]
+    F --> G["Verifier"]
+    G --> H["Cited answer or refusal"]
+```
+
+### Same-Patient Follow-Up Boundary
+
+```mermaid
+flowchart TD
+    A["First chart question"] --> B["Server issues conversation_id"]
+    B --> C["Bind id to session user + active patient"]
+    C --> D["Same-patient follow-up"]
+    D --> E["Re-fetch current evidence"]
+    E --> F["Return fresh citations"]
+    C --> G["Cross-patient or expired reuse"]
+    G --> H["Refuse before tools or model"]
+```
+
+### Final Proof Stack
+
+```mermaid
+flowchart TD
+    A["Tier 0: fixture orchestration"] --> B["Planner, refusals, verifier, logging guardrails"]
+    C["Tier 1: seeded SQL evidence"] --> D["Real OpenEMR fake-data evidence path"]
+    E["Tier 2: live model"] --> F["Provider path, tokens, cost telemetry"]
+    G["Tier 4: deployed smoke"] --> H["HTTP, session, CSRF, endpoint, audit log"]
+```
