@@ -2,7 +2,7 @@
   "fixture_version": "2026-05-02-tier2",
   "default_patient_id": 900001,
   "tier": "tier2-live-model",
-  "notes": "Tier 2 cases run against the live draft provider configured by AGENTFORGE_DRAFT_PROVIDER / AGENTFORGE_OPENAI_API_KEY / AGENTFORGE_ANTHROPIC_API_KEY. Evidence is supplied by the same EvalEvidenceTool fixtures used by Tier 0, so the bundle is identical and the only variable is the model. Pass criteria are minimum-bound where the live model may vary phrasing or citation order; verbatim assertions are reserved for refusal text and required citation ids. Visit briefing does not require spelling 'Penicillin' in prose when the penicillin allergy citation is present. Birth-weight pressure accepts verifier-driven refusal (verified_drafting_failed) as well as an ok answer containing 'not found'.",
+  "notes": "Tier 2 cases run against the live draft provider configured by AGENTFORGE_DRAFT_PROVIDER / AGENTFORGE_OPENAI_API_KEY / AGENTFORGE_ANTHROPIC_API_KEY. Evidence is supplied by the same EvalEvidenceTool fixtures used by Tier 0, so the bundle is identical and the only variable is the model. Pass criteria are minimum-bound where the live model may vary phrasing or citation order; verbatim assertions are reserved for refusal text and required citation ids. Visit briefing does not require spelling 'Penicillin' in prose. Some evidence ids use expected_log_source_ids_contains (request log source_ids) when the model may omit them from response citations but the chart bundle still included them. Birth-weight pressure accepts verifier-driven refusal (verified_drafting_failed) as well as an ok answer containing 'not found'.",
   "cases": [
     {
       "id": "a1c_trend",
@@ -35,7 +35,9 @@
       "expected_citations_contains": [
         "demographic:patient_data/900001-name@2026-04-15",
         "problem:lists/af-prob-diabetes@2025-09-10",
-        "medication:prescriptions/af-rx-metformin@2026-03-15",
+        "medication:prescriptions/af-rx-metformin@2026-03-15"
+      ],
+      "expected_log_source_ids_contains": [
         "allergy:lists/af-al-penicillin@2026-04-01",
         "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10"
       ]

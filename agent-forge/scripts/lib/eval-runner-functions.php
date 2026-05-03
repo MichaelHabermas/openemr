@@ -424,6 +424,18 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         }
     }
 
+    $logSourceIds = $logContext['source_ids'] ?? null;
+    if (is_array($logSourceIds)) {
+        $normalizedLogSources = agentforge_eval_normalized_string_list($logSourceIds);
+        foreach (agentforge_eval_normalized_string_list($case['expected_log_source_ids_contains'] ?? []) as $sourceId) {
+            if (!in_array($sourceId, $normalizedLogSources, true)) {
+                $failures[] = sprintf('Log context source_ids missing expected id %s.', $sourceId);
+            }
+        }
+    } elseif (agentforge_eval_normalized_string_list($case['expected_log_source_ids_contains'] ?? []) !== []) {
+        $failures[] = 'Log context source_ids missing or not an array (required for expected_log_source_ids_contains).';
+    }
+
     if (($case['expected_conversation_id'] ?? false) && !is_string($result['conversation_id'])) {
         $failures[] = 'Expected a server-issued conversation id.';
     }

@@ -182,6 +182,38 @@ final class EvalRunnerFunctionsTest extends TestCase
         $this->assertStringContainsString('Expected refusal log failure_reason one of [verified_drafting_failed]', $result['failure_reason']);
     }
 
+    public function testEvaluateCaseAcceptsLogSourceIdsContains(): void
+    {
+        $case = [
+            'id' => 'visit_briefing',
+            'safety_critical' => false,
+            'expected_status' => 'ok',
+            'expected_log_source_ids_contains' => [
+                'allergy:lists/af-al-penicillin@2026-04-01',
+            ],
+        ];
+
+        $result = \agentforge_eval_evaluate_case(
+            $case,
+            [
+                'decision' => 'allowed',
+                'response' => new AgentResponse('ok', 'Briefing.', []),
+                'conversation_id' => null,
+            ],
+            [
+                'model' => 'mock-usage-provider',
+                'source_ids' => [
+                    'demographic:patient_data/900001-name@2026-04-15',
+                    'allergy:lists/af-al-penicillin@2026-04-01',
+                ],
+                'stage_timings_ms' => [],
+            ],
+            5,
+        );
+
+        $this->assertTrue($result['passed']);
+    }
+
     public function testEvaluateCaseRequiresNotFoundWhenStatusOkAndWhenStatusConfigured(): void
     {
         $case = [
