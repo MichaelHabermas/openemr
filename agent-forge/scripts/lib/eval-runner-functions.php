@@ -25,6 +25,7 @@ use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\Observability\RequestLog;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 
@@ -93,10 +94,10 @@ function agentforge_eval_main(): int
  * @param array<string, mixed> $case
  * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
  */
-function agentforge_eval_run_case(array $case): array
+function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): array
 {
     if (isset($case['turns']) && is_array($case['turns'])) {
-        return agentforge_eval_run_multi_turn_case($case);
+        return agentforge_eval_run_multi_turn_case($case, $draftProvider, $deadlineMs);
     }
 
     $scenario = (string) $case['scenario'];
@@ -106,7 +107,7 @@ function agentforge_eval_run_case(array $case): array
     $handler = new AgentRequestHandler(
         new AgentRequestParser(),
         new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
-        agentforge_eval_agent_handler($scenario),
+        agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs),
         conversationStore: $store,
     );
 
@@ -133,7 +134,7 @@ function agentforge_eval_run_case(array $case): array
  * @param array<string, mixed> $case
  * @return array{patient_id: ?int, decision: string, response: OpenEMR\AgentForge\Handlers\AgentResponse, telemetry: ?OpenEMR\AgentForge\Observability\AgentTelemetry, conversation_id: ?string}
  */
-function agentforge_eval_run_multi_turn_case(array $case): array
+function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): array
 {
     $store = new InMemoryConversationStore(
         ttlMs: (int) ($case['conversation_ttl_ms'] ?? 1_800_000),
@@ -160,7 +161,7 @@ function agentforge_eval_run_multi_turn_case(array $case): array
         $handler = new AgentRequestHandler(
             new AgentRequestParser(),
             new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
-            agentforge_eval_agent_handler($scenario),
+            agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs),
             conversationStore: $store,
         );
         $lastResult = $handler->handle(
@@ -188,9 +189,9 @@ function agentforge_eval_run_multi_turn_case(array $case): array
     ];
 }
 
-function agentforge_eval_agent_handler(string $scenario): AgentHandler
+function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftProvider = null, int $deadlineMs = 1000): AgentHandler
 {
-    $draftProvider = $scenario === 'hallucinated_draft'
+    $draftProvider ??= $scenario === 'hallucinated_draft'
         ? new EvalHallucinatingDraftProvider()
         : new FixtureDraftProvider();
 
@@ -198,7 +199,7 @@ function agentforge_eval_agent_handler(string $scenario): AgentHandler
         agentforge_eval_tools($scenario),
         $draftProvider,
         new DraftVerifier(),
-        deadlineMs: 1000,
+        deadlineMs: $deadlineMs,
     );
 }
 

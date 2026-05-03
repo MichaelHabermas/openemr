@@ -1,0 +1,56 @@
+##
+# AgentForge Tier 2 (live LLM) evals.
+#
+# Excluded from PR runs because each pass spends real OpenAI/Anthropic tokens.
+# Triggered nightly on the master branch and on demand via the Actions UI.
+# The runner refuses to start unless a live provider key is present, so a
+# fixture pass is never reported as live-provider proof.
+
+name: AgentForge Tier 2 Live
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'Draft provider mode (openai or anthropic). Leave blank to auto-select from available secret.'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - ''
+        - openai
+        - anthropic
+  schedule:
+  # Nightly at 07:30 UTC (00:30 PT). Pinned to master.
+  - cron: '30 7 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tier2-live:
+    name: Tier 2 - Live LLM evals
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PHP and Composer
+      uses: ./.github/actions/setup-php-composer
+      with:
+        php-version: '8.2'
+
+    - name: Run Tier 2 live evals
+      env:
+        AGENTFORGE_DRAFT_PROVIDER: ${{ github.event.inputs.provider }}
+        AGENTFORGE_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        AGENTFORGE_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: php agent-forge/scripts/run-tier2-evals.php
+
+    - name: Upload Tier 2 results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: agentforge-tier2-results
+        path: agent-forge/eval-results/tier2-live-*.json

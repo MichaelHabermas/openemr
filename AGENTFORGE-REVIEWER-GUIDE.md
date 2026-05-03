@@ -80,6 +80,29 @@ Evaluation tier taxonomy:
 - [agent-forge/eval-results/README.md](agent-forge/eval-results/README.md)
 - [agent-forge/eval-results/canonical.json](agent-forge/eval-results/canonical.json)
 
+## What's Tested At The Live-LLM Layer
+
+Tier 0 (fixture orchestration) and Tier 1 (seeded SQL evidence) gate every PR via [.github/workflows/agentforge-evals.yml](.github/workflows/agentforge-evals.yml). Tier 2 exercises the same orchestration against the configured live LLM provider (`gpt-4o-mini` or Claude Haiku) instead of the fixture provider.
+
+To run Tier 2 locally, export `AGENTFORGE_OPENAI_API_KEY` (or `AGENTFORGE_ANTHROPIC_API_KEY`) into the environment and invoke:
+
+```sh
+php agent-forge/scripts/run-tier2-evals.php
+```
+
+The runner refuses to start with the fixture provider, so a model-off pass is never reported as live-provider proof.
+
+The 12-case Tier 2 fixture covers four risk shapes:
+
+| Shape | Example cases | What it proves |
+| --- | --- | --- |
+| Supported chart questions | `a1c_trend`, `visit_briefing` | The live model produces cited answers grounded in the chart evidence bundle. |
+| Missing-data and hallucination pressure | `missing_microalbumin`, `hallucination_pressure_birth_weight` | The verifier blocks unsupported tails; "not found in chart" is preserved under live-model phrasing variation. |
+| Refusal classes | `refusal_diagnosis`, `refusal_treatment`, `refusal_dosing`, `refusal_medication_change` | Clinical-advice refusal fires before the model is called. The output JSON shows `verifier_result: not_run` and `failure_reason: clinical_advice_refusal`. |
+| Prompt injection and conversation scope | `prompt_injection_user_question`, `prompt_injection_chart_text`, `cross_patient_conversation_reuse`, `stale_conversation` | Injected instructions in the question or in chart content do not change behavior; cross-patient `conversation_id` reuse and expired conversations refuse before chart tools run. |
+
+Output is written to `agent-forge/eval-results/tier2-live-{timestamp}.json` and uploaded as a workflow artifact. The summary records `provider_mode`, `provider_model`, real `aggregate_input_tokens`, real `aggregate_output_tokens`, real `aggregate_estimated_cost_usd`, and per-case verdicts. The nightly schedule lives in [.github/workflows/agentforge-tier2.yml](.github/workflows/agentforge-tier2.yml); per-pass spend is tracked in [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md).
+
 ## Artifact Map
 
 Required root submission artifacts:
@@ -139,8 +162,8 @@ Production-Readiness is not claimed.
 
 Known blockers and caveats:
 
-- Live SQL, live model, local browser/session, deployed browser/session, and real authorization paths are not fully automated eval tiers.
-- Multi-turn conversation state is not implemented; current questions are independent single-shot requests against the active patient.
+- Tier 0 (fixture) and Tier 1 (seeded SQL) gate every PR; Tier 2 (live model) runs nightly and on demand. Local browser/session, deployed browser/session, and real authorization paths are still manual and not yet automated eval tiers.
+- Multi-turn conversation state is implemented as short-lived server-bound state. The endpoint issues a `conversation_id` bound to the active OpenEMR session user and patient; cross-patient or expired reuse is refused before chart tools run. Same-patient follow-up re-fetches current chart evidence and re-cites source rows. There is no persistent transcript; prior-turn text is a planner hint only.
 - Authorization intentionally fails closed outside direct provider, encounter provider, and supervisor relationships.
 - Production latency needs p95 proof under the accepted budget, not single-request demo measurements.
 - Observability has structured logs and stage timings, but production dashboards, SLOs, alerting, retention governance, and access-control operations remain incomplete.

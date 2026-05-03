@@ -1,0 +1,102 @@
+##
+# AgentForge Tier 0 (fixture/orchestration) and Tier 1 (seeded SQL evidence) evals.
+#
+# Tier 0 runs in process with no database. Tier 1 spins up MySQL and the OpenEMR
+# CLI installer so SqlChartEvidenceRepository can read the seeded demo patient.
+# Tier 2 (live LLM) is excluded from PR runs and lives in agentforge-tier2.yml.
+
+name: AgentForge Evals
+
+on:
+  push:
+    branches:
+    - master
+    - rel-*
+  pull_request:
+    branches:
+    - master
+    - rel-*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tier0-fixtures:
+    name: Tier 0 - Fixture and orchestration evals
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PHP and Composer
+      uses: ./.github/actions/setup-php-composer
+      with:
+        php-version: '8.2'
+
+    - name: Run Tier 0 evals
+      run: php agent-forge/scripts/run-evals.php
+
+    - name: Upload Tier 0 results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: agentforge-tier0-results
+        path: agent-forge/eval-results/*.json
+
+  tier1-sql-evidence:
+    name: Tier 1 - Seeded SQL evidence evals
+    runs-on: ubuntu-24.04
+
+    services:
+      mysql:
+        image: mariadb:11.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: ci
+          MYSQL_PASSWORD: topsecret
+          MYSQL_DATABASE: openemr_test
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=3s
+          --health-timeout=2s
+          --health-retries=20
+        ports:
+        - 3306:3306
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PHP and Composer
+      uses: ./.github/actions/setup-php-composer
+      with:
+        php-version: '8.2'
+
+    - name: Install OpenEMR schema
+      run: ./cli install
+        --db-host=127.0.0.1
+        --db-port=3306
+        --db-root-user=root
+        --db-root-password=root
+        --db-user=ci
+        --db-password=topsecret
+        --db-name=openemr_test
+        --oe-admin-username=admin
+        --oe-admin-password=pass
+        --no-interaction
+        -vvv
+
+    - name: Seed AgentForge demo patient
+      run: mysql -h 127.0.0.1 -u ci -ptopsecret openemr_test < agent-forge/sql/seed-demo-data.sql
+
+    - name: Run Tier 1 SQL evidence evals
+      env:
+        AGENTFORGE_SQL_EVAL_ENVIRONMENT: ci
+      run: php agent-forge/scripts/run-sql-evidence-evals.php
+
+    - name: Upload Tier 1 results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: agentforge-tier1-results
+        path: agent-forge/eval-results/*.json

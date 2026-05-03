@@ -55,7 +55,17 @@ Measured A1c request:
 (836 / 1,000,000 * 0.15) + (173 / 1,000,000 * 0.60) = 0.0002292
 ```
 
-The VM latency is also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. The current VM measurement is acceptable as demo evidence only; production readiness needs p95 proof under the accepted latency budget and `stage_timings_ms` evidence for bottleneck analysis.
+The VM latency is also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. The current VM measurement is acceptable as demo evidence only; production readiness needs p95 proof under the accepted latency budget and `stage_timings_ms` evidence for bottleneck analysis. Stage-level decomposition of the 10,693 ms VM measurement is captured in `LATENCY-DECOMPOSITION.md`, which identifies the dominant stage and the mitigations that would move it.
+
+## Tier 2 Live-LLM Eval Spend
+
+The nightly Tier 2 evaluation workflow (`.github/workflows/agentforge-tier2.yml`) exercises 12 live-model cases against the configured OpenAI or Anthropic provider. With `gpt-4o-mini` pricing and chart-evidence-sized prompts comparable to the measured A1c request, one full pass is roughly:
+
+```text
+12 cases * ~$0.0003 per case ≈ $0.004 per pass
+```
+
+Nightly cadence: ~$0.12 per month. The cost is small enough that the eval suite can grow without re-pricing, but the line item is tracked here so it is not silently absorbed into the demo cost.
 
 ## Assumptions Table
 

@@ -124,4 +124,49 @@ final class ChartQuestionPlannerTest extends TestCase
         $this->assertSame('lab', $plan->questionType);
         $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $plan->sections);
     }
+
+    public function testRoutesProblemAndExtendedKeywordsToMinimumEvidenceSections(): void
+    {
+        $planner = new ChartQuestionPlanner();
+
+        $problemPlan = $planner->plan(new AgentQuestion('What problems are documented?'), 8000);
+        $this->assertSame('problem', $problemPlan->questionType);
+        $this->assertSame(
+            [ChartQuestionPlanner::SECTION_DEMOGRAPHICS, ChartQuestionPlanner::SECTION_PROBLEMS],
+            $problemPlan->sections,
+        );
+
+        $comorbidPlan = $planner->plan(new AgentQuestion('Any comorbidities to be aware of?'), 8000);
+        $this->assertSame('problem', $comorbidPlan->questionType);
+        $this->assertSame(
+            [ChartQuestionPlanner::SECTION_DEMOGRAPHICS, ChartQuestionPlanner::SECTION_PROBLEMS],
+            $comorbidPlan->sections,
+        );
+
+        foreach (
+            [
+                'Show me the recent sodium.',
+                'What is the latest creatinine?',
+                'Cholesterol panel result?',
+                'Latest hemoglobin value.',
+            ] as $labQuestion
+        ) {
+            $labPlan = $planner->plan(new AgentQuestion($labQuestion), 8000);
+            $this->assertSame('lab', $labPlan->questionType, $labQuestion);
+            $this->assertSame([ChartQuestionPlanner::SECTION_LABS], $labPlan->sections, $labQuestion);
+        }
+
+        foreach (
+            [
+                'What was the last visit about?',
+                'Summarize the previous visit.',
+                'Give me the history of present illness.',
+                'Read the HPI from the last note.',
+            ] as $noteQuestion
+        ) {
+            $notePlan = $planner->plan(new AgentQuestion($noteQuestion), 8000);
+            $this->assertSame('last_plan', $notePlan->questionType, $noteQuestion);
+            $this->assertSame([ChartQuestionPlanner::SECTION_NOTES], $notePlan->sections, $noteQuestion);
+        }
+    }
 }

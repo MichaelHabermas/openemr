@@ -10,9 +10,9 @@ The second load-bearing finding is that identity is session-bound. The ACL path 
 
 The third finding is that PHI read auditing is configurable rather than guaranteed. `EventAuditLogger` reads global flags such as `audit_events_query` and category toggles. When query auditing is off, SELECT events return before being logged. A read-only agent that only queries clinical data could therefore become invisible to the audit log unless deployment configuration and agent-specific logging close that gap.
 
-The fourth finding is that clinical data quality is uneven at the schema level. `sql/database.sql` contains no enforced foreign keys. Major clinical tables use nullable or free-text fields for values the agent would need to cite. `lists` is polymorphic, `prescriptions` is separate from medication rows in `lists`, coded medication fields such as RxNorm are optional, and many patient demographic fields use empty strings as defaults. The agent must treat chart data as source material with gaps, not as clean ground truth.
+The fourth finding is that clinical data quality is uneven at the schema level. `sql/database.sql` contains no enforced foreign keys. Major clinical tables use nullable or free-text fields for values the agent would need to cite. The polymorphic `lists` table holds problems, allergies, medications, and other clinical concepts under a free-text `type` column with no enumeration constraint, so every disclosure must cite both row id and `type` to remain auditable, and a missing `type` filter could surface unrelated chart concepts. `prescriptions` is separate from medication rows in `lists`, coded medication fields such as RxNorm are optional, and many patient demographic fields use empty strings as defaults. The agent must treat chart data as source material with gaps, not as clean ground truth.
 
-The fifth finding is that performance cannot be treated as known. The schema has indexes for some common patient lookups, but several agent-relevant reads do not have obvious composite indexes, such as active prescriptions by patient or list entries by patient/type/activity. This audit did not run production-scale benchmarks, so performance claims remain limited to schema shape.
+The fifth finding is that performance cannot be treated as known. The schema has indexes for some common patient lookups, but several agent-relevant reads do not have obvious composite indexes, such as active prescriptions by patient or list entries by patient/type/activity. Without `lists(pid, type, activity)`, an active-medications read scans every list row for the patient and filters by `type` and `activity` after the fetch. The single A1c demo measurement captured in `operations/COST-ANALYSIS.md` ran `2,989 ms` locally and `10,693 ms` on the deployed VM — baseline single-request observations, not p95 under load — and this audit did not run production-scale benchmarks, so performance claims remain limited to schema shape and those single-request timings.
 
 The resulting rule for the agent plan is simple: read narrowly, verify every claim, cite source rows, log every agent read, and fail closed when patient identity, authorization, or source data is unclear.
 
@@ -36,6 +36,7 @@ Already implemented:
 - The agent uses a narrow fail-closed patient authorization gate before evidence reads.
 - Evidence tools use server-controlled, parameterized, patient-scoped reads.
 - The demo path records request metadata, total latency, source IDs, token usage, estimated cost, and verifier result.
+- Tier 0 fixture and Tier 1 SQL evidence eval suites run on every PR via `.github/workflows/agentforge-evals.yml`; Tier 2 live-LLM evals (12 cases including refusals, hallucination pressure, and prompt injection) run nightly and on demand via `.github/workflows/agentforge-tier2.yml`, with results in `agent-forge/eval-results/tier2-live-*.json`.
 
 Accepted v1 limitations:
 
@@ -140,7 +141,7 @@ No migration is created in this pass. Future implementation must capture before/
 
 **Risk for the agent:** Any response-time target must be treated as an implementation goal, not an observed fact, until measured.
 
-**Current status:** A single local A1c request and a single public VM A1c request have been measured in `operations/COST-ANALYSIS.md`, with the local path at `2,989 ms` and the VM path at `10,693 ms`. These are baseline observations, not a production latency benchmark. Stage timing now records evidence-tool, draft, and verification durations in `stage_timings_ms`; production-readiness claims still require aggregation, p95 proof under the accepted latency budget, SLOs, alerting, and an optimization plan.
+**Current status:** A single local A1c request and a single public VM A1c request have been measured in `operations/COST-ANALYSIS.md`, with the local path at `2,989 ms` and the VM path at `10,693 ms`. These are baseline observations, not a production latency benchmark. Stage timing now records evidence-tool, draft, and verification durations in `stage_timings_ms`, decomposed in `operations/LATENCY-DECOMPOSITION.md`; production-readiness claims still require aggregation, p95 proof under the accepted latency budget, SLOs, alerting, and an optimization plan.
 
 ## Data Quality
 
@@ -236,6 +237,23 @@ No migration is created in this pass. Future implementation must capture before/
 - `sql/database.sql:2022-2061` defines encounter columns.
 
 **Risk for the agent:** Deployment-level storage security matters. The agent should not create extra PHI copies unless required, and logs must avoid raw PHI where possible.
+
+### C4. Agent structured audit logs map to HIPAA §164 controls
+
+**Finding:** The agent's structured request log is laid out so each field can be traced to a specific HIPAA Security Rule sub-control, independently of OpenEMR's configurable SELECT logging.
+
+**Evidence:**
+
+| Audit log field | HIPAA control | What it answers |
+|---|---|---|
+| `request_id`, `user_id`, `patient_id`, timestamp | §164.312(b) Audit controls | Who accessed which chart at what time |
+| `decision`, `failure_reason` | §164.308(a)(1)(ii)(D) Information system activity review | What was attempted vs allowed |
+| `tools_called`, `source_ids` | §164.312(c)(1) Integrity | What chart facts were surfaced |
+| `model`, `input_tokens`, `output_tokens`, `verifier_result` | §164.308(a)(8) Evaluation | Did the agent comply with policy on this request |
+
+Field emission is implemented in `src/AgentForge/Observability/AgentTelemetry.php` and `src/AgentForge/Observability/PsrRequestLogger.php`. Behavior is unchanged by this mapping.
+
+**Risk for the agent:** This mapping documents which sub-control each existing audit field supports; it does not by itself satisfy production HIPAA obligations. Sensitive-log retention, access governance, tamper-evident handling, monitoring, and review cadence remain explicit production-readiness blockers.
 
 ## Minimum Agent Constraints From This Audit
 

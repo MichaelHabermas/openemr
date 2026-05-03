@@ -64,13 +64,30 @@ final readonly class ChartQuestionPlanner
                 $deadlineMs,
             );
         }
-        if ($this->containsAny($normalized, ['a1c', 'lab', 'labs', 'laboratory', 'microalbumin', 'glucose', 'result'])) {
+        if ($this->containsAny($normalized, [
+            'a1c',
+            'lab',
+            'labs',
+            'laboratory',
+            'microalbumin',
+            'glucose',
+            'result',
+            'sodium',
+            'potassium',
+            'creatinine',
+            'cholesterol',
+            'hemoglobin',
+            'panel',
+        ])) {
             return $this->buildPlan('lab', [self::SECTION_LABS], $deadlineMs);
         }
         if ($this->containsAny($normalized, ['vital', 'vitals', 'blood pressure', 'bp', 'pulse', 'temperature', 'weight', 'height', 'oxygen', 'o2'])) {
             return $this->buildPlan('vital', [self::SECTION_VITALS, self::SECTION_STALE_VITALS], $deadlineMs);
         }
-        if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up'])) {
+        if ($this->containsAny($normalized, ['problem', 'problems', 'condition', 'conditions', 'comorbid', 'comorbidities'])) {
+            return $this->buildPlan('problem', [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS], $deadlineMs);
+        }
+        if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up', 'last visit', 'previous visit', 'history of present illness', 'hpi'])) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs);
         }
         if ($conversationSummary !== null && $this->looksLikeFollowUp($normalized)) {
@@ -127,6 +144,7 @@ final readonly class ChartQuestionPlanner
             'medication' => [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
             'lab' => [self::SECTION_LABS],
             'vital' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
+            'problem' => [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS],
             'last_plan' => [self::SECTION_NOTES],
             default => [],
         };
