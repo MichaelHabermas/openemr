@@ -1,0 +1,33 @@
+# Week 2 — Multimodal Evidence Agent
+
+This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document ingestion, worker graph, RAG, eval gate, and submission artifacts. Implementation code and tests live elsewhere; this is navigation and defense material.
+
+## Requirements (source of truth)
+
+- [Week 2 project requirements (text)](../SPECS-W2.txt) — same content as the PDF, easy to diff.
+- [Week 2 requirements (PDF)](../reference/Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
+
+## Architecture (assignments + repo)
+
+| Document | Purpose |
+|----------|---------|
+| [W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md) (repository root) | **Week 2 defense artifact** required by the course: ingestion flow, worker graph, RAG design, eval gate, risks, tradeoffs. Fill this in as the build progresses. |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) (repository root) | Ongoing system architecture (Week 1 baseline + evolving product story). Week 2 multimodal details should either stay in `W2_ARCHITECTURE.md` or be summarized here with a pointer to avoid drift. |
+
+## Where work accumulates
+
+- **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
+- **Eval golden set** — [../../fixtures/w2-golden/README.md](../../fixtures/w2-golden/README.md) — 50-case gate per Week 2 spec; dataset files and judge config land here or beside existing eval fixtures as you wire CI.
+- **Operations / cost** — Extend [../operations/](../operations/) for Week 2 latency and cost reports when measured.
+
+## Week 2 stages (from spec)
+
+1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity).
+2. Basic hybrid RAG + rerank over a small guideline corpus.
+3. Supervisor + two workers (intake-extractor, evidence-retriever); logged handoffs.
+4. Eval-driven CI (50 cases, boolean rubrics, PR-blocking).
+5. Integrate, deploy, demo video, cost/latency report.
+
+## README and env
+
+The **repository root** `README.md` should clearly separate **Week 1 baseline** vs **Week 2** behavior, branches if any, and environment variables. Update [../../.env.sample](../../.env.sample) alongside new Week 2 settings.

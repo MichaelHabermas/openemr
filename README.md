@@ -39,6 +39,7 @@ Required root submission artifacts are readable on their own here:
 - [AUDIT.md](AUDIT.md)
 - [USERS.md](USERS.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
+- [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) — Week 2 (documents, RAG, supervisor/workers, eval gate); index under [agent-forge/docs/week2/README.md](agent-forge/docs/week2/README.md).
 
 ### Contributing
 
