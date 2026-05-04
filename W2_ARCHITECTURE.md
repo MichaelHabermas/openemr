@@ -17,7 +17,27 @@ Core principles:
 - Keep patient document retrieval separate from guideline retrieval, even though both use MariaDB Vector.
 - Make every supervisor handoff, extraction job, retrieval step, eval result, cost, and latency inspectable without logging raw PHI.
 
-## 2. Existing OpenEMR Document Upload Flow
+## 2. MVP Cut Line
+
+The architecture supports the full Week 2 submission, but implementation must land in a defensible order. The first MVP must prove the vertical slice that graders can see:
+
+```text
+existing OpenEMR upload
+-> eligible category creates extraction job
+-> PHP worker processes the job
+-> lab_pdf and intake_form fixtures produce strict cited JSON
+-> verified lab facts can be promoted to OpenEMR-compatible lab records
+-> intake findings are stored as cited document facts / needs-review findings
+-> document facts are searchable
+-> guideline evidence is retrieved with sparse + MariaDB Vector + rerank
+-> supervisor handoffs are logged
+-> final answer separates patient findings, guideline evidence, and needs-review items
+-> eval gate proves schemas, citations, refusals, factual consistency, and no-PHI logging
+```
+
+The MVP is not a broad document AI platform. Anything that does not help prove this path is deferred until the core flow, eval gate, and deployed worker are working.
+
+## 3. Existing OpenEMR Document Upload Flow
 
 Week 2 reuses the current OpenEMR document upload flow. Users do not learn a new upload workflow.
 
@@ -43,7 +63,7 @@ AgentForge processes eligible documents in the background.
 Later, AgentForge chat can use extracted document facts with citations.
 ```
 
-## 3. Document Type Eligibility
+## 4. Document Type Eligibility
 
 AgentForge does not guess every uploaded PDF or image. Eligibility is driven by OpenEMR document category.
 
@@ -74,7 +94,7 @@ AgentForge Intake Form -> intake_form
 
 Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker.
 
-## 4. Background Ingestion Jobs
+## 5. Background Ingestion Jobs
 
 Document extraction is automatic but not part of the upload request. Upload should remain fast; extraction should begin near-real-time.
 
@@ -128,7 +148,7 @@ repeats
 
 Extraction failure does not undo the upload. The source document remains in OpenEMR, the job is marked failed, and no trusted OpenEMR chart facts are promoted from the failed job. Partial output may survive only as cited `needs_review` findings when it is safe and explicitly labeled.
 
-## 5. Required Tool Contract
+## 6. Required Tool Contract
 
 The Week 2 spec requires:
 
@@ -136,7 +156,7 @@ The Week 2 spec requires:
 attach_and_extract(patient_id, file_path, doc_type)
 ```
 
-AgentForge keeps this spec-facing tool for tests, CLI usage, and direct requirement compliance. In the normal OpenEMR UI path, the file has already been stored by OpenEMR, so AgentForge calls the same underlying ingestion service with the saved `documents.id`.
+AgentForge keeps this as the single tool contract. In the normal OpenEMR UI path, the file has already been stored by OpenEMR; the upload hook calls `attach_and_extract(...)` with the saved document as the source. The tool resolves whether its source argument is a new file path or an existing OpenEMR document reference, stores the source document if needed, and then runs the same extraction path.
 
 Both paths converge on the same rule:
 
@@ -147,15 +167,9 @@ Then validate.
 Then persist only cited validated facts.
 ```
 
-The OpenEMR-native path is:
+There is no second user-facing or test-facing extraction tool. OpenEMR's saved `documents.id` handling is an internal branch of `attach_and_extract(...)`, not a separate contract.
 
-```text
-attach_saved_document_and_extract(patient_id, document_id, doc_type)
-```
-
-This is an implementation detail of the existing upload flow, not a replacement for the required tool contract.
-
-## 6. Extraction And Validation
+## 7. Extraction And Validation
 
 The model proposes facts. PHP validates them. Model output is not trusted just because the model returned it.
 
@@ -209,7 +223,7 @@ Needs Human Review:
 The intake form may mention a sulfa allergy, but the text is unclear. [document citation]
 ```
 
-## 7. Strict Schemas
+## 8. Strict Schemas
 
 Schemas are implemented in PHP value objects/validators under `src/AgentForge`.
 
@@ -293,7 +307,7 @@ field does not map safely to OpenEMR
 the finding is clinically relevant but ambiguous
 ```
 
-## 8. Citation Contract
+## 9. Citation Contract
 
 A source citation is not just a document id. It must tell a reviewer where the fact came from.
 
@@ -328,7 +342,7 @@ The original OpenEMR document remains the source of truth. Vector records and ex
 
 `citation_json` may store raw `quote_or_value` because it is clinical application storage used by authorized UI flows. General telemetry logs must not include raw quote/value text.
 
-## 9. Visual Source Review
+## 10. Visual Source Review
 
 Week 2 requires visual PDF source review with bounding-box overlay.
 
@@ -342,9 +356,9 @@ bounding box when available
 field path
 ```
 
-The UI should open the original OpenEMR document to the cited page and draw the bounding rectangle over the cited area. For MVP fixtures, bounding boxes are required in eval coverage. If an extractor cannot produce a box for a non-MVP edge case, the fallback is page plus quote/value highlighting, but the architecture treats bounding boxes as the required target path.
+Bounding boxes come from the extraction step. For typed PDFs, AgentForge first attempts PDF text extraction with page coordinates. For scanned PDFs or images, the model extraction prompt requires normalized bounding boxes for each cited field. If no box can be produced, the fact is not eligible for `verified` promotion; it can only be stored as `document_fact` or `needs_review` with page plus quote/value review. MVP fixture evals require a bounding box for every promoted document fact and every final-answer document citation.
 
-## 10. Persistence Model
+## 11. Persistence Model
 
 AgentForge separates extraction from clinical acceptance.
 
@@ -367,6 +381,9 @@ agentforge_document_facts
   confidence
   promoted_table
   promoted_record_id
+  promotion_status
+  retracted_at
+  retraction_reason
   active
   created_at
   deactivated_at
@@ -381,26 +398,13 @@ agentforge_document_fact_embeddings
   created_at
 ```
 
-```text
-agentforge_fact_promotions
-  id
-  fact_id
-  document_id
-  promoted_table
-  promoted_record_id
-  status
-  created_at
-  retracted_at
-  retraction_reason
-```
-
 ### Promotion Rules
 
 Lab PDF verified facts are promoted to OpenEMR lab/Observation-compatible records when complete and cited. The existing Week 1 evidence layer reads recent labs from `procedure_result`, `procedure_report`, `procedure_order`, and `procedure_order_code`, so Week 2 lab promotion should preserve compatibility with those existing chart evidence tools or equivalent FHIR Observation storage backed by OpenEMR.
 
 Intake allergies and medications may be promoted only when explicit, high-confidence, source-cited, and safely mapped. Intake demographics are not auto-overwritten in the MVP. Chief concern, family history, preferences, and free-text findings are stored as cited document facts unless a safe existing destination is defined.
 
-## 11. Duplicate, Deletion, And Retraction Behavior
+## 12. Duplicate, Deletion, And Retraction Behavior
 
 AgentForge must avoid duplicate and untraceable records.
 
@@ -413,12 +417,12 @@ deactivate derived AgentForge document facts
 remove/deactivate their embeddings from retrieval
 retract or mark inactive OpenEMR records AgentForge promoted from that document
 stop using those rows as AgentForge evidence
-record the retraction in agentforge_fact_promotions
+record the retraction on the originating agentforge_document_facts row
 ```
 
 This handles the wrong-document-upload case. If a user uploads the wrong lab PDF and later deletes it, facts derived from that document must not keep poisoning the chart. AgentForge should retract/deactivate rather than hard-delete where OpenEMR supports audit-friendly inactive/voided states. If a destination table has no safe inactive/retracted state, AgentForge stops using the row as evidence and creates a needs-review audit item.
 
-## 12. MariaDB Vector Retrieval
+## 13. MariaDB Vector Retrieval
 
 MariaDB 11.8 is already used by `docker/development-easy`. Week 2 uses MariaDB Vector rather than introducing a separate vector database.
 
@@ -447,7 +451,29 @@ Deleted or retracted document facts are excluded from retrieval.
 
 ### Guideline Corpus Retrieval
 
-Guideline chunks are global and versioned:
+Guideline chunks are global and versioned. The MVP corpus is intentionally small and primary-care focused so retrieval behavior can be inspected and evaluated. It is stored under:
+
+```text
+agent-forge/fixtures/w2-corpus/
+```
+
+Initial corpus sources:
+
+```text
+ADA Standards of Care excerpt for diabetes follow-up / A1c monitoring
+ACC/AHA cholesterol guideline excerpt for lipid follow-up
+USPSTF preventive screening excerpt for primary care follow-up
+JNC/ACC-AHA hypertension follow-up excerpt for blood pressure context
+OpenEMR-local demo guideline note for out-of-corpus refusal calibration
+```
+
+The indexing script normalizes these sources into roughly 25-50 section-level chunks for MVP:
+
+```text
+php agent-forge/scripts/index-w2-guidelines.php
+```
+
+Each chunk has a stable `chunk_id`, source title, source file/URL, section, text, and `corpus_version`. `corpus_version` is a checked-in string such as `w2-demo-2026-05-04`; changing corpus content requires updating the version and rerunning the indexing/eval command.
 
 ```text
 agentforge_guideline_chunks
@@ -484,21 +510,15 @@ Guideline retrieval follows the required hybrid RAG flow:
 
 The final answer may not cite guideline evidence that was not retrieved.
 
+The initial rerank threshold is stored in configuration and calibrated against the W2 retrieval evals. Out-of-corpus cases must fall below threshold and supported guideline cases must clear threshold before the baseline is accepted.
+
 ### Reranking
 
 Week 2 requires a reranker that takes candidate chunks as input and returns ranked chunks with scores.
 
-AgentForge uses:
+Configured runs use Cohere Rerank when `AGENTFORGE_COHERE_API_KEY` is present. Deterministic fixture/eval runs use a local rerank implementation that takes the same merged candidate chunks and returns ranked chunks with scores. The architecture requires a rerank step, not an elaborate abstraction layer.
 
-```text
-RerankerInterface
-CohereReranker
-DeterministicTestReranker
-```
-
-The production/default reranker is `CohereReranker` when `AGENTFORGE_COHERE_API_KEY` is configured. Local deterministic tests use `DeterministicTestReranker`, which implements the same interface and returns ranked candidate chunks with scores. Both satisfy the required rerank step.
-
-## 13. Supervisor And Required Workers
+## 14. Supervisor And Required Workers
 
 Week 2 requires:
 
@@ -524,7 +544,26 @@ whether enough evidence exists to answer
 whether the request should be refused or narrowed
 ```
 
-It does not become an opaque model-only router.
+It does not become an opaque model-only router. The "enough evidence" decision is rule-based:
+
+```text
+patient factual question:
+  answer only if at least one cited chart fact or cited document fact matches the requested topic
+
+interpretation / what-to-pay-attention-to question:
+  answer only if at least one patient fact is available and at least one guideline chunk passes rerank threshold
+
+needs-review finding:
+  surface when fact_type is clinical/safety relevant or when the question topic matches the finding
+
+out-of-corpus guideline question:
+  refuse/narrow when no retrieved guideline chunk passes threshold
+
+unsafe treatment, diagnosis, dosing, or medication-change request:
+  refuse/narrow even if patient facts are available
+```
+
+Clinical/safety-relevant needs-review types include allergies, medications, active symptoms, abnormal labs, diagnoses/problems, pregnancy status, and urgent red-flag language. Low-value preferences such as appointment timing remain searchable but do not appear unless directly asked about.
 
 ### intake-extractor
 
@@ -580,18 +619,17 @@ latency
 error reason if any
 ```
 
-## 14. Final Answer Behavior
+## 15. Final Answer Behavior
 
 The final response must separate patient facts from guideline evidence.
 
 A Week 2 answer should include sections equivalent to:
 
 ```text
-Patient Record / Document Findings
-Guideline Evidence
+Patient Findings
 Needs Human Review
+Guideline Evidence
 Missing or Not Found
-What To Pay Attention To
 ```
 
 Rules:
@@ -604,6 +642,7 @@ Rules:
 - Missing data is reported as missing instead of inferred.
 - Unsafe, unsupported, or out-of-corpus requests are refused or narrowed.
 - AgentForge avoids diagnosis, treatment, dosing, or medication-change advice.
+- Any synthesis of what deserves attention must be grounded in cited patient findings and retrieved guideline evidence; it is not a separate uncited editorial section.
 
 The existing Week 1 verified drafting pipeline remains the final guardrail. Week 2 extends the evidence bundle and verifier to support:
 
@@ -615,7 +654,7 @@ guideline chunks
 missing/not-found signals
 ```
 
-## 15. Observability, Privacy, Cost, And Latency
+## 16. Observability, Privacy, Cost, And Latency
 
 Week 2 extends the existing `SensitiveLogPolicy`. General telemetry must not include raw PHI.
 
@@ -663,6 +702,16 @@ patient_ref = patient:<short_hmac(patient_id, app_secret)>
 
 The clinical database may store cited findings and quote/value text because authorized OpenEMR users need source review. Logs are sanitized separately.
 
+Enforcement mechanism:
+
+```text
+all AgentForge log writes pass through PsrRequestLogger / SensitiveLogPolicy
+SensitiveLogPolicy allowlists telemetry keys and drops forbidden keys
+Week 2 adds patient_ref and document/job fields to the allowlist
+raw extraction payloads, prompts, answers, quotes, and document text are never passed to the logger
+the W2 eval runner scans produced telemetry/log artifacts for known demo PHI strings and forbidden keys
+```
+
 Latency and cost are captured for:
 
 ```text
@@ -700,7 +749,19 @@ p95 latency
 bottleneck analysis
 ```
 
-## 16. Eval Gate
+The report is rendered by:
+
+```text
+php agent-forge/scripts/render-w2-cost-latency-report.php
+```
+
+The script reads W2 eval/job telemetry and writes:
+
+```text
+agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md
+```
+
+## 17. Eval Gate
 
 Week 2 requires a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
@@ -714,6 +775,15 @@ php agent-forge/scripts/run-w2-evals.php
 
 The existing `agent-forge/fixtures/w2-golden` directory becomes the 50-case Week 2 golden set.
 
+Baseline storage and comparison are checked into the repo:
+
+```text
+agent-forge/fixtures/w2-golden/baseline.json
+agent-forge/fixtures/w2-golden/thresholds.json
+```
+
+`run-w2-evals.php` writes the current run to `agent-forge/eval-results/`, compares rubric pass rates against `baseline.json`, and fails when any required rubric drops below threshold or regresses by more than 5%. Baseline updates require an explicit commit to the baseline file.
+
 Required boolean rubrics:
 
 ```text
@@ -724,15 +794,14 @@ safe_refusal
 no_phi_in_logs
 ```
 
-Additional Week 2 rubrics:
+Additional gated Week 2 rubrics:
 
 ```text
-promoted_only_when_safe
-uncertain_finding_visible
 deleted_document_not_retrieved
-duplicate_not_created
 bounding_box_present
 ```
+
+Other checks such as duplicate prevention and uncertain-finding visibility are reported as case-level assertions, but the required five rubrics plus the two Week 2 gated rubrics are the PR-blocking summary metrics.
 
 The gate fails when:
 
@@ -749,7 +818,22 @@ the eval runner cannot complete
 
 Eval artifacts are saved under `agent-forge/eval-results`.
 
-## 17. Example Documents And Synthetic Expansion
+The PR-blocking mechanism is a checked-in Git hook/CI command wrapper:
+
+```text
+agent-forge/scripts/check-w2.sh
+```
+
+That script runs the smallest useful bundle for Week 2:
+
+```text
+schema tests
+document job/fact unit tests
+retrieval tests
+php agent-forge/scripts/run-w2-evals.php
+```
+
+## 18. Example Documents And Synthetic Expansion
 
 The provided examples under `agent-forge/docs/week2/example-documents` are MVP development fixtures, not the complete golden set.
 
@@ -788,7 +872,15 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-## 18. Deployment Runtime
+The expansion script is:
+
+```text
+php agent-forge/scripts/generate-w2-golden-fixtures.php
+```
+
+It creates deterministic synthetic case metadata and expected outputs from templates. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
+
+## 19. Deployment Runtime
 
 The Week 2 runtime includes:
 
@@ -820,12 +912,37 @@ Important environment variables:
 AGENTFORGE_DRAFT_PROVIDER
 AGENTFORGE_OPENAI_API_KEY
 AGENTFORGE_OPENAI_MODEL
+AGENTFORGE_VLM_PROVIDER
+AGENTFORGE_VLM_MODEL
 AGENTFORGE_COHERE_API_KEY
 AGENTFORGE_EMBEDDING_MODEL
 AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS
 ```
 
-## 19. Non-Goals For Week 2 MVP
+### Deployed Application
+
+The public Week 2 deployment uses the existing AgentForge VM deployment path:
+
+```text
+agent-forge/scripts/deploy-vm.sh
+agent-forge/scripts/rollback-vm.sh
+agent-forge/scripts/health-check.sh
+```
+
+Deployment proof must show:
+
+```text
+web app reachable
+MariaDB 11.8 available
+agentforge-worker running
+worker health endpoint or health command passing
+document upload creates and processes a job
+eval/deployed smoke artifact saved under agent-forge/eval-results
+```
+
+Rollback uses the existing rollback script and must leave the previous deployed OpenEMR app and worker in a healthy state.
+
+## 20. Non-Goals For Week 2 MVP
 
 These are out of scope only after the required Week 2 core is satisfied:
 
@@ -839,7 +956,7 @@ These are out of scope only after the required Week 2 core is satisfied:
 - No critic agent unless core requirements are complete.
 - No lab trend widget unless core requirements are complete.
 
-## 20. Risks And Tradeoffs
+## 21. Risks And Tradeoffs
 
 All-PHP extraction keeps deployment and PHI boundaries simple, but PDF/image processing is harder than it would be in Python. This is accepted to keep Week 2 inside AgentForge/OpenEMR.
 
@@ -849,13 +966,13 @@ Promoting only certain facts means some useful facts will not become official ch
 
 Separate patient-document and guideline vector tables add schema complexity, but prevent privacy and semantic mixing.
 
-Reranker abstraction adds one interface, but lets production use Cohere while tests remain deterministic.
+Using Cohere for configured rerank and deterministic local rerank for tests keeps the required rerank step inspectable without making reranking a large subsystem.
 
 Retraction provenance adds bookkeeping, but prevents wrong-document uploads from permanently poisoning the chart.
 
-Bounding boxes are hard on scanned documents. The MVP requires bounding boxes for example/eval fixtures and stores page plus quote/value fallback for edge cases where box extraction fails.
+Bounding boxes are hard on scanned documents. The MVP requires boxes for promoted document facts and final-answer document citations. If the PHP extraction path cannot produce strict cited JSON plus coordinates from the provided fixtures early, extraction becomes the critical path and the implementation plan must cut scope around that bottleneck before expanding features.
 
-## 21. Requirement Traceability Matrix
+## 22. Requirement Traceability Matrix
 
 | Week 2 Requirement | Architecture Decision |
 | --- | --- |
@@ -866,9 +983,9 @@ Bounding boxes are hard on scanned documents. The MVP requires bounding boxes fo
 | Strict lab schema | PHP schema/value objects require test name, value, unit, reference range, collection date, abnormal flag, confidence, and citation. |
 | Strict intake schema | PHP schema/value objects require demographics, chief concern, medications, allergies, family history, document facts, needs-review findings, and citations. |
 | Every extracted fact has source evidence | `citation_json` required for every extracted item. |
-| Visual PDF bounding-box overlay | Document citations store page and normalized bounding box; MVP eval requires boxes for fixtures. |
+| Visual PDF bounding-box overlay | Promoted document facts and final-answer document citations require page and normalized bounding box; eval gates `bounding_box_present`. |
 | Basic hybrid RAG | Guideline retriever uses sparse search plus MariaDB Vector dense search. |
-| Rerank candidates | `CohereReranker` or `DeterministicTestReranker` reranks merged candidates and returns scores. |
+| Rerank candidates | Configured runs use Cohere Rerank; deterministic eval runs use local rerank. Both rerank merged candidates and return scores. |
 | MariaDB Vector | MariaDB 11.8 stores guideline and document-fact vectors; no separate vector DB. |
 | One supervisor | PHP AgentForge supervisor routes extraction/retrieval/final-answer decisions. |
 | `intake-extractor` worker | Required worker name retained; handles both `lab_pdf` and `intake_form`. |
@@ -879,8 +996,7 @@ Bounding boxes are hard on scanned documents. The MVP requires bounding boxes fo
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
 | 50-case golden dataset | `agent-forge/fixtures/w2-golden` expands to 50 synthetic/demo cases. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`. |
-| PR-blocking CI or hook | `php agent-forge/scripts/run-w2-evals.php` is the single runner used locally, in CI/hook, and by graders. |
-| No raw PHI in logs | Week 2 extends `SensitiveLogPolicy`; telemetry uses `patient_ref`, counts, ids, latency, cost, and statuses only. |
-| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings are captured per encounter/job. |
-| Deployed observable flow | Runtime includes `openemr`, MariaDB 11.8, and automatic `agentforge-worker` service with health/readiness. |
-
+| PR-blocking CI or Git Hook | `agent-forge/scripts/check-w2.sh` runs tests and `run-w2-evals.php`; the same command is used by CI/hook and graders. |
+| No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |
+| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings render to `agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md`. |
+| Deployed observable flow | Runtime includes `openemr`, MariaDB 11.8, automatic `agentforge-worker`, VM deploy/rollback scripts, and worker health/readiness proof. |
