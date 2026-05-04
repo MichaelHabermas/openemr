@@ -2,6 +2,15 @@
 
 AgentForge docs are organized for reviewer-first navigation. The canonical gate documents live at the repository root; supporting proof, evaluation, operations, and submission material lives in this folder and its focused subfolders.
 
+## Which document is which (Week 1 vs Week 2)
+
+| Scope | Requirements source | Product / execution docs | Architecture |
+|--------|----------------------|---------------------------|--------------|
+| **Week 1** | [SPECS.txt](SPECS.txt) | [PRD.md](PRD.md), [PLAN.md](PLAN.md), most of [epics/](epics/) | [../../ARCHITECTURE.md](../../ARCHITECTURE.md) (evolved from Week 1; still the live system overview) |
+| **Week 2** | [SPECS-W2.txt](SPECS-W2.txt) | [week2/README.md](week2/README.md) (index only until you add e.g. `PRD-W2.md` / `PLAN-W2.md` if needed) | [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) (Week 2 defense artifact) |
+
+**Rule of thumb:** If it cites **`SPECS.txt`** and the Week 1 chart agent story, it is Week 1. If it cites **`SPECS-W2.txt`**, documents, RAG, or the 50-case Week 2 gate, it is Week 2. **`PRD.md` and `PLAN.md` are Week 1–scoped** until you add separate Week 2 planning files.
+
 ## Start Here
 
 - [SPECS.txt](SPECS.txt) - Week 1 / original project requirements.
@@ -11,8 +20,8 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 - [../../USERS.md](../../USERS.md) - Target user, workflow, and agent-justified use cases.
 - [../../ARCHITECTURE.md](../../ARCHITECTURE.md) - Current architecture, trust boundaries, and known limitations.
 - [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) - Week 2 architecture defense document (ingestion, graph, RAG, eval, risks); required course deliverable; fill in as Week 2 ships.
-- [PRD.md](PRD.md) - Product requirements and acceptance framing.
-- [PLAN.md](PLAN.md) - Execution plan, epic map, and remediation backlog.
+- [PRD.md](PRD.md) - **Week 1** product requirements (`SPECS.txt`).
+- [PLAN.md](PLAN.md) - **Week 1** execution plan and epic map (`SPECS.txt`).
 
 ## Supporting Folders
 

@@ -7,11 +7,13 @@ This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document inges
 - [Week 2 project requirements (text)](../SPECS-W2.txt) — same content as the PDF, easy to diff.
 - [Week 2 requirements (PDF)](../reference/Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
 
+**Not Week 2:** [../PRD.md](../PRD.md) and [../PLAN.md](../PLAN.md) are **Week 1** documents (grounded in [../SPECS.txt](../SPECS.txt)). Do not assume they describe multimodal/RAG/worker-graph work unless you fork or extend them explicitly (e.g. `PRD-W2.md`).
+
 ## Architecture (assignments + repo)
 
 | Document | Purpose |
 |----------|---------|
-| [W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md) (repository root) | **Week 2 defense artifact** required by the course: ingestion flow, worker graph, RAG design, eval gate, risks, tradeoffs. Fill this in as the build progresses. |
+| [W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md) (repository root) | **Week 2 defense artifact** required by the course: ingestion flow, worker graph, RAG design, eval gate, risks, tradeoffs. Filled in — covers the 9 required sections. Update as implementation lands. |
 | [ARCHITECTURE.md](../../../ARCHITECTURE.md) (repository root) | Ongoing system architecture (Week 1 baseline + evolving product story). Week 2 multimodal details should either stay in `W2_ARCHITECTURE.md` or be summarized here with a pointer to avoid drift. |
 
 ## Where work accumulates
@@ -22,11 +24,13 @@ This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document inges
 
 ## Week 2 stages (from spec)
 
-1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity).
-2. Basic hybrid RAG + rerank over a small guideline corpus.
-3. Supervisor + two workers (intake-extractor, evidence-retriever); logged handoffs.
-4. Eval-driven CI (50 cases, boolean rubrics, PR-blocking).
-5. Integrate, deploy, demo video, cost/latency report.
+1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `W2_ARCHITECTURE.md` §1–2.
+2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
+3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
+4. Eval-driven CI: 50 cases, 5 boolean rubrics, PR-blocking via `agentforge-evals.yml`. — §6.
+5. Integrate, deploy behind `AGENTFORGE_W2_ENABLED`, demo video, cost/latency report. — §7, §9.
+
+**Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal.
 
 ## README and env
 
