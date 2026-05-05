@@ -4,6 +4,13 @@
 
 This plan turns `W2_ARCHITECTURE.md` into ordered implementation epics for the Week 2 Clinical Co-Pilot. It is an implementation plan, not another PRD.
 
+AgentForge memory protocol:
+
+- Before starting or resuming any Week 2 epic, read `agent-forge/docs/MEMORY.md`.
+- When `CURRENT-EPIC.md` is erased, replaced, or heavily rewritten, first preserve reusable lessons in `agent-forge/docs/MEMORY.md`.
+- Update `agent-forge/docs/MEMORY.md` only for durable cross-epic memory: architecture decisions, safety/privacy guardrails, recurring bugs, proof gaps, gate caveats, and carry-forward notes.
+- Do not use `agent-forge/docs/MEMORY.md` as a task tracker. Active execution remains in `CURRENT-EPIC.md`, this plan, specs, architecture docs, and code.
+
 Hard constraints:
 
 - Keep all Week 2 runtime code in PHP/OpenEMR/AgentForge. No Python sidecar, no extraction microservice, no external vector database.

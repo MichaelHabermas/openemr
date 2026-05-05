@@ -13,6 +13,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 
 ## Start Here
 
+- [MEMORY.md](MEMORY.md) - Durable AgentForge memory: cross-epic lessons, guardrails, proof caveats, and carry-forward notes that survive active epic rewrites.
 - [SPECS.txt](SPECS.txt) - Week 1 / original project requirements.
 - [SPECS-W2.txt](SPECS-W2.txt) - Week 2 project requirements (multimodal documents, RAG, supervisor/workers, eval gate).
 - [week2/README.md](week2/README.md) - **Week 2 index** (links to spec, PDF, eval golden set, architecture deliverable).
@@ -31,6 +32,10 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 - [submission/](submission/) - Reviewer packaging pointers and demo submission script.
 - [week2/](week2/) - Week 2 navigation hub (stages, pointers to fixtures and root `W2_ARCHITECTURE.md`).
 - [reference/](reference/) - Original PDFs and other immovable reference artifacts.
+
+## Memory Protocol
+
+For AgentForge work, read [MEMORY.md](MEMORY.md) before changing code or rewriting an active epic file. Update it only with durable cross-epic memory: architecture decisions, safety/privacy guardrails, bugs that could reappear, proof gaps, gate caveats, and carry-forward notes. Do not use it as a task tracker.
 
 ## Canonical Versus Supporting Docs
 

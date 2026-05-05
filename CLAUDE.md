@@ -55,6 +55,18 @@ available. Manual verification should proceed gate by gate: local UI checks,
 local automated proof, git status/diff review, explicit commit/push decision,
 VM deploy script, VM seed/verify, VM UI checks, then proof-file update.
 
+### AgentForge Memory Protocol
+
+Before starting AgentForge work, read `agent-forge/docs/MEMORY.md`.
+
+Use `agent-forge/docs/MEMORY.md` for durable cross-epic memory only:
+architecture decisions, safety/privacy guardrails, bugs that could reappear,
+proof gaps, gate caveats, and carry-forward notes. Do not use it as a task
+tracker; active execution belongs in the current epic, plan, specs, and code.
+
+When an AgentForge epic file is replaced or heavily rewritten, preserve reusable
+lessons in `agent-forge/docs/MEMORY.md` before the old context disappears.
+
 ## Testing
 
 Tests run inside Docker via devtools. Run from `docker/development-easy/`:

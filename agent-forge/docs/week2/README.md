@@ -2,6 +2,12 @@
 
 This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document ingestion, worker graph, RAG, eval gate, and submission artifacts. Implementation code and tests live elsewhere; this is navigation and defense material.
 
+## AgentForge Memory Protocol
+
+Before starting or resuming Week 2 work, read [../MEMORY.md](../MEMORY.md). It is the durable AgentForge memory for cross-epic lessons, guardrails, proof caveats, and carry-forward notes that must survive `CURRENT-EPIC.md` rewrites.
+
+Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable information future epics must preserve, such as safety/privacy rules, architecture decisions, recurring bugs, gate caveats, or deferred proof gaps. Do not use it as a task tracker; active execution remains in the current epic, this plan, specs, and code.
+
 ## Requirements (source of truth)
 
 - [Week 2 project requirements (text)](../SPECS-W2.txt) — same content as the PDF, easy to diff.
