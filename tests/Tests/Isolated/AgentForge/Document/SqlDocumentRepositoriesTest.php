@@ -1,0 +1,138 @@
+<?php
+
+/**
+ * Isolated tests for AgentForge document SQL repository query shape.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\Tests\Isolated\AgentForge\Document;
+
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Document\CategoryId;
+use OpenEMR\AgentForge\Document\DocumentId;
+use OpenEMR\AgentForge\Document\DocumentJob;
+use OpenEMR\AgentForge\Document\DocumentJobId;
+use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
+use OpenEMR\AgentForge\Document\SqlDocumentTypeMappingRepository;
+use PHPUnit\Framework\TestCase;
+
+final class SqlDocumentRepositoriesTest extends TestCase
+{
+    public function testMappingRepositorySelectsActiveCategoryMapping(): void
+    {
+        $executor = new DocumentRepositoryExecutor([
+            [
+                'id' => 3,
+                'category_id' => 7,
+                'doc_type' => 'lab_pdf',
+                'active' => 1,
+                'created_at' => '2026-05-05 00:00:00',
+            ],
+        ]);
+
+        $mapping = (new SqlDocumentTypeMappingRepository($executor))->findActiveByCategoryId(new CategoryId(7));
+
+        $this->assertSame(DocumentType::LabPdf, $mapping?->docType);
+        $this->assertStringContainsString('FROM agentforge_document_type_mappings', $executor->queries[0]['sql']);
+        $this->assertSame([7], $executor->queries[0]['binds']);
+    }
+
+    public function testJobRepositoryEnqueueUsesInsertIgnoreThenSelectsUniqueJob(): void
+    {
+        $executor = new DocumentRepositoryExecutor([
+            [
+                'id' => 9,
+                'patient_id' => 900001,
+                'document_id' => 123,
+                'doc_type' => 'lab_pdf',
+                'status' => 'pending',
+                'attempts' => 0,
+                'lock_token' => null,
+                'created_at' => '2026-05-05 00:00:00',
+                'started_at' => null,
+                'finished_at' => null,
+                'error_code' => null,
+                'error_message' => null,
+            ],
+        ]);
+
+        $jobId = (new SqlDocumentJobRepository($executor))->enqueue(
+            new PatientId(900001),
+            new DocumentId(123),
+            DocumentType::LabPdf,
+        );
+
+        $this->assertSame(9, $jobId->value);
+        $this->assertStringContainsString('INSERT IGNORE INTO agentforge_document_jobs', $executor->statements[0]['sql']);
+        $this->assertSame([900001, 123, 'lab_pdf', 'pending'], $executor->statements[0]['binds']);
+        $this->assertStringContainsString('WHERE patient_id = ? AND document_id = ? AND doc_type = ?', $executor->queries[0]['sql']);
+    }
+
+    public function testJobRepositoryFindByIdHydratesJob(): void
+    {
+        $executor = new DocumentRepositoryExecutor([
+            [
+                'id' => 9,
+                'patient_id' => 900001,
+                'document_id' => 123,
+                'doc_type' => 'lab_pdf',
+                'status' => 'pending',
+                'attempts' => 0,
+                'lock_token' => null,
+                'created_at' => '2026-05-05 00:00:00',
+                'started_at' => null,
+                'finished_at' => null,
+                'error_code' => null,
+                'error_message' => null,
+            ],
+        ]);
+
+        $job = (new SqlDocumentJobRepository($executor))->findById(new DocumentJobId(9));
+
+        $this->assertInstanceOf(DocumentJob::class, $job);
+        $this->assertSame(900001, $job->patientId->value);
+        $this->assertSame(DocumentType::LabPdf, $job->docType);
+        $this->assertSame(JobStatus::Pending, $job->status);
+    }
+}
+
+final class DocumentRepositoryExecutor implements DatabaseExecutor
+{
+    /** @var list<array{sql: string, binds: list<mixed>}> */
+    public array $queries = [];
+
+    /** @var list<array{sql: string, binds: list<mixed>}> */
+    public array $statements = [];
+
+    /** @param list<array<string, mixed>> $records */
+    public function __construct(private array $records)
+    {
+    }
+
+    public function fetchRecords(string $sql, array $binds = []): array
+    {
+        $this->queries[] = ['sql' => $sql, 'binds' => $binds];
+
+        return $this->records;
+    }
+
+    public function executeStatement(string $sql, array $binds = []): void
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+    }
+
+    public function insert(string $sql, array $binds = []): int
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+
+        return 1;
+    }
+}

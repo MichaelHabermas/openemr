@@ -39,6 +39,14 @@ final class SensitiveLogPolicy
         'selector_mode' => true,
         'selector_result' => true,
         'selector_fallback_reason' => true,
+        'patient_ref' => true,
+        'document_id' => true,
+        'category_id' => true,
+        'doc_type' => true,
+        'job_id' => true,
+        'worker' => true,
+        'attempts' => true,
+        'error_code' => true,
     ];
 
     /** @var array<string, true> */

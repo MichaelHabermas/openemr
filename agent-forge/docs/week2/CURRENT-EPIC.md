@@ -810,3 +810,85 @@ eval failures from M1 remain (expected at this stage).
   telemetry events that M2's allowlist already permits.
 - M5 will add `agentforge_document_facts` and embeddings; the `documents.id`
   it references is the same id we enqueue here.
+
+## Implementation Progress - 2026-05-05
+
+Status: Implemented but not acceptance-complete.
+
+Files changed:
+
+- `src/AgentForge/Document/` added document type/status enums, positive-id
+  value objects, DTOs, repository interfaces, SQL repositories,
+  `DocumentUploadEnqueuer`, `DocumentUploadEnqueuerFactory`, and
+  `DocumentUploadEnqueuerHook`.
+- `src/AgentForge/DatabaseExecutor.php` and
+  `src/AgentForge/DefaultDatabaseExecutor.php` added a small AgentForge SQL
+  boundary for read/write repositories.
+- `src/AgentForge/Observability/PatientRefHasher.php` added hashed
+  `patient:<hash>` telemetry ids.
+- `library/ajax/upload.php` now dispatches the hook after both portal and core
+  `addNewDocument(...)` calls return a `doc_id`.
+- `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php`
+  add the two document tables and bump `v_database` to 539.
+- `agent-forge/sql/seed-demo-data.sql` seeds the two demo document categories
+  and idempotent mappings.
+- `src/AgentForge/Observability/SensitiveLogPolicy.php` allows the new
+  sanitized document telemetry keys.
+- `tests/Tests/Isolated/AgentForge/Document/` and
+  `SensitiveLogPolicyTest` cover M2 behavior.
+
+Acceptance map:
+
+- New schema exists in install and upgrade SQL: implemented in
+  `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql`.
+- Demo category mappings: implemented in `seed-demo-data.sql`; local rerun
+  smoke kept `category_count=2` and `mapping_count=2`.
+- Eligible category enqueue: covered by isolated enqueuer tests and SQL-level
+  unique-key smoke.
+- Ineligible category no-op: covered by isolated enqueuer tests.
+- Duplicate enqueue idempotency: covered by isolated repository/enqueuer tests
+  and local SQL smoke (`job_count=1`, `status=pending`, `attempts=0` after two
+  duplicate `INSERT IGNORE` attempts).
+- Upload safety: hook tests cover non-array results, missing `doc_id`, invalid
+  ids, and resolver failure without exception escape for modeled failures.
+- Sanitized logging: enqueuer tests and `SensitiveLogPolicyTest` confirm
+  `patient_ref` is hashed and raw `patient_id` is not emitted by the new M2
+  enqueue log context.
+
+Proof run:
+
+- `vendor/bin/phpunit -c phpunit-isolated.xml tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
+  passed: 29 tests, 77 assertions.
+- `vendor/bin/phpunit -c phpunit-isolated.xml --filter 'Document|SensitiveLogPolicy'`
+  passed: 102 tests, 678 assertions.
+- `vendor/bin/phpcs src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php library/ajax/upload.php`
+  passed.
+- `vendor/bin/phpstan analyze --memory-limit=4G --configuration=phpstan.neon.dist src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
+  passed after allowing PHPStan to open its local analysis socket.
+- Local Docker SQL smoke passed:
+  tables `agentforge_document_jobs` and `agentforge_document_type_mappings`
+  exist; categories `AgentForge Lab PDF` and `AgentForge Intake Form` exist;
+  mappings are active for `lab_pdf` and `intake_form`; rerunning the seed kept
+  counts at two categories and two mappings; duplicate job insert stayed at one
+  pending row.
+- `agent-forge/scripts/check-clinical-document.sh` partially passed: diff
+  whitespace, PHP syntax, shell syntax, and AgentForge isolated PHPUnit all
+  passed (341 tests, 1651 assertions). The final clinical eval verdict remains
+  `threshold_violation`, with artifact
+  `agent-forge/eval-results/clinical-document-20260505-014142`, because later
+  M3/M4 extraction behavior is still not implemented.
+- `composer phpunit-isolated` was attempted and ran 3072 tests, but failed with
+  8 unrelated `FrontControllerRoutingTest` connection errors because no HTTP
+  server was listening on `127.0.0.1:8765`. It also reported pre-existing
+  warnings/notices outside M2.
+
+Open proof gaps:
+
+- Manual browser upload smoke from the Verification Plan was not performed.
+- Fresh-install and upgrade-flow verification were approximated by applying the
+  table DDL to the already-running local Docker DB and checking the resulting
+  tables; a destructive `docker compose down -v` fresh-install cycle was not
+  run.
+- The clinical document eval gate still reports `threshold_violation` as
+  expected before later worker/extraction epics replace the M1 not-implemented
+  adapter.

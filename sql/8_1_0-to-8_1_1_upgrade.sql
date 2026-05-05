@@ -112,3 +112,36 @@
 --  #IfMBOEncounterNeeded
 --    desc: Add encounter to the form_misc_billing_options table
 --    arguments: none
+
+#IfNotTable agentforge_document_type_mappings
+CREATE TABLE `agentforge_document_type_mappings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `category_id` int(11) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_agentforge_doctype_mapping` (`category_id`, `doc_type`),
+  KEY `idx_agentforge_doctype_active` (`active`, `category_id`)
+) ENGINE=InnoDB;
+#EndIf
+
+#IfNotTable agentforge_document_jobs
+CREATE TABLE `agentforge_document_jobs` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'pending',
+  `attempts` int(11) NOT NULL DEFAULT 0,
+  `lock_token` varchar(64) NULL,
+  `created_at` datetime NOT NULL,
+  `started_at` datetime NULL,
+  `finished_at` datetime NULL,
+  `error_code` varchar(64) NULL,
+  `error_message` text NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_agentforge_job_doc` (`patient_id`, `document_id`, `doc_type`),
+  KEY `idx_agentforge_job_status_created` (`status`, `created_at`)
+) ENGINE=InnoDB;
+#EndIf

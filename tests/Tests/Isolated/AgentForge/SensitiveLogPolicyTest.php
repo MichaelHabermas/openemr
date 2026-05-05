@@ -22,6 +22,14 @@ final class SensitiveLogPolicyTest extends TestCase
         $context = SensitiveLogPolicy::sanitizeContext([
             'request_id' => 'request-1',
             'patient_id' => 900001,
+            'patient_ref' => 'patient:abcdef1234567890',
+            'document_id' => 123,
+            'category_id' => 7,
+            'doc_type' => 'lab_pdf',
+            'job_id' => 9,
+            'worker' => 'intake-extractor',
+            'attempts' => 0,
+            'error_code' => 'RuntimeException',
             'decision' => 'allowed',
             'question' => 'What changed?',
             'answer' => 'raw answer',
@@ -31,6 +39,14 @@ final class SensitiveLogPolicyTest extends TestCase
 
         $this->assertSame('request-1', $context['request_id']);
         $this->assertSame(900001, $context['patient_id']);
+        $this->assertSame('patient:abcdef1234567890', $context['patient_ref']);
+        $this->assertSame(123, $context['document_id']);
+        $this->assertSame(7, $context['category_id']);
+        $this->assertSame('lab_pdf', $context['doc_type']);
+        $this->assertSame(9, $context['job_id']);
+        $this->assertSame('intake-extractor', $context['worker']);
+        $this->assertSame(0, $context['attempts']);
+        $this->assertSame('RuntimeException', $context['error_code']);
         $this->assertSame('allowed', $context['decision']);
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);

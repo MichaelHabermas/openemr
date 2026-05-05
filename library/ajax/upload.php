@@ -14,6 +14,7 @@
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
+use OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook;
 use OpenEMR\Common\Csrf\CsrfUtils;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\OEGlobalsBag;
@@ -100,6 +101,7 @@ if ($isPortal ?? false) {
                 '',
                 true
             );
+            DocumentUploadEnqueuerHook::dispatch($pid, $category, $data);
             $rtn[] = $data;
         }
         // give user a break and send just one message for multi documents
@@ -125,7 +127,8 @@ if (!empty($_FILES)) {
     $size = $_FILES['file']['size'];
     $owner = OEGlobalsBag::getInstance()->get('userauthorized');
 
-    addNewDocument($name, $type, $tmp_name, '', $size, $owner, $patient_id, $category_id);
+    $result = addNewDocument($name, $type, $tmp_name, '', $size, $owner, $patient_id, $category_id);
+    DocumentUploadEnqueuerHook::dispatch($patient_id, $category_id, $result);
     exit;
 }
 
