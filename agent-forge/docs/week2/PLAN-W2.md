@@ -174,22 +174,32 @@ Dependencies: M1.
 
 ### Epic M3 - Automatic PHP Worker Skeleton
 
-Status: Not started.
+Status: In progress.
+
+Implementation note (2026-05-05): M3 worker skeleton code, heartbeat schema,
+atomic claim SQL, no-op processor, sanitized logging, CLI script, and
+development Docker Compose service are implemented with isolated automated
+proof and local Docker/database proof. Manual proof on 2026-05-05 covered
+schema sanity, upload enqueue with the worker stopped, worker processing to
+`failed(extraction_not_implemented)`, graceful Docker stop with `stopped`
+heartbeat, retracted-row skip behavior, two-worker/five-job concurrency, and
+clean sanitized container logs. VM deployment proof remains separate from the
+local M3 milestone.
 
 Goal: Provide the separate automatic PHP process that claims and processes jobs using the same codebase.
 
 Files/modules:
 
 - Add `agent-forge/scripts/process-document-jobs.php`.
-- Add `src/AgentForge/Document/DocumentJobWorker.php`.
-- Add `src/AgentForge/Document/OpenEmrDocumentLoader.php`.
-- Add `src/AgentForge/Document/WorkerHeartbeatRepository.php`.
+- Add `src/AgentForge/Document/Worker/DocumentJobWorker.php`.
+- Add `src/AgentForge/Document/Worker/OpenEmrDocumentLoader.php`.
+- Add `src/AgentForge/Document/Worker/WorkerHeartbeatRepository.php`.
 - Modify `src/AgentForge/Observability/SensitiveLogPolicy.php`.
 - Modify `docker/development-easy/docker-compose.yml`.
 
 Database changes:
 
-- Add `agentforge_worker_heartbeats`: `worker_name`, `process_id`, `status`, `last_heartbeat_at`, `metadata_json`.
+- Add `clinical_document_worker_heartbeats`: `worker`, `process_id`, `status`, `iteration_count`, `jobs_processed`, `jobs_failed`, `started_at`, `last_heartbeat_at`, `stopped_at`.
 - Add/confirm job status values: `pending`, `running`, `succeeded`, `failed`, `retracted`.
 
 Tests/evals first:
@@ -201,7 +211,7 @@ Tests/evals first:
 
 Implementation tasks:
 
-- Implement a loop with poll interval from `AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS`.
+- Implement a loop with idle sleep interval from `AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS`.
 - Implement one-shot mode for tests/evals.
 - Load OpenEMR document bytes via `Document` APIs, not direct path guessing.
 - Add an `agentforge-worker` service to `docker/development-easy/docker-compose.yml` using the OpenEMR image/codebase and the worker command.
@@ -212,11 +222,21 @@ Acceptance criteria:
 - `docker compose up` can start `openemr`, MariaDB, and `agentforge-worker`.
 - A pending job is claimed and reaches a terminal status.
 - Worker crashes or extraction errors never undo uploads.
+- Docker stop writes a `stopped` heartbeat and exits 0, despite OpenEMR's PHP
+  configuration disabling `pcntl_signal*` functions.
+- Two concurrent workers do not double-process pending rows; five synthetic
+  pending jobs reached terminal failure with total attempts exactly five.
 
 Definition of done:
 
 - Worker skeleton runs locally in one-shot and loop mode.
 - Logs are sanitized and prove no raw document text or PHI.
+- Local manual proof passed on 2026-05-05. During proof, two issues were found
+  and fixed: Docker SIGTERM could not reach PHP because OpenEMR's PHP
+  configuration disables `pcntl_signal*`, and legacy OpenEMR document loading
+  emitted raw PHP notices for invalid synthetic document IDs. The Compose shell
+  trap now marks stopped heartbeats, and the loader/script suppress legacy
+  notices into typed, sanitized load failures.
 
 Dependencies: M2.
 
@@ -419,8 +439,8 @@ Files/modules:
 
 Database changes:
 
-- Add `agentforge_guideline_chunks`: `id`, `chunk_id`, `corpus_version`, `source_title`, `source_url_or_file`, `section`, `chunk_text`, `citation_json`, `active`, `created_at`; unique `(corpus_version, chunk_id)`.
-- Add `agentforge_guideline_chunk_embeddings`: `chunk_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
+- Add `clinical_guideline_chunks`: `id`, `chunk_id`, `corpus_version`, `source_title`, `source_url_or_file`, `section`, `chunk_text`, `citation_json`, `active`, `created_at`; unique `(corpus_version, chunk_id)`.
+- Add `clinical_guideline_chunk_embeddings`: `chunk_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
 
 Tests/evals first:
 
@@ -441,7 +461,7 @@ Acceptance criteria:
 
 - At least one supported guideline question retrieves relevant cited evidence.
 - Out-of-corpus questions do not generate guideline claims.
-- Guideline vectors are stored only in `agentforge_guideline_chunk_embeddings`.
+- Guideline vectors are stored only in `clinical_guideline_chunk_embeddings`.
 
 Definition of done:
 
@@ -471,7 +491,7 @@ Files/modules:
 
 Database changes:
 
-- Add `agentforge_supervisor_handoffs`: `id`, `request_id`, `job_id`, `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`, `latency_ms`, `error_reason`, `created_at`.
+- Add `clinical_supervisor_handoffs`: `id`, `request_id`, `job_id`, `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`, `latency_ms`, `error_reason`, `created_at`.
 
 Tests/evals first:
 
@@ -689,7 +709,7 @@ Tests/evals first:
 Implementation tasks:
 
 - Document Week 1 vs Week 2 behavior separately.
-- Document env vars: `AGENTFORGE_DRAFT_PROVIDER`, `AGENTFORGE_OPENAI_API_KEY`, `AGENTFORGE_OPENAI_MODEL`, `AGENTFORGE_VLM_PROVIDER`, `AGENTFORGE_VLM_MODEL`, `AGENTFORGE_COHERE_API_KEY`, `AGENTFORGE_EMBEDDING_MODEL`, `AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS`.
+- Document env vars: `AGENTFORGE_DRAFT_PROVIDER`, `AGENTFORGE_OPENAI_API_KEY`, `AGENTFORGE_OPENAI_MODEL`, `AGENTFORGE_VLM_PROVIDER`, `AGENTFORGE_VLM_MODEL`, `AGENTFORGE_COHERE_API_KEY`, `AGENTFORGE_EMBEDDING_MODEL`, `AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS`.
 - Create acceptance matrix mapping specs to proof artifacts.
 - Prepare demo path: upload lab, upload intake, watch jobs, ask final cited question, inspect handoffs/evals.
 

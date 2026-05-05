@@ -6,7 +6,7 @@
 
 Tough but fair: this is a strong narrow prototype and a credible one-week engineering effort. It has real OpenEMR integration, a patient-chart card, a server-side endpoint, an authorization gate, evidence tools, structured drafting, a verifier, logs, seeded demo data, and passing tests.
 
-But I would not accept it as “production-ready” under the standard in [SPECS.txt](../SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
+But I would not accept it as “production-ready” under the standard in [SPECS.txt](../week1/SPECS.txt:382). It is demo-grade with good safety instincts, not hospital-CTO-ready.
 
 I verified:
 
@@ -19,7 +19,7 @@ I verified:
 
 1. The chatbot is not actually multi-turn.
 
-The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](../SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](../../../src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
+The spec requires an agent that can “receive follow-up questions” and “maintain context across a conversation” [SPECS.txt](../week1/SPECS.txt:300). The UI is a single textarea and response box that overwrites prior output [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:4), and the request model only carries `patientId` and `question` [AgentRequest.php](../../../src/AgentForge/Handlers/AgentRequest.php:15). There is no `conversation_id`, history, turn state, or follow-up grounding.
 
 2. Evidence retrieval is over-broad and not really tool-routed.
 
@@ -27,11 +27,11 @@ The architecture promises a “tool router” [ARCHITECTURE.md](../ARCHITECTURE.
 
 3. Citations are not properly surfaced in the UI.
 
-The spec makes source attribution non-negotiable [SPECS.txt](../SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
+The spec makes source attribution non-negotiable [SPECS.txt](../week1/SPECS.txt:316). The response payload has citations, but the browser display ignores `payload.citations` and only renders `payload.answer`, missing sections, and warnings [agent_forge.html.twig](../../../templates/patient/card/agent_forge.html.twig:59). If citations happen to appear, it is because the model included them in text, not because the UI reliably displays sources.
 
 4. Verification is useful, but shallow.
 
-The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](../../../src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](../SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](../../../src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
+The verifier checks that cited source IDs exist and that the claim text contains the evidence label and value [DraftVerifier.php](../../../src/AgentForge/Verification/DraftVerifier.php:84). That catches blatant hallucinated values, which is good. But the spec also requires domain constraint enforcement, including clinical rules, thresholds, and interaction flags [SPECS.txt](../week1/SPECS.txt:318). The current “clinical constraint” layer is mostly regex refusal terms [ClinicalAdviceRefusalPolicy.php](../../../src/AgentForge/Verification/ClinicalAdviceRefusalPolicy.php:20). That is not clinical reasoning or rule enforcement.
 
 5. Authorization is intentionally narrow, which is safer than loose but too brittle for real use.
 
@@ -47,11 +47,11 @@ The eval runner uses `EvalEvidenceTool` fixtures and `FixtureDraftProvider` for 
 
 8. Observability lacks per-step timing.
 
-The spec says logs should answer “How long did each step take?” [SPECS.txt](../SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
+The spec says logs should answer “How long did each step take?” [SPECS.txt](../week1/SPECS.txt:330). The log context has total latency, tools called, token counts, cost, and verifier result [RequestLog.php](../../../src/AgentForge/Observability/RequestLog.php:50), but no per-tool latency, model latency, verifier latency, or DB timing. Good start, not enough.
 
 9. Cost analysis does not meet the spec.
 
-The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](../SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:75).
+The spec explicitly asks for actual dev spend, production costs at 100 / 1K / 10K / 100K users, and architectural changes at each level, not just token math [SPECS.txt](../week1/SPECS.txt:379). The cost doc is mostly one measured A1c request plus monthly request token extrapolation [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:64). It even labels hosting, storage, retention, monitoring, backup, support, and broader workload mix as unknown [COST-ANALYSIS.md](../operations/COST-ANALYSIS.md:75).
 
 10. Packaging is weak for an external reviewer.
 

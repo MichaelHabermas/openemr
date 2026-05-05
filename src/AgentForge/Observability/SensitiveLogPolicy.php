@@ -50,6 +50,14 @@ final class SensitiveLogPolicy
         'count' => true,
         'error_code' => true,
         'retraction_reason' => true,
+        'process_id' => true,
+        'iteration_count' => true,
+        'jobs_processed' => true,
+        'jobs_failed' => true,
+        'lock_token_prefix' => true,
+        'idle_seconds' => true,
+        'claimed_count' => true,
+        'worker_status' => true,
     ];
 
     /** @var array<string, true> */
@@ -86,6 +94,17 @@ final class SensitiveLogPolicy
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Merge throwable class name with extra context, then apply {@see sanitizeContext()}.
+     *
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    public static function throwableErrorContext(\Throwable $e, array $extra = []): array
+    {
+        return self::sanitizeContext(array_merge($extra, ['error_code' => $e::class]));
     }
 
     /** @param array<string, mixed> $context */

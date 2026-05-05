@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # Run the focused local AgentForge quality gate.
+#
+# CI parity note:
+# - .github/workflows/agentforge-evals.yml Tier 0 runs `php agent-forge/scripts/run-evals.php` only.
+# - This script adds syntax/whitespace checks, AgentForge-filtered phpunit-isolated, PHPStan, and PHPCS.
+# - .github/workflows/isolated-tests.yml runs the full repo isolated matrix (not invoked here).
+# - Use agent-forge/scripts/check-agentforge.sh for the comprehensive gate (includes clinical document expectation).
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

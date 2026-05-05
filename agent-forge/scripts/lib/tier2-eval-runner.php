@@ -10,6 +10,7 @@
 
 declare(strict_types=1);
 
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
@@ -20,7 +21,7 @@ require_once __DIR__ . '/eval-runner-functions.php';
 
 function agentforge_tier2_main(): int
 {
-    $repoRoot = dirname(__DIR__, 3);
+    $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $fixturePath = $repoRoot . '/agent-forge/fixtures/tier2-eval-cases.json';
     $resultsDir = getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
     $deadlineMs = (int) (getenv('AGENTFORGE_TIER2_DEADLINE_MS') ?: 30000);

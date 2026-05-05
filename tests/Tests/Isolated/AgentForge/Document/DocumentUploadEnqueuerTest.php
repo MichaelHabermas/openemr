@@ -310,6 +310,21 @@ final class InMemoryDocumentJobRepository implements DocumentJobRepository
 
         return null;
     }
+
+    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
+    {
+    }
+
+    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
+    {
+        foreach ($this->jobs as $job) {
+            if ($job->lockToken === $lockToken->value) {
+                return $job;
+            }
+        }
+
+        return null;
+    }
 }
 
 final class ThrowingDocumentTypeMappingRepository implements DocumentTypeMappingRepository
@@ -341,6 +356,16 @@ final class ThrowingDocumentJobRepository implements DocumentJobRepository
     {
         throw new RuntimeException('job unavailable');
     }
+
+    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
+    {
+        throw new RuntimeException('job unavailable');
+    }
+
+    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
+    {
+        throw new RuntimeException('job unavailable');
+    }
 }
 
 final class InvalidDocumentJobRepository implements DocumentJobRepository
@@ -361,6 +386,16 @@ final class InvalidDocumentJobRepository implements DocumentJobRepository
     }
 
     public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        throw new InvalidArgumentException('invalid job payload');
+    }
+
+    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
+    {
+        throw new InvalidArgumentException('invalid job payload');
+    }
+
+    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
     {
         throw new InvalidArgumentException('invalid job payload');
     }

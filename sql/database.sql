@@ -3,7 +3,7 @@
 --
 -- Keep v_database in sync with $v_database in version.php.
 -- CI will fail if they don't match.
--- v_database: 539
+-- v_database: 540
 --
 
 --
@@ -15415,6 +15415,23 @@ CREATE TABLE `clinical_document_processing_jobs` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_clinical_document_processing_job` (`patient_id`, `document_id`, `doc_type`),
   KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS `clinical_document_worker_heartbeats`;
+CREATE TABLE `clinical_document_worker_heartbeats` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `worker` varchar(64) NOT NULL,
+  `process_id` int(11) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `iteration_count` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_processed` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_failed` bigint(20) NOT NULL DEFAULT 0,
+  `started_at` datetime NOT NULL,
+  `last_heartbeat_at` datetime NOT NULL,
+  `stopped_at` datetime NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_worker_heartbeats_worker` (`worker`),
+  KEY `idx_clinical_document_worker_heartbeats_status` (`status`)
 ) ENGINE=InnoDB;
 
 -- Doctrine Migrations tracking

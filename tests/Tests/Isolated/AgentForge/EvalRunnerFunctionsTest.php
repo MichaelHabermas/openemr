@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Handlers\AgentResponse;
 use PHPUnit\Framework\TestCase;
 
@@ -19,6 +20,16 @@ require_once dirname(__DIR__, 4) . '/agent-forge/scripts/lib/eval-runner-functio
 
 final class EvalRunnerFunctionsTest extends TestCase
 {
+    public function testRepoPathHelpersResolveOpenEmrRoot(): void
+    {
+        $repoRoot = dirname(__DIR__, 4);
+        $scriptsDir = $repoRoot . '/agent-forge/scripts';
+        $scriptsLibDir = $repoRoot . '/agent-forge/scripts/lib';
+
+        $this->assertSame($repoRoot, AgentForgeRepoPaths::fromScriptsDirectory($scriptsDir));
+        $this->assertSame($repoRoot, AgentForgeRepoPaths::fromScriptsLibDirectory($scriptsLibDir));
+    }
+
     public function testEvaluateCasePassesExactCitationsStagesAndLogContext(): void
     {
         $case = [

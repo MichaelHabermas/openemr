@@ -12,6 +12,7 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\DefaultQueryExecutor;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCaseRepository;
@@ -23,7 +24,7 @@ use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/eval-runner-functions.php';
 
-$repoRoot = dirname(__DIR__, 2);
+$repoRoot = AgentForgeRepoPaths::fromScriptsDirectory(__DIR__);
 $groundTruthPath = $repoRoot . '/agent-forge/fixtures/demo-patient-ground-truth.json';
 $resultsDir = getenv('AGENTFORGE_SQL_EVAL_RESULTS_DIR') ?: getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
 $environmentLabel = getenv('AGENTFORGE_SQL_EVAL_ENVIRONMENT') ?: 'local';

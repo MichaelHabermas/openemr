@@ -125,6 +125,47 @@ services:
       interval: 1m
       timeout: 5s
       retries: 3
+  agentforge-worker:
+    restart: always
+    image: openemr/openemr:flex@sha256:e4562b0c7d3f222ec8f72122ce00d10ffa93f559c38c00ab12c1355394c35d1c
+    working_dir: /var/www/localhost/htdocs/openemr
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+    - >
+      php agent-forge/scripts/process-document-jobs.php
+      --worker=${AGENTFORGE_WORKER_NAME:-intake-extractor}
+      --max-iterations=${AGENTFORGE_WORKER_MAX_ITERATIONS:-0}
+      --idle-sleep-seconds=${AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS:-5} &
+      worker_pid=$$!;
+      trap 'php agent-forge/scripts/process-document-jobs.php
+      --worker=${AGENTFORGE_WORKER_NAME:-intake-extractor}
+      --mark-stopped --process-id=$$worker_pid;
+      kill -TERM "$$worker_pid" 2>/dev/null;
+      wait "$$worker_pid" 2>/dev/null;
+      exit 0' TERM INT;
+      wait "$$worker_pid"
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    volumes:
+    - ${OPENEMR_DIR:-../..}:/var/www/localhost/htdocs/openemr:rw
+    - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
+    - vendordir:/var/www/localhost/htdocs/openemr/vendor:rw
+    - logvolume:/var/log
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_ROOT_PASS: root
+      MYSQL_USER: openemr
+      MYSQL_PASS: openemr
+      OPENEMR_DOCKER_ENV_TAG: easy-dev-docker
+      AGENTFORGE_WORKER_NAME: "${AGENTFORGE_WORKER_NAME:-intake-extractor}"
+      AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS: "${AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS:-5}"
+      AGENTFORGE_WORKER_MAX_ITERATIONS: "${AGENTFORGE_WORKER_MAX_ITERATIONS:-0}"
+      AGENTFORGE_PATIENT_REF_SALT: "${AGENTFORGE_PATIENT_REF_SALT:-}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      openemr:
+        condition: service_healthy
   selenium:
     restart: always
     image: selenium/standalone-chromium:147.0.7727.55@sha256:e80834f17556d310d92f114c38df84a4c09bfa9564d428c770ea122346c0932c

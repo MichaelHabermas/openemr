@@ -13,52 +13,31 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document;
 
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
-use OpenEMR\BC\ServiceContainer;
-use RuntimeException;
 
 final class DocumentUploadEnqueuerHook
 {
-    /**
-     * @param mixed $patientId
-     * @param mixed $categoryId
-     * @param mixed $result
-     * @param null|callable(): mixed $enqueuerResolver
-     */
-    public static function dispatch(
-        mixed $patientId,
-        mixed $categoryId,
-        mixed $result,
-        ?callable $enqueuerResolver = null,
-    ): void {
-        try {
-            if (!is_array($result) || !array_key_exists('doc_id', $result)) {
-                return;
-            }
+    public static function dispatch(mixed $patientId, mixed $categoryId, mixed $result): void
+    {
+        DocumentProceduralHookGuard::runThenLogFailures(
+            'clinical_document.job.hook_failed',
+            static function () use ($patientId, $categoryId, $result): void {
+                if (!is_array($result) || !isset($result['doc_id'])) {
+                    return;
+                }
 
-            $documentId = filter_var($result['doc_id'], FILTER_VALIDATE_INT);
-            $patientId = filter_var($patientId, FILTER_VALIDATE_INT);
-            $categoryId = filter_var($categoryId, FILTER_VALIDATE_INT);
-            if ($documentId === false || $patientId === false || $categoryId === false) {
-                return;
-            }
+                $documentId = StrictPositiveInt::tryParse($result['doc_id']);
+                $patientIdParsed = StrictPositiveInt::tryParse($patientId);
+                $categoryIdParsed = StrictPositiveInt::tryParse($categoryId);
+                if ($documentId === null || $patientIdParsed === null || $categoryIdParsed === null) {
+                    return;
+                }
 
-            $resolver = $enqueuerResolver ?? DocumentUploadEnqueuerFactory::createDefault(...);
-            $enqueuer = $resolver();
-            if (!$enqueuer instanceof DocumentUploadEnqueuer) {
-                throw new RuntimeException('Document upload enqueuer resolver returned an invalid service.');
-            }
-
-            $enqueuer->enqueueIfEligible(
-                new PatientId((int) $patientId),
-                new DocumentId((int) $documentId),
-                new CategoryId((int) $categoryId),
-            );
-        } catch (\Throwable $e) {
-            ServiceContainer::getLogger()->error(
-                'clinical_document.job.hook_failed',
-                SensitiveLogPolicy::sanitizeContext(['error_code' => $e::class]),
-            );
-        }
+                DocumentHookServiceBinding::uploadEnqueuer()->enqueueIfEligible(
+                    new PatientId($patientIdParsed),
+                    new DocumentId($documentId),
+                    new CategoryId($categoryIdParsed),
+                );
+            },
+        );
     }
 }

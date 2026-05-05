@@ -17,6 +17,7 @@ use DomainException;
 use InvalidArgumentException;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
@@ -48,10 +49,12 @@ final readonly class SqlDocumentTypeMappingRepository implements DocumentTypeMap
         try {
             return $this->hydrate($records[0]);
         } catch (DomainException | InvalidArgumentException $e) {
-            $this->logger->warning('clinical_document.mapping.invalid', [
-                'category_id' => $categoryId->value,
-                'error_code' => $e::class,
-            ]);
+            $this->logger->warning(
+                'clinical_document.mapping.invalid',
+                SensitiveLogPolicy::throwableErrorContext($e, [
+                    'category_id' => $categoryId->value,
+                ]),
+            );
 
             return null;
         }

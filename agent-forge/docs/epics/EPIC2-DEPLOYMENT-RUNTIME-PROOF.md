@@ -144,6 +144,23 @@ export AGENTFORGE_DRAFT_PROVIDER="openai"
 
 - **`health-check.sh`** requires the public app URL to return 2xx/3xx. The readiness URL is **optional** in the sense that **HTTP 404** is treated as a warning success; other non-success codes still fail the script.
 - **`deploy-vm.sh`** waits in a loop until the public app is healthy, then calls the readiness URL once with `|| true`, so **deploy does not fail** if readiness is temporarily down or returns a non-2xx code after the app is already up.
+- **Shared implementation:** both scripts source `agent-forge/scripts/lib/deploy-common.sh` so curl timeouts and HTTP success rules stay aligned.
+
+### Automation parity (EPIC2 operator ritual vs CI Tier 4)
+
+EPIC2 is an **operator checklist** (deploy transcript, rollback transcript, health-check, seed/verify). Tier 4 (`agent-forge/scripts/run-deployed-smoke.php` via `.github/workflows/agentforge-deployed-smoke.yml`) is **scheduled / manual dispatch** and exercises the full browser-like HTTP path (session, CSRF, `agent_request.php`, optional SSH audit-log grep). They are complementary, not duplicates.
+
+| Proof surface | EPIC2 / VM scripts | Automated (CI) |
+| --- | --- | --- |
+| Public URL returns 2xx/3xx | `health-check.sh`, deploy/rollback wait loops | Tier 4 HTTP checks against `AGENTFORGE_DEPLOYED_URL` |
+| Readiness URL | Same scripts (optional / non-blocking on deploy) | Not required for Tier 4 smoke |
+| Code + compose recycle | `deploy-vm.sh`, `rollback-vm.sh` | Not run on PRs |
+| Demo SQL contract | `seed-demo-data.sh` + `verify-demo-data.sh` | Tier 1: `seed-demo-data.sql` + `verify-demo-data.sh` with `AGENTFORGE_VERIFY_TRANSPORT=direct` before SQL evidence evals |
+| Tier 0 fixture evals | Local / optional | `agentforge-evals.yml` job `tier0-fixtures` |
+| Live LLM (Tier 2) | Documented env + `run-tier2-evals.php` | `agentforge-tier2.yml` (not PR-blocking) |
+| Cross-patient / audit correlation | Manual checklist items | Tier 4 scenarios + optional `AGENTFORGE_VM_SSH_HOST` |
+
+**Intentional drift:** PR merges can be green on Tier 0/1 + global isolated tests while Tier 4 or `agent-forge/scripts/check-agentforge.sh` has not run. Treat Tier 4 and the comprehensive local gate as **release** or **demo** proofs, not as substitutes for each other.
 
 ---
 

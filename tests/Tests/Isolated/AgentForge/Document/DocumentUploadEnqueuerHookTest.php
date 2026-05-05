@@ -14,49 +14,61 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
 require_once __DIR__ . '/DocumentUploadEnqueuerTest.php';
 
-use InvalidArgumentException;
+use LogicException;
+use OpenEMR\AgentForge\Document\CategoryId;
+use OpenEMR\AgentForge\Document\DocumentHookServiceBinding;
 use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\DocumentTypeMapping;
+use OpenEMR\AgentForge\Document\DocumentTypeMappingRepository;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuer;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\BC\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 use TypeError;
 
 final class DocumentUploadEnqueuerHookTest extends TestCase
 {
     protected function tearDown(): void
     {
+        DocumentHookServiceBinding::resetForTesting();
         ServiceContainer::reset();
     }
 
-    public function testNonArrayResultReturnsWithoutResolvingEnqueuer(): void
+    public function testNonArrayResultReturnsWithoutCallingEnqueuer(): void
     {
-        $called = false;
+        $jobs = new InMemoryDocumentJobRepository();
+        $enqueuer = new DocumentUploadEnqueuer(
+            InMemoryDocumentTypeMappingRepository::withMapping(7, DocumentType::LabPdf, true),
+            $jobs,
+            new DocumentRecordingLogger(),
+            new PatientRefHasher('test-salt'),
+        );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, false, function () use (&$called): DocumentUploadEnqueuer {
-            $called = true;
-            throw new RuntimeException('should not resolve');
-        });
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, false);
 
-        $this->assertFalse($called);
+        $this->assertSame([], $jobs->jobs);
     }
 
-    public function testMissingDocIdReturnsWithoutResolvingEnqueuer(): void
+    public function testMissingDocIdReturnsWithoutCallingEnqueuer(): void
     {
-        $called = false;
+        $jobs = new InMemoryDocumentJobRepository();
+        $enqueuer = new DocumentUploadEnqueuer(
+            InMemoryDocumentTypeMappingRepository::withMapping(7, DocumentType::LabPdf, true),
+            $jobs,
+            new DocumentRecordingLogger(),
+            new PatientRefHasher('test-salt'),
+        );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['name' => 'lab.pdf'], function () use (&$called): DocumentUploadEnqueuer {
-            $called = true;
-            throw new RuntimeException('should not resolve');
-        });
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['name' => 'lab.pdf']);
 
-        $this->assertFalse($called);
+        $this->assertSame([], $jobs->jobs);
     }
 
-    public function testValidResultDispatchesValueObjectsToResolvedEnqueuer(): void
+    public function testValidResultDispatchesValueObjectsToEnqueuer(): void
     {
         $jobs = new InMemoryDocumentJobRepository();
         $logger = new DocumentRecordingLogger();
@@ -66,15 +78,16 @@ final class DocumentUploadEnqueuerHookTest extends TestCase
             $logger,
             new PatientRefHasher('test-salt'),
         );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static fn (): DocumentUploadEnqueuer => $enqueuer);
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123]);
 
         $this->assertCount(1, $jobs->jobs);
         $this->assertSame(900001, $jobs->jobs[0]->patientId->value);
         $this->assertSame(123, $jobs->jobs[0]->documentId->value);
     }
 
-    public function testInvalidIdsAreCaughtBeforeDispatch(): void
+    public function testInvalidIdsReturnBeforeEnqueue(): void
     {
         $jobs = new InMemoryDocumentJobRepository();
         $enqueuer = new DocumentUploadEnqueuer(
@@ -83,29 +96,47 @@ final class DocumentUploadEnqueuerHookTest extends TestCase
             new DocumentRecordingLogger(),
             new PatientRefHasher('test-salt'),
         );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
 
-        DocumentUploadEnqueuerHook::dispatch(0, 7, ['doc_id' => 123], static fn (): DocumentUploadEnqueuer => $enqueuer);
+        DocumentUploadEnqueuerHook::dispatch(0, 7, ['doc_id' => 123]);
 
         $this->assertSame([], $jobs->jobs);
     }
 
-    public function testResolverExceptionIsCaught(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
-            throw new RuntimeException('factory unavailable');
-        });
-    }
-
-    public function testResolverThrowableIsCaughtAndSanitized(): void
+    public function testErrorEscapingEnqueuerIsCaughtAndLoggedByHook(): void
     {
         $logger = new DocumentRecordingLogger();
+        $enqueuer = new DocumentUploadEnqueuer(
+            new ErrorThrowingDocumentTypeMappingRepository(),
+            new InMemoryDocumentJobRepository(),
+            $logger,
+            new PatientRefHasher('test-salt'),
+        );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
         ServiceContainer::override(LoggerInterface::class, $logger);
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
-            throw new TypeError('typed wiring failed');
-        });
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123]);
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame('clinical_document.job.hook_failed', $logger->records[0]['message']);
+        $this->assertSame(\Error::class, $logger->records[0]['context']['error_code']);
+        $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
+    }
+
+    public function testEnqueuerTypeErrorIsCaughtAndSanitized(): void
+    {
+        $logger = new DocumentRecordingLogger();
+        $enqueuer = new DocumentUploadEnqueuer(
+            new TypeErrorThrowingDocumentTypeMappingRepository(),
+            new InMemoryDocumentJobRepository(),
+            $logger,
+            new PatientRefHasher('test-salt'),
+        );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
+        ServiceContainer::override(LoggerInterface::class, $logger);
+
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123]);
 
         $this->assertCount(1, $logger->records);
         $this->assertSame('error', $logger->records[0]['level']);
@@ -114,19 +145,48 @@ final class DocumentUploadEnqueuerHookTest extends TestCase
         $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
     }
 
-    public function testResolverValidationExceptionIsCaught(): void
+    public function testExceptionNotAbsorbedByEnqueuerIsCaughtAndLogged(): void
     {
-        $this->expectNotToPerformAssertions();
+        $logger = new DocumentRecordingLogger();
+        $enqueuer = new DocumentUploadEnqueuer(
+            new LogicExceptionMappingRepository(),
+            new InMemoryDocumentJobRepository(),
+            $logger,
+            new PatientRefHasher('test-salt'),
+        );
+        DocumentHookServiceBinding::setUploadEnqueuerForTesting($enqueuer);
+        ServiceContainer::override(LoggerInterface::class, $logger);
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
-            throw new InvalidArgumentException('factory returned invalid wiring');
-        });
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123]);
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame('clinical_document.job.hook_failed', $logger->records[0]['message']);
+        $this->assertSame(LogicException::class, $logger->records[0]['context']['error_code']);
+        $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
     }
+}
 
-    public function testResolverReturningInvalidServiceIsCaught(): void
+final class LogicExceptionMappingRepository implements DocumentTypeMappingRepository
+{
+    public function findActiveByCategoryId(CategoryId $categoryId): ?DocumentTypeMapping
     {
-        $this->expectNotToPerformAssertions();
+        throw new LogicException('mapping invariant violated');
+    }
+}
 
-        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static fn (): object => new \stdClass());
+final class ErrorThrowingDocumentTypeMappingRepository implements DocumentTypeMappingRepository
+{
+    public function findActiveByCategoryId(CategoryId $categoryId): ?DocumentTypeMapping
+    {
+        throw new \Error('mapping fatal');
+    }
+}
+
+final class TypeErrorThrowingDocumentTypeMappingRepository implements DocumentTypeMappingRepository
+{
+    public function findActiveByCategoryId(CategoryId $categoryId): ?DocumentTypeMapping
+    {
+        throw new TypeError('typed wiring failed');
     }
 }

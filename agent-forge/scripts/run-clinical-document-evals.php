@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Cli\RunClinicalDocumentEvalsCommand;
 
-exit((new RunClinicalDocumentEvalsCommand())->run(dirname(__DIR__, 2)));
+exit((new RunClinicalDocumentEvalsCommand())->run(AgentForgeRepoPaths::fromScriptsDirectory(__DIR__)));

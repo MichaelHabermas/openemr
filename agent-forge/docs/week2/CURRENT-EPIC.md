@@ -1,1106 +1,787 @@
-# Epic M2 — Schema Migration, Upload Eligibility, And Job Enqueue
+# Epic M3 - Automatic PHP Worker Skeleton
 
-## Context
+> **Status:** Implemented with automated proof and local Docker/manual proof; VM proof remains separate
+> **Source spec:** `agent-forge/docs/week2/PLAN-W2.md` (M3 entry, lines 175-220)
+> **Architecture refs:** `W2_ARCHITECTURE.md` (Sections 5, 6, 14, 16)
+> **Constraint:** Tests-first per PLAN-W2 work order. No production code lands before its test.
 
-Epic M1 closed: failing eval rubric scaffolding, the
-`run-clinical-document-evals.php` runner, and `check-clinical-document.sh`
-are committed. M2 is the first epic that adds runtime behavior to the
-existing OpenEMR upload path.
+---
 
-The goal of M2 is narrow and load-bearing: when a user uploads a document
-through normal OpenEMR UI to a category mapped to a Week 2 doc type
-(`lab_pdf` or `intake_form`), AgentForge must record a `pending`
-extraction job in a new table. M2 stops there — no extraction, no worker,
-no schemas (those are M3, M4). M2 only makes the eligibility decision and
-the enqueue idempotent and observable.
+## 1. Context
 
-The core engineering risk is: the change touches `library/ajax/upload.php`,
-which is on the user's upload critical path. A bug here can break uploads.
-The mitigation is to wrap the hook in a `try/catch \Throwable` so that
-even if the AgentForge schema is missing, an exception escapes the SQL
-layer, or the enqueuer misbehaves, the OpenEMR upload still succeeds
-exactly as before.
+M2 (just-completed) wired the **enqueue path**: when a clinical document is uploaded into a mapped category, an `INSERT IGNORE` row lands in `clinical_document_processing_jobs` with `status='pending'`; when a document is retracted, all of its jobs flip to `status='retracted'`. M2 deliberately stopped at the row insert. **No process consumes the queue today.** Pending jobs accumulate forever and the queue is invisible to the rest of the application.
 
-## Goals And Non-Goals
+M3 introduces the **first consumer**: an out-of-band PHP CLI process that atomically claims pending jobs and runs them through a strategy-driven processor pipeline. M3 ships the *skeleton only* - the lifecycle, claim mechanics, heartbeating, observability, and Docker wiring. It deliberately does **not** ship a real extractor. The processor strategy slotted in for M3 is a no-op that marks every claimed job as `failed` with `error_code='extraction_not_implemented'`. Real OCR/LLM extraction is M4's responsibility, plugging into the M3 strategy seam.
 
-In scope:
+Three carry-forward rules from `agent-forge/docs/MEMORY.md` constrain this design:
 
-- New tables `clinical_document_type_mappings` and `clinical_document_processing_jobs`.
-- `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php` updates.
-- Seed entry in `agent-forge/sql/seed-demo-data.sql` for the existing OpenEMR
-  `Lab Report` category -> `lab_pdf` mapping. `intake_form` remains supported
-  in code but unseeded until a real intake workflow category is selected.
-- New PHP module `src/AgentForge/Document/` containing:
-  - Value objects: `DocumentType` (enum), `JobStatus` (enum), `DocumentId`,
-    `CategoryId`, `DocumentJobId`.
-  - DTOs: `DocumentTypeMapping`, `DocumentJob`.
-  - Repository interfaces and SQL implementations:
-    `DocumentTypeMappingRepository` / `SqlDocumentTypeMappingRepository`,
-    `DocumentJobRepository` / `SqlDocumentJobRepository`.
-  - Service: `DocumentUploadEnqueuer`.
-  - Wiring helper: `DocumentUploadEnqueuerFactory` (static `createDefault()`).
-- Hook once in `C_Document::upload_action_process()` after
-  `Document::createDocument(...)` succeeds. `addNewDocument(...)` and AJAX
-  wrappers use that shared controller boundary and must not dispatch a second
-  time.
-- `SensitiveLogPolicy::ALLOWED_KEYS` extended for the new W2 telemetry fields.
-- Isolated tests under `tests/Tests/Isolated/AgentForge/Document/` written
-  before production code.
+1. **Upload safety contract** - the M3 worker runs in a separate process. A worker crash, hang, or OOM must never prevent a document upload from succeeding. M2's enqueue hook already swallows its own failures; M3 honors the contract by running out-of-process.
+2. **No raw PHI in logs** - every log emission goes through `SensitiveLogPolicy::sanitizeContext()`. Document text, extracted fields, raw quotes, and patient names never leave the worker. Patients are referenced via HMAC-hashed `patient_ref`.
+3. **`retracted` is terminal** - the worker's atomic claim must filter out retracted rows. A retraction that races a claim must lose to the retraction (the worker re-checks status after claim and abandons retracted jobs without processing).
 
-Out of scope (later epics):
+---
 
-- The worker process itself, `agentforge_worker_heartbeats`, and
-  `process-document-jobs.php` (M3).
-- Extraction tool, providers, schemas, citations (M4).
-- Fact persistence, lab promotion, embeddings, document search (M5).
-- Guideline corpus and retrieval (M6).
-- Supervisor and final-answer separation (M7).
+## 2. Goals / Non-Goals
 
-## Critical Files
+### Goals
 
-Modify:
+- Stand up a long-running PHP CLI worker that claims and runs document jobs, isolated from the web request path.
+- Atomic single-row claim with re-entry safety - two workers can run concurrently without double-processing the same row.
+- Strategy-pattern seam (`DocumentJobProcessor` interface) so M4 can plug real extraction in without touching the worker loop.
+- Heartbeat persistence so M4's supervisor and operators can see "is this worker alive, what's it doing, when did it last beat?"
+- One-shot mode (`--max-iterations=N`) for deterministic isolated tests; daemon mode for production.
+- Graceful shutdown on SIGTERM - finish the current job, mark heartbeat stopped, exit clean.
+- Docker compose service `agentforge-worker` that runs the CLI under the same image and code mount as the OpenEMR app.
+- Observability: structured PSR-3 logs with sanitized context, including job lifecycle events and heartbeat ticks.
 
-- `controllers/C_Document.class.php` — dispatch the safe enqueue hook after
-  `Document::createDocument(...)` succeeds, guarded with `try/catch \Throwable`
-  at the hook boundary.
-- `sql/database.sql` — append two CREATE TABLE statements at the AgentForge area
-  (or at end with a section header).
-- `sql/8_1_0-to-8_1_1_upgrade.sql` — append idempotent migration directives
-  (`#IfNotTable`, `#IfMissingColumn`, `#IfNotRow`).
-- `version.php` — bump `$v_database` from `538` to `539`.
-- `agent-forge/sql/seed-demo-data.sql` — idempotent seed for the existing
-  `Lab Report -> lab_pdf` mapping only.
-- `src/AgentForge/Observability/SensitiveLogPolicy.php` — add
-  `patient_ref`, `document_id`, `doc_type`, `category_id`, `job_id`, `worker`,
-  `attempts`, `error_code` to `ALLOWED_KEYS`. Confirm forbidden keys still
-  block raw quote/value, prompts, answers.
+### Non-Goals
 
-Add:
+- **Any real document extraction** - the M3 processor is a no-op stub. (M4)
+- **Supervisor process** that spawns/restarts workers or reaps stale locks. (M4)
+- **Vector indexing** of extracted document content. (M4/M5)
+- **Multi-worker-type routing** - M3 ships only the `intake-extractor` worker name. M4 adds `supervisor` and `evidence-retriever`.
+- **Stale-lock recovery** - if a worker dies holding a lock, the row stays in `running` status. M4 reaper handles this.
+- **Retry policy** beyond incrementing the existing `attempts` column on claim - no exponential backoff, no dead-letter queue.
+- **Cross-host coordination** - lock_token disambiguates two processes on the same DB; multi-host scaling not in scope.
+- **UI surfacing** of worker state. Operators read logs and the heartbeat table.
 
-- `src/AgentForge/Document/DocumentType.php` (backed enum).
-- `src/AgentForge/Document/JobStatus.php` (backed enum).
-- `src/AgentForge/Document/DocumentId.php` (readonly value object).
-- `src/AgentForge/Document/CategoryId.php` (readonly value object).
-- `src/AgentForge/Document/DocumentJobId.php` (readonly value object).
-- `src/AgentForge/Document/DocumentTypeMapping.php` (readonly DTO).
-- `src/AgentForge/Document/DocumentJob.php` (readonly DTO).
-- `src/AgentForge/Document/DocumentTypeMappingRepository.php` (interface).
-- `src/AgentForge/Document/SqlDocumentTypeMappingRepository.php`.
-- `src/AgentForge/Document/DocumentJobRepository.php` (interface).
-- `src/AgentForge/Document/SqlDocumentJobRepository.php`.
-- `src/AgentForge/Document/DocumentUploadEnqueuer.php`.
-- `src/AgentForge/Document/DocumentUploadEnqueuerFactory.php` (static
-  `createDefault()`).
-- Test files under `tests/Tests/Isolated/AgentForge/Document/` (see Tests).
+---
 
-Reused (do NOT duplicate):
+## 3. Critical Files
 
-- `src/AgentForge/Auth/PatientId.php` — existing readonly `int > 0` value object.
-- `src/AgentForge/Observability/SensitiveLogPolicy.php` — existing allowlist
-  mechanism.
-- `src/AgentForge/Observability/PsrRequestLogger.php` (or current PSR-3 wrapper)
-  — existing sanitized logger.
-- OpenEMR DBAL/ADODB connection accessor used by other `Sql*Repository` classes
-  (e.g., the same accessor used in `src/AgentForge/Evidence/SqlChartEvidenceRepository.php`)
-  — match its style for consistency.
+### Add (production)
 
-## Schema
+| Path | Purpose |
+|------|---------|
+| `agent-forge/scripts/process-document-jobs.php` | CLI entry point; parses flags, wires factory, runs worker loop, handles signals |
+| `src/AgentForge/Document/Worker/DocumentJobWorker.php` | Orchestration: claim -> load -> process -> finalize -> heartbeat loop |
+| `src/AgentForge/Document/Worker/DocumentJobWorkerFactory.php` | Default wiring (mirrors `DocumentUploadEnqueuerFactory`) |
+| `src/AgentForge/Document/Worker/JobClaimer.php` | Interface: `claimNext(WorkerName, LockToken): ?DocumentJob` and `releaseStaleClaim(LockToken): void` |
+| `src/AgentForge/Document/Worker/SqlJobClaimer.php` | Portable atomic `UPDATE ... WHERE status='pending' AND retracted_at IS NULL ORDER BY created_at ASC LIMIT 1`, followed by `SELECT ... WHERE lock_token=?` |
+| `src/AgentForge/Document/Worker/DocumentJobProcessor.php` | Interface: `process(DocumentJob, DocumentLoadResult): ProcessingResult` |
+| `src/AgentForge/Document/Worker/NoopDocumentJobProcessor.php` | M3 stub - returns `ProcessingResult::failed('extraction_not_implemented', '...')` for every job |
+| `src/AgentForge/Document/Worker/ProcessingResult.php` | Readonly DTO: `succeeded()` / `failed(errorCode, errorMessage)` constructors |
+| `src/AgentForge/Document/Worker/OpenEmrDocumentLoader.php` | Adapter wrapping legacy `Document` class - exposes `load(DocumentId): DocumentLoadResult` and rejects deleted/expired |
+| `src/AgentForge/Document/Worker/DocumentLoader.php` | Interface: `load(DocumentId): DocumentLoadResult` (allows in-memory test stub) |
+| `src/AgentForge/Document/Worker/DocumentLoadResult.php` | Readonly DTO: `bytes` (string), `mimeType` (string), `name` (string), `byteCount` (int) |
+| `src/AgentForge/Document/Worker/DocumentLoadException.php` | Domain exception for missing / deleted / expired / unreadable documents - carries `errorCode` |
+| `src/AgentForge/Document/Worker/WorkerHeartbeat.php` | Readonly DTO: workerName, processId, status, iterationCount, jobsProcessed, jobsFailed, lastHeartbeatAt |
+| `src/AgentForge/Document/Worker/WorkerHeartbeatRepository.php` | Interface: `upsert(WorkerHeartbeat): void`, `findByWorker(WorkerName): ?WorkerHeartbeat` |
+| `src/AgentForge/Document/Worker/SqlWorkerHeartbeatRepository.php` | MariaDB upsert against `clinical_document_worker_heartbeats` |
+| `src/AgentForge/Document/Worker/WorkerName.php` | Backed string enum: `Supervisor`, `IntakeExtractor`, `EvidenceRetriever` + `fromStringOrThrow()` |
+| `src/AgentForge/Document/Worker/WorkerStatus.php` | Backed string enum: `Starting`, `Running`, `Idle`, `Stopping`, `Stopped` + `fromStringOrThrow()` |
+| `src/AgentForge/Document/Worker/LockToken.php` | Readonly value object - 64-char hex string from `random_bytes(32)`; `LockToken::generate()` factory |
+| `src/AgentForge/Document/Worker/DocumentJobWorkerRepository.php` | Worker-facing repository seam for `markFinished(DocumentJobId, LockToken, JobStatus, errorCode, errorMessage): int` and `findClaimedByLockToken(LockToken): ?DocumentJob` |
+| `sql/clinical_document_worker_heartbeats.sql.append` *(conceptual)* | New table DDL added inline to `sql/database.sql` |
 
-### `clinical_document_type_mappings`
+### Add (tests, written first)
+
+| Path | What it covers |
+|------|---------------|
+| `tests/Tests/Isolated/AgentForge/Document/Worker/DocumentJobWorkerTest.php` | Loop orchestration: claim -> load -> process -> finalize ordering; idle path; SIGTERM-style shutdown via `--max-iterations=0`; sanitized log assertions |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/SqlJobClaimerTest.php` | SQL/binds for atomic claim + post-claim re-fetch; verifies retracted-row filter; uses `DocumentRepositoryExecutor` test stub |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/NoopDocumentJobProcessorTest.php` | Returns `ProcessingResult::failed('extraction_not_implemented', ...)` for every input |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/OpenEmrDocumentLoaderTest.php` | Behavior contract via injected `Document` factory closure: deleted -> `DocumentLoadException('source_document_deleted')`; expired -> `DocumentLoadException('source_document_expired')`; unreadable -> `DocumentLoadException('source_document_unreadable')`; happy path returns bytes + mimeType + name |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/SqlWorkerHeartbeatRepositoryTest.php` | Upsert SQL/binds; find by worker SQL; hydration of returned row |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/DocumentWorkerValueObjectTest.php` | Worker DTO/value-object invariants and parser behavior |
+| `tests/Tests/Isolated/AgentForge/Document/Worker/ProcessDocumentJobsScriptShapeTest.php` | CLI script shape and Docker Compose service shape |
+| `tests/Tests/Isolated/AgentForge/Document/SqlDocumentRepositoriesTest.php` *(extended from M2)* | Worker repository `markFinished()` and `findClaimedByLockToken()` SQL/binds and behavior |
+
+### Modify
+
+| Path | Change |
+|------|--------|
+| `src/AgentForge/Document/DocumentJobRepository.php` | Remains the M2 enqueue/retract/read boundary |
+| `src/AgentForge/Document/SqlDocumentJobRepository.php` | Implements both `DocumentJobRepository` and the worker-facing `DocumentJobWorkerRepository` |
+| `src/AgentForge/Observability/SensitiveLogPolicy.php` | Extend `ALLOWED_KEYS` with worker-specific keys (see Section 6) |
+| `docker/development-easy/docker-compose.yml` | Add `agentforge-worker` service (see Section 8) |
+| `sql/database.sql` | Add `clinical_document_worker_heartbeats` DDL (see Section 4) |
+| `version.php` | `$v_database = 539` -> `540` |
+| `agent-forge/docs/MEMORY.md` | After M3 lands, append carry-forward notes (stale-lock reaper deferred to M4, NoopDocumentJobProcessor must be replaced in M4, worker must remain out-of-process to honor upload safety) |
+| `agent-forge/docs/week2/PLAN-W2.md` | Move M3 status from "Not started" -> "In progress" -> "Complete" as work proceeds |
+
+### Reused (no change)
+
+- `src/AgentForge/Database/DefaultDatabaseExecutor.php` - all SQL goes through `DatabaseExecutor` exactly like M2
+- `src/AgentForge/Document/{DocumentJob, DocumentJobId, DocumentId, PatientId, JobStatus, DocumentType, DocumentRetractionReason}.php` - DTO and value objects already shaped for the worker
+- `src/AgentForge/Observability/PsrRequestLogger.php` and `SensitiveLogPolicy.php` - logging path
+- `src/AgentForge/Observability/PatientRefHasher.php` - patient_ref hashing
+- `src/AgentForge/ServiceContainer.php` - logger resolution
+- `library/classes/Document.class.php` - legacy `Document` class wrapped (read-only) by `OpenEmrDocumentLoader`. Calls `new Document($id)`, then `is_deleted()`, `has_expired()`, `get_data()`, `get_mimetype()`, `get_name()`. `get_data()` handles transparent decryption via `CryptoGen` - the worker never touches encryption directly.
+
+---
+
+## 4. Schema
+
+### New table
 
 ```sql
-CREATE TABLE `clinical_document_type_mappings` (
-  `id`          INT          NOT NULL AUTO_INCREMENT,
-  `category_id` INT          NOT NULL,
-  `doc_type`    VARCHAR(32)  NOT NULL,
-  `active`      TINYINT(1)   NOT NULL DEFAULT 1,
-  `created_at`  DATETIME     NOT NULL,
+CREATE TABLE `clinical_document_worker_heartbeats` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `worker` varchar(64) NOT NULL,
+  `process_id` int(11) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `iteration_count` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_processed` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_failed` bigint(20) NOT NULL DEFAULT 0,
+  `started_at` datetime NOT NULL,
+  `last_heartbeat_at` datetime NOT NULL,
+  `stopped_at` datetime NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`),
-  KEY `idx_clinical_document_type_active` (`active`, `category_id`)
+  UNIQUE KEY `uniq_clinical_document_worker_heartbeats_worker` (`worker`),
+  KEY `idx_clinical_document_worker_heartbeats_status` (`status`)
 ) ENGINE=InnoDB;
 ```
 
-Notes:
+`UNIQUE KEY` on `worker` enforces one row per worker name and powers the upsert. `process_id` updates on restart so operators can correlate logs to PIDs. `started_at` only updates on first insert; `last_heartbeat_at` updates every loop tick.
 
-- `doc_type` is constrained at the application layer to the `DocumentType`
-  enum cases — no DB-side ENUM so adding doc types in later epics doesn't
-  require a migration.
-- `category_id` is unique so a category maps to exactly one clinical document
-  type in M2. Allowing two active doc types for one OpenEMR category would make
-  enqueue behavior depend on insertion order, which is not acceptable for a
-  clinical workflow switch.
+### `clinical_document_processing_jobs` (no schema change)
 
-### `clinical_document_processing_jobs`
+The M2 table already carries `lock_token`, `attempts`, `started_at`, `finished_at`, `error_code`, `error_message`. M3 adds usage of these columns but no new columns.
 
-```sql
-CREATE TABLE `clinical_document_processing_jobs` (
-  `id`            BIGINT       NOT NULL AUTO_INCREMENT,
-  `patient_id`    INT          NOT NULL,
-  `document_id`   INT          NOT NULL,
-  `doc_type`      VARCHAR(32)  NOT NULL,
-  `status`        VARCHAR(16)  NOT NULL DEFAULT 'pending',
-  `attempts`      INT          NOT NULL DEFAULT 0,
-  `lock_token`    VARCHAR(64)      NULL,
-  `created_at`    DATETIME     NOT NULL,
-  `started_at`    DATETIME         NULL,
-  `finished_at`   DATETIME         NULL,
-  `error_code`    VARCHAR(64)      NULL,
-  `error_message` TEXT             NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_clinical_document_processing_job` (`patient_id`, `document_id`, `doc_type`),
-  KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
-) ENGINE=InnoDB;
+### Version bump
+
+`version.php`: `$v_database = 539` -> `540`. M2 left this at 539; M3 increments by 1.
+
+### Migration safety
+
+The new table is greenfield - no data migration. Idempotent creation via `CREATE TABLE IF NOT EXISTS` is preferred for the deploy script integration but final form follows the `sql/database.sql` convention used in M2.
+
+---
+
+## 5. Module Design
+
+### Component diagram (data flow)
+
+```
+process-document-jobs.php (CLI)
+        |
+        v
+DocumentJobWorkerFactory::createDefault(workerName, args)
+        |
+        v
++-----------------------+
+|  DocumentJobWorker    |
+|  - run(MaxIterations) |
++-----------------------+
+   |             |              |               |
+   v             v              v               v
+JobClaimer  DocumentLoader  DocumentJob-     WorkerHeartbeat-
+            (interface)     Processor        Repository
+   |             |          (interface)         |
+   v             v              v               v
+SqlJobClaimer  OpenEmrDoc-  Noop...           SqlWorkerHeart-
+               Loader       Processor         beatRepository
+   |             |              |               |
+   v             v              v               v
+DatabaseExec.  legacy        (M3 stub)       DatabaseExec.
+               Document
+               class
 ```
 
-Notes:
+### `DocumentJobWorker` lifecycle
 
-- `lock_token` is added now even though M3 will be the first user — adding
-  it here avoids a second migration in the same upgrade window.
-- Status values are the five named in PLAN-W2: `pending`, `running`,
-  `succeeded`, `failed`, `retracted`. Enforced at the application layer
-  (`JobStatus` enum), not via DB ENUM.
-- `attempts` defaults to 0; M3 increments on each claim.
-- ID column types match OpenEMR convention (`int(11)` for patient/document
-  ids; `BIGINT` for the job table because jobs can outgrow document/patient
-  cardinality over time).
+The worker runs an outer loop bounded by `--max-iterations` (default unbounded for daemon mode, finite for tests). Each iteration:
 
-### Migration directives (`sql/8_1_0-to-8_1_1_upgrade.sql`)
+1. **Heartbeat** with `WorkerStatus::Running` and current counters (upsert).
+2. **Claim**: call `JobClaimer::claimNext(workerName, LockToken::generate())`. Returns `?DocumentJob`.
+3. **No job claimed**: heartbeat with `WorkerStatus::Idle`, `sleep($idleSleepSeconds)`, increment `iterationCount`, continue.
+4. **Job claimed**:
+   - Re-check `$job->status === JobStatus::Running` and `$job->retractedAt === null` (the post-claim re-fetch is part of `claimNext`'s contract; this is a defensive double-check).
+   - **Load**: call `DocumentLoader::load($job->documentId)`. On `DocumentLoadException`, finalize job as `failed` with the exception's `errorCode` and a generic message, log `clinical_document.worker.job_failed`, increment `jobsFailed`, continue to next iteration.
+   - **Process**: call `DocumentJobProcessor::process($job, $loadResult)`. Returns `ProcessingResult`.
+   - **Finalize**: call `DocumentJobWorkerRepository::markFinished($job->id, $lockToken, terminal, errorCode, errorMessage)`. Terminal status is `Succeeded` or `Failed` per the `ProcessingResult`; zero affected rows means the worker lost ownership and must not count/log completion.
+   - Log `clinical_document.worker.job_completed` (succeeded) or `clinical_document.worker.job_failed` (failed) with sanitized context.
+   - Increment `jobsProcessed` (always) and `jobsFailed` (if failed).
+5. **End of iteration**: if `--max-iterations` reached, break and proceed to shutdown.
 
-Append at the end using OpenEMR's existing migration syntax:
+**Shutdown** (loop exit, or Docker shell trap invoking `--mark-stopped` because OpenEMR's PHP configuration disables `pcntl_signal*`):
+- Heartbeat with `WorkerStatus::Stopping`.
+- Finish current iteration's work (don't interrupt mid-job).
+- Heartbeat with `WorkerStatus::Stopped`, set `stopped_at` via repository semantics.
+- Log `clinical_document.worker.shutdown`.
+- Return exit code 0 from worker; CLI script propagates.
 
-```text
-#IfNotTable clinical_document_type_mappings
-CREATE TABLE `clinical_document_type_mappings` ( ... ) ENGINE=InnoDB;
-#EndIf
-
-#IfNotTable clinical_document_processing_jobs
-CREATE TABLE `clinical_document_processing_jobs` ( ... ) ENGINE=InnoDB;
-#EndIf
-```
-
-### `version.php` bump
-
-Change `$v_database` from `538` to `539`. No other version fields change.
-
-### Seed (`agent-forge/sql/seed-demo-data.sql`)
-
-Idempotent insert pattern for existing OpenEMR categories and their mappings.
-Sketch:
-
-```sql
-SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'Lab Report' LIMIT 1);
-
-INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
-SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
-WHERE NOT EXISTS (
-  SELECT 1 FROM clinical_document_type_mappings
-  WHERE category_id = @lab_pdf_cat_id AND doc_type = 'lab_pdf'
-);
-
--- intake_form is supported by code but intentionally not seeded until a real
--- OpenEMR intake workflow category is chosen.
-```
-
-Notes:
-
-- The pattern is idempotent: re-running the seed does not duplicate rows.
-- The seed must not create visible implementation-branded document categories.
-
-## Module Design (`src/AgentForge/Document/`)
-
-### Value objects (readonly, mirror existing PatientId pattern)
+### `JobClaimer` contract
 
 ```php
-final readonly class DocumentId
-{
-    public function __construct(public int $value)
-    {
-        if ($value <= 0) {
-            throw new \DomainException('DocumentId must be positive');
-        }
-    }
-}
-
-final readonly class CategoryId { /* same shape */ }
-final readonly class DocumentJobId { /* same shape */ }
-```
-
-### Enums (backed, persisted/serialized)
-
-```php
-enum DocumentType: string
-{
-    case LabPdf      = 'lab_pdf';
-    case IntakeForm  = 'intake_form';
-
-    public static function fromStringOrThrow(string $raw): self
-    {
-        return self::tryFrom($raw)
-            ?? throw new \DomainException("Unknown doc_type: {$raw}");
-    }
-}
-
-enum JobStatus: string
-{
-    case Pending   = 'pending';
-    case Running   = 'running';
-    case Succeeded = 'succeeded';
-    case Failed    = 'failed';
-    case Retracted = 'retracted';
-}
-```
-
-### DTOs (readonly)
-
-```php
-final readonly class DocumentTypeMapping
-{
-    public function __construct(
-        public ?int $id,
-        public CategoryId $categoryId,
-        public DocumentType $docType,
-        public bool $active,
-        public \DateTimeImmutable $createdAt,
-    ) {}
-}
-
-final readonly class DocumentJob
-{
-    public function __construct(
-        public ?DocumentJobId $id,
-        public PatientId $patientId,
-        public DocumentId $documentId,
-        public DocumentType $docType,
-        public JobStatus $status,
-        public int $attempts,
-        public ?string $lockToken,
-        public \DateTimeImmutable $createdAt,
-        public ?\DateTimeImmutable $startedAt,
-        public ?\DateTimeImmutable $finishedAt,
-        public ?string $errorCode,
-        public ?string $errorMessage,
-    ) {}
-}
-```
-
-### Repository interfaces
-
-```php
-interface DocumentTypeMappingRepository
-{
-    /** Returns the active mapping for this category, or null. */
-    public function findActiveByCategoryId(CategoryId $categoryId): ?DocumentTypeMapping;
-}
-
-interface DocumentJobRepository
+interface JobClaimer
 {
     /**
-     * Insert a `pending` job idempotently. If a job already exists for
-     * (patient_id, document_id, doc_type), returns the existing job id.
+     * Atomically claim one pending, non-retracted job and return it
+     * with status=running, lock_token set, attempts incremented.
+     * Returns null if no claimable rows exist.
      */
-    public function enqueue(
-        PatientId $patientId,
-        DocumentId $documentId,
-        DocumentType $docType,
-    ): DocumentJobId;
-
-    public function findById(DocumentJobId $id): ?DocumentJob;
-
-    public function findOneByUniqueKey(
-        PatientId $patientId,
-        DocumentId $documentId,
-        DocumentType $docType,
-    ): ?DocumentJob;
+    public function claimNext(WorkerName $workerName, LockToken $lockToken): ?DocumentJob;
 }
 ```
 
-### SQL implementations
+### `SqlJobClaimer` mechanics
 
-`SqlDocumentTypeMappingRepository`:
+**Portable M3 path:**
 
-- Queries `SELECT id, category_id, doc_type, active, created_at
-  FROM clinical_document_type_mappings
-  WHERE category_id = ? AND active = 1
-  LIMIT 1`.
-- Hydrates a `DocumentTypeMapping` (skipping unknown `doc_type` strings → log
-  and return null; the application enum is the source of truth).
+```sql
+-- Step 1: atomic claim
+UPDATE clinical_document_processing_jobs
+   SET status = 'running',
+       lock_token = ?,
+       started_at = NOW(),
+       attempts = attempts + 1
+ WHERE status = 'pending'
+   AND retracted_at IS NULL
+ ORDER BY created_at ASC
+ LIMIT 1
 
-`SqlDocumentJobRepository`:
+-- Step 2: re-fetch the row we just claimed
+SELECT id, patient_id, document_id, doc_type, status, attempts,
+       lock_token, created_at, started_at, finished_at,
+       error_code, error_message, retracted_at, retraction_reason
+  FROM clinical_document_processing_jobs
+ WHERE lock_token = ?
+   AND status = 'running'
+ LIMIT 1
+```
 
-- `enqueue(...)`:
-  - `INSERT INTO clinical_document_processing_jobs (...) VALUES (...)` with
-    `created_at = NOW()`, `status = 'pending'`, `attempts = 0`.
-  - On duplicate-key (the unique constraint), do a `SELECT id` for the
-    existing row and return its id. Two acceptable implementations:
-    1. `INSERT IGNORE` then `SELECT id`. Returns existing id either way.
-    2. `INSERT ... ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)` and
-       read `LAST_INSERT_ID()`.
-  - Choose option 1 for clarity unless option 2 simplifies an existing helper.
-- `findById(...)` and `findOneByUniqueKey(...)` are thin SELECTs.
+If `affectedRows()` from step 1 is 0, return null without running step 2. The two-step pattern avoids any ambiguity about which row was claimed when multiple workers run concurrently.
 
-### Enqueuer service
+This avoids `SKIP LOCKED` portability issues and is sufficient for M3's no-double-processing contract when paired with lock-token guarded finish.
+
+### `DocumentLoader` and `OpenEmrDocumentLoader`
+
+The legacy `Document` class is global (no namespace), constructed as `new Document($id)`, and auto-populates from the `documents` table. We wrap it behind an interface so unit tests don't need a database.
 
 ```php
-final class DocumentUploadEnqueuer
+interface DocumentLoader
 {
-    public function __construct(
-        private readonly DocumentTypeMappingRepository $mappings,
-        private readonly DocumentJobRepository $jobs,
-        private readonly LoggerInterface $logger,
-        private readonly PatientRefHasher $patientRefHasher,
-    ) {}
+    /** @throws DocumentLoadException */
+    public function load(DocumentId $documentId): DocumentLoadResult;
+}
+```
 
-    public function enqueueIfEligible(
-        PatientId $patientId,
-        DocumentId $documentId,
-        CategoryId $categoryId,
-    ): ?DocumentJobId {
-        try {
-            $mapping = $this->mappings->findActiveByCategoryId($categoryId);
-            if ($mapping === null) {
-                return null;
-            }
+`OpenEmrDocumentLoader` accepts an optional `Closure(int): \Document` factory in its constructor (default: `fn (int $id) => new \Document($id)`). The factory seam is the test injection point - tests pass a closure that returns a stub that implements the same five legacy method signatures.
 
-            $jobId = $this->jobs->enqueue($patientId, $documentId, $mapping->docType);
+`OpenEmrDocumentLoader::load()` flow:
 
-            $this->logger->info('clinical_document.job.enqueued', [
-                'patient_ref' => $this->patientRefHasher->hash($patientId),
-                'document_id' => $documentId->value,
-                'category_id' => $categoryId->value,
-                'doc_type'    => $mapping->docType->value,
-                'job_id'      => $jobId->value,
-            ]);
+```
+$doc = ($this->documentFactory)($documentId->value);
+if ($doc->get_id() === null) throw DocumentLoadException::missing();
+if ($doc->is_deleted())      throw DocumentLoadException::sourceDeleted();
+if ($doc->has_expired())     throw DocumentLoadException::expired();
+try {
+    $bytes = $doc->get_data();             // transparent decrypt via CryptoGen
+} catch (\Throwable $e) {
+    throw DocumentLoadException::unreadable();   // chain via ->getPrevious()
+}
+return new DocumentLoadResult(
+    bytes:     $bytes,
+    mimeType:  $doc->get_mimetype(),
+    name:      $doc->get_name(),
+    byteCount: strlen($bytes),
+);
+```
 
-            return $jobId;
-        } catch (\Throwable $e) {
-            $this->logger->error('clinical_document.job.enqueue_failed', [
-                'document_id' => $documentId->value,
-                'category_id' => $categoryId->value,
-                'error_code'  => $e::class,
-            ]);
-            return null;
+The exception's `errorCode` maps to job `error_code` values: `source_document_missing`, `source_document_deleted`, `source_document_expired`, `source_document_unreadable`. The original exception message never propagates to logs or the DB - only the stable error code does.
+
+### `DocumentJobProcessor` strategy seam
+
+```php
+interface DocumentJobProcessor
+{
+    public function process(DocumentJob $job, DocumentLoadResult $document): ProcessingResult;
+}
+```
+
+`NoopDocumentJobProcessor` implementation:
+
+```php
+public function process(DocumentJob $job, DocumentLoadResult $document): ProcessingResult
+{
+    return ProcessingResult::failed(
+        errorCode: 'extraction_not_implemented',
+        errorMessage: 'M3 worker skeleton; M4 will replace this processor.',
+    );
+}
+```
+
+This is the seam M4 plugs into. Replacing `NoopDocumentJobProcessor` with a real OCR/LLM extractor is M4's only required change to the worker module.
+
+### `LockToken`
+
+```php
+final readonly class LockToken
+{
+    public function __construct(public string $value)
+    {
+        if (!preg_match('/\A[a-f0-9]{64}\z/', $value)) {
+            throw new DomainException('Lock token must be 64 lowercase hex characters.');
         }
     }
-}
-```
-
-Notes:
-
-- `PatientRefHasher` is the small helper that turns `PatientId` into the
-  short HMAC `patient:<hash>` form described in the architecture
-  observability section. If a hasher already exists in
-  `src/AgentForge/Observability/`, reuse it; otherwise add a tiny one in
-  this epic since the M2 telemetry needs it. (Verify during implementation;
-  add only if not already present — DRY.)
-- The enqueuer never throws. It logs sanitized failures and returns `null`.
-  This keeps the upload path safe.
-
-### Wiring helper (static factory)
-
-```php
-final class DocumentUploadEnqueuerFactory
-{
-    public static function createDefault(): DocumentUploadEnqueuer
+    public static function generate(): self
     {
-        $db     = /* OpenEMR DB connection accessor used by other Sql* repos */;
-        $logger = /* sanitized PSR-3 logger from existing AgentForge wiring */;
-
-        return new DocumentUploadEnqueuer(
-            mappings:          new SqlDocumentTypeMappingRepository($db),
-            jobs:              new SqlDocumentJobRepository($db),
-            logger:            $logger,
-            patientRefHasher:  /* existing or new tiny helper */,
-        );
+        return new self(bin2hex(random_bytes(32)));
     }
 }
 ```
 
-The factory is a thin wiring shim. It is not unit-tested. The enqueuer
-behind it is fully unit-tested with mock repositories and a spy logger.
+### `WorkerHeartbeat` and upsert SQL
 
-## Hook In `C_Document::upload_action_process()`
-
-`C_Document::upload_action_process()` is the single integration point for M2.
-It dispatches only after `Document::createDocument(...)` succeeds and a
-document id exists. `addNewDocument(...)` already calls this controller method,
-so the AJAX upload wrapper must not dispatch again from portal or core outer
-call sites.
-
-The intended shape is:
-
-```php
-if ($rc) {
-    $error .= $rc . "\n";
-} else {
-    $this->assign("upload_success", "true");
-    DocumentUploadEnqueuerHook::dispatch($patient_id, $category_id, ['doc_id' => $d->get_id()]);
-}
+```sql
+INSERT INTO clinical_document_worker_heartbeats
+  (worker, process_id, status, iteration_count, jobs_processed, jobs_failed,
+   started_at, last_heartbeat_at, stopped_at)
+VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)
+ON DUPLICATE KEY UPDATE
+  process_id        = VALUES(process_id),
+  status            = VALUES(status),
+  iteration_count   = VALUES(iteration_count),
+  jobs_processed    = VALUES(jobs_processed),
+  jobs_failed       = VALUES(jobs_failed),
+  last_heartbeat_at = VALUES(last_heartbeat_at),
+  stopped_at        = VALUES(stopped_at)
 ```
 
-### `DocumentUploadEnqueuerHook::dispatch` helper
+`stopped_at` is null until `WorkerStatus::Stopped`; only the stop transition writes a non-null value.
 
-A small static method that:
+### CLI script (`agent-forge/scripts/process-document-jobs.php`)
 
-1. Returns immediately if `$result` is not an array or `doc_id` is missing
-   (the OpenEMR upload failed; nothing to enqueue).
-2. Constructs `PatientId`, `DocumentId`, `CategoryId` value objects;
-   if any value object's domain validation throws, catches and logs.
-3. Calls `DocumentUploadEnqueuerFactory::createDefault()->enqueueIfEligible(...)`.
-4. Wraps the entire body in `try { ... } catch (\Throwable $e) { error_log(...) }`.
+Follows the existing `agent-forge/scripts/run-evals.php` skeleton:
 
-The reason for a `Hook::dispatch` helper instead of inlining: the same
-invocation appears at two sites in `upload.php`. Defining it once keeps
-the two hook points in sync and reduces copy-paste in the procedural
-entry point. This is the smallest amount of indirection that satisfies
-DRY without overengineering.
+```
+#!/usr/bin/env php
+<?php declare(strict_types=1);
+require __DIR__ . '/../../vendor/autoload.php';
 
-## Logging
+exit(\OpenEMR\AgentForge\Document\Worker\ProcessDocumentJobsCommand::main($argv));
+```
 
-Extend `SensitiveLogPolicy::ALLOWED_KEYS` to add the new W2 telemetry keys:
+`ProcessDocumentJobsCommand::main()` is a static function (testable) that:
 
-- `patient_ref` (the hashed form — never raw `patient_id`)
-- `document_id`
-- `category_id`
-- `doc_type`
-- `job_id`
-- `worker` (used by M3 onward, included now to avoid a second migration of
-  the allowlist in the same epic window)
-- `attempts`
-- `error_code`
+1. Parses `$argv` into a `WorkerArgs` value object via `WorkerArgs::fromArgv()` (testable in isolation).
+2. Resolves the worker via `DocumentJobWorkerFactory::createDefault($args->workerName)`.
+3. Runs `DocumentJobWorker::run($args->maxIterations, $args->idleSleepSeconds)`.
+4. Supports `--mark-stopped --process-id=N` for the Docker shell trap so stopped heartbeats are written even though OpenEMR disables the PHP signal functions.
+5. Returns 0 on graceful exit, 1 on caught domain/runtime failures (logged through sanitized context).
 
-Confirm `FORBIDDEN_KEYS` still blocks raw quote/value, prompts, answers,
-patient_name, chart_text. No relaxation of forbidden keys.
+CLI flags:
 
-The enqueuer uses `patient_ref` (hashed). It does not log raw `patient_id`.
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--worker=NAME` | (required) | one of `intake-extractor`, `evidence-retriever`, `supervisor` |
+| `--max-iterations=N` | `0` (unbounded) | exit after N loop iterations - used for tests and one-shot runs |
+| `--one-shot` | false | shorthand for `--max-iterations=1` |
+| `--idle-sleep-seconds=N` | `5` | seconds to sleep when no jobs available |
 
-## Tests (Written Before Production Code)
+### Repository extensions (existing M2 file)
 
-Location: `tests/Tests/Isolated/AgentForge/Document/`.
+Two new methods on `DocumentJobRepository` (interface + SQL impl):
 
-All tests are isolated PHPUnit (no DB, no Docker) and use mock/stub
-collaborators. Pattern follows existing `tests/Tests/Isolated/AgentForge/`
-suites.
+```php
+public function markFinished(
+    DocumentJobId $id,
+    JobStatus $terminal,         // must be Succeeded or Failed
+    ?string $errorCode,
+    ?string $errorMessage,
+): void;
 
-### `DocumentTypeTest`
+public function findClaimedByLockToken(LockToken $lockToken): ?DocumentJob;
+```
 
-- Asserts exactly two cases exist: `LabPdf` (value `lab_pdf`),
-  `IntakeForm` (value `intake_form`).
-- `fromStringOrThrow('lab_pdf')` and `fromStringOrThrow('intake_form')`
-  return the correct cases.
-- `fromStringOrThrow('referral_fax')` throws `\DomainException`.
+`markFinished` SQL:
 
-### `JobStatusTest`
+```sql
+UPDATE clinical_document_processing_jobs
+   SET status = ?,
+       finished_at = NOW(),
+       error_code = ?,
+       error_message = ?,
+       lock_token = NULL
+ WHERE id = ?
+```
 
-- Asserts exactly five cases exist with the spec values.
+The `lock_token = NULL` write releases the row from the worker's logical ownership.
 
-### `DocumentIdTest`, `CategoryIdTest`, `DocumentJobIdTest`
+---
 
-- Construct with positive int — succeeds, exposes `value`.
-- Construct with `0` or negative — throws `\DomainException`.
+## 6. Logging
 
-### `DocumentTypeMappingRepositoryStubTest` (interface contract)
+All log emissions go through `ServiceContainer::getLogger()` and are sanitized via `SensitiveLogPolicy::sanitizeContext()` before reaching the logger - no exceptions.
 
-A reusable stub repository (`InMemoryDocumentTypeMappingRepository`) is added
-under tests/ for use in the enqueuer test. Its tiny test asserts that
-`findActiveByCategoryId` honors the `active` flag.
+### Event names (stable, used in dashboards and tests)
 
-### `DocumentJobRepositoryStubTest` (interface contract)
+| Level | Event | When |
+|-------|-------|------|
+| info  | `clinical_document.worker.started` | First iteration after process boot |
+| info  | `clinical_document.worker.idle` | Iteration ended with no claimable job |
+| info  | `clinical_document.worker.job_claimed` | After a claim succeeds, before processing |
+| info  | `clinical_document.worker.job_completed` | Job marked succeeded |
+| warning | `clinical_document.worker.job_failed` | Job marked failed (load failure or processor failure) |
+| info  | `clinical_document.worker.heartbeat` | Each heartbeat upsert (info; downgraded to debug if too noisy in real ops) |
+| info  | `clinical_document.worker.shutdown` | Graceful shutdown completed |
+| error | `clinical_document.worker.fatal` | Uncaught throwable from worker loop - process exits 1 |
 
-A reusable stub repository (`InMemoryDocumentJobRepository`) is added under
-tests/. Its tiny test asserts `enqueue(...)` is idempotent on
-(patient_id, document_id, doc_type) — repeated calls return the same
-`DocumentJobId`.
+### Context keys
 
-### `DocumentUploadEnqueuerTest`
+The worker emits these keys; **all must be in `SensitiveLogPolicy::ALLOWED_KEYS`** before any log call lands. The M3 modify list adds the missing ones to that allowlist:
 
-Uses the in-memory stubs plus a recording logger. Cases:
+| Key | Already allowed (M2)? | Notes |
+|-----|----------------------|-------|
+| `worker` | yes | worker name string |
+| `request_id` | yes | per-iteration UUID for log stitching |
+| `patient_ref` | yes | HMAC-hashed patient id from `PatientRefHasher` |
+| `document_id` | yes | int |
+| `doc_type` | yes | enum value |
+| `job_id` | yes | int |
+| `status` | yes | job status enum value |
+| `attempts` | yes | int |
+| `error_code` | yes | stable error code string |
+| `latency_ms` | yes | per-job processing latency |
+| `process_id` | **add** | OS PID of worker |
+| `iteration_count` | **add** | int |
+| `jobs_processed` | **add** | int |
+| `jobs_failed` | **add** | int |
+| `lock_token_prefix` | **add** | first 8 hex chars of lock_token (full token never logged) |
+| `idle_seconds` | **add** | int (sleep duration) |
+| `claimed_count` | **add** | always 0 or 1 in M3 (room for batch claim later) |
+| `worker_status` | **add** | WorkerStatus enum value |
 
-1. **Mapped active category → one pending job created.** Stub mapping is
-   active; enqueue returns a non-null `DocumentJobId`; stub job repo has
-   exactly one job with `status = pending`, `attempts = 0`,
-   `lock_token = null`. Logger received `clinical_document.job.enqueued`
-   exactly once.
+**Forbidden** - already in `FORBIDDEN_KEYS`, no change: `document_text`, `document_image`, `extracted_fields`, `exception`, `raw_exception`, `quote`, `raw_quote`, `chart_text`. The worker never logs raw bytes, never logs `\Throwable::getMessage()`, never logs full lock tokens.
 
-2. **Mapped inactive category → no enqueue.** Stub returns null on inactive
-   mapping; result is `null`; stub job repo has zero jobs. Logger received
-   no enqueue event.
+### Patient identifiers
 
-3. **Unmapped category → no enqueue.** Stub returns null; result is `null`;
-   zero jobs. Logger received no enqueue event.
+Every log carrying a patient reference uses `patient_ref` (the HMAC hash) - never `patient_id` directly in M3 worker code, even though the M2 `ALLOWED_KEYS` permits raw `patient_id` for backwards compatibility. This is a tightening that future epics should consider extending across the board (note for MEMORY).
 
-4. **Duplicate enqueue (same patient + doc + type) → idempotent.** Two calls
-   to `enqueueIfEligible(...)` produce the same `DocumentJobId`; stub job
-   repo still has one job. Logger received the enqueue event twice (one
-   per call) — both with the same `job_id`.
+---
 
-5. **Mapping repo throws → caught and logged, returns null.** Stub mapping
-   repo throws `\RuntimeException`; result is `null`; zero jobs; logger
-   received `clinical_document.job.enqueue_failed` once with `error_code`
-   = the exception class. No exception escapes `enqueueIfEligible`.
+## 7. Tests (written first)
 
-6. **Job repo throws → caught and logged, returns null.** Same shape as 5
-   but the job repo throws.
+PLAN-W2 mandates test-first. The work order is: each test file lands and fails first, then its production counterpart lands and turns it green. Test files mirror the M2 convention: same-file inline stubs, `AbstractLogger` mock named `*RecordingLogger`, `DocumentRepositoryExecutor` for SQL assertions.
 
-7. **Logger context contains only allowlisted keys.** The recording logger's
-   captured context is filtered through `SensitiveLogPolicy` and asserted to
-   equal the input context — proving every key is on the allowlist.
+### Stub strategy (mirrors M2)
 
-8. **`patient_ref` is hashed, not raw.** The captured `patient_ref` value
-   matches `PatientRefHasher::hash($patientId)` and is not equal to the
-   raw `patient_id` integer.
+- **In-memory repositories**: `InMemoryWorkerHeartbeatRepository`, `InMemoryDocumentJobRepository` (extended from M2 to include the new methods), `InMemoryJobClaimer` (deterministic queue), `InMemoryDocumentLoader`, `InMemoryDocumentJobProcessor`. All inline at the bottom of the test file that uses them.
+- **Recording logger**: `WorkerRecordingLogger extends AbstractLogger` - records `[level, message, context]` tuples. Tests assert on event names and sanitized context.
+- **DB executor stub** for SQL-shape tests: reuse `DocumentRepositoryExecutor` from M2's `SqlDocumentRepositoriesTest.php`.
+- **Document factory closure** for `OpenEmrDocumentLoaderTest`: returns a small inline class that implements the four `Document` methods used (`get_id`, `is_deleted`, `has_expired`, `get_data`, `get_mimetype`, `get_name`).
 
-### `DocumentUploadEnqueuerHookTest`
+### Coverage matrix
 
-The `Hook::dispatch` helper is harder to unit-test because it constructs the
-default factory internally. Two options, choose at implementation time:
+`DocumentJobWorkerTest` covers:
+- Happy path: claim returns a job -> loader returns bytes -> processor returns succeeded -> `markFinished(Succeeded, null, null)` called -> `jobs_processed=1` -> `clinical_document.worker.job_completed` logged.
+- Stub processor path (M3 default): claim returns a job -> loader returns bytes -> processor returns failed(`extraction_not_implemented`) -> `markFinished(Failed, 'extraction_not_implemented', ...)` -> `jobs_failed=1` -> `clinical_document.worker.job_failed` logged.
+- Loader failure: claim returns a job -> loader throws `DocumentLoadException` -> `markFinished(Failed, 'source_document_deleted', ...)` -> processor never called -> `jobs_failed=1`.
+- Idle path: claim returns null -> sleep called once -> `iteration_count` increments -> heartbeat upserted with `WorkerStatus::Idle`.
+- Bounded loop: `--max-iterations=3` runs exactly 3 iterations and exits.
+- Shutdown signal: `$shouldStop` flag set after iteration 1 of 5 -> loop exits early -> heartbeat upserted with `WorkerStatus::Stopped` -> exit code 0.
+- Sanitized logs: every recorded log's context contains only `ALLOWED_KEYS`. No `forbidden_key` ever appears.
 
-- **A (preferred):** Make `Hook::dispatch` parameterized on an
-  enqueuer-resolver callable, defaulting to `[DocumentUploadEnqueuerFactory::class, 'createDefault']`.
-  Tests substitute a no-op resolver or a recording resolver. Asserts:
-  non-array `$result` returns without calling resolver; missing `doc_id`
-  returns without calling resolver; valid `$result` calls the resolver
-  and dispatches with correct value objects; resolver throwing is caught.
+`SqlJobClaimerTest` covers:
+- Emitted SQL string matches the portable atomic `UPDATE ... ORDER BY created_at ASC LIMIT 1` claim and the `SELECT ... WHERE lock_token=?` re-fetch.
+- Binds: running status, lock token, pending status, and lock token across the update/select in the correct positions.
+- 0 rows affected on UPDATE -> returns null without issuing SELECT.
+- 1 row affected -> SELECT issued -> `DocumentJob` hydrated correctly with `JobStatus::Running`.
+- Retracted-row filter: status='retracted' rows do not appear in the candidate subquery (asserted by SQL string match including `retracted_at IS NULL`).
 
-- **B:** Skip Hook unit tests; cover via the enqueuer tests + the eval-level
-  scenario (M2 has no full eval scenario yet, so prefer option A).
+`OpenEmrDocumentLoaderTest` covers:
+- Document deleted -> `DocumentLoadException` with `errorCode='source_document_deleted'`.
+- Document expired -> `DocumentLoadException` with `errorCode='source_document_expired'`.
+- `get_data()` throws -> `DocumentLoadException` with `errorCode='source_document_unreadable'`, original throwable preserved via `getPrevious()`.
+- Happy path -> `DocumentLoadResult{bytes, mimeType, name, byteCount}` with `byteCount === strlen($bytes)`.
+- Document factory called exactly once with the integer document id.
 
-Choose option A.
+`SqlWorkerHeartbeatRepositoryTest` covers:
+- `upsert()` emits the exact `INSERT ... ON DUPLICATE KEY UPDATE` SQL with binds in the documented order.
+- `findByWorker()` emits the documented SELECT and hydrates the returned row.
 
-### SQL repository tests
+`DocumentWorkerValueObjectTest` covers:
+- `--worker=intake-extractor` parses to `WorkerName::IntakeExtractor`.
+- `--max-iterations=10` parses to int 10; default 0.
+- `--one-shot` parses to `maxIterations=1`.
+- `--idle-sleep-seconds=2` parses to 2; default 5.
+- Unknown flag -> `InvalidArgumentException`.
+- Missing `--worker` -> `InvalidArgumentException`.
 
-`SqlDocumentTypeMappingRepository` and `SqlDocumentJobRepository` are
-covered by:
+### Tests not in scope
 
-- A small construction test (no DB) verifying the class accepts a connection
-  argument.
-- An integration check via the manual smoke verification (Verification
-  section). Full DB-backed unit tests for SQL repos are deferred to M3 when
-  the worker exercises the same repo path heavily, at which point a fixture
-  pattern can be introduced.
+- **End-to-end**: a docker-compose up + enqueue + observe-worker test is part of the verification plan, not the unit suite.
+- **Real DB integration**: SQL is asserted via shape (the `DocumentRepositoryExecutor` stub records queries). M3's deploy-VM verification is the integration check; we don't add a database-backed integration test in M3.
+- **Concurrency soak**: two workers fighting over rows is hand-verified during the verification plan; no automated concurrency test in M3.
 
-This deliberately matches the existing AgentForge isolated-test convention
-(no DB fixtures in isolated tests).
+---
 
-## Engineering Approach (SOLID, DRY, Modular)
+## 8. Docker Compose Service
+
+Add to `docker/development-easy/docker-compose.yml`:
+
+```yaml
+  agentforge-worker:
+    image: openemr/openemr:flex@sha256:e4562b0c7d3f222ec8f72122ce00d10ffa93f559c38c00ab12c1355394c35d1c
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      openemr:
+        condition: service_healthy
+    volumes:
+      - ${OPENEMR_DIR:-../..}:/var/www/localhost/htdocs/openemr:rw
+      - sitesvolume:/var/www/localhost/htdocs/openemr/sites:rw
+      - vendordir:/var/www/localhost/htdocs/openemr/vendor:rw
+      - logvolume:/var/log
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: openemr
+      MYSQL_PASS: openemr
+      AGENTFORGE_WORKER_NAME: "${AGENTFORGE_WORKER_NAME:-intake-extractor}"
+      AGENTFORGE_WORKER_MAX_ITERATIONS: "${AGENTFORGE_WORKER_MAX_ITERATIONS:-0}"
+      AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS: "${AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS:-5}"
+      AGENTFORGE_PATIENT_REF_SALT: "${AGENTFORGE_PATIENT_REF_SALT:-}"
+    command: >
+      php /var/www/localhost/htdocs/openemr/agent-forge/scripts/process-document-jobs.php
+      --worker=${AGENTFORGE_WORKER_NAME:-intake-extractor}
+      --max-iterations=${AGENTFORGE_WORKER_MAX_ITERATIONS:-0}
+      --idle-sleep-seconds=${AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS:-5}
+```
+
+Image and code-mount strategy mirrors the `openemr` service - same image, same code path. No new Dockerfile. `depends_on openemr: service_healthy` ensures the database is migrated to v540 before the worker tries to upsert into `clinical_document_worker_heartbeats`.
+
+`AGENTFORGE_OPENAI_*` and `AGENTFORGE_ANTHROPIC_*` vars are deliberately **not** copied into this service's environment block - the M3 worker doesn't call any LLM. M4 will add them when the real processor lands.
+
+---
+
+## 9. Engineering Approach
 
 ### SOLID
 
-- **SRP:** Each repository owns one table. Each value object owns one
-  invariant. The enqueuer owns one decision (eligible? enqueue idempotently).
-  The factory owns wiring.
-- **OCP:** Repository interfaces let new implementations slot in (e.g., an
-  in-memory test stub) without touching the enqueuer.
-- **LSP:** Stubs and SQL impls satisfy the same interface contract; the
-  enqueuer test passes against either.
-- **ISP:** Two small repository interfaces, not a single god interface that
-  knows about both mappings and jobs.
-- **DIP:** Enqueuer depends on interfaces, not SQL implementations. The
-  procedural `upload.php` depends on the factory + Hook helper, never on
-  SQL classes directly.
+- **SRP** - one class, one reason to change.
+  - `DocumentJobWorker` orchestrates the loop only.
+  - `JobClaimer` owns the atomic claim SQL only.
+  - `DocumentLoader` owns retrieval-and-validation only.
+  - `DocumentJobProcessor` owns the per-job business logic only (M3 stub, M4 real).
+  - `WorkerHeartbeatRepository` owns heartbeat persistence only.
+- **OCP** - the worker is open to new processing strategies (M4 plugs `OcrPdfProcessor` and `IntakeFormProcessor` behind `DocumentJobProcessor` without modifying the worker loop).
+- **LSP** - any `DocumentJobProcessor` implementation honors the `process(DocumentJob, DocumentLoadResult): ProcessingResult` contract; the worker treats them interchangeably.
+- **ISP** - `JobClaimer`, `DocumentLoader`, `DocumentJobProcessor`, `WorkerHeartbeatRepository` are minimal, single-method (or two-method) interfaces. No god-interface.
+- **DIP** - `DocumentJobWorker` depends on abstractions only. Concrete wiring is `DocumentJobWorkerFactory`'s job; the worker doesn't know whether storage is MariaDB or in-memory.
 
 ### DRY
 
-- Reuse `PatientId` from `Auth/`. Do not redefine.
-- New ID value objects share a common shape with `PatientId` but each is its
-  own type — type-safety beats one shared base class.
-- The hook helper avoids duplicating dispatch logic at two `upload.php`
-  call sites.
-- Migration directives reuse OpenEMR's `#IfNotTable` pattern.
-- Sanitized logging extends the existing `SensitiveLogPolicy` allowlist
-  rather than introducing a parallel logger.
+- All SQL flows through the M2-established `DatabaseExecutor` boundary. No new ad-hoc query helpers.
+- All logging flows through `ServiceContainer::getLogger()` -> `SensitiveLogPolicy::sanitizeContext()`. No ad-hoc log formatting.
+- Patient hashing uses the existing `PatientRefHasher`. No second hashing path.
+- Value objects (`DocumentId`, `PatientId`, `DocumentJobId`) reused; not redefined.
+- `DocumentUploadEnqueuerFactory` shape is the template for `DocumentJobWorkerFactory` - same wiring style.
 
-### Modularity
+### Modular
 
-- The `src/AgentForge/Document/` namespace is self-contained for M2 and is
-  the same module that M3, M4, M5 will extend. M3 adds extraction-job
-  worker code in this same module without circular dependencies.
-- Tests mirror the namespace under `tests/Tests/Isolated/AgentForge/Document/`.
-- Procedural `upload.php` only sees a single `Hook::dispatch` and a single
-  factory class — small, contained surface area in the legacy path.
+- All M3 worker code lives under one namespace: `OpenEMR\AgentForge\Document\Worker\*`. M2 code under `OpenEMR\AgentForge\Document\*` is untouched except for the two repository methods added to existing M2 classes (`DocumentJobRepository` interface, `SqlDocumentJobRepository` impl) - those additions sit naturally with the existing repository, not in a separate "worker repository".
+- Tests mirror the namespace: `tests/Tests/Isolated/AgentForge/Document/Worker/*Test.php`.
+- The CLI script is the only piece outside `src/` and is intentionally thin (parse args, wire factory, run loop) so the bulk of behavior remains testable in isolation.
+- M4 can land its real processor as a new file without touching any M3 worker file *except* the factory's processor selection (which is the legitimate, intentional extension point).
 
-## Acceptance Criteria
+### Coding standards alignment
 
-1. Normal OpenEMR upload still creates a `documents` row first; user-facing
-   upload behavior is unchanged.
-2. Mapped active category creates exactly one pending row in
-   `clinical_document_processing_jobs` with the correct `doc_type`.
-3. Unmapped categories create no row in `clinical_document_processing_jobs`.
-4. Inactive mappings create no row.
-5. Duplicate uploads of the same `(patient_id, document_id, doc_type)` do
-   not create duplicate jobs (DB unique constraint enforces).
-6. Enqueue failures (DB error, missing table, unknown enum, anything) do
-   not fail or slow the OpenEMR upload — caught at the Hook boundary and
-   sanitized-logged.
-7. The shared `C_Document::upload_action_process()` path invokes the dispatcher
-   after document persistence; both core and portal AJAX wrappers rely on that
-   shared path and do not dispatch separately.
-8. `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql` produce the
-   same final schema on fresh install vs upgrade.
-9. `version.php` is bumped to `539`.
-10. `agent-forge/sql/seed-demo-data.sql` is idempotent and produces exactly one
-    active M2 mapping: existing OpenEMR `Lab Report -> lab_pdf`.
-11. `SensitiveLogPolicy::ALLOWED_KEYS` extended; sanitization tests pass.
-12. All isolated tests pass: `composer phpunit-isolated -- --filter
-    'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'`.
-13. `composer phpstan` introduces no new baseline entries for the changed
-    files.
-14. `agent-forge/scripts/check-clinical-document.sh` runs end to end.
-    Rubric-level eval failures from M1 are unchanged at this point — M2
-    does not unblock the rubric gate.
+- `declare(strict_types=1);` on every new file.
+- `final readonly` on every value object and DTO.
+- Backed string enums for `WorkerName`, `WorkerStatus`, reused enums for `JobStatus`, `DocumentType`, `DocumentRetractionReason`.
+- Constructor DI everywhere. No service locator inside business logic. `ServiceContainer::getLogger()` is permitted only inside the factory, not inside the worker classes themselves.
+- No `mixed`. `array` types are typed shapes (`@param list<...>` etc.).
+- `\Throwable` catches at the worker loop boundary (one place, one log emission, one exit-1 path).
+- `CryptoGen` decryption is transparent inside `Document::get_data()` - the worker never touches encryption directly. Per-CLAUDE.md "centralized" rule.
+- No PHPStan baseline additions allowed for new files. Level-10 clean.
 
-## Definition Of Done
+---
 
-- All tests in the test list above are committed before the production
-  classes they verify.
-- All files in the Critical Files list are created or modified.
-- Manual end-to-end smoke (Verification section) passes locally.
-- A short note is added to `agent-forge/docs/week2/PLAN-W2.md` Epic M2
-  status: `Completed`. (No structural change to PLAN-W2 — only the status
-  line.)
-- No new PHPStan baseline entries for the touched files.
-- No raw PHI in any log line emitted during smoke.
+## 10. Acceptance Criteria
 
-## Verification Plan
+A1. Worker boots in `docker compose up agentforge-worker`, logs `clinical_document.worker.started`, and stays running.
 
-End-to-end. Run after implementation, before declaring the epic complete.
+A2. With one pending row in `clinical_document_processing_jobs`, the worker atomically claims it: row transitions `pending -> running` with `lock_token` set, `started_at = NOW()`, `attempts` incremented by 1, all in a single committed transaction observable by an outside reader.
 
-### Schema migration on fresh install
+A3. After M3's `NoopDocumentJobProcessor` runs, the row transitions `running -> failed` with `error_code = 'extraction_not_implemented'`, `finished_at = NOW()`, `lock_token = NULL`. This is the documented M3 outcome - "no fake success".
 
-```bash
-cd docker/development-easy
-docker compose down -v
-docker compose up --detach --wait
-```
+A4. With a row whose source document was deleted (`documents.deleted = 1`) before the worker claims it, the worker transitions the job to `failed` with `error_code = 'source_document_deleted'`. The processor is never invoked. Document bytes never read.
 
-Then:
+A5. With two `agentforge-worker` processes running concurrently against the same DB, no row is processed twice. (Verified by enqueueing 5 jobs and confirming exactly 5 terminal rows with 5 distinct lock_token histories.)
 
-```bash
-docker compose exec mysql mysql -uroot -proot openemr \
-  -e "SHOW TABLES LIKE 'clinical_document_%';"
-```
+A6. A row with `status='retracted'` is never claimed, regardless of `retracted_at` ordering relative to enqueue. Confirmed by enqueueing then retracting (M2 hook) and seeing the worker skip past it as idle.
 
-Expect rows for `clinical_document_type_mappings` and
-`clinical_document_processing_jobs`. Separately verify that old rejected local
-branch tables are absent:
+A7. The worker upserts a row in `clinical_document_worker_heartbeats` keyed by `worker` on every iteration, with `last_heartbeat_at = NOW()` and current counters.
 
-```bash
-docker compose exec mysql mysql -uroot -proot openemr \
-  -e "SHOW TABLES LIKE 'agentforge_document_%';"
-```
+A8. SIGTERM to the worker process triggers graceful shutdown: current iteration completes, heartbeat row's `status` becomes `stopped` and `stopped_at` is set, process exits 0.
 
-Expect no rows.
+A9. No worker log line contains raw document bytes, document text, extracted fields, full lock tokens, exception messages, or any FORBIDDEN_KEYS context. (Verified by `SensitiveLogPolicy` test plus a manual log scan in the verification plan.)
 
-### Schema migration on existing install
+A10. Document upload through the OpenEMR UI continues to succeed when the `agentforge-worker` service is **stopped**. Pending rows accumulate but no upload fails. (Upload safety contract.)
 
-With a pre-existing DB at `v_database = 538`, run the OpenEMR upgrade flow
-(via `setup.php` or `sql_upgrade.php`). Repeat the `SHOW TABLES` check;
-expect the same two tables now exist.
+A11. PHPStan level 10 passes for all new files with zero baseline additions. `composer phpunit-isolated` passes. `composer code-quality` passes.
 
-### Seed
+---
 
-```bash
-docker compose exec openemr mysql -uroot -proot openemr \
-  < /var/www/localhost/htdocs/openemr/agent-forge/sql/seed-demo-data.sql
-```
+## 11. Definition of Done
 
-Then:
+- [x] All M3 isolated worker/schema/logging tests pass.
+- [x] All production files in Section 3 landed and focused tests stayed green.
+- [x] `sql/database.sql` contains the new `clinical_document_worker_heartbeats` table; `version.php` bumped to 540.
+- [x] `SensitiveLogPolicy::ALLOWED_KEYS` extended with the new worker keys (Section 6).
+- [x] `docker/development-easy/docker-compose.yml` has the `agentforge-worker` service.
+- [x] Focused local proof: `vendor/bin/phpunit -c phpunit-isolated.xml tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php` passed on 2026-05-05 with 104 tests and 407 assertions.
+- [x] Focused `composer phpstan` clean for touched worker/repository/log-policy files; no baseline additions.
+- [x] Focused PHPCS clean for touched worker/script/document test surfaces.
+- [x] Manual local proof: Docker schema sanity confirmed clinical document tables and no `agentforge_%` tables. The shipped upgrade SQL includes `#IfNotTable clinical_document_worker_heartbeats`; the existing local volume was still at `v_database=539` and needed manual heartbeat-table creation before this proof run.
+- [x] Manual local proof: worker stopped, OpenEMR UI upload to `Lab Report` created job `3` as `pending` with `attempts=0`.
+- [x] Manual local proof: `agentforge-worker` processed job `3` to `failed` with `error_code='extraction_not_implemented'`, cleared `lock_token`, wrote heartbeat counters, and logged only sanitized metadata.
+- [x] Manual local proof: Docker stop completed in 0.2 seconds, exited 0, and wrote `status='stopped'` plus non-null `stopped_at` after adding the shell trap path for disabled `pcntl_signal*` functions.
+- [x] Manual local proof: existing `retracted` jobs stayed terminal with `attempts=0`; a worker run skipped them and recorded `jobs_processed=0`.
+- [x] Manual local proof: two concurrent one-shot workers processed five synthetic pending jobs exactly once each; all five reached `failed`, each with `attempts=1`, `lock_token=NULL`, and total attempts five.
+- [x] Manual local proof: after scoped legacy loader error handling, container logs for invalid synthetic document IDs contained only sanitized `clinical_document.worker.job_failed` lines and no PHP notices.
+- [ ] Local automated proof script: a small bash helper under `agent-forge/scripts/` (out of M3 scope as production but in scope to write as a verification artifact) that asserts the above three outcomes. (Optional - if it lands, document. If not, manual proof suffices for M3.)
+- [x] `agent-forge/docs/MEMORY.md` updated with the M3 carry-forward notes (Section 13).
+- [x] `agent-forge/docs/week2/PLAN-W2.md` M3 status updated with a local proof reference.
+- [ ] No production code introduces backwards-compatibility shims, dead branches, or feature flags. Per CLAUDE.md.
+- [ ] No comments explaining what code does. Comments only where the WHY is genuinely non-obvious. Per CLAUDE.md.
+- [ ] Conventional Commits format on all commits with `Assisted-by: Claude Code` trailer.
 
-```bash
-docker compose exec openemr mysql -uroot -proot openemr \
-  -e "SELECT COUNT(*) AS branded_categories FROM categories WHERE name LIKE 'AgentForge%';"
-docker compose exec openemr mysql -uroot -proot openemr \
-  -e "SELECT c.name, m.doc_type, m.active FROM clinical_document_type_mappings m JOIN categories c ON c.id = m.category_id;"
-```
+---
 
-Expect zero branded categories and one active `Lab Report -> lab_pdf` mapping.
-Re-run the seed; counts do not change (idempotency).
+## 12. Verification Plan (gate-by-gate, per CLAUDE.md AgentForge guardrail)
 
-### Hook (manual UI check)
+### Gate 1 - Local UI checks (no automation)
 
-1. Log into OpenEMR at `http://localhost:8300/` as `admin / pass`.
-2. Open a demo patient chart.
-3. Documents → upload a small PDF to category `Lab Report`.
-4. SQL: `SELECT id, patient_id, document_id, doc_type, status FROM
-   clinical_document_processing_jobs;` — expect exactly one row, `status='pending'`.
-5. Upload the same PDF again to the same category — verify still one job
-   row (idempotency by unique constraint).
-6. Upload a PDF to an unmapped category (for example, `Medical Record`) —
-   verify still one job row (no new enqueue).
-7. Intake form upload mapping is intentionally not manually smoked in M2 because
-   no real intake workflow category has been selected yet.
+1. `docker compose -f docker/development-easy/docker-compose.yml up -d --wait`.
+2. Browse to https://localhost:9300, log in as `admin` / `pass`.
+3. Open a test patient, navigate to Documents, upload a small PDF into a category mapped to `lab_pdf`.
+4. In phpMyAdmin (http://localhost:8310/), `SELECT * FROM clinical_document_processing_jobs ORDER BY id DESC LIMIT 5;` - confirm row exists with `status='pending'`.
+5. Tail the worker logs: `docker compose -f docker/development-easy/docker-compose.yml logs -f agentforge-worker`. Within ~30 seconds expect `clinical_document.worker.job_claimed` then `clinical_document.worker.job_failed` with `error_code=extraction_not_implemented`.
+6. Re-query the row - confirm `status='failed'`, `error_code='extraction_not_implemented'`, `finished_at` populated, `lock_token=NULL`.
+7. `SELECT * FROM clinical_document_worker_heartbeats;` - confirm one row with `worker='intake-extractor'`, recent `last_heartbeat_at`.
 
-### Failure injection
+### Gate 2 - Local automated proof
 
-1. `DROP TABLE clinical_document_processing_jobs;`
-2. Upload a PDF to `Lab Report`.
-3. Verify the upload still succeeds (file appears in chart, no error to
-   user).
-4. Verify the AgentForge log/error log contains a sanitized
-   `clinical_document.job.enqueue_failed` entry with `error_code` set
-   and no patient name, no document text, no PHI.
-5. Re-create the table and verify behavior returns to normal.
+Run `composer phpunit-isolated`, `composer phpstan`, `composer code-quality`. All must pass clean before any push.
 
-### Tests
+### Gate 3 - Git status / diff review
 
-```bash
-composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'
-composer phpstan
-agent-forge/scripts/check-clinical-document.sh
-```
+`git status` and `git diff` reviewed against this plan. No surprise modifications. Strict file scope match. Commit messages follow Conventional Commits with `Assisted-by: Claude Code`.
 
-The first two should be green. The third runs end to end; rubric-level
-eval failures from M1 remain (expected at this stage).
+### Gate 4 - Explicit commit/push decision
 
-## Risks And Tradeoffs
+User confirms before push. Branch: `w2-m3` (already current per session start). PR opened against `master` only after gates 1-3 pass.
 
-- **Multi-file uploads.** `C_Document::upload_action_process()` iterates
-  `$_FILES['file']['name']` internally, but `addNewDocument(...)` returns
-  the template var `"file"` which captures the LAST file processed.
-  Mitigation: the unique constraint protects against duplicate jobs even
-  if only the last doc id is enqueued for a multi-file upload. Earlier
-  files in a multi-file upload may not be enqueued at the time of upload;
-  M3 can introduce a sweep job that scans recent `documents` rows in
-  mapped categories without an `clinical_document_processing_jobs` row and back-fills
-  if this turns out to matter. Document this as known M2 behavior and
-  revisit only if it shows up in eval cases.
+### Gate 5 - VM deploy script
 
-- **Hook executes on every core/portal upload.** Even ineligible categories
-  pay the cost of one mapping lookup. The lookup is an indexed SELECT on
-  `(active, category_id)` — sub-millisecond. Acceptable.
+`agent-forge/scripts/deploy-vm.sh` runs against the deploy host. M3 brings up the new `agentforge-worker` service alongside existing services. Health check expected to pass for the existing services; new service has no HTTP healthcheck but its presence is verified via `docker compose ps` in deploy script output.
 
-- **Static factory vs container.** The static factory is a small wiring
-  shim that the enqueuer is decoupled from. If a future epic introduces a
-  proper container, the factory becomes a one-line service definition.
+### Gate 6 - VM seed / verify
 
-- **Mapped category names.** M2 maps existing OpenEMR categories. It must not
-  create visible implementation-branded document categories. The demo seed maps
-  `Lab Report` to `lab_pdf` and leaves `intake_form` unseeded until a real
-  intake workflow category is selected.
+`agent-forge/scripts/seed-demo-data.sh` (idempotent) re-runs after deploy. `verify-demo-data.sh` runs to confirm baseline data still healthy. New verification step: `docker compose exec mysql mariadb -u openemr -popenemr openemr -e "SELECT worker, status, last_heartbeat_at FROM clinical_document_worker_heartbeats;"` should show a recent heartbeat row.
 
-- **Allowlist drift.** Adding `worker` to the allowlist now (before M3
-  uses it) is intentional to avoid a second allowlist migration in the
-  same epic window. If any unrelated code starts emitting a `worker` field
-  before M3, the value still passes through sanitized — but no caller
-  in M2 emits it.
+### Gate 7 - VM UI checks
 
-- **`doc_type` stored as VARCHAR vs DB ENUM.** VARCHAR with application-
-  layer enum keeps doc-type expansion (M3+) migration-free. The `DocumentType`
-  enum is the source of truth.
+Same UI flow as Gate 1 but on the VM URL. Confirm worker is consuming jobs in production-like environment.
 
-## Notes For Future Epics (Not In Scope)
+### Gate 8 - Proof file update
 
-- M3 will read `clinical_document_processing_jobs` with `lock_token` for atomic
-  claim. Schema is already in place.
-- M3 will add `agentforge_worker_heartbeats` and a `worker` column on
-  telemetry events that M2's allowlist already permits.
-- M5 will add `clinical_document_facts` and embeddings; the `documents.id`
-  it references is the same id we enqueue here.
+Update or create `agent-forge/docs/epics/EPIC-M3-WORKER-PROOF.md` (or extend the existing EPIC2 proof) with: VM URL, worker log excerpt, sample row before/after, heartbeat row. This is the durable proof artifact.
 
-## Implementation Progress - 2026-05-05
+---
 
-Status: Completed.
+## 13. Risks / Tradeoffs
 
-Files changed:
+### Risk: Stale lock recovery deferred to M4
 
-- `src/AgentForge/Document/` added document type/status enums, positive-id
-  value objects, DTOs, repository interfaces, SQL repositories,
-  `DocumentUploadEnqueuer`, `DocumentUploadEnqueuerFactory`, and
-  `DocumentUploadEnqueuerHook`.
-- `src/AgentForge/Document/DocumentRetractionReason.php` and
-  `DocumentRetractionHook.php` added the source-document deletion retraction
-  contract.
-- `src/AgentForge/DatabaseExecutor.php` and
-  `src/AgentForge/DefaultDatabaseExecutor.php` added a small AgentForge SQL
-  boundary for read/write repositories.
-- `src/AgentForge/Observability/PatientRefHasher.php` added hashed
-  `patient:<hash>` telemetry ids.
-- `controllers/C_Document.class.php` now dispatches the safe enqueue hook after
-  the shared OpenEMR document upload process successfully creates a document.
-- `library/ajax/upload.php` now relies on `addNewDocument(...)` routing through
-  `C_Document::upload_action_process()` and does not duplicate enqueue
-  dispatch from outer portal/core AJAX call sites.
-- `interface/patient_file/deleter.php` now calls
-  `DocumentRetractionHook::dispatch(...)` after OpenEMR marks a document
-  deleted; direct document deletes also verify that non-super users are acting
-  on the active session patient.
-- `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php`
-  add the two document tables, retraction metadata columns on
-  `clinical_document_processing_jobs`, and bump `v_database` to 539.
-- `agent-forge/sql/seed-demo-data.sql` maps the existing `Lab Report` category
-  to `lab_pdf` and does not create implementation-branded document categories.
-- `src/AgentForge/Observability/SensitiveLogPolicy.php` allows the new
-  sanitized document telemetry keys.
-- `tests/Tests/Isolated/AgentForge/Document/` and
-  `SensitiveLogPolicyTest` cover M2 behavior.
-- Source-level integration tests prove the actual upload and delete wiring:
-  `C_Document` dispatches once, AJAX upload does not duplicate dispatch,
-  `addNewDocument(...)` uses the controller upload process, and delete retraction
-  happens after `documents.deleted=1`.
+If a worker crashes (OOM, kernel kill, container restart) holding `status='running'` with a `lock_token`, the row is orphaned. M3 has **no reaper**. Such rows will remain `running` indefinitely.
 
-Acceptance map:
+- **Mitigation in M3**: documented in MEMORY.md as an M4 deliverable. M3's `markFinished` clears `lock_token` on terminal transitions, so the orphan window only exists when a process dies between claim and finalize.
+- **M4 work**: implement a stale-lock reaper in the supervisor that scans for `status='running' AND started_at < NOW() - INTERVAL N MINUTE`, logs `clinical_document.worker.stale_lock_reaped`, and resets to `pending` (or marks `failed` after a max-recovery threshold).
 
-- New schema exists in install and upgrade SQL: implemented in
-  `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql`.
-- Mapping determinism: `clinical_document_type_mappings` now has a unique
-  `category_id`, so one OpenEMR category cannot map to multiple clinical
-  document types.
-- Clinical document category mapping: implemented in `seed-demo-data.sql`;
-  local rerun smoke kept `branded_categories=0` and exactly one
-  `Lab Report -> lab_pdf` mapping.
-- Eligible category enqueue: covered by isolated enqueuer tests, SQL-level
-  unique-key smoke, in-container OpenEMR `addNewDocument(...)` smoke, and
-  manual browser upload smoke through the standard Documents screen.
-- Ineligible category no-op: covered by isolated enqueuer tests and
-  in-container OpenEMR `addNewDocument(...)` smoke.
-- Duplicate enqueue idempotency: covered by isolated repository/enqueuer tests,
-  local SQL smoke (`job_count=1`, `status=pending`, `attempts=0` after two
-  duplicate `INSERT IGNORE` attempts), and duplicate hook dispatch smoke
-  (`job_count_after_duplicate_dispatch=1`).
-- Upload safety: hook tests cover non-array results, missing `doc_id`, invalid
-  ids, resolver failure, and `TypeError`/`\Throwable` failure without exception
-  escape at the procedural OpenEMR workflow boundary.
-- Sanitized logging: enqueuer tests and `SensitiveLogPolicyTest` confirm
-  `patient_ref` is hashed and raw `patient_id` is not emitted by the new M2
-  enqueue log context; the policy also blocks raw quote/value-style keys such
-  as `quote_or_value`, `raw_quote`, `raw_value`, `document_text`, and
-  `extracted_fields`.
-- Source-document deletion retraction: implemented at the OpenEMR
-  `delete_document(...)` boundary. All jobs for the deleted `document_id` are
-  updated where `status <> 'retracted'` to `status='retracted'`,
-  `retracted_at=NOW()`, `retraction_reason='source_document_deleted'`,
-  `finished_at=COALESCE(finished_at, NOW())`, and `lock_token=NULL`.
-- M2 data boundary: M2 does not extract facts, create embeddings, retrieve
-  document facts, or promote any values into existing OpenEMR clinical tables.
-  Deleted-source retraction in M2 only retracts
-  `clinical_document_processing_jobs`; downstream fact, embedding, retrieval,
-  and promoted-row invalidation are explicit later-epic contracts.
-- Wrong-patient document handling: explicitly not M2 content validation.
-  OpenEMR upload destination remains authoritative; if the source document is
-  deleted, the current AgentForge jobs are retracted. Later extraction,
-  identity verification, fact, embedding, retrieval, and chart-promotion epics
-  must add downstream invalidation by `document_id`.
-- Future promotion provenance: no extracted value should be written into
-  existing OpenEMR clinical tables unless the promoted row can be traced from
-  source `document_id` to `job_id` to extracted fact id to promoted OpenEMR row,
-  with citation, confidence/review status, and promotion outcome.
-- Direct document-delete guard: users do not see a field named `document_id`,
-  but OpenEMR document delete links submit the document id in a request such as
-  `deleter.php?document=<id>`. The M2 guard applies only to that direct document
-  branch for non-super users; the broader patient-delete cleanup path still
-  loops through `delete_document()` only after admin/super patient-delete
-  authorization.
+### Risk: NoopDocumentJobProcessor "fakes" failure
 
-Proof run:
+A reviewer might be alarmed that every M3 job ends in `failed`. This is **intentional** - we honor the "no fake success" rule (MEMORY entry). The alternative (mark succeeded with no extraction done) would corrupt downstream state once M4 reads from `clinical_document_processing_jobs`.
 
-- `vendor/bin/phpunit -c phpunit-isolated.xml tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
-  passed after clinical-document naming and seed hardening: 40 tests, 112 assertions.
-- `vendor/bin/phpunit -c phpunit-isolated.xml --filter 'Document|SensitiveLogPolicy'`
-  passed: 102 tests, 678 assertions.
-- `vendor/bin/phpcs src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php library/ajax/upload.php`
-  passed.
-- `vendor/bin/phpstan analyze --memory-limit=4G --configuration=phpstan.neon.dist src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
-  passed after allowing PHPStan to open its local analysis socket.
-- `vendor/bin/phpstan analyse --configuration=phpstan.neon.dist src/AgentForge tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php --memory-limit=1G`
-  passed for the full AgentForge source tree plus focused document/logging
-  tests.
-- `composer phpcs -- -n src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document sql/8_1_0-to-8_1_1_upgrade.sql sql/database.sql agent-forge/sql/seed-demo-data.sql`
-  passed: 13 / 13 files.
-- `composer phpcs -- -n src/AgentForge/Document/DocumentRetractionHook.php src/AgentForge/Document/DocumentRetractionReason.php src/AgentForge/Document/DocumentJob.php src/AgentForge/Document/DocumentJobRepository.php src/AgentForge/Document/SqlDocumentJobRepository.php src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php interface/patient_file/deleter.php tests/Tests/Isolated/AgentForge/Document/DocumentRetractionHookTest.php tests/Tests/Isolated/AgentForge/Document/DocumentRetractionReasonTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerTest.php tests/Tests/Isolated/AgentForge/Document/SqlDocumentRepositoriesTest.php`
-  passed: 12 / 12 files.
-- Local Docker SQL smoke passed:
-  tables `clinical_document_processing_jobs` and `clinical_document_type_mappings`
-  exist; `Lab Report` exists; mapping is active for `lab_pdf`; rerunning the
-  seed kept the clinical-document mapping idempotent; duplicate job insert stayed at one
-  pending row.
-- After review, the branded category seed approach was deleted. The seed now
-  maps the existing `Lab Report` category directly and does not create document
-  categories for clinical-document processing.
-- Local dev DB was renamed and cleaned after the contract rename:
-  `agentforge_document_type_mappings` -> `clinical_document_type_mappings`,
-  `agentforge_document_jobs` -> `clinical_document_processing_jobs`, old index
-  names were renamed, temporary `AgentForge%` categories were removed,
-  documents `77` and `78` were marked deleted, category links for `77` and
-  `78` were removed, and job `5` for document `78` was retracted.
-- Corrected seed idempotency smoke passed: before and after rerunning
-  `seed-demo-data.sql`, `branded_categories=0` and
-  `Lab Report -> lab_pdf` mapping count stayed `1`.
-- `agent-forge/scripts/check-clinical-document.sh` partially passed after final
-  closeout validation: diff whitespace, PHP syntax, shell syntax, and
-  AgentForge isolated PHPUnit all passed (342 tests, 1655 assertions). The
-  final clinical eval verdict remains
-  `threshold_violation`, with artifact
-  `agent-forge/eval-results/clinical-document-20260505-143516`, because later
-  M3/M4 extraction behavior is still not implemented.
-- In-container OpenEMR upload smoke passed for a mapped category by calling the
-  real `addNewDocument(...)` function and then the same
-  `DocumentUploadEnqueuerHook::dispatch(...)` used by `library/ajax/upload.php`.
-  It created document `75`, inserted one `pending` `lab_pdf` job, linked the
-  document to category `35`, and a second duplicate dispatch kept
-  `job_count_after_duplicate_dispatch=1`.
-- In-container OpenEMR upload smoke passed for an unmapped category by calling
-  the real `addNewDocument(...)` function and dispatching category `1`; it
-  created document `76` and left `job_count_for_unmapped_category=0`.
-- Manual browser upload smoke initially found a real missed path: uploading
-  `p01-chen-lipid-panel.pdf` through the visible standard Documents form
-  created document `77` in the temporary branded lab category but no clinical
-  document job. That
-  form posts through `C_Document::upload_action_process()`, not the Dropzone
-  `library/ajax/upload.php` path.
-- After hooking `C_Document::upload_action_process()`, manual browser upload
-  smoke passed: the repeated upload created document `78` for patient `900001`
-  in the temporary branded lab category and inserted job `5` with
-  `doc_type=lab_pdf`, `status=pending`, `attempts=0`; latest job count for
-  document `78` was exactly `1`.
-- Corrected in-container OpenEMR upload smoke passed for the normal workflow:
-  uploading `p01-chen-lipid-panel-clinical-contract.pdf` to existing category
-  `Lab Report` created document `79` and job `6` in
-  `clinical_document_processing_jobs` with `doc_type=lab_pdf`,
-  `status=pending`, and no retraction metadata.
-- Local DB retraction schema delta was applied idempotently to the active dev
-  DB with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`; `DESCRIBE
-  clinical_document_processing_jobs` shows `retracted_at datetime NULL` and
-  `retraction_reason varchar(64) NULL`.
-- Simulated already-finished work proof passed on `document_id=75` / `job_id=3`:
-  the job was set to `succeeded` with a `manual-finished-token`, then
-  `DocumentRetractionHook::dispatch(75)` was invoked through the OpenEMR
-  container with `$ignoreAuth=true`; the row became `status=retracted`,
-  `lock_token=NULL`, `retracted_at=2026-05-05 15:18:26`, and
-  `retraction_reason=source_document_deleted`, while preserving the prior
-  `finished_at=2026-05-05 15:17:51`.
-- Repeated hook dispatch for `document_id=75` was idempotent: the row remained
-  `retracted` and `retracted_at` did not change.
-- Corrected retraction smoke for document `79` passed by applying the same DB
-  state transitions as `delete_document(...)` and invoking
-  `DocumentRetractionHook::dispatch(79)`: `documents.deleted=1`, category link
-  count `0`, job `6` became `status=retracted`, `retracted_at` was set, and
-  `retraction_reason=source_document_deleted`.
-- `composer phpunit-isolated` passed outside the sandbox after allowing the
-  built-in routing-test server to bind to `127.0.0.1:8765`: 3073 tests, 8637
-  assertions, 3 pre-existing warnings, 1 pre-existing notice, 3 skipped, 14
-  incomplete.
-- `composer phpunit-isolated` was rerun during source-retraction hardening and
-  failed only because the local routing test server was unavailable at
-  `127.0.0.1:8765`: 3080 tests, 8640 assertions, 8 connection errors, 3
-  warnings, 1 notice, 3 skipped, 14 incomplete. The failing tests were
-  `OpenEMR\Tests\Isolated\BC\FrontControllerRoutingTest` cases.
-- `agent-forge/scripts/check-clinical-document.sh` was rerun during
-  source-retraction hardening. Diff whitespace, PHP syntax, shell syntax, and
-  AgentForge isolated PHPUnit passed (349 tests, 1672 assertions). The clinical
-  eval verdict remained `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-151634`. The artifact
-  shows the expected M1 downstream gaps: adapter status `not_implemented` for
-  extraction/retrieval cases, while `no_phi_in_logs` passed 8/8.
-- `agent-forge/scripts/check-clinical-document.sh` was rerun after the
-  clinical-document contract rename. Diff whitespace, PHP syntax, shell syntax,
-  and AgentForge isolated PHPUnit passed (352 tests, 1686 assertions). The
-  eval verdict remains `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-154754`.
-- Review hardening after the M2 full review removed duplicate AJAX enqueue
-  dispatch, made `C_Document::upload_action_process()` the single enqueue
-  integration point, added source-level integration wiring tests, made
-  `clinical_document_type_mappings.category_id` unique, added schema contract
-  tests for fresh/upgrade SQL shape, and added a direct document-delete active
-  patient guard for non-super users.
-- M2 closeout safety stubs were added to `PLAN-W2.md` for document identity
-  verification/wrong-patient safeguards, promotion provenance/review/duplicate
-  prevention, and promoted-data retraction/audit. `MEMORY.md` now carries the
-  durable rule that promoted clinical data must never be anonymous side effects.
-- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'`
-  passed after review hardening: 49 tests, 136 assertions.
-- `vendor/bin/phpcs library/ajax/upload.php interface/patient_file/deleter.php src/AgentForge/Document/DocumentUploadEnqueuer.php src/AgentForge/Document/DocumentUploadEnqueuerHook.php tests/Tests/Isolated/AgentForge/Document/DocumentIntegrationWiringTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSchemaContractTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSeedTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerHookTest.php`
-  passed: 9 / 9 files.
-- `vendor/bin/phpstan analyze --memory-limit=4G --configuration=phpstan.neon.dist src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document library/ajax/upload.php interface/patient_file/deleter.php .phpstan/baseline/variable.undefined.php`
-  passed after allowing PHPStan to open its local analysis socket.
-- `agent-forge/scripts/check-clinical-document.sh` was rerun after review
-  hardening. Diff whitespace, PHP syntax, shell syntax, and AgentForge isolated
-  PHPUnit passed (363 tests, 1730 assertions). The clinical eval verdict
-  remains `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-162038`.
-- After adding resolver-result validation to the upload hook, the focused
-  document suite passed again (50 tests, 136 assertions), focused PHPCS passed
-  (9 / 9 files), focused PHPStan passed with no errors, `git diff --check`
-  passed, and `agent-forge/scripts/check-clinical-document.sh` reached the
-  expected eval threshold step with AgentForge isolated PHPUnit passing
-  (364 tests, 1730 assertions). The clinical eval verdict remains
-  `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-162450`.
-- After adding future safety epic stubs and documentation/source-contract tests,
-  the focused document suite passed (55 tests, 158 assertions), focused PHPCS
-  passed for the new/related planning tests, focused PHPStan passed for the new
-  planning contract test, and `git diff --check` passed.
-- `agent-forge/scripts/check-clinical-document.sh` was rerun after the safety
-  stub closeout. Diff whitespace, PHP syntax, shell syntax, and AgentForge
-  isolated PHPUnit passed (369 tests, 1752 assertions). The clinical eval
-  verdict remains `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-170450`.
-- M2 closeout automation was rerun before destructive clean-stack validation:
-  focused document/logging PHPUnit passed (57 tests, 178 assertions), focused
-  PHPCS passed (15 / 15 files), focused PHPStan passed with no errors,
-  `git diff --check` passed, and `agent-forge/scripts/check-clinical-document.sh`
-  reached the expected eval threshold step with AgentForge isolated PHPUnit
-  passing (369 tests, 1752 assertions). The clinical eval verdict remains
-  `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-171955`.
-- Docker stack inspection showed `docker/development-easy` services up and
-  healthy. The destructive `docker compose down -v` reset was not run because
-  it requires explicit approval after the local database deletion warning.
-- Clean reset/reseed validation completed after user approval. The local
-  `docker/development-easy` volumes were reset, the stack recreated, and
-  `agent-forge/scripts/seed-demo-data.sh` plus
-  `agent-forge/scripts/verify-demo-data.sh` passed. Fresh DB checks showed
-  `clinical_document_type_mappings` and `clinical_document_processing_jobs`
-  exist, old `agentforge_document_*` tables count is `0`, visible
-  `AgentForge%` categories count is `0`, and the only active M2 mapping is
-  `Lab Report -> lab_pdf`.
-- Manual clean-stack upload proof passed: uploading
-  `p01-chen-lipid-panel.pdf` to `Lab Report` for `pid=900001` created
-  `document_id=3` and `job_id=1` with `doc_type=lab_pdf`, `status=pending`,
-  `attempts=0`, `lock_token=NULL`, and no retraction metadata.
-- Manual clean-stack delete proof passed: deleting `document_id=3` through the
-  OpenEMR UI set `documents.deleted=1`, removed category links, and retracted
-  `job_id=1` with `retracted_at` set, `retraction_reason=source_document_deleted`,
-  `finished_at` set, and `lock_token=NULL`.
-- Manual already-finished job retraction proof passed: a second upload created
-  `document_id=4` and `job_id=2`; the job was manually set to `succeeded` with
-  `lock_token=manual-finished-token`, then UI deletion set
-  `documents.deleted=1`, removed category links, changed the job to
-  `status=retracted`, cleared `lock_token`, set `retracted_at` and
-  `retraction_reason=source_document_deleted`, and preserved the prior
-  `finished_at`.
-- During manual deletion, the UI initially displayed raw SQL from the existing
-  deleter helper. M2 document deletion now suppresses SQL echo for document
-  relation cleanup while preserving audit/delete behavior; the repeated UI
-  delete was clean.
-- Final focused M2 automation after clean-stack/manual proof passed: focused
-  document/logging PHPUnit (58 tests, 181 assertions), focused PHPCS
-  (15 / 15 files), focused PHPStan with no errors, and `git diff --check`.
-  `agent-forge/scripts/check-clinical-document.sh` reached the expected eval
-  threshold step with AgentForge isolated PHPUnit passing
-  (370 tests, 1755 assertions). The clinical eval verdict remains
-  `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-174601`.
-- Final review follow-up fixed the procedural safety boundary: upload and
-  retraction hooks now catch `Throwable` at the OpenEMR workflow edge, log only
-  sanitized error class metadata, and never let AgentForge failures break normal
-  upload/delete behavior. Retraction success logging is asserted. Focused
-  document PHPUnit passed (60 tests, 184 assertions), full
-  `composer phpunit-isolated` passed (3105 tests, 8758 assertions, 3 skipped,
-  14 incomplete), `composer phpcs` passed, `composer phpstan` passed,
-  `composer rector-check` passed, `composer php-syntax-check` passed, and
-  `agent-forge/scripts/check-clinical-document.sh` reached the expected eval
-  threshold step with AgentForge isolated PHPUnit passing
-  (374 tests, 1778 assertions). The clinical eval verdict remains
-  `threshold_violation`; artifact:
-  `agent-forge/eval-results/clinical-document-20260505-185855`.
+- **Mitigation**: error code `extraction_not_implemented` is recognizable and ignorable. M4 ships, replaces the processor, and re-enqueues failed-with-`extraction_not_implemented` rows back to `pending` (one-time backfill script - M4 work).
 
-Open proof gaps:
+### Risk: portable claim SQL has limited fairness guarantees
 
-- Fresh-install verification is proven by clean reset/reseed and manual
-  upload/delete lifecycle proof. Upgrade-flow verification remains limited to
-  source-level schema contract tests; because the branded M2 schema was never
-  accepted or shipped, local validation intentionally preferred reset/reseed
-  over supporting old partial `agentforge_document_*` tables.
-- The clinical document eval gate still reports `threshold_violation` as
-  expected before later worker/extraction epics replace the M1 not-implemented
-  adapter.
+M3 uses a portable atomic `UPDATE ... WHERE status='pending' AND retracted_at IS NULL ORDER BY created_at ASC LIMIT 1`, then re-fetches by `lock_token`. This avoids `SKIP LOCKED` compatibility problems across supported OpenEMR database versions and proved no double-processing in the local two-worker/five-job manual test.
+
+- **Mitigation**: keep the claim path simple and terminal updates lock-token guarded. M4 can revisit queue fairness and stale-lock recovery once supervisor/reaper work exists.
+
+### Risk: OpenEmrDocumentLoader testability and legacy PHP notices
+
+The legacy `Document` class is global, untyped, and instantiated via `new Document($id)` triggering DB I/O in its constructor. The factory-closure injection is a workaround, not an ideal seam.
+
+- **Mitigation**: `DocumentLoader` interface lets tests bypass `OpenEmrDocumentLoader` entirely. `OpenEmrDocumentLoaderTest` exercises the legacy adapter via the closure, asserting only the contract (deleted/expired/throws/happy). Manual proof also showed invalid synthetic document IDs can trigger legacy PHP notices; the loader now uses scoped error handling and the CLI script suppresses display output after OpenEMR bootstrap so those become typed, sanitized load failures instead of raw container noise.
+
+### Risk: Heartbeat write amplification
+
+Every iteration writes to `clinical_document_worker_heartbeats`. At 5-second idle sleep that is ~17,000 writes/day per worker - low for MariaDB but noisy in slow-query logs.
+
+- **Mitigation**: M3 ships with `info`-level heartbeat logs that we can downgrade to `debug` if logs become noisy. Heartbeat DB writes are a single-row upsert with primary-key lookup - cheap. Acceptable for M3.
+
+### Risk: OpenEMR PHP configuration disables `pcntl_signal*`
+
+Manual proof showed OpenEMR's PHP configuration disables the `pcntl_signal*` functions, so PHP signal handlers cannot catch Docker SIGTERM in the worker container. The first local stop test exited 137 after Docker's full 30-second grace period.
+
+- **Mitigation**: `docker/development-easy` keeps `/bin/sh` as PID 1 for the worker service. The shell trap invokes `process-document-jobs.php --mark-stopped`, kills the child worker, waits, and exits 0. The re-run stopped in 0.2 seconds and wrote `status='stopped'` with `stopped_at`.
+
+### Risk: Tightening `patient_id` -> `patient_ref` only is partial
+
+M3 worker code uses `patient_ref` exclusively, but `ALLOWED_KEYS` still permits raw `patient_id` for M2 compatibility. A future epic should remove `patient_id` from the allowlist once all callers migrate. Documented as a follow-up.
+
+### Risk: Multiple workers configured with the same name
+
+If an operator boots two containers both with `AGENTFORGE_WORKER_NAME=intake-extractor`, the heartbeat row's `process_id` will flap between them. M3 doesn't prevent this; the unique key on `worker` means heartbeats merge.
+
+- **Mitigation**: documented as an operator pitfall. M4 supervisor enforces single-instance-per-name.
+
+### Tradeoff: One subdirectory per epic vs flat module
+
+I chose `src/AgentForge/Document/Worker/*` (a subdirectory) over flat `src/AgentForge/Document/*` because M3 introduces 12+ new classes that all share one bounded context (the worker loop). The subdirectory keeps M2 enqueue/retract files visually clean and signals modularity at a glance. The cost is a slightly longer namespace path. Worth it.
+
+### Tradeoff: Strategy seam now vs in M4
+
+We could ship M3 with a hardcoded "always fail" inside `DocumentJobWorker` and let M4 introduce `DocumentJobProcessor`. I chose to ship the seam now because (a) the M2 plan explicitly mentions M4 plugging extraction in, (b) the seam is one interface + one constructor parameter, and (c) introducing it in M4 would force a worker refactor mid-epic. Cost is ~50 lines of code; benefit is M4 moves faster and the worker contract is settled in M3 review.
+
+---
+
+## 14. Notes for Future Epics
+
+- **M4 Supervisor** consumes the `clinical_document_worker_heartbeats` table to know which workers are alive. The unique key on `worker` is the supervisor's primary lookup index.
+- **M4 Stale-lock reaper** scans `clinical_document_processing_jobs WHERE status='running' AND started_at < NOW() - INTERVAL N MINUTE` and either resets to `pending` or marks `failed` with `error_code='worker_died'`. M3 leaves `lock_token` set on orphans; reaper clears it.
+- **M4 Real processor** swaps `NoopDocumentJobProcessor` for the real OCR/LLM extractor by changing one line in `DocumentJobWorkerFactory::createDefault()`. Worker loop unchanged.
+- **M4 Job re-enqueue** for M3-failed rows: a one-shot script that finds `status='failed' AND error_code='extraction_not_implemented'` and resets them to `pending`. Trivial.
+- **M5 Evidence retriever** worker reuses the same `DocumentJobWorker` skeleton with a different `WorkerName` and a different processor strategy. M3's worker loop is generic over strategy - `evidence-retriever` is an M5 wiring change, not a worker re-implementation.
+- **M5+ Vector indexing** sits inside the M4 real processor's success path. M3 worker loop never touches it.
+- **MEMORY carry-forwards to add when M3 lands**:
+  - "M3 worker honors upload safety by running out-of-process; do not collapse worker into the request path."
+  - "M3 ships with `NoopDocumentJobProcessor` that intentionally fails every job; M4 must replace and re-enqueue."
+  - "Stale-lock reaper is M4's responsibility; M3 leaves orphan `running` rows untouched."
+  - "Worker claim SQL is portable atomic update plus lock-token re-fetch; do not reintroduce branded table names or unguarded finish updates."
+  - "`patient_ref` (HMAC) is the worker's only patient identifier in logs; `patient_id` allowlist entry is M2 legacy."
+
+---
+
+## 15. Implementation Progress
+
+| Step | Status | Notes |
+|------|--------|-------|
+| Plan written and approved | complete | Local M3 scope; VM proof remains separate |
+| Test files (Section 7) | complete | Focused M3/document tests green |
+| `LockToken`, `WorkerName`, `WorkerStatus` value objects | complete | |
+| `WorkerHeartbeat`, `DocumentLoadResult`, `ProcessingResult` DTOs | complete | |
+| `DocumentLoader` + `OpenEmrDocumentLoader` + `DocumentLoadException` | complete | Legacy notices converted to sanitized load failures |
+| `JobClaimer` + `SqlJobClaimer` | complete | Portable atomic update plus lock-token re-fetch |
+| `WorkerHeartbeatRepository` + `SqlWorkerHeartbeatRepository` | complete | |
+| `DocumentJobProcessor` interface + `NoopDocumentJobProcessor` | complete | M3 stub |
+| Worker repository finish/find-by-lock-token methods | complete | Split into worker-facing repository contract |
+| `DocumentJobWorker` + `DocumentJobWorkerFactory` | complete | Includes stopped-heartbeat path |
+| `process-document-jobs.php` CLI + `WorkerArgs` parser | complete | Includes `--mark-stopped` for Docker shell trap |
+| `SensitiveLogPolicy` allowlist additions | complete | |
+| `clinical_document_worker_heartbeats` DDL + `version.php` bump | complete | Existing local volume needed manual table creation because DB was still 539 |
+| `docker-compose.yml` `agentforge-worker` service | complete | Uses shell trap because PHP signal functions are disabled |
+| Unit tests passing | complete | 104 document/log tests, 407 assertions on 2026-05-05 |
+| PHPStan level 10 clean | complete | Focused touched files |
+| Local manual proof | complete | Gates 1-6B passed after fixes |
+| Push + PR | not started | |
+| VM deploy proof (Gates 5-8) | not started | |
+| MEMORY.md update | complete | Local proof notes added |
+| PLAN-W2.md status update | complete | Local proof notes added |

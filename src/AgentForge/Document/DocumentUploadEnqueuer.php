@@ -57,10 +57,9 @@ final readonly class DocumentUploadEnqueuer
         } catch (RuntimeException | DomainException | InvalidArgumentException $e) {
             $this->logger->error(
                 'clinical_document.job.enqueue_failed',
-                SensitiveLogPolicy::sanitizeContext([
+                SensitiveLogPolicy::throwableErrorContext($e, [
                     'document_id' => $documentId->value,
                     'category_id' => $categoryId->value,
-                    'error_code' => $e::class,
                 ]),
             );
 

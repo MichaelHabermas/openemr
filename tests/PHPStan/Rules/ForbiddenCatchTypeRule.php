@@ -56,14 +56,15 @@ class ForbiddenCatchTypeRule implements Rule
     ];
 
     /**
-     * Procedural hooks that deliberately absorb all AgentForge failures after
-     * the OpenEMR workflow has already performed its authoritative side effect.
+     * Single guard for AgentForge document procedural hooks that deliberately
+     * absorb all failures after the OpenEMR workflow has already performed its
+     * authoritative side effect. Hook entrypoints delegate here; see
+     * OpenEMR\AgentForge\Document\DocumentProceduralHookGuard.
      *
      * @var list<string>
      */
     private const ALLOWED_SUPPRESSION_PATHS = [
-        'src/AgentForge/Document/DocumentRetractionHook.php',
-        'src/AgentForge/Document/DocumentUploadEnqueuerHook.php',
+        'src/AgentForge/Document/DocumentProceduralHookGuard.php',
     ];
 
     public function __construct(

@@ -155,3 +155,21 @@ ALTER TABLE `clinical_document_processing_jobs` ADD COLUMN `retracted_at` dateti
 #IfMissingColumn clinical_document_processing_jobs retraction_reason
 ALTER TABLE `clinical_document_processing_jobs` ADD COLUMN `retraction_reason` varchar(64) NULL;
 #EndIf
+
+#IfNotTable clinical_document_worker_heartbeats
+CREATE TABLE `clinical_document_worker_heartbeats` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `worker` varchar(64) NOT NULL,
+  `process_id` int(11) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `iteration_count` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_processed` bigint(20) NOT NULL DEFAULT 0,
+  `jobs_failed` bigint(20) NOT NULL DEFAULT 0,
+  `started_at` datetime NOT NULL,
+  `last_heartbeat_at` datetime NOT NULL,
+  `stopped_at` datetime NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_worker_heartbeats_worker` (`worker`),
+  KEY `idx_clinical_document_worker_heartbeats_status` (`status`)
+) ENGINE=InnoDB;
+#EndIf

@@ -93,6 +93,16 @@ jobs:
     - name: Seed AgentForge demo patient
       run: mysql -h 127.0.0.1 -u ci -ptopsecret openemr_test < agent-forge/sql/seed-demo-data.sql
 
+    - name: Verify demo seed (shared oracle with local Docker)
+      env:
+        AGENTFORGE_VERIFY_TRANSPORT: direct
+        AGENTFORGE_DB_HOST: 127.0.0.1
+        AGENTFORGE_DB_PORT: 3306
+        AGENTFORGE_DB_NAME: openemr_test
+        AGENTFORGE_DB_USER: ci
+        AGENTFORGE_DB_PASS: topsecret
+      run: bash agent-forge/scripts/verify-demo-data.sh
+
     - name: Run Tier 1 SQL evidence evals
       env:
         AGENTFORGE_SQL_EVAL_ENVIRONMENT: ci

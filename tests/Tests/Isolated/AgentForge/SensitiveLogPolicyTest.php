@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class SensitiveLogPolicyTest extends TestCase
 {
@@ -30,6 +31,14 @@ final class SensitiveLogPolicyTest extends TestCase
             'worker' => 'intake-extractor',
             'attempts' => 0,
             'error_code' => 'RuntimeException',
+            'process_id' => 1234,
+            'iteration_count' => 2,
+            'jobs_processed' => 1,
+            'jobs_failed' => 1,
+            'lock_token_prefix' => 'abcdef12',
+            'idle_seconds' => 5,
+            'claimed_count' => 1,
+            'worker_status' => 'running',
             'decision' => 'allowed',
             'question' => 'What changed?',
             'answer' => 'raw answer',
@@ -48,12 +57,35 @@ final class SensitiveLogPolicyTest extends TestCase
         $this->assertSame('intake-extractor', $context['worker']);
         $this->assertSame(0, $context['attempts']);
         $this->assertSame('RuntimeException', $context['error_code']);
+        $this->assertSame(1234, $context['process_id']);
+        $this->assertSame(2, $context['iteration_count']);
+        $this->assertSame(1, $context['jobs_processed']);
+        $this->assertSame(1, $context['jobs_failed']);
+        $this->assertSame('abcdef12', $context['lock_token_prefix']);
+        $this->assertSame(5, $context['idle_seconds']);
+        $this->assertSame(1, $context['claimed_count']);
+        $this->assertSame('running', $context['worker_status']);
         $this->assertSame('allowed', $context['decision']);
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);
         $this->assertArrayNotHasKey('quote_or_value', $context);
         $this->assertArrayNotHasKey('exception', $context);
         $this->assertArrayNotHasKey('custom_debug', $context);
+    }
+
+    public function testThrowableErrorContextMergesAllowedKeysAndStripsForbidden(): void
+    {
+        $e = new RuntimeException('internal');
+        $context = SensitiveLogPolicy::throwableErrorContext($e, [
+            'document_id' => 42,
+            'category_id' => 7,
+            'exception' => 'must not leak',
+        ]);
+
+        $this->assertSame(RuntimeException::class, $context['error_code']);
+        $this->assertSame(42, $context['document_id']);
+        $this->assertSame(7, $context['category_id']);
+        $this->assertArrayNotHasKey('exception', $context);
     }
 
     public function testDetectsForbiddenKeysRecursively(): void

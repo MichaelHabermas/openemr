@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # Verify AgentForge fake demo patient data exists after seeding.
+#
+# Default: queries via `docker compose exec` (local Docker dev stack).
+# CI / host DB: set AGENTFORGE_VERIFY_TRANSPORT=direct and DB host/user/pass/name
+# (see .github/workflows/agentforge-evals.yml Tier 1).
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+VERIFY_TRANSPORT="${AGENTFORGE_VERIFY_TRANSPORT:-compose}"
 COMPOSE_DIR="${AGENTFORGE_COMPOSE_DIR:-docker/development-easy}"
 DB_SERVICE="${AGENTFORGE_DB_SERVICE:-mysql}"
+DB_HOST="${AGENTFORGE_DB_HOST:-127.0.0.1}"
+DB_PORT="${AGENTFORGE_DB_PORT:-3306}"
 DB_NAME="${AGENTFORGE_DB_NAME:-openemr}"
 DB_USER="${AGENTFORGE_DB_USER:-root}"
 DB_PASS="${AGENTFORGE_DB_PASS:-root}"
@@ -19,13 +26,27 @@ compose() {
 }
 
 mysql_scalar() {
+    local sql="$1"
+
+    if [[ "${VERIFY_TRANSPORT}" == "direct" ]]; then
+        MYSQL_PWD="${DB_PASS}" mysql \
+            --batch \
+            --skip-column-names \
+            -h "${DB_HOST}" \
+            -P "${DB_PORT}" \
+            -u "${DB_USER}" \
+            "${DB_NAME}" \
+            --execute="${sql}"
+        return 0
+    fi
+
     compose exec -T "${DB_SERVICE}" mariadb \
         --batch \
         --skip-column-names \
         --user="${DB_USER}" \
         --password="${DB_PASS}" \
         "${DB_NAME}" \
-        --execute="$1"
+        --execute="${sql}"
 }
 
 expect_count() {

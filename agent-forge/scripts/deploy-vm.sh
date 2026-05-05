@@ -6,10 +6,15 @@
 # See agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md.
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/deploy-common.sh
+source "${SCRIPT_DIR}/lib/deploy-common.sh"
+
 REPO_DIR="${AGENTFORGE_REPO_DIR:-${HOME}/repos/openemr}"
 COMPOSE_DIR="${AGENTFORGE_COMPOSE_DIR:-docker/development-easy}"
-APP_URL="${AGENTFORGE_APP_URL:-https://openemr.titleredacted.cc/}"
-READYZ_URL="${AGENTFORGE_READYZ_URL:-https://openemr.titleredacted.cc/meta/health/readyz}"
+agentforge_load_public_urls
+APP_URL="${AGENTFORGE_APP_URL}"
+READYZ_URL="${AGENTFORGE_READYZ_URL}"
 HEALTH_TIMEOUT_SECONDS="${AGENTFORGE_HEALTH_TIMEOUT_SECONDS:-300}"
 HEALTH_INTERVAL_SECONDS="${AGENTFORGE_HEALTH_INTERVAL_SECONDS:-5}"
 SEED_SCRIPT="${AGENTFORGE_SEED_SCRIPT:-agent-forge/scripts/seed-demo-data.sh}"
@@ -27,39 +32,10 @@ load_compose_env() {
     fi
 }
 
-check_url() {
-    local label="$1"
-    local url="$2"
-    local status
-
-    set +e
-    status="$(
-        curl \
-            --silent \
-            --show-error \
-            --location \
-            --output /dev/null \
-            --write-out '%{http_code}' \
-            --connect-timeout 10 \
-            --max-time 20 \
-            "${url}"
-    )"
-    local curl_exit=$?
-    set -e
-
-    if [[ "${curl_exit}" -eq 0 && "${status}" =~ ^[23][0-9][0-9]$ ]]; then
-        printf 'PASS %s: HTTP %s\n' "${label}" "${status}"
-        return 0
-    fi
-
-    printf 'WAIT %s: curl exit %s, HTTP %s\n' "${label}" "${curl_exit}" "${status:-000}"
-    return 1
-}
-
 wait_for_health() {
     local elapsed=0
 
-    until check_url "public app" "${APP_URL}"; do
+    until agentforge_check_http "public app" "${APP_URL}" "required"; do
         if [[ "${elapsed}" -ge "${HEALTH_TIMEOUT_SECONDS}" ]]; then
             printf 'Deploy failed: app did not become healthy within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
             return 1
@@ -69,7 +45,7 @@ wait_for_health() {
     done
 
     # Readiness endpoint is informational; do not block deploy on it.
-    check_url "readiness endpoint" "${READYZ_URL}" || true
+    agentforge_check_http "readiness endpoint" "${READYZ_URL}" "optional" || true
 }
 
 verify_agentforge_model_config() {

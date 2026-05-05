@@ -11,6 +11,7 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Eval\EvalEvidenceTool;
 use OpenEMR\AgentForge\Eval\EvalFailingTool;
@@ -34,7 +35,7 @@ use OpenEMR\AgentForge\Verification\DraftVerifier;
 
 function agentforge_eval_main(): int
 {
-    $repoRoot = dirname(__DIR__, 3);
+    $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $fixturePath = $repoRoot . '/agent-forge/fixtures/eval-cases.json';
     $resultsDir = getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
     $fixture = json_decode((string) file_get_contents($fixturePath), true, 512, JSON_THROW_ON_ERROR);

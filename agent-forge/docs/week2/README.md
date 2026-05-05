@@ -10,10 +10,10 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 
 ## Requirements (source of truth)
 
-- [Week 2 project requirements (text)](../SPECS-W2.txt) — same content as the PDF, easy to diff.
-- [Week 2 requirements (PDF)](../reference/Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
+- [Week 2 project requirements (text)](SPECS-W2.md) — same content as the PDF, easy to diff.
+- [Week 2 requirements (PDF)](Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
 
-**Not Week 2:** [../PRD.md](../PRD.md) and [../PLAN.md](../PLAN.md) are **Week 1** documents (grounded in [../SPECS.txt](../SPECS.txt)). Do not assume they describe multimodal/RAG/worker-graph work unless you fork or extend them explicitly (e.g. `PRD-W2.md`).
+**Not Week 2:** [../week1/PRD.md](../week1/PRD.md) and [../week1/PLAN.md](../week1/PLAN.md) are **Week 1** documents (grounded in [../week1/SPECS.txt](../week1/SPECS.txt)). Do not assume they describe multimodal/RAG/worker-graph work unless you fork or extend them explicitly (e.g. `PRD-W2.md`).
 
 ## Architecture (assignments + repo)
 

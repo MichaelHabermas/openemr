@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentTypeMappingRepository;
+use OpenEMR\AgentForge\Document\Worker\LockToken;
 use PHPUnit\Framework\TestCase;
 
 final class SqlDocumentRepositoriesTest extends TestCase
@@ -128,6 +129,70 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('lock_token = NULL', $executor->statements[0]['sql']);
         $this->assertStringContainsString('WHERE document_id = ? AND status <> ?', $executor->statements[0]['sql']);
         $this->assertSame(['retracted', 'source_document_deleted', 123, 'retracted'], $executor->statements[0]['binds']);
+    }
+
+    public function testJobRepositoryMarkFinishedReleasesClaim(): void
+    {
+        $executor = new DocumentRepositoryExecutor([]);
+
+        (new SqlDocumentJobRepository($executor))->markFinished(
+            new DocumentJobId(9),
+            new LockToken(str_repeat('b', 64)),
+            JobStatus::Failed,
+            'extraction_not_implemented',
+            'M3 worker skeleton; M4 will replace this processor.',
+        );
+
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('SET status = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('finished_at = NOW()', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('error_code = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('error_message = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('lock_token = NULL', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('WHERE id = ? AND status = ? AND lock_token = ? AND retracted_at IS NULL', $executor->statements[0]['sql']);
+        $this->assertSame(
+            [
+                'failed',
+                'extraction_not_implemented',
+                'M3 worker skeleton; M4 will replace this processor.',
+                9,
+                'running',
+                str_repeat('b', 64),
+            ],
+            $executor->statements[0]['binds'],
+        );
+    }
+
+    public function testJobRepositoryFindClaimedByLockTokenHydratesRunningJob(): void
+    {
+        $lockToken = new LockToken(str_repeat('a', 64));
+        $executor = new DocumentRepositoryExecutor([
+            [
+                'id' => 9,
+                'patient_id' => 900001,
+                'document_id' => 123,
+                'doc_type' => 'lab_pdf',
+                'status' => 'running',
+                'attempts' => 1,
+                'lock_token' => $lockToken->value,
+                'created_at' => '2026-05-05 00:00:00',
+                'started_at' => '2026-05-05 00:01:00',
+                'finished_at' => null,
+                'error_code' => null,
+                'error_message' => null,
+                'retracted_at' => null,
+                'retraction_reason' => null,
+            ],
+        ]);
+
+        $job = (new SqlDocumentJobRepository($executor))->findClaimedByLockToken($lockToken);
+
+        $this->assertInstanceOf(DocumentJob::class, $job);
+        $this->assertSame(9, $job->id?->value);
+        $this->assertSame(JobStatus::Running, $job->status);
+        $this->assertSame($lockToken->value, $job->lockToken);
+        $this->assertStringContainsString('WHERE lock_token = ? AND status = ?', $executor->queries[0]['sql']);
+        $this->assertSame([$lockToken->value, 'running'], $executor->queries[0]['binds']);
     }
 }
 

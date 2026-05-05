@@ -28,6 +28,7 @@ Keep entries concise. Prefer notes that will change future engineering behavior 
 
 ## Global AgentForge Guardrails
 
+- **Secrets and automation boundary:** LLM keys (`AGENTFORGE_OPENAI_API_KEY` / `AGENTFORGE_ANTHROPIC_API_KEY` and legacy aliases) are server env only; `deploy-vm.sh` fails fast when the chosen provider’s key is missing. Tier 2 and Tier 4 automation assume credentials and optionally SSH (`AGENTFORGE_VM_SSH_HOST`) on the runner—never commit values. Multi-turn state is stored under session key `agent_forge_conversations` via `SessionUtil::setSensitiveSession` so conversation payloads are not written through the generic session debug path.
 - Implemented code is not acceptance-complete until the safety proof is present. If verifier, auth, evidence, eval, or deployment proof is missing, call the work incomplete or explicitly document the gap.
 - OpenEMR core workflows must not depend on AgentForge success. AgentForge integrations should fail safe and avoid breaking normal OpenEMR behavior.
 - Patient and user scope must be resolved before patient data is read.
@@ -157,11 +158,57 @@ The focused M2 verification used during implementation included:
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
 
+## Architecture scan follow-ups (2026-05)
+
+- **Runtime seam:** `interface/patient_file/summary/agent_request.php` remains the HTTP entry; larger moves into `OpenEMR\AgentForge` services should follow existing DI patterns and add tests before refactors.
+- **CI vs release proof:** PR green does not imply Tier 4 deployed smoke or full `check-agentforge.sh`; treat those as release/demo gates (documented in `EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
+
 ## Carry Forward To M3+
 
-- M3 worker work should build on `clinical_document_processing_jobs`, including `lock_token`, `locked_at`, attempts, heartbeat behavior, and safe retry semantics.
+- M3 worker work should build on `clinical_document_processing_jobs`, including `lock_token`, `started_at`, attempts, heartbeat behavior, and safe retry semantics.
 - M3/M4 must preserve the upload safety contract: document upload is non-blocking and cannot be broken by AgentForge.
 - Document extraction must continue the no-raw-PHI logging posture established in M2.
 - Before claiming end-to-end acceptance, add or perform a manual browser upload smoke test for both core and portal paths.
 - If an active epic file is refreshed, move any reusable proof gaps, architectural decisions, or safety lessons here first.
 - Durable clinical schema names and user-visible workflow labels must describe the domain, not the implementing module or product. Use names such as `clinical_document_type_mappings` and normal OpenEMR categories such as `Lab Report`; do not introduce branded `AgentForge...` table names or document categories.
+
+## Week 2 M3 Implementation Notes
+
+Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.
+
+- M3 worker skeleton uses the existing `clinical_document_processing_jobs`
+  columns `lock_token`, `started_at`, and `attempts`; do not add a separate
+  `locked_at` column for this milestone.
+- `clinical_document_worker_heartbeats` is the M3 liveness table keyed by `worker`,
+  with process id, status, iteration count, processed/failed counters,
+  started/heartbeat timestamps, and `stopped_at`.
+- The canonical worker idle interval env var is
+  `AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS`; older
+  `AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS` wording was replaced in Week 2
+  planning docs for M3.
+- M3 intentionally wires `NoopDocumentJobProcessor`, which marks claimed jobs
+  failed with `error_code=extraction_not_implemented`. M4 must replace this
+  processor with real extraction rather than treating M3 failures as extraction
+  regressions.
+- The worker must keep logging only sanitized operational metadata. New M3 logs
+  use `patient_ref`, never raw `patient_id`, and never include document text,
+  bytes, quotes, extracted fields, full lock tokens, or exception messages.
+- OpenEMR's PHP configuration used by `docker/development-easy` disables
+  `pcntl_signal*`; graceful worker shutdown in Docker relies on the Compose
+  shell trap invoking `process-document-jobs.php --mark-stopped`, not PHP
+  signal handlers.
+- Legacy OpenEMR `Document` APIs can emit PHP notices for invalid source
+  document IDs. The M3 worker must keep these notices out of container logs by
+  using scoped error handling in `OpenEmrDocumentLoader` and CLI error-display
+  suppression after OpenEMR bootstrap.
+- Automated M3 proof covers schema/repository/claimer/heartbeat/worker loop,
+  loader errors, CLI parsing/script shape, Docker Compose service shape,
+  PHPCS, PHPStan on touched files, syntax checks, and focused document tests.
+  Local Docker/manual proof covered a pre-upgrade local volume at
+  `v_database=539`; the shipped upgrade SQL contains the standard
+  `#IfNotTable clinical_document_worker_heartbeats` path, but that local
+  volume needed manual table creation before testing. Proof also covered upload
+  enqueue to `pending`, no-op processing to
+  `failed(extraction_not_implemented)`, stopped heartbeat on Docker stop,
+  retracted-row skip behavior, two-worker/five-job no-double-processing, and
+  sanitized container logs without PHP notices.

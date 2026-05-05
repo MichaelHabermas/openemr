@@ -45,17 +45,17 @@ final class ClinicalDocumentPlanningContractTest extends TestCase
         $this->assertStringContainsString('prevent fact promotion while identity is unresolved', $memory);
     }
 
-    public function testCurrentEpicStatesM2DoesNotPromoteIntoOpenEmrClinicalTables(): void
+    public function testPlanStatesM2DoesNotPromoteIntoOpenEmrClinicalTables(): void
     {
-        $epic = $this->readProjectFile('/agent-forge/docs/week2/CURRENT-EPIC.md');
+        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
 
-        $this->assertStringContainsString('M2 does not extract facts', $epic);
-        $this->assertStringContainsString('promote any values into existing OpenEMR clinical tables', $epic);
+        $this->assertStringContainsString('M2 does not extract facts', $plan);
+        $this->assertStringContainsString('promote any values into existing OpenEMR clinical tables', $plan);
         $this->assertStringContainsString(
             'Deleted-source retraction in M2 only retracts',
-            $epic,
+            $plan,
         );
-        $this->assertStringContainsString('clinical_document_processing_jobs', $epic);
+        $this->assertStringContainsString('clinical_document_processing_jobs', $plan);
     }
 
     public function testPlanRecordsCleanResetReseedAsFinalM2ValidationDefault(): void
@@ -74,15 +74,15 @@ final class ClinicalDocumentPlanningContractTest extends TestCase
         $this->assertStringContainsString('expected `threshold_violation`', $plan);
     }
 
-    public function testCurrentEpicUsesAcceptedM2SeedAndUploadContracts(): void
+    public function testPlanDocumentsAcceptedM2SeedAndUploadContracts(): void
     {
-        $epic = $this->readProjectFile('/agent-forge/docs/week2/CURRENT-EPIC.md');
+        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
 
-        $this->assertStringContainsString('`Lab Report` category -> `lab_pdf` mapping', $epic);
-        $this->assertStringContainsString('`intake_form` remains supported', $epic);
-        $this->assertStringContainsString('Hook once in `C_Document::upload_action_process()`', $epic);
-        $this->assertStringNotContainsString('two demo categories', $epic);
-        $this->assertStringNotContainsString("SHOW TABLES LIKE 'agentforge_%'", $epic);
+        $this->assertStringContainsString('`Lab Report` category -> `lab_pdf`', $plan);
+        $this->assertStringContainsString('allowed doc types are exactly `lab_pdf` and `intake_form`', $plan);
+        $this->assertStringContainsString('In `C_Document::upload_action_process()`, dispatch the safe enqueue hook', $plan);
+        $this->assertStringNotContainsString('two demo categories', $plan);
+        $this->assertStringNotContainsString("SHOW TABLES LIKE 'agentforge_%'", $plan);
     }
 
     private function readProjectFile(string $path): string

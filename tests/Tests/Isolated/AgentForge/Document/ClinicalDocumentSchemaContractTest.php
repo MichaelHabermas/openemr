@@ -25,6 +25,10 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
         $this->assertStringContainsString('CREATE TABLE `clinical_document_processing_jobs`', $section);
         $this->assertStringNotContainsString('agentforge_document_type_mappings', $section);
         $this->assertStringNotContainsString('agentforge_document_jobs', $section);
+        $this->assertStringNotContainsString('CREATE TABLE `agentforge_', $section);
+        $this->assertStringNotContainsString('DROP TABLE IF EXISTS `agentforge_', $section);
+        $this->assertStringNotContainsString('KEY `idx_agentforge_', $section);
+        $this->assertStringNotContainsString('UNIQUE KEY `uniq_agentforge_', $section);
     }
 
     public function testMappingSchemaAllowsOnlyOneMappingPerCategory(): void
@@ -61,12 +65,52 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
         }
     }
 
+    public function testWorkerHeartbeatSchemaExistsOnFreshInstallAndUpgrade(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
+
+        foreach ([$databaseSql, $upgradeSql] as $sql) {
+            $this->assertStringContainsString('CREATE TABLE `clinical_document_worker_heartbeats`', $sql);
+            $this->assertStringContainsString('`worker` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`process_id` int(11) NOT NULL', $sql);
+            $this->assertStringContainsString('`status` varchar(32) NOT NULL', $sql);
+            $this->assertStringContainsString('`iteration_count` bigint(20) NOT NULL DEFAULT 0', $sql);
+            $this->assertStringContainsString('`jobs_processed` bigint(20) NOT NULL DEFAULT 0', $sql);
+            $this->assertStringContainsString('`jobs_failed` bigint(20) NOT NULL DEFAULT 0', $sql);
+            $this->assertStringContainsString('`started_at` datetime NOT NULL', $sql);
+            $this->assertStringContainsString('`last_heartbeat_at` datetime NOT NULL', $sql);
+            $this->assertStringContainsString('`stopped_at` datetime NULL', $sql);
+            $this->assertStringContainsString(
+                'UNIQUE KEY `uniq_clinical_document_worker_heartbeats_worker` (`worker`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_worker_heartbeats_status` (`status`)',
+                $sql,
+            );
+        }
+
+        $this->assertStringContainsString('#IfNotTable clinical_document_worker_heartbeats', $upgradeSql);
+    }
+
+    public function testDatabaseVersionBumpedForWorkerHeartbeatSchema(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $versionPhp = $this->readProjectFile('/version.php');
+
+        $this->assertStringContainsString('-- v_database: 540', $databaseSql);
+        $this->assertStringContainsString('$v_database = 540;', $versionPhp);
+    }
+
     public function testUpgradeDoesNotCarryUnreleasedBrandedTableRenames(): void
     {
         $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
 
         $this->assertStringContainsString('#IfNotTable clinical_document_type_mappings', $upgradeSql);
         $this->assertStringContainsString('#IfNotTable clinical_document_processing_jobs', $upgradeSql);
+        $this->assertStringNotContainsString('#IfNotTable agentforge_', $upgradeSql);
+        $this->assertStringNotContainsString('CREATE TABLE `agentforge_', $upgradeSql);
         $this->assertStringNotContainsString('agentforge_document_type_mappings', $upgradeSql);
         $this->assertStringNotContainsString('agentforge_document_jobs', $upgradeSql);
     }

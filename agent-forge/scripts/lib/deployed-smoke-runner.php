@@ -14,6 +14,7 @@
 
 declare(strict_types=1);
 
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S = 90;
@@ -38,7 +39,7 @@ const AGENTFORGE_DEPLOYED_SMOKE_USER_AGENT = 'AgentForge-DeployedSmoke/1.0';
  */
 function agentforge_deployed_smoke_config(): array
 {
-    $repoRoot = dirname(__DIR__, 3);
+    $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $baseUrl = (string) (getenv('AGENTFORGE_DEPLOYED_URL') ?: 'https://openemr.titleredacted.cc/');
     if (!str_ends_with($baseUrl, '/')) {
         $baseUrl .= '/';
@@ -815,7 +816,7 @@ function agentforge_deployed_smoke_compose_file_path(): string
         return $composeFile;
     }
 
-    $repoRoot = dirname(__DIR__, 3);
+    $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $composeDir = getenv('AGENTFORGE_COMPOSE_DIR');
     $composeDir = is_string($composeDir) && $composeDir !== ''
         ? $composeDir

@@ -15,6 +15,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 require_once __DIR__ . '/DocumentUploadEnqueuerTest.php';
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Document\DocumentHookServiceBinding;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
@@ -33,40 +34,38 @@ final class DocumentRetractionHookTest extends TestCase
 {
     protected function tearDown(): void
     {
+        DocumentHookServiceBinding::resetForTesting();
         ServiceContainer::reset();
     }
 
-    public function testNonNumericDocumentIdReturnsWithoutResolvingRepository(): void
+    public function testNonNumericDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
-        $called = false;
+        $repository = new RetractionRecordingRepository();
+        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
 
-        DocumentRetractionHook::dispatch('not-an-id', function () use (&$called): DocumentJobRepository {
-            $called = true;
-            throw new RuntimeException('should not resolve');
-        });
+        DocumentRetractionHook::dispatch('not-an-id');
 
-        $this->assertFalse($called);
+        $this->assertNull($repository->documentId);
     }
 
-    public function testInvalidDocumentIdIsCaught(): void
+    public function testInvalidDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
-        $called = false;
+        $repository = new RetractionRecordingRepository();
+        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
 
-        DocumentRetractionHook::dispatch(0, function () use (&$called): DocumentJobRepository {
-            $called = true;
-            throw new RuntimeException('should not resolve');
-        });
+        DocumentRetractionHook::dispatch(0);
 
-        $this->assertFalse($called);
+        $this->assertNull($repository->documentId);
     }
 
     public function testValidDocumentIdRetractsByDocument(): void
     {
         $repository = new RetractionRecordingRepository();
         $logger = new DocumentRecordingLogger();
+        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
         ServiceContainer::override(LoggerInterface::class, $logger);
 
-        DocumentRetractionHook::dispatch(123, static fn (): DocumentJobRepository => $repository);
+        DocumentRetractionHook::dispatch(123);
 
         $this->assertSame(123, $repository->documentId?->value);
         $this->assertSame(DocumentRetractionReason::SourceDocumentDeleted, $repository->reason);
@@ -81,27 +80,67 @@ final class DocumentRetractionHookTest extends TestCase
         ], $logger->records[0]['context']);
     }
 
-    public function testRepositoryExceptionIsCaught(): void
+    public function testRepositoryExceptionIsCaughtAndLogged(): void
     {
-        $this->expectNotToPerformAssertions();
+        $logger = new DocumentRecordingLogger();
+        DocumentHookServiceBinding::setJobRepositoryForTesting(new ThrowingDocumentJobRepository());
+        ServiceContainer::override(LoggerInterface::class, $logger);
 
-        DocumentRetractionHook::dispatch(123, static fn (): DocumentJobRepository => new ThrowingDocumentJobRepository());
+        DocumentRetractionHook::dispatch(123);
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame('clinical_document.retraction_hook_failed', $logger->records[0]['message']);
+        $this->assertSame(RuntimeException::class, $logger->records[0]['context']['error_code']);
+        $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
     }
 
     public function testRepositoryThrowableIsCaughtAndSanitized(): void
     {
         $logger = new DocumentRecordingLogger();
+        DocumentHookServiceBinding::setJobRepositoryForTesting(new TypeErrorThrowingDocumentJobRepository());
         ServiceContainer::override(LoggerInterface::class, $logger);
 
-        DocumentRetractionHook::dispatch(123, static function (): DocumentJobRepository {
-            throw new TypeError('typed repository wiring failed');
-        });
+        DocumentRetractionHook::dispatch(123);
 
         $this->assertCount(1, $logger->records);
         $this->assertSame('error', $logger->records[0]['level']);
         $this->assertSame('clinical_document.retraction_hook_failed', $logger->records[0]['message']);
         $this->assertSame(TypeError::class, $logger->records[0]['context']['error_code']);
         $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
+    }
+}
+
+final class TypeErrorThrowingDocumentJobRepository implements DocumentJobRepository
+{
+    public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
+    {
+        throw new RuntimeException('should not enqueue');
+    }
+
+    public function findById(DocumentJobId $id): ?DocumentJob
+    {
+        return null;
+    }
+
+    public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
+    {
+        return null;
+    }
+
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        throw new TypeError('typed repository wiring failed');
+    }
+
+    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
+    {
+        throw new RuntimeException('should not finish');
+    }
+
+    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
+    {
+        return null;
     }
 }
 
@@ -131,5 +170,14 @@ final class RetractionRecordingRepository implements DocumentJobRepository
         $this->reason = $reason;
 
         return 2;
+    }
+
+    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
+    {
+    }
+
+    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
+    {
+        return null;
     }
 }
