@@ -1020,6 +1020,17 @@ Proof run:
   isolated PHPUnit passed (369 tests, 1752 assertions). The clinical eval
   verdict remains `threshold_violation`; artifact:
   `agent-forge/eval-results/clinical-document-20260505-170450`.
+- M2 closeout automation was rerun before destructive clean-stack validation:
+  focused document/logging PHPUnit passed (57 tests, 178 assertions), focused
+  PHPCS passed (15 / 15 files), focused PHPStan passed with no errors,
+  `git diff --check` passed, and `agent-forge/scripts/check-clinical-document.sh`
+  reached the expected eval threshold step with AgentForge isolated PHPUnit
+  passing (369 tests, 1752 assertions). The clinical eval verdict remains
+  `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-171955`.
+- Docker stack inspection showed `docker/development-easy` services up and
+  healthy. The destructive `docker compose down -v` reset was not run because
+  it requires explicit approval after the local database deletion warning.
 
 Open proof gaps:
 
