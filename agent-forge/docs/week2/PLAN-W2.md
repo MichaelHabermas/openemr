@@ -174,7 +174,7 @@ Dependencies: M1.
 
 ### Epic M3 - Automatic PHP Worker Skeleton
 
-Status: In progress.
+Status: Completed.
 
 Implementation note (2026-05-05): M3 worker skeleton code, heartbeat schema,
 atomic claim SQL, no-op processor, sanitized logging, CLI script, and
@@ -184,7 +184,9 @@ schema sanity, upload enqueue with the worker stopped, worker processing to
 `failed(extraction_not_implemented)`, graceful Docker stop with `stopped`
 heartbeat, retracted-row skip behavior, two-worker/five-job concurrency, and
 clean sanitized container logs. VM deployment proof remains separate from the
-local M3 milestone.
+local M3 milestone. Post-review throwable cleanup added a rethrowing
+`Throwable` boundary that finalizes the claimed job as `failed(processor_failed)`
+and writes a stopped heartbeat before allowing fatal failures to propagate.
 
 Goal: Provide the separate automatic PHP process that claims and processes jobs using the same codebase.
 

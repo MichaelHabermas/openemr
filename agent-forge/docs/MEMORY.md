@@ -193,6 +193,11 @@ Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.
 - The worker must keep logging only sanitized operational metadata. New M3 logs
   use `patient_ref`, never raw `patient_id`, and never include document text,
   bytes, quotes, extracted fields, full lock tokens, or exception messages.
+- Unexpected worker processor/load failures that are not modeled runtime
+  exceptions must not strand claimed jobs in `running`. M3 uses a rethrowing
+  `Throwable` cleanup boundary: first finalize the claimed job as
+  `failed(processor_failed)` and write a stopped heartbeat, then rethrow so the
+  global failure path still sees the real fatal.
 - OpenEMR's PHP configuration used by `docker/development-easy` disables
   `pcntl_signal*`; graceful worker shutdown in Docker relies on the Compose
   shell trap invoking `process-document-jobs.php --mark-stopped`, not PHP
