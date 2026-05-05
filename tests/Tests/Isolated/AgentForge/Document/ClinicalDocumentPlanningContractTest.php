@@ -21,7 +21,7 @@ final class ClinicalDocumentPlanningContractTest extends TestCase
         $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
 
         $this->assertStringContainsString('Document Identity Verification And Wrong-Patient Safeguards', $plan);
-        $this->assertStringContainsString('Promotion Provenance, Review, And Duplicate Prevention', $plan);
+        $this->assertStringContainsString('Promotion Provenance, Review Outcomes, And Duplicate Prevention', $plan);
         $this->assertStringContainsString('Promoted Data Retraction And Audit', $plan);
     }
 

@@ -2,7 +2,7 @@
 
 ## 1. Purpose And Constraints
 
-This plan turns `W2_ARCHITECTURE.md` into ordered implementation epics for the Week 2 Clinical Co-Pilot. It is an implementation plan, not another PRD.
+This plan turns `SPECS-W2.md` and durable AgentForge memory into ordered implementation epics for the Week 2 Clinical Co-Pilot. It is an implementation plan, not another PRD.
 
 AgentForge memory protocol:
 
@@ -43,7 +43,7 @@ Epic progress convention:
 
 The MVP is delivered only when this vertical slice works locally and is proven by a blocking Week 2 eval command:
 
-Existing OpenEMR upload -> eligible category creates extraction job -> PHP worker processes job -> `lab_pdf` and `intake_form` fixtures produce strict cited JSON -> verified lab facts are promoted into OpenEMR-compatible lab records -> intake findings are stored as cited document facts / needs-review findings -> document facts are searchable -> guideline evidence is retrieved with sparse + MariaDB Vector + rerank -> `supervisor` handoffs are logged -> final answer separates patient findings, guideline evidence, and needs-review items -> eval gate proves schemas, citations, refusals, factual consistency, bounding boxes, and no-PHI logging.
+Existing OpenEMR upload -> eligible category creates extraction job -> PHP worker processes job -> `lab_pdf` and `intake_form` fixtures produce strict cited JSON -> document identity is verified or routed to review -> verified lab facts are promoted into OpenEMR-compatible lab records with provenance -> intake findings are stored as cited document facts / needs-review findings -> retracted or identity-unresolved source content is excluded -> document facts are searchable -> guideline evidence is retrieved with sparse + MariaDB Vector + rerank -> `supervisor` handoffs are logged -> final answer separates patient findings, guideline evidence, and needs-review items -> eval gate proves schemas, citations, refusals, factual consistency, bounding boxes, no-PHI logging, duplicate prevention, and deleted-document exclusion.
 
 MVP does not require third document types, demographic overwrites, broad document AI, a critic agent, or polished submission packaging. The full 50-case eval expansion, deployment proof, visual source overlay polish, cost/latency report, and demo packaging continue after the MVP cut line.
 
@@ -53,12 +53,15 @@ MVP does not require third document types, demographic overwrites, broad documen
 2. Add database schema and upload enqueue path.
 3. Add worker skeleton and deterministic job processing.
 4. Add strict extraction schemas/providers for `lab_pdf` and `intake_form`.
-5. Add fact persistence, lab promotion, embeddings, and patient document search.
-6. Add guideline corpus indexing, sparse+dense MariaDB Vector retrieval, and rerank.
-7. Add `supervisor` / `evidence-retriever` orchestration and separated final-answer behavior.
-8. Pass the MVP eval gate and local smoke.
-9. Expand and harden for full Week 2 submission.
-10. Keep the FINAL epic last; insert any fixes or extra feature epics before FINAL.
+5. Add document identity gating so wrong-patient or unresolved documents cannot become trusted evidence.
+6. Add promotion provenance, review outcomes, and duplicate policy before any OpenEMR clinical row is written.
+7. Add fact persistence, lab promotion, embeddings, and patient document search behind those gates.
+8. Add source-document retraction across facts, embeddings, evidence eligibility, and promoted-row overlays before retrieval/final-answer epics depend on document facts.
+9. Add guideline corpus indexing, sparse+dense MariaDB Vector retrieval, and rerank.
+10. Add `supervisor` / `evidence-retriever` orchestration and separated final-answer behavior.
+11. Pass the MVP eval gate and local smoke.
+12. Expand and harden for full Week 2 submission.
+13. Keep the FINAL epic last; insert any fixes or extra feature epics before FINAL.
 
 ## 4. MVP Epics
 
@@ -281,6 +284,7 @@ Acceptance criteria:
 
 - Example `lab_pdf` and `intake_form` fixtures produce strict cited JSON.
 - Every persisted candidate fact has a citation with source type, source id, page/section, field path, quote/value, and bounding box when required.
+- Extraction output includes cited patient identity candidates when present, including document name, DOB, MRN/account number, and other reliable identifiers. Absence or ambiguity is represented explicitly and cannot be inferred as a match.
 - The name `intake-extractor` is documented in code comments as spec-required and broader than intake forms.
 
 Definition of done:
@@ -290,11 +294,95 @@ Definition of done:
 
 Dependencies: M3.
 
+### Epic M5A - Document Identity Verification And Wrong-Patient Safeguards
+
+Status: Not started.
+
+Goal: Prevent extraction output from becoming trusted patient evidence when document content appears to belong to a different patient than the selected OpenEMR upload destination.
+
+Files/modules:
+
+- Add `src/AgentForge/Document/Identity/DocumentIdentityVerifier.php`.
+- Add `src/AgentForge/Document/Identity/IdentityMatchResult.php`.
+- Add `src/AgentForge/Document/Identity/PatientIdentityRepository.php`.
+- Add `src/AgentForge/Document/Identity/SqlPatientIdentityRepository.php`.
+
+Database changes:
+
+- Add `clinical_document_identity_checks`: `id`, `patient_id`, `document_id`, `job_id`, `doc_type`, `identity_status`, `extracted_identifiers_json`, `matched_patient_fields_json`, `mismatch_reason`, `review_required`, `review_decision`, `reviewed_by`, `reviewed_at`, `checked_at`, `created_at`.
+- Allowed identity statuses are `identity_unchecked`, `identity_verified`, `identity_ambiguous_needs_review`, `identity_mismatch_quarantined`, `identity_review_approved`, and `identity_review_rejected`.
+
+Tests/evals first:
+
+- Test extracted document identifiers are compared against the selected OpenEMR patient.
+- Test exact DOB plus normalized name match can verify identity when the document provides those fields.
+- Test conflicting reliable identifiers quarantine the document job and block promotion, embedding, and retrieval eligibility.
+- Test missing or ambiguous identifiers create review-only state instead of silent acceptance.
+- Test unresolved identity prevents fact promotion and document-fact retrieval eligibility.
+
+Implementation tasks:
+
+- Consume cited patient identifiers from the strict extraction/citation pipeline; do not infer identity from filename, upload category, or unstated model guesses.
+- Compare content identifiers against OpenEMR patient demographics using deterministic matching rules.
+- Store identity status, matched fields, cited extracted identifiers, and mismatch reason with the processing outcome.
+- Make identity status a hard gate: only `identity_verified` or explicit human approval can permit active facts, embeddings, promoted rows, or evidence bundle items.
+- Show a clear review state before any downstream data is promoted or retrieved as patient evidence.
+
+Acceptance criteria:
+
+- Wrong-patient documents cannot promote facts or become retrievable patient evidence.
+- Ambiguous identity requires review instead of silent acceptance.
+- A document job with `identity_ambiguous_needs_review` or `identity_mismatch_quarantined` cannot create active facts, embeddings, promoted rows, or evidence bundle items.
+
+Dependencies: M4.
+
+### Epic M5B - Promotion Provenance, Review Outcomes, And Duplicate Prevention
+
+Status: Not started.
+
+Goal: Define the traceability, review outcome, and duplicate policy that must exist before automatic clinical promotion writes OpenEMR rows.
+
+Files/modules:
+
+- Add `src/AgentForge/Document/Promotion/DocumentPromotionPipeline.php`.
+- Add `src/AgentForge/Document/Promotion/SqlDocumentPromotionRepository.php`.
+- Add `src/AgentForge/Document/Promotion/PromotionOutcome.php`.
+- Add `src/AgentForge/Document/Promotion/ClinicalContentFingerprint.php`.
+
+Database changes:
+
+- Add `clinical_document_promotions`: `id`, `patient_id`, `document_id`, `job_id`, `fact_id`, `fact_fingerprint`, `clinical_content_fingerprint`, `promoted_table`, `promoted_record_id`, `promoted_pk_json`, `outcome`, `duplicate_key`, `conflict_reason`, `citation_json`, `confidence`, `review_status`, `active`, `created_at`, `updated_at`, `retracted_at`, `retraction_reason`; unique `(patient_id, fact_id, promoted_table)`.
+- Promotion outcomes include `promoted`, `already_exists`, `duplicate_skipped`, `conflict_needs_review`, `not_promotable`, `needs_review`, `rejected`, `promotion_failed`, and `retracted`.
+
+Tests/evals first:
+
+- Test promoted rows are backed by provenance records carrying `document_id`, `job_id`, extracted fact id, source citation, confidence/review status, and promotion status.
+- Test the review surface reports facts that were promoted, skipped, rejected, left needs-review, or not promotable.
+- Test job retry idempotency at both fact and promoted-row layers, not just job idempotency.
+- Test re-uploading the same lab under a different document id resolves to `already_exists`, `duplicate_skipped`, or `conflict_needs_review` instead of inserting duplicates.
+- Test existing chart-row conflicts produce `conflict_needs_review` instead of overwriting data.
+
+Implementation tasks:
+
+- Add promotion provenance records that connect source document -> job -> fact -> citation -> OpenEMR row.
+- Generate both source-scoped fact fingerprints and patient-scoped clinical-content fingerprints; do not rely on `document_id` alone for duplicate-document detection.
+- Compare promotable facts against existing chart rows before promotion.
+- Record explicit promotion outcomes for every promotable fact, including skipped and failed outcomes.
+- Provide a minimal user-visible audit/review surface or report for document-driven changes; polished citation overlay UX remains H2.
+
+Acceptance criteria:
+
+- Users can see exactly what AgentForge added and what it did not add.
+- Duplicate clinical rows are not created by retrying or reprocessing a document.
+- Promotion provenance is stored separately from mutable OpenEMR clinical rows so provenance survives later chart-row policy changes.
+
+Dependencies: M5A.
+
 ### Epic M5 - Fact Persistence, Lab Promotion, Embeddings, And Patient Document Search
 
 Status: Not started.
 
-Goal: Store cited document facts, promote verified lab facts to OpenEMR-compatible lab records, and make document facts searchable.
+Goal: Store cited, identity-gated document facts, promote verified lab facts to OpenEMR-compatible lab records with provenance, and make eligible document facts searchable.
 
 Files/modules:
 
@@ -310,14 +398,15 @@ Files/modules:
 
 Database changes:
 
-- Add `clinical_document_facts`: `id`, `patient_id`, `document_id`, `job_id`, `doc_type`, `fact_type`, `certainty`, `fact_fingerprint`, `fact_text`, `structured_value_json`, `citation_json`, `confidence`, `promoted_table`, `promoted_record_id`, `promotion_status`, `retracted_at`, `retraction_reason`, `active`, `created_at`, `deactivated_at`; unique `(patient_id, document_id, doc_type, fact_fingerprint)`.
+- Add `clinical_document_facts`: `id`, `patient_id`, `document_id`, `job_id`, `identity_check_id`, `doc_type`, `fact_type`, `certainty`, `fact_fingerprint`, `clinical_content_fingerprint`, `fact_text`, `structured_value_json`, `citation_json`, `confidence`, `promotion_status`, `retracted_at`, `retraction_reason`, `active`, `created_at`, `deactivated_at`; unique `(patient_id, document_id, doc_type, fact_fingerprint)`.
 - Add `clinical_document_fact_embeddings`: `fact_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
 - Use existing OpenEMR lab tables: `procedure_order`, `procedure_order_code`, `procedure_report`, and `procedure_result`.
 
 Tests/evals first:
 
-- Test duplicate job retry does not duplicate facts, embeddings, or promoted lab rows.
-- Test verified lab facts create OpenEMR-compatible `procedure_*` rows with `procedure_result.document_id` and AgentForge provenance.
+- Test duplicate job retry does not duplicate facts, embeddings, promoted lab rows, or promotion outcome records.
+- Test verified lab facts create OpenEMR-compatible `procedure_*` rows with `procedure_result.document_id` and AgentForge promotion provenance.
+- Test identity status other than `identity_verified` or explicit human approval blocks active facts, embeddings, promotion, and retrieval.
 - Test intake demographics are not written to `patient_data` in MVP.
 - Test intake findings are stored as `document_fact` or `needs_review`.
 - Test re-querying document facts excludes inactive/retracted facts.
@@ -326,9 +415,10 @@ Tests/evals first:
 Implementation tasks:
 
 - Convert validated extraction items into certainty buckets: `verified`, `document_fact`, `needs_review`.
-- Promote only complete, high-confidence, cited lab facts.
+- Promote only complete, high-confidence, cited lab facts from identity-verified or human-approved documents.
 - Store all useful cited intake findings as document facts or needs-review findings.
-- Generate stable fact fingerprints from patient id, document id, doc type, field path, normalized value, collection date/section, and citation source.
+- Generate stable source-scoped fact fingerprints from patient id, document id, doc type, field path, normalized value, collection date/section, and citation source.
+- Generate patient-scoped clinical-content fingerprints for duplicate prevention across repeated uploads of the same source content.
 - Embed document facts only after persistence succeeds.
 - Extend evidence bundle handling so source ids can represent chart, document, and guideline evidence without losing backward compatibility.
 
@@ -337,89 +427,51 @@ Acceptance criteria:
 - Lab fixture creates chart-readable lab evidence through the existing `LabsEvidenceTool` path or an equivalent OpenEMR Observation-compatible path.
 - Intake findings are searchable and cited but not silently treated as chart truth.
 - Document fact vectors are stored only in `clinical_document_fact_embeddings`.
+- No fact, embedding, promoted row, or evidence bundle item is active/retrievable unless document identity status is `identity_verified` or explicitly human-approved.
 
 Definition of done:
 
-- MVP evals prove lab promotion, intake needs-review storage, duplicate prevention, and document fact search.
+- MVP evals prove identity gating, lab promotion, intake needs-review storage, duplicate prevention, and document fact search.
 
-Dependencies: M4.
-
-### Epic M5A - Document Identity Verification And Wrong-Patient Safeguards
-
-Status: Not started.
-
-Goal: Prevent extraction and promotion from documents whose content appears to belong to a different patient than the selected OpenEMR upload destination.
-
-Tests/evals first:
-
-- Test extracted document identifiers are compared against the selected OpenEMR patient.
-- Test a mismatch quarantines the document job or requires review before promotion.
-- Test unresolved identity prevents fact promotion and document-fact retrieval eligibility.
-
-Implementation tasks:
-
-- Extract patient identifiers from document content using the strict extraction/citation pipeline.
-- Compare content identifiers against OpenEMR patient demographics using deterministic matching rules.
-- Store identity status and mismatch reason with the document processing outcome.
-- Show a clear review state before any downstream data is promoted or retrieved as patient evidence.
-
-Acceptance criteria:
-
-- Wrong-patient documents cannot promote facts.
-- Ambiguous identity requires review instead of silent acceptance.
-
-Dependencies: M4.
-
-### Epic M5B - Promotion Provenance, Review, And Duplicate Prevention
-
-Status: Not started.
-
-Goal: Make every automatic clinical data change visible, traceable, and idempotent.
-
-Tests/evals first:
-
-- Test promoted rows record `document_id`, `job_id`, extracted fact id, source citation, confidence/review status, and promotion status.
-- Test the review surface reports facts that were promoted, skipped, rejected, left needs-review, or not promotable.
-- Test a second run resolves to `already_exists`, `duplicate_skipped`, or `conflict_needs_review` instead of inserting duplicates.
-
-Implementation tasks:
-
-- Add promotion provenance records that connect source document -> job -> fact -> OpenEMR row.
-- Generate stable fact fingerprints and compare against existing chart rows before promotion.
-- Record explicit promotion outcomes for every promotable fact.
-- Provide a user-visible audit/review surface for document-driven changes.
-
-Acceptance criteria:
-
-- Users can see exactly what AgentForge added and what it did not add.
-- Duplicate clinical rows are not created by retrying or reprocessing a document.
-
-Dependencies: M5.
+Dependencies: M5B.
 
 ### Epic M5C - Promoted Data Retraction And Audit
 
 Status: Not started.
 
-Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history.
+Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed guideline retrieval or final answers.
+
+Files/modules:
+
+- Add `src/AgentForge/Document/Retraction/DocumentRetractionService.php`.
+- Add `src/AgentForge/Document/Retraction/SqlDocumentRetractionRepository.php`.
+- Modify `src/AgentForge/Evidence/PatientDocumentFactsEvidenceTool.php`.
+- Modify `src/AgentForge/Evidence/SqlChartEvidenceRepository.php` or the lab evidence path that reads AgentForge-promoted rows.
+
+Database changes:
+
+- Add `clinical_document_retractions`: `id`, `patient_id`, `document_id`, `job_id`, `fact_id`, `promotion_id`, `promoted_table`, `promoted_record_id`, `prior_state`, `new_state`, `action`, `actor_type`, `actor_id`, `reason`, `created_at`.
 
 Tests/evals first:
 
 - Test deleting a source document invalidates downstream facts, embeddings, retrieval eligibility, and promoted OpenEMR rows.
-- Test promoted-row handling follows the row-type policy: deactivate, soft-delete, exclude from evidence, or require review.
-- Test audit history preserves source, action, timestamp, and reason.
+- Test promoted-row handling follows the explicit row-type policy: deactivate where OpenEMR supports it, mark AgentForge promotion inactive, exclude from AgentForge evidence paths, or require review when the row cannot be safely hidden.
+- Test audit history preserves source document, job, fact, promotion, action, actor/system, timestamp, prior state, new state, and reason.
+- Test deleted-source facts are excluded from `PatientDocumentFactsEvidenceTool`, vector retrieval, final answers, and `LabsEvidenceTool`-equivalent paths even if physical OpenEMR rows remain for audit.
 
 Implementation tasks:
 
 - Extend source-document retraction beyond jobs to facts, embeddings, retrieval eligibility, and promoted rows.
-- Define per-table retraction behavior before writing to existing OpenEMR clinical tables.
+- Define per-table retraction behavior before writing to existing OpenEMR clinical tables; never hard-delete clinical history to make AgentForge state look clean.
 - Preserve audit metadata for legal/chart integrity.
 
 Acceptance criteria:
 
 - Deleted-source content cannot remain retrievable or promoted as active evidence.
-- Retraction history is auditable.
+- Retraction is append-only from an audit perspective and inactive from an evidence perspective.
+- Deleted-source content remains historically reviewable but is excluded from active chart evidence, document search, vector retrieval, and final-answer citations.
 
-Dependencies: M5B.
+Dependencies: M5.
 
 ### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
 
@@ -470,7 +522,7 @@ Definition of done:
 - `php agent-forge/scripts/index-clinical-guidelines.php` can rebuild the corpus.
 - Retrieval evals pass with deterministic embeddings/rerank.
 
-Dependencies: M5.
+Dependencies: M5C.
 
 ### Epic M7 - Supervisor, Evidence-Retriever, Final Answer Separation, And MVP Gate
 
@@ -506,7 +558,7 @@ Tests/evals first:
 
 Implementation tasks:
 
-- Implement deterministic-first `Supervisor` routing rules from `W2_ARCHITECTURE.md`.
+- Implement deterministic-first `Supervisor` routing rules from `SPECS-W2.md` and this plan.
 - Implement `EvidenceRetrieverWorker` using existing chart evidence tools, `PatientDocumentFactsEvidenceTool`, and `HybridGuidelineRetriever`.
 - Extend response schema with backward-compatible machine-readable citation details while preserving existing `citations` strings.
 - Add draft claim types for guideline evidence and needs-review findings.
@@ -566,37 +618,37 @@ Definition of done:
 
 Dependencies: M7.
 
-### Epic H2 - Visual PDF Source Review And Retraction
+### Epic H2 - Visual PDF Source Review And Retraction UX
 
 Status: Not started.
 
-Goal: Complete source-review and wrong-document cleanup behavior.
+Goal: Complete source-review UX and harden the M5C retraction behavior with visual review, browser proof, and full submission polish.
 
 Files/modules:
 
 - Add `src/AgentForge/Document/DocumentCitationReviewService.php`.
 - Add source-review endpoint under the existing OpenEMR patient document UI path.
-- Modify `controllers/C_Document.class.php` or the relevant document delete/deactivate flow to call AgentForge retraction.
+- Modify `controllers/C_Document.class.php` or the relevant document delete/deactivate flow only if M5C did not already cover the required hook.
 - Add browser/UI tests if the source review surface is visible in OpenEMR.
 
 Database changes:
 
 - Use `clinical_document_facts.retracted_at`, `retraction_reason`, `active`, `deactivated_at`.
 - Use embedding `active` flags.
-- If needed, add `clinical_document_retractions`: `id`, `document_id`, `fact_id`, `promoted_table`, `promoted_record_id`, `status`, `created_at`.
+- Use `clinical_document_retractions` from M5C; add fields only if visual review proof exposes a missing audit requirement.
 
 Tests/evals first:
 
 - Test cited PDF fact opens the source document page with bounding-box metadata.
 - Test fallback opens exact page and quote/value if bounding box is unavailable.
-- Test deleted/deactivated document facts are not retrievable.
-- Test promoted AgentForge lab rows are retracted or excluded from evidence when source document is removed.
+- Test deleted/deactivated document facts are not retrievable through the visual source-review path.
+- Test promoted AgentForge lab rows are retracted or excluded from evidence when source document is removed, reusing the M5C retraction contract.
 
 Implementation tasks:
 
 - Surface citation metadata from `citation_json`.
 - Add review URL/data shape to `AgentResponse` citation details.
-- Implement retraction/deactivation hooks for document deletion/deactivation.
+- Harden retraction/deactivation hooks for document deletion/deactivation if M5C proof left any UI or browser-path gap.
 - Keep clinical DB quote/value storage allowed; keep telemetry sanitized.
 
 Acceptance criteria:
@@ -698,7 +750,7 @@ Files/modules:
 - Modify `README.md`.
 - Modify `AGENTFORGE-REVIEWER-GUIDE.md`.
 - Modify `agent-forge/docs/week2/README.md`.
-- Modify `W2_ARCHITECTURE.md` only to reflect landed implementation details, not to change scope.
+- Modify `agent-forge/docs/week2/SPECS-W2.md` only to reflect landed implementation details, not to change scope.
 - Add `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md`.
 
 Database changes: None.
