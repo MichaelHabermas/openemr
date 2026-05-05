@@ -1,7 +1,8 @@
-# Epic M1 — W2 Eval And Test Skeleton First (Implementation Plan)
+# Epic M1 — Clinical Document Eval And Test Skeleton First (Implementation Record)
 
-**Status:** Implemented; full-gate proof blocked by pre-existing Week 1 documentation test failures.
+**Status:** Completed.
 **Approved:** 2026-05-04
+**Closed:** 2026-05-04 (America/New_York)
 **Scope:** Backend/test infrastructure.
 **Suggested Commit Scope:** `test(agentforge-clinical-document): add week 2 eval gate skeleton`
 
@@ -476,7 +477,6 @@ printf '\nPASS Week 2 check.\n'
 | File | Type | Purpose |
 | --- | --- | --- |
 | `agent-forge/scripts/check-clinical-document.sh` | script | Domain-named clinical document gate command. |
-| `agent-forge/scripts/check-clinical-document.sh` | script |  |
 | `agent-forge/scripts/run-clinical-document-evals.php` | script | Thin shim — wires DI and runs `RunClinicalDocumentEvalsCommand`. |
 | `agent-forge/fixtures/clinical-document-golden/README.md` | docs | Format + MVP-vs-H1 expansion (replaces placeholder). |
 | `agent-forge/fixtures/clinical-document-golden/thresholds.json` | data | Per-rubric thresholds + 5% regression cap. |
@@ -505,6 +505,7 @@ printf '\nPASS Week 2 check.\n'
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/RubricRegistry.php` | class | Indexed lookup of all rubrics. |
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/SchemaValidRubric.php` | class | |
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/CitationPresentRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/CitationShape.php` | helper | DRY citation/bounding-box validation shared by `CitationPresentRubric` and `BoundingBoxPresentRubric`. |
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/FactuallyConsistentRubric.php` | class | |
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/SafeRefusalRubric.php` | class | |
 | `src/AgentForge/Eval/ClinicalDocument/Rubric/NoPhiInLogsRubric.php` | class | Depends on `SensitiveLogPolicy`. |
@@ -514,6 +515,7 @@ printf '\nPASS Week 2 check.\n'
 | `src/AgentForge/Eval/ClinicalDocument/Adapter/CaseRunOutput.php` | DTO | Readonly. |
 | `src/AgentForge/Eval/ClinicalDocument/Adapter/NotImplementedAdapter.php` | class | M1 default. |
 | `src/AgentForge/Eval/ClinicalDocument/Runner/EvalRunner.php` | class | Orchestrator (pure). |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/EvalRunResult.php` | DTO | Readonly wrapper for case results plus per-rubric summaries. |
 | `src/AgentForge/Eval/ClinicalDocument/Runner/RunArtifactWriter.php` | class | Single I/O surface. |
 | `src/AgentForge/Eval/ClinicalDocument/Runner/BaselineComparator.php` | class | Pure logic. |
 | `src/AgentForge/Eval/ClinicalDocument/Runner/RegressionVerdict.php` | enum | |
@@ -521,6 +523,7 @@ printf '\nPASS Week 2 check.\n'
 | `src/AgentForge/Eval/ClinicalDocument/Cli/RunClinicalDocumentEvalsCommand.php` | class | Wires DI. |
 | `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Case/EvalCaseLoaderTest.php` | test | |
 | `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Rubric/*Test.php` | tests | One per rubric + registry. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Rubric/RubricTestCase.php` | test helper | Shared base class for the seven rubric tests. |
 | `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Runner/*Test.php` | tests | Runner, writer, comparator. |
 | `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Cli/RunClinicalDocumentEvalsScriptSmokeTest.php` | test | Shell-out smoke. |
 | `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Cli/CheckClinicalDocumentGateScriptShapeTest.php` | test | Greps gate script. |
@@ -531,20 +534,22 @@ printf '\nPASS Week 2 check.\n'
 | File | Change |
 | --- | --- |
 | `agent-forge/docs/week2/README.md` | Add a "clinical document gate" section linking to `agent-forge/scripts/check-clinical-document.sh` and `agent-forge/fixtures/clinical-document-golden/README.md`. No structural changes. |
+| `W2_ARCHITECTURE.md` | Rename planned implementation-facing artifacts from assignment shorthand to clinical-document domain names. |
+| `agent-forge/docs/week2/PLAN-W2.md` | Rename planned implementation-facing artifacts from assignment shorthand to clinical-document domain names. |
 
-(`PLAN-W2.md` itself is not modified by M1 — the epic's status is tracked in this file.)
+Week-number naming remains acceptable in assignment documents and filenames, but not in implementation paths, scripts, fixtures, namespaces, or future artifact names.
 
 ## Verification
 
 Before marking the epic complete:
 
-1. **Gate fails for the right reason.** Run `bash agent-forge/scripts/check-clinical-document.sh` from repo root. Expected: non-zero exit, with the failing step being `Run Clinical document evals` due to thresholds unmet (`NotImplementedAdapter`) — *not* lint, syntax, or unit-test failures. The lint/test/phpstan/phpcs steps must all pass cleanly.
-2. **Harness self-tests pass.** `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` returns green. The harness is verified independent of any extraction system.
-3. **Artifacts written.** After step 1, `agent-forge/eval-results/<UTC-timestamp>/run.json` exists with one entry per case (each with per-rubric `pass|fail|not_applicable` + reason); `summary.json` contains rubric pass rates and the comparator verdict (`threshold_violation` or `regression_exceeded`).
-4. **Cases parse.** `GoldenCasesParseTest` passes — all eight cases load through `EvalCaseLoader` without error.
-5. **Documentation.** `agent-forge/fixtures/clinical-document-golden/README.md` explains case format, the eight MVP cases, the planned 50-case expansion (H1), and how to add a case. `agent-forge/docs/week2/README.md` links to the gate command. `agent-forge/eval-results/README.md` explains the artifact format.
-6. **No production extraction code.** `git diff --stat master` matches the file list above — no schema validators, no extraction providers, no migration files, no orchestration classes.
-7. **Full repo gate stays green.** Running existing `agent-forge/scripts/check-local.sh` (W1 gate) still passes — this epic does not regress Week 1.
+- [x] **Gate fails for the right reason.** `bash agent-forge/scripts/check-clinical-document.sh` exited `2`; syntax, shell syntax, AgentForge isolated PHPUnit, and pre-eval checks passed, then `Run Clinical document evals` failed with `threshold_violation` from `NotImplementedAdapter`.
+- [x] **Harness self-tests pass.** `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed with 16 tests and 34 assertions.
+- [x] **Artifacts written.** Fresh artifact directory `agent-forge/eval-results/clinical-document-20260505-005935/` contains `run.json` and `summary.json`; `summary.json` reports `threshold_violation`.
+- [x] **Cases parse.** `GoldenCasesParseTest` is included in the focused harness run; all eight committed cases load through `EvalCaseLoader` without error.
+- [x] **Documentation.** `agent-forge/fixtures/clinical-document-golden/README.md` explains case format, the eight MVP cases, the planned 50-case expansion (H1), and how to add a case. `agent-forge/docs/week2/README.md` links to the gate command. `agent-forge/eval-results/README.md` explains the artifact format.
+- [x] **No production extraction code.** M1 added only eval harness, fixture, script, documentation, and proof artifact files; no schema validators, extraction providers, migration files, RAG classes, or supervisor orchestration classes were added.
+- [x] **Full repo gate stays green.** `bash agent-forge/scripts/check-local.sh` passed when rerun outside the sandbox; the first sandboxed run reached PHPStan and failed only because PHPStan could not open its local worker socket (`EPERM` on `127.0.0.1:0`).
 
 ## Acceptance Criteria (PLAN-W2.md §M1, restated)
 
@@ -554,7 +559,13 @@ Before marking the epic complete:
 
 ## Definition of Done
 
-- [ ] Tests/evals committed before any production extraction implementation begins. Not performed because git commits were not requested.
+- [x] Tests/evals committed before any production extraction implementation begins.
+  Commits:
+  - `bda7bff27` `docs(agent-forge): implement Week 2 clinical document evaluation framework`
+  - `5080f7ee4` `docs(agent-forge): update Week 2 clinical document evaluation framework`
+  - `c4577a880` `docs(agent-forge): update clinical document evaluation results and scripts`
+  - `56d7b5b69` `docs(agent-forge): update documentation paths for Week 1 artifacts`
+  - `62d2235d0` `docs(agent-forge): update Week 2 architecture and evaluation scripts for clinical documents`
 - [x] The runner produces JSON artifacts under `agent-forge/eval-results/`.
 - [x] Every rubric named in `W2_ARCHITECTURE.md` §17 has a class, a test, and a registered entry.
 - [x] Every MVP case named in `PLAN-W2.md` M1 has a JSON file and parses cleanly.
@@ -566,6 +577,17 @@ Before marking the epic complete:
 - `composer phpstan -- --error-format=raw src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed after running with approval for PHPStan's local worker socket.
 - `vendor/bin/phpcs src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed.
 - `bash agent-forge/scripts/check-clinical-document.sh` now reaches the intended clinical document eval threshold failure after the Week 1 doc-link paths were updated to `agent-forge/docs/week1/`.
+
+## Reviewer Rerun Transcript
+
+Captured on 2026-05-04 21:00 EDT from the repository root.
+
+| Step | Command/log | Exit | Signal |
+| --- | --- | --- | --- |
+| Clinical document gate | `/tmp/m1-clinical-document-gate.log` | `2` | Passed syntax, shell syntax, and `OpenEMR\\Tests\\Isolated\\AgentForge` PHPUnit (`314 tests, 1583 assertions`), then failed at `Run Clinical document evals` with `threshold_violation`. |
+| Week 1 local gate | `/tmp/m1-week1-gate.log` | `0` | Passed syntax, shell syntax, isolated PHPUnit (`314 tests, 1583 assertions`), deterministic evals (`32 passed, 0 failed`), focused PHPStan, and changed-file PHPCS. |
+| Clinical document harness self-tests | `/tmp/m1-clinical-document-tests.log` | `0` | Passed `16 tests, 34 assertions`. |
+| Fresh clinical document artifact | `agent-forge/eval-results/clinical-document-20260505-005935/` | n/a | `summary.json` verdict is `threshold_violation`; required not-yet-implemented rubrics remain at `0.0` pass rate, while no-PHI/deleted-document not-applicable safety rubrics report no failures. |
 
 ## Risks & Mitigations
 
