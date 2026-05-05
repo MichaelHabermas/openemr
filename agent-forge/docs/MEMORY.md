@@ -80,6 +80,10 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - Sensitive logging allowlists need both allowed telemetry keys and explicit forbidden raw clinical-content keys. The forbidden list should include raw quote/value/document fields such as `quote`, `quote_or_value`, `raw_quote`, `raw_value`, `document_text`, `document_image`, and `extracted_fields`.
 - Static analysis may reject broad source-level catches of `Throwable` or `Exception`. Prefer catching modeled runtime/domain exceptions in production source, while relying on global error handling for fatal engine errors unless the contract explicitly requires a broader catch.
 - Some isolated suites assume a local server is running. A full `composer phpunit-isolated` can fail for routing tests if `127.0.0.1:8765` is unavailable; record that as environment setup, not as a document-ingestion regression.
+- The standard Documents screen has more than one upload path. The visible
+  "Choose Files" form posts through `C_Document::upload_action_process()`,
+  while Dropzone posts through `library/ajax/upload.php`. Hook both paths for
+  document-ingestion behavior.
 
 ## Week 2 M2 Proof Notes
 
@@ -93,6 +97,8 @@ The focused M2 verification used during implementation included:
 - SQL smoke proof for idempotent demo category seed behavior.
 - In-container OpenEMR `addNewDocument(...)` smoke proof for mapped enqueue,
   duplicate dispatch idempotency, and unmapped-category no-op.
+- Manual browser upload proof through the standard Documents screen passed
+  after the `C_Document::upload_action_process()` hook was added.
 - Full `composer phpunit-isolated` passed outside the sandbox when the
   routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
   those routing tests with connection errors.

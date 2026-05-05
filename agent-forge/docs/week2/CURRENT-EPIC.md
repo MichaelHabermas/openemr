@@ -828,6 +828,9 @@ Files changed:
   `patient:<hash>` telemetry ids.
 - `library/ajax/upload.php` now dispatches the hook after both portal and core
   `addNewDocument(...)` calls return a `doc_id`.
+- `controllers/C_Document.class.php` now dispatches the same hook after the
+  standard Documents screen's non-Dropzone upload path successfully creates a
+  document.
 - `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php`
   add the two document tables and bump `v_database` to 539.
 - `agent-forge/sql/seed-demo-data.sql` seeds the two demo document categories
@@ -844,7 +847,8 @@ Acceptance map:
 - Demo category mappings: implemented in `seed-demo-data.sql`; local rerun
   smoke kept `category_count=2` and `mapping_count=2`.
 - Eligible category enqueue: covered by isolated enqueuer tests, SQL-level
-  unique-key smoke, and in-container OpenEMR `addNewDocument(...)` smoke.
+  unique-key smoke, in-container OpenEMR `addNewDocument(...)` smoke, and
+  manual browser upload smoke through the standard Documents screen.
 - Ineligible category no-op: covered by isolated enqueuer tests and
   in-container OpenEMR `addNewDocument(...)` smoke.
 - Duplicate enqueue idempotency: covered by isolated repository/enqueuer tests,
@@ -886,7 +890,7 @@ Proof run:
   AgentForge isolated PHPUnit all passed (342 tests, 1655 assertions). The
   final clinical eval verdict remains
   `threshold_violation`, with artifact
-  `agent-forge/eval-results/clinical-document-20260505-125617`, because later
+  `agent-forge/eval-results/clinical-document-20260505-143516`, because later
   M3/M4 extraction behavior is still not implemented.
 - In-container OpenEMR upload smoke passed for a mapped category by calling the
   real `addNewDocument(...)` function and then the same
@@ -897,6 +901,16 @@ Proof run:
 - In-container OpenEMR upload smoke passed for an unmapped category by calling
   the real `addNewDocument(...)` function and dispatching category `1`; it
   created document `76` and left `job_count_for_unmapped_category=0`.
+- Manual browser upload smoke initially found a real missed path: uploading
+  `p01-chen-lipid-panel.pdf` through the visible standard Documents form
+  created document `77` in `AgentForge Lab PDF` but no AgentForge job. That
+  form posts through `C_Document::upload_action_process()`, not the Dropzone
+  `library/ajax/upload.php` path.
+- After hooking `C_Document::upload_action_process()`, manual browser upload
+  smoke passed: the repeated upload created document `78` for patient `900001`
+  in category `35` (`AgentForge Lab PDF`) and inserted job `5` with
+  `doc_type=lab_pdf`, `status=pending`, `attempts=0`; latest job count for
+  document `78` was exactly `1`.
 - `composer phpunit-isolated` passed outside the sandbox after allowing the
   built-in routing-test server to bind to `127.0.0.1:8765`: 3073 tests, 8637
   assertions, 3 pre-existing warnings, 1 pre-existing notice, 3 skipped, 14
@@ -904,10 +918,6 @@ Proof run:
 
 Open proof gaps:
 
-- Full browser click-through upload smoke was not performed. It is accepted for
-  M2 because both `library/ajax/upload.php` call sites are covered by isolated
-  hook tests, and closeout smoke exercised OpenEMR's real `addNewDocument(...)`
-  followed by the production hook against the local Docker database.
 - Fresh-install and upgrade-flow verification were approximated by checking the
   install/upgrade SQL edits and validating the resulting tables in the
   already-running local Docker DB; a destructive `docker compose down -v`

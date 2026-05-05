@@ -114,7 +114,7 @@ if ($isPortal ?? false) {
                 ' ' . $names .
                 xl('to the Documents Onsite Portal Patient category.') . "\n" .
                 xl("Please review and take any necessary actions");
-            $messageService->insert($pid, $note);
+            $messageService->insert($session->get('pid'), $note);
         }
         echo text(json_encode($rtn));
     }

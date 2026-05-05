@@ -17,6 +17,7 @@
 require_once(__DIR__ . "/../library/forms.inc.php");
 require_once(__DIR__ . "/../library/patient.inc.php");
 
+use OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AccessDeniedHelper;
 use OpenEMR\Common\Acl\AclMain;
@@ -337,6 +338,7 @@ class C_Document extends Controller
                         $error .= $rc . "\n";
                     } else {
                         $this->assign("upload_success", "true");
+                        DocumentUploadEnqueuerHook::dispatch($patient_id, $category_id, ['doc_id' => $d->get_id()]);
                     }
                     $sentUploadStatus[] = $d;
                     $this->assign("file", $sentUploadStatus);
