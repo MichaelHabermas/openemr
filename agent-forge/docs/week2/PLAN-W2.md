@@ -14,7 +14,8 @@ Hard constraints:
 - Required node/worker names stay exactly `supervisor`, `intake-extractor`, and `evidence-retriever`.
 - `intake-extractor` handles both `lab_pdf` and `intake_form`; code and docs must explicitly note that the name is spec-required and broader than intake forms.
 - Evals/tests are written before production code in every epic.
-- Prefer one short command for the Week 2 gate: `agent-forge/scripts/check-clinical-document.sh`.
+- Prefer one short command for the clinical document gate: `agent-forge/scripts/check-clinical-document.sh`.
+- Keep one comprehensive AgentForge command current across Week 1, Week 2, and future work: `agent-forge/scripts/check-agentforge.sh`.
 
 Engineering approach:
 
@@ -27,6 +28,7 @@ Epic progress convention:
 
 - Every epic carries a `Status` line. Allowed values are `Not started`, `In progress`, `Blocked`, and `Completed`.
 - Mark an epic `Completed` only when all acceptance criteria, definition-of-done items, and required tests/evals for that epic are passing or have concrete proof artifacts.
+- Every epic that adds, removes, or changes required verification must add or amend `agent-forge/scripts/check-agentforge.sh` so the comprehensive AgentForge gate remains the one command a reviewer can run beyond a single week or assignment slice.
 - If there is any uncertainty, missing verification, partial implementation, or unreviewed failure, keep the epic as `In progress` or `Blocked`; do not mark it completed.
 - When pausing work, update the status and add a short note only if the next step is not obvious from the unfinished tasks. This lets future sessions resume without re-deciding the architecture.
 
@@ -652,6 +654,14 @@ Dependencies: H1-H5.
 ## 7. Test/Eval Command Strategy
 
 Use one main command:
+
+```bash
+agent-forge/scripts/check-agentforge.sh
+```
+
+That comprehensive gate must stay current across AgentForge work, not only Week 1 or Week 2. When an epic adds or changes a required check, update this script in the same epic.
+
+Use the clinical-document gate directly when you only need the current Week 2 clinical-document slice:
 
 ```bash
 agent-forge/scripts/check-clinical-document.sh

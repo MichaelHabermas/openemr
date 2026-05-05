@@ -22,6 +22,16 @@ This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document inges
 - **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — 50-case gate per Week 2 spec; dataset files and judge config land here or beside existing eval fixtures as you wire CI.
 - **Operations / cost** — Extend [../operations/](../operations/) for Week 2 latency and cost reports when measured.
 
+## AgentForge gates
+
+Use this command as the comprehensive AgentForge gate across Week 1, Week 2, and future AgentForge work:
+
+```bash
+agent-forge/scripts/check-agentforge.sh
+```
+
+Keep this script current as epics add or change required checks. A reviewer should not need to remember a growing checklist of separate commands.
+
 ## clinical document gate
 
 Use this command as the single local/CI clinical document gate:
