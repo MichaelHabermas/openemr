@@ -81,7 +81,7 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
             patientId: new PatientId($this->intValue($record['patient_id'] ?? null, 'patient_id')),
             documentId: new DocumentId($this->intValue($record['document_id'] ?? null, 'document_id')),
             docType: DocumentType::fromStringOrThrow($this->stringValue($record['doc_type'] ?? null, 'doc_type')),
-            status: JobStatus::from($this->stringValue($record['status'] ?? null, 'status')),
+            status: JobStatus::fromStringOrThrow($this->stringValue($record['status'] ?? null, 'status')),
             attempts: $this->intValue($record['attempts'] ?? null, 'attempts'),
             lockToken: $this->optionalString($record['lock_token'] ?? null),
             createdAt: new DateTimeImmutable($this->stringValue($record['created_at'] ?? null, 'created_at')),

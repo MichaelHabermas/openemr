@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
+use DomainException;
+
 enum JobStatus: string
 {
     case Pending = 'pending';
@@ -19,4 +21,9 @@ enum JobStatus: string
     case Succeeded = 'succeeded';
     case Failed = 'failed';
     case Retracted = 'retracted';
+
+    public static function fromStringOrThrow(string $raw): self
+    {
+        return self::tryFrom($raw) ?? throw new DomainException("Unknown job status: {$raw}");
+    }
 }

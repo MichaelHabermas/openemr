@@ -1213,20 +1213,26 @@ INSERT INTO procedure_result (
 );
 
 -- Week 2 document upload categories and AgentForge extraction mappings.
+SET @agentforge_lab_pdf_lft := (SELECT COALESCE(MAX(rght), 0) + 1 FROM categories);
+SET @agentforge_lab_pdf_rght := @agentforge_lab_pdf_lft + 1;
+
 INSERT INTO categories (`id`, `name`, `value`, `parent`, `lft`, `rght`, `aco_spec`, `codes`)
 SELECT (SELECT COALESCE(MAX(c2.id), 0) + 1 FROM categories c2),
     'AgentForge Lab PDF',
     '',
     1,
-    root.rght,
-    root.rght + 1,
+    @agentforge_lab_pdf_lft,
+    @agentforge_lab_pdf_rght,
     'patients|docs',
     ''
-FROM categories root
-WHERE root.name = 'Categories'
-    AND NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Lab PDF');
+WHERE NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Lab PDF');
+
+SET @lab_pdf_category_inserted := ROW_COUNT();
 
 UPDATE categories_seq SET id = (SELECT MAX(id) FROM categories);
+UPDATE categories
+SET rght = GREATEST(rght, @agentforge_lab_pdf_rght + 1)
+WHERE name = 'Categories' AND @lab_pdf_category_inserted > 0;
 
 SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'AgentForge Lab PDF' LIMIT 1);
 
@@ -1238,20 +1244,26 @@ WHERE @lab_pdf_cat_id IS NOT NULL
         WHERE category_id = @lab_pdf_cat_id AND doc_type = 'lab_pdf'
     );
 
+SET @agentforge_intake_form_lft := (SELECT COALESCE(MAX(rght), 0) + 1 FROM categories);
+SET @agentforge_intake_form_rght := @agentforge_intake_form_lft + 1;
+
 INSERT INTO categories (`id`, `name`, `value`, `parent`, `lft`, `rght`, `aco_spec`, `codes`)
 SELECT (SELECT COALESCE(MAX(c2.id), 0) + 1 FROM categories c2),
     'AgentForge Intake Form',
     '',
     1,
-    root.rght,
-    root.rght + 1,
+    @agentforge_intake_form_lft,
+    @agentforge_intake_form_rght,
     'patients|docs',
     ''
-FROM categories root
-WHERE root.name = 'Categories'
-    AND NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Intake Form');
+WHERE NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Intake Form');
+
+SET @intake_form_category_inserted := ROW_COUNT();
 
 UPDATE categories_seq SET id = (SELECT MAX(id) FROM categories);
+UPDATE categories
+SET rght = GREATEST(rght, @agentforge_intake_form_rght + 1)
+WHERE name = 'Categories' AND @intake_form_category_inserted > 0;
 
 SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'AgentForge Intake Form' LIMIT 1);
 

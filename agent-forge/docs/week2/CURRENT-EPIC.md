@@ -853,12 +853,14 @@ Acceptance map:
   ids, and resolver failure without exception escape for modeled failures.
 - Sanitized logging: enqueuer tests and `SensitiveLogPolicyTest` confirm
   `patient_ref` is hashed and raw `patient_id` is not emitted by the new M2
-  enqueue log context.
+  enqueue log context; the policy also blocks raw quote/value-style keys such
+  as `quote_or_value`, `raw_quote`, `raw_value`, `document_text`, and
+  `extracted_fields`.
 
 Proof run:
 
 - `vendor/bin/phpunit -c phpunit-isolated.xml tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
-  passed: 29 tests, 77 assertions.
+  passed after final review hardening: 30 tests, 81 assertions.
 - `vendor/bin/phpunit -c phpunit-isolated.xml --filter 'Document|SensitiveLogPolicy'`
   passed: 102 tests, 678 assertions.
 - `vendor/bin/phpcs src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php library/ajax/upload.php`
@@ -871,11 +873,18 @@ Proof run:
   mappings are active for `lab_pdf` and `intake_form`; rerunning the seed kept
   counts at two categories and two mappings; duplicate job insert stayed at one
   pending row.
-- `agent-forge/scripts/check-clinical-document.sh` partially passed: diff
+- After review, the seed category nested-set positions were corrected and
+  re-smoked by deleting only the two AgentForge demo categories/mappings,
+  rerunning the seed, and verifying distinct category ranges:
+  `AgentForge Lab PDF` at `lft=68, rght=69` and
+  `AgentForge Intake Form` at `lft=71, rght=72`. A subsequent no-op seed rerun
+  kept the root category range stable (`root_before=73`, `root_after=73`).
+- `agent-forge/scripts/check-clinical-document.sh` partially passed after final
+  review hardening: diff
   whitespace, PHP syntax, shell syntax, and AgentForge isolated PHPUnit all
-  passed (341 tests, 1651 assertions). The final clinical eval verdict remains
+  passed (342 tests, 1655 assertions). The final clinical eval verdict remains
   `threshold_violation`, with artifact
-  `agent-forge/eval-results/clinical-document-20260505-014142`, because later
+  `agent-forge/eval-results/clinical-document-20260505-122944`, because later
   M3/M4 extraction behavior is still not implemented.
 - `composer phpunit-isolated` was attempted and ran 3072 tests, but failed with
   8 unrelated `FrontControllerRoutingTest` connection errors because no HTTP

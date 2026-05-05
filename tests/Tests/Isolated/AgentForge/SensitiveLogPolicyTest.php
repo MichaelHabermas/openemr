@@ -33,6 +33,7 @@ final class SensitiveLogPolicyTest extends TestCase
             'decision' => 'allowed',
             'question' => 'What changed?',
             'answer' => 'raw answer',
+            'quote_or_value' => 'LDL 148',
             'exception' => 'SQLSTATE private internals',
             'custom_debug' => 'debug',
         ]);
@@ -50,6 +51,7 @@ final class SensitiveLogPolicyTest extends TestCase
         $this->assertSame('allowed', $context['decision']);
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);
+        $this->assertArrayNotHasKey('quote_or_value', $context);
         $this->assertArrayNotHasKey('exception', $context);
         $this->assertArrayNotHasKey('custom_debug', $context);
     }
@@ -58,6 +60,12 @@ final class SensitiveLogPolicyTest extends TestCase
     {
         $this->assertTrue(SensitiveLogPolicy::containsForbiddenKey([
             'nested' => ['full_prompt' => 'raw prompt'],
+        ]));
+        $this->assertTrue(SensitiveLogPolicy::containsForbiddenKey([
+            'citation' => ['quote_or_value' => 'LDL 148'],
+        ]));
+        $this->assertTrue(SensitiveLogPolicy::containsForbiddenKey([
+            'document' => ['extracted_fields' => ['allergies' => 'sulfa']],
         ]));
         $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey([
             'decision' => 'allowed',
