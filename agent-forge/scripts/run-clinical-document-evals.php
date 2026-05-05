@@ -2,13 +2,11 @@
 <?php
 
 /**
- * Run the AgentForge clinical document eval gate.
+ * Clinical document eval runner entry point for AgentForge.
  *
- * Exit codes:
- * 0 baseline met and thresholds satisfied
- * 1 regression drop exceeded baseline allowance
- * 2 rubric pass rate below threshold
- * 3 runner/configuration error
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 declare(strict_types=1);

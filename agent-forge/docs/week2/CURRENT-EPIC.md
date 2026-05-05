@@ -562,7 +562,7 @@ Before marking the epic complete:
 ## Implementation Proof
 
 - `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed: 16 tests, 34 assertions.
-- `php agent-forge/scripts/run-clinical-document-evals.php` exited `2` with `threshold_violation` and wrote artifacts under `agent-forge/eval-results/clinical-document-20260505-003558/`.
+- `php agent-forge/scripts/run-clinical-document-evals.php` exited `2` with `threshold_violation` and wrote artifacts under `agent-forge/eval-results/clinical-document-20260505-004159/`.
 - `composer phpstan -- --error-format=raw src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed after running with approval for PHPStan's local worker socket.
 - `vendor/bin/phpcs src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed.
 - `bash agent-forge/scripts/check-clinical-document.sh` is blocked before clinical document evals by unrelated existing AgentForge documentation tests that reference missing Week 1 docs: `agent-forge/docs/PLAN.md`, `agent-forge/docs/PRD.md`, and `agent-forge/docs/SPECS.txt`.
