@@ -750,7 +750,7 @@ Files/modules:
 - Modify `README.md`.
 - Modify `AGENTFORGE-REVIEWER-GUIDE.md`.
 - Modify `agent-forge/docs/week2/README.md`.
-- Modify `agent-forge/docs/week2/SPECS-W2.md` only to reflect landed implementation details, not to change scope.
+- Modify source-spec-derived docs only to reflect landed implementation details, not to change scope; edit `agent-forge/docs/week2/SPECS-W2.md` only for factual sync issues such as path rot or assignment-source corrections.
 - Add `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md`.
 
 Database changes: None.

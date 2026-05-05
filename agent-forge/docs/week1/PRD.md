@@ -1,6 +1,6 @@
 # AgentForge Clinical Co-Pilot PRD
 
-**Document scope — Week 1 only.** This PRD is written against **`SPECS.txt`** (original / Week 1 Gauntlet requirements): chart-orientation agent, evidence tools, verifier, deployment, and Week 1 acceptance. It does **not** describe Week 2 multimodal ingestion, hybrid RAG, supervisor/worker graphs, or the 50-case Week 2 eval gate. For Week 2, use **`SPECS-W2.txt`**, **`../../W2_ARCHITECTURE.md`**, and **[week2/README.md](week2/README.md)**. If Week 2 needs a formal PRD slice, add a separate file (for example `PRD-W2.md`) rather than overloading this one without a clear heading.
+**Document scope — Week 1 only.** This PRD is written against **`SPECS.txt`** (original / Week 1 Gauntlet requirements): chart-orientation agent, evidence tools, verifier, deployment, and Week 1 acceptance. It does **not** describe Week 2 multimodal ingestion, hybrid RAG, supervisor/worker graphs, or the 50-case Week 2 eval gate. For Week 2, use **`../week2/SPECS-W2.md`**, **`../../W2_ARCHITECTURE.md`**, and **[../week2/README.md](../week2/README.md)**. If Week 2 needs a formal PRD slice, add a separate file (for example `PRD-W2.md`) rather than overloading this one without a clear heading.
 
 ## 1. Executive Summary
 

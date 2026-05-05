@@ -11,10 +11,11 @@ Core principles:
 - Use OpenEMR's existing document upload system.
 - Keep all Week 2 application logic in PHP under `src/AgentForge`.
 - Store the original document before extracting or persisting derived facts.
-- Promote only high-confidence, schema-valid, cited facts into established OpenEMR clinical tables.
+- Promote only high-confidence, schema-valid, cited facts from identity-verified or human-approved documents into established OpenEMR clinical tables.
 - Keep all other useful document findings searchable and cited, without silently treating them as chart truth.
 - Never hide clinically relevant uncertain findings; surface them as needs-human-review findings when relevant.
 - Keep patient document retrieval separate from guideline retrieval, even though both use MariaDB Vector.
+- Keep identity checks, promotion provenance, duplicate outcomes, and source-document retraction as gates before patient document facts can become active evidence.
 - Make every supervisor handoff, extraction job, retrieval step, eval result, cost, and latency inspectable without logging raw PHI.
 
 ## 2. MVP Cut Line
@@ -26,13 +27,15 @@ existing OpenEMR upload
 -> eligible category creates extraction job
 -> PHP worker processes the job
 -> lab_pdf and intake_form fixtures produce strict cited JSON
--> verified lab facts can be promoted to OpenEMR-compatible lab records
+-> document identity is verified or routed to review
+-> verified lab facts can be promoted to OpenEMR-compatible lab records with provenance
 -> intake findings are stored as cited document facts / needs-review findings
+-> identity-unresolved or retracted source content is excluded from active evidence
 -> document facts are searchable
 -> guideline evidence is retrieved with sparse + MariaDB Vector + rerank
 -> supervisor handoffs are logged
 -> final answer separates patient findings, guideline evidence, and needs-review items
--> eval gate proves schemas, citations, refusals, factual consistency, and no-PHI logging
+-> eval gate proves schemas, citations, refusals, factual consistency, duplicate prevention, deleted-document exclusion, and no-PHI logging
 ```
 
 The MVP is not a broad document AI platform. Anything that does not help prove this path is deferred until the core flow, eval gate, and deployed worker are working.
@@ -364,6 +367,42 @@ AgentForge separates extraction from clinical acceptance.
 
 Certain, schema-valid, cited facts that map safely to existing OpenEMR tables are promoted. Other useful findings remain cited, searchable AgentForge document facts.
 
+### Identity Gate
+
+Before facts are persisted as active evidence or promoted into OpenEMR clinical tables, AgentForge records an identity check for the source document. Extraction provides cited patient identity candidates when present, such as name, DOB, MRN/account number, or other reliable identifiers. The verifier compares those identifiers to the selected OpenEMR patient with deterministic rules.
+
+```text
+clinical_document_identity_checks
+  id
+  patient_id
+  document_id
+  job_id
+  doc_type
+  identity_status
+  extracted_identifiers_json
+  matched_patient_fields_json
+  mismatch_reason
+  review_required
+  review_decision
+  reviewed_by
+  reviewed_at
+  checked_at
+  created_at
+```
+
+Allowed identity states:
+
+```text
+identity_unchecked
+identity_verified
+identity_ambiguous_needs_review
+identity_mismatch_quarantined
+identity_review_approved
+identity_review_rejected
+```
+
+Only `identity_verified` or explicit human approval permits active facts, embeddings, promoted rows, or evidence bundle items. Ambiguous or mismatched documents stay reviewable, but they cannot become trusted patient evidence.
+
 ### AgentForge Tables
 
 ```text
@@ -372,15 +411,16 @@ clinical_document_facts
   patient_id
   document_id
   job_id
+  identity_check_id
   doc_type
   fact_type
   certainty
+  fact_fingerprint
+  clinical_content_fingerprint
   fact_text
   structured_value_json
   citation_json
   confidence
-  promoted_table
-  promoted_record_id
   promotion_status
   retracted_at
   retraction_reason
@@ -398,9 +438,50 @@ clinical_document_fact_embeddings
   created_at
 ```
 
+Promotion provenance is stored separately from mutable OpenEMR clinical rows:
+
+```text
+clinical_document_promotions
+  id
+  patient_id
+  document_id
+  job_id
+  fact_id
+  fact_fingerprint
+  clinical_content_fingerprint
+  promoted_table
+  promoted_record_id
+  promoted_pk_json
+  outcome
+  duplicate_key
+  conflict_reason
+  citation_json
+  confidence
+  review_status
+  active
+  created_at
+  updated_at
+  retracted_at
+  retraction_reason
+```
+
+Promotion outcomes include:
+
+```text
+promoted
+already_exists
+duplicate_skipped
+conflict_needs_review
+not_promotable
+needs_review
+rejected
+promotion_failed
+retracted
+```
+
 ### Promotion Rules
 
-Lab PDF verified facts are promoted to OpenEMR lab/Observation-compatible records when complete and cited. The existing Week 1 evidence layer reads recent labs from `procedure_result`, `procedure_report`, `procedure_order`, and `procedure_order_code`, so Week 2 lab promotion should preserve compatibility with those existing chart evidence tools or equivalent FHIR Observation storage backed by OpenEMR.
+Lab PDF verified facts are promoted to OpenEMR lab/Observation-compatible records when complete, cited, identity-gated, and backed by a promotion provenance row. The existing Week 1 evidence layer reads recent labs from `procedure_result`, `procedure_report`, `procedure_order`, and `procedure_order_code`, so Week 2 lab promotion should preserve compatibility with those existing chart evidence tools or equivalent FHIR Observation storage backed by OpenEMR.
 
 Intake allergies and medications may be promoted only when explicit, high-confidence, source-cited, and safely mapped. Intake demographics are not auto-overwritten in the MVP. Chief concern, family history, preferences, and free-text findings are stored as cited document facts unless a safe existing destination is defined.
 
@@ -408,19 +489,41 @@ Intake allergies and medications may be promoted only when explicit, high-confid
 
 AgentForge must avoid duplicate and untraceable records.
 
-Duplicate detection uses OpenEMR document identity, document hash, patient id, doc type, fact fingerprint, and promotion provenance. Reprocessing the same job or retrying after a transient failure must not create duplicate facts, duplicate embeddings, or duplicate promoted chart rows.
+Duplicate detection uses OpenEMR document identity, document hash, patient id, doc type, source-scoped fact fingerprint, patient-scoped clinical-content fingerprint, and promotion provenance. Reprocessing the same job or retrying after a transient failure must not create duplicate facts, duplicate embeddings, duplicate promotion outcome rows, or duplicate promoted chart rows. Re-uploading the same lab under a different document id should resolve to `already_exists`, `duplicate_skipped`, or `conflict_needs_review`, not a second clinical row.
 
 If a document is deleted or deactivated:
 
 ```text
 deactivate derived AgentForge document facts
 remove/deactivate their embeddings from retrieval
-retract or mark inactive OpenEMR records AgentForge promoted from that document
+mark AgentForge promotion rows inactive/retracted
+retract or mark inactive OpenEMR records AgentForge promoted from that document when the destination supports it
 stop using those rows as AgentForge evidence
-record the retraction on the originating clinical_document_facts row
+record the retraction on the originating fact, promotion, and audit/retraction records
 ```
 
-This handles the wrong-document-upload case. If a user uploads the wrong lab PDF and later deletes it, facts derived from that document must not keep poisoning the chart. AgentForge should retract/deactivate rather than hard-delete where OpenEMR supports audit-friendly inactive/voided states. If a destination table has no safe inactive/retracted state, AgentForge stops using the row as evidence and creates a needs-review audit item.
+Retraction is append-only from an audit perspective and inactive from an evidence perspective:
+
+```text
+clinical_document_retractions
+  id
+  patient_id
+  document_id
+  job_id
+  fact_id
+  promotion_id
+  promoted_table
+  promoted_record_id
+  prior_state
+  new_state
+  action
+  actor_type
+  actor_id
+  reason
+  created_at
+```
+
+This handles the wrong-document-upload case. If a user uploads the wrong lab PDF and later deletes it, facts derived from that document must not keep poisoning the chart. AgentForge should retract/deactivate rather than hard-delete where OpenEMR supports audit-friendly inactive/voided states. If a destination table has no safe inactive/retracted state, AgentForge stops using the row as evidence and creates a needs-review audit item. Deleted-source content remains historically reviewable but is excluded from active chart evidence, document search, vector retrieval, and final-answer citations.
 
 ## 13. MariaDB Vector Retrieval
 
@@ -964,11 +1067,13 @@ Automatic background extraction keeps user workflow clean, but introduces a shor
 
 Promoting only certain facts means some useful facts will not become official chart rows immediately. They remain visible, cited, vectorized, and available under document facts or needs-human-review findings.
 
+Identity gating adds one extra step before persistence/promotion, but it prevents the OpenEMR upload destination from silently laundering wrong-patient document content into trusted evidence.
+
 Separate patient-document and guideline vector tables add schema complexity, but prevent privacy and semantic mixing.
 
 Using Cohere for configured rerank and deterministic local rerank for tests keeps the required rerank step inspectable without making reranking a large subsystem.
 
-Retraction provenance adds bookkeeping, but prevents wrong-document uploads from permanently poisoning the chart.
+Promotion and retraction provenance add bookkeeping, but prevent duplicate or wrong-document uploads from permanently poisoning the chart.
 
 Bounding boxes are hard on scanned documents. The MVP requires boxes for promoted document facts and final-answer document citations. If the PHP extraction path cannot produce strict cited JSON plus coordinates from the provided fixtures early, extraction becomes the critical path and the implementation plan must cut scope around that bottleneck before expanding features.
 
@@ -979,7 +1084,7 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Ingest `lab_pdf` and `intake_form` | OpenEMR category mapping table maps eligible upload categories to required doc types. |
 | Provide `attach_and_extract(patient_id, file_path, doc_type)` | Spec-facing tool remains available; normal UI path converges after OpenEMR stores the document. |
 | Store source documents in OpenEMR | Existing OpenEMR document upload/storage path remains source of truth. |
-| Persist derived facts without duplicates or untraceable records | Document facts, promotion provenance, fingerprints, and duplicate checks prevent duplicate/uncited records. |
+| Persist derived facts without duplicates or untraceable records | Identity checks, document facts, promotion provenance, fingerprints, duplicate checks, and retraction audit records prevent duplicate/uncited records. |
 | Strict lab schema | PHP schema/value objects require test name, value, unit, reference range, collection date, abnormal flag, confidence, and citation. |
 | Strict intake schema | PHP schema/value objects require demographics, chief concern, medications, allergies, family history, document facts, needs-review findings, and citations. |
 | Every extracted fact has source evidence | `citation_json` required for every extracted item. |

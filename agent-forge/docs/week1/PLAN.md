@@ -1,6 +1,6 @@
 # AgentForge Clinical Co-Pilot Plan
 
-**Document scope — Week 1 only.** This plan decomposes **`SPECS.txt`** (Week 1 requirements) into epics and execution steps. Epics under **`epics/`** were created for that sprint unless a filename explicitly says otherwise. **Week 2** work (**`SPECS-W2.txt`**: documents, RAG, supervisor + workers, new eval gate) is **not** tracked here unless you deliberately extend this file—prefer indexing Week 2 from **[week2/README.md](week2/README.md)** and **`../../W2_ARCHITECTURE.md`** so Week 1 history and Week 2 scope stay distinguishable.
+**Document scope — Week 1 only.** This plan decomposes **`SPECS.txt`** (Week 1 requirements) into epics and execution steps. Epics under **`epics/`** were created for that sprint unless a filename explicitly says otherwise. **Week 2** work (**`../week2/SPECS-W2.md`**: documents, RAG, supervisor + workers, new eval gate) is **not** tracked here unless you deliberately extend this file—prefer indexing Week 2 from **[../week2/README.md](../week2/README.md)** and **`../../W2_ARCHITECTURE.md`** so Week 1 history and Week 2 scope stay distinguishable.
 
 ## Purpose
 

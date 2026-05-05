@@ -30,8 +30,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 - [evaluation/](evaluation/) - Evaluation tier taxonomy, instructor reviews, and captured test output.
 - [operations/](operations/) - Cost analysis and operational facts/needs.
 - [submission/](submission/) - Reviewer packaging pointers and demo submission script.
-- [week2/](week2/) - Week 2 navigation hub (stages, pointers to fixtures and root `W2_ARCHITECTURE.md`).
-- [week2/](week2/) - Week 2 PDF and defense artifacts live alongside the Week 2 README (see [week2/README.md](week2/README.md)); `reference/` is reserved for future shared immovable files.
+- [week2/](week2/) - Week 2 navigation hub with the source spec, PDF/text assignment copies, implementation plan, fixture pointers, and root `W2_ARCHITECTURE.md` defense artifact.
 
 ## Memory Protocol
 

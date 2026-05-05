@@ -19,7 +19,8 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 
 | Document | Purpose |
 |----------|---------|
-| [W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md) (repository root) | **Week 2 defense artifact** required by the course: ingestion flow, worker graph, RAG design, eval gate, risks, tradeoffs. Filled in — covers the 9 required sections. Update as implementation lands. |
+| [PLAN-W2.md](PLAN-W2.md) | Current Week 2 implementation order and epic scope. Use this for sequencing active work. |
+| [W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md) (repository root) | **Week 2 defense artifact** required by the course: ingestion flow, worker graph, RAG design, eval gate, risks, tradeoffs. Keep aligned with `PLAN-W2.md` as implementation lands. |
 | [ARCHITECTURE.md](../../../ARCHITECTURE.md) (repository root) | Ongoing system architecture (Week 1 baseline + evolving product story). Week 2 multimodal details should either stay in `W2_ARCHITECTURE.md` or be summarized here with a pointer to avoid drift. |
 
 ## Where work accumulates
@@ -50,7 +51,7 @@ M1 intentionally makes the gate fail at the `Run Clinical document evals` step b
 
 ## Week 2 stages (from spec)
 
-1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `W2_ARCHITECTURE.md` §1–2.
+1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `PLAN-W2.md` for implementation order and `W2_ARCHITECTURE.md` §1–2 for defense architecture.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
 4. Eval-driven CI: 50 cases, 5 boolean rubrics, PR-blocking via `agentforge-evals.yml`. — §6.

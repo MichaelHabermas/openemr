@@ -2,8 +2,8 @@
 
 Source documents:
 
-- `agent-forge/docs/reference/Week-2-AgentForge-Clinical-Co-Pilot.pdf`
-- `agent-forge/docs/Week-2-AgentForge-Clinical-Co-Pilot.txt`
+- `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf`
+- `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.txt`
 
 This document converts the Week 2 assignment into an implementation-ready specification. It is the source of truth for the Week 2 multimodal Clinical Co-Pilot scope: clinical document ingestion, structured extraction, guideline retrieval, supervisor/worker routing, citations, evaluation, deployment, and submission proof.
 
