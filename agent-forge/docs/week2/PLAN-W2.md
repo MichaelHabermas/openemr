@@ -14,7 +14,7 @@ Hard constraints:
 - Required node/worker names stay exactly `supervisor`, `intake-extractor`, and `evidence-retriever`.
 - `intake-extractor` handles both `lab_pdf` and `intake_form`; code and docs must explicitly note that the name is spec-required and broader than intake forms.
 - Evals/tests are written before production code in every epic.
-- Prefer one short command for the Week 2 gate: `agent-forge/scripts/check-w2.sh`.
+- Prefer one short command for the Week 2 gate: `agent-forge/scripts/check-clinical-document.sh`.
 
 Engineering approach:
 
@@ -53,7 +53,7 @@ MVP does not require third document types, demographic overwrites, broad documen
 
 ## 4. MVP Epics
 
-### Epic M1 - W2 Eval And Test Skeleton First
+### Epic M1 - Clinical Document Eval And Test Skeleton First
 
 Status: Not started.
 
@@ -61,12 +61,12 @@ Goal: Create the failing tests/evals that define the MVP before production code.
 
 Files/modules:
 
-- Add `agent-forge/scripts/check-w2.sh`.
-- Add `agent-forge/scripts/run-w2-evals.php`.
-- Add `agent-forge/fixtures/w2-golden/cases/*.json`.
-- Add `agent-forge/fixtures/w2-golden/thresholds.json`.
-- Add `agent-forge/fixtures/w2-golden/baseline.json`.
-- Add isolated tests under `tests/Tests/Isolated/AgentForge/W2*Test.php`.
+- Add `agent-forge/scripts/check-clinical-document.sh`.
+- Add `agent-forge/scripts/run-clinical-document-evals.php`.
+- Add `agent-forge/fixtures/clinical-document-golden/cases/*.json`.
+- Add `agent-forge/fixtures/clinical-document-golden/thresholds.json`.
+- Add `agent-forge/fixtures/clinical-document-golden/baseline.json`.
+- Add isolated tests under `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/*Test.php`.
 
 Database changes: None.
 
@@ -74,18 +74,18 @@ Tests/evals first:
 
 - Add schema-valid, citation-present, factual-consistency, safe-refusal, no-PHI-log, and bounding-box-present rubric scaffolding.
 - Add MVP cases for Chen typed lab PDF, Chen typed intake form, one image/scanned lab, one image/scanned intake, duplicate upload, guideline supported retrieval, out-of-corpus refusal, and no-PHI logging trap.
-- Add tests proving `check-w2.sh` invokes W2 unit tests and `run-w2-evals.php`.
+- Add tests proving `check-clinical-document.sh` invokes clinical document eval unit tests and `run-clinical-document-evals.php`.
 
 Implementation tasks:
 
-- Define W2 case JSON format with inputs, expected extracted facts, expected citations, expected promoted facts, expected document facts, expected retrieval behavior, and expected final answer sections.
-- Make `run-w2-evals.php` initially fail with clear "not implemented" rubric failures rather than silently passing.
+- Define the clinical document case JSON format with inputs, expected extracted facts, expected citations, expected promoted facts, expected document facts, expected retrieval behavior, and expected final answer sections.
+- Make `run-clinical-document-evals.php` initially fail with clear "not implemented" rubric failures rather than silently passing.
 - Document thresholds next to the runner.
 
 Acceptance criteria:
 
-- `php agent-forge/scripts/run-w2-evals.php` runs and fails for missing implementation.
-- `agent-forge/scripts/check-w2.sh` exists and is the single intended local/CI Week 2 gate.
+- `php agent-forge/scripts/run-clinical-document-evals.php` runs and fails for missing implementation.
+- `agent-forge/scripts/check-clinical-document.sh` exists and is the single intended local/CI Week 2 gate.
 - The fixture README explains MVP vs later 50-case expansion.
 
 Definition of done:
@@ -306,9 +306,9 @@ Goal: Retrieve cited guideline evidence using sparse retrieval plus MariaDB Vect
 
 Files/modules:
 
-- Add `agent-forge/fixtures/w2-corpus/*.md`.
-- Add `agent-forge/fixtures/w2-corpus/corpus-version.txt`.
-- Add `agent-forge/scripts/index-w2-guidelines.php`.
+- Add `agent-forge/fixtures/clinical-guideline-corpus/*.md`.
+- Add `agent-forge/fixtures/clinical-guideline-corpus/corpus-version.txt`.
+- Add `agent-forge/scripts/index-clinical-guidelines.php`.
 - Add `src/AgentForge/Guidelines/GuidelineChunk.php`.
 - Add `src/AgentForge/Guidelines/SqlGuidelineChunkRepository.php`.
 - Add `src/AgentForge/Guidelines/GuidelineCorpusIndexer.php`.
@@ -344,7 +344,7 @@ Acceptance criteria:
 
 Definition of done:
 
-- `php agent-forge/scripts/index-w2-guidelines.php` can rebuild the corpus.
+- `php agent-forge/scripts/index-clinical-guidelines.php` can rebuild the corpus.
 - Retrieval evals pass with deterministic embeddings/rerank.
 
 Dependencies: M5.
@@ -398,7 +398,7 @@ Acceptance criteria:
 
 Definition of done:
 
-- `agent-forge/scripts/check-w2.sh` passes the MVP gate.
+- `agent-forge/scripts/check-clinical-document.sh` passes the MVP gate.
 - MVP demo can be run locally without manual extraction steps.
 
 Dependencies: M6.
@@ -413,11 +413,11 @@ Goal: Satisfy the full Week 2 50-case eval requirement.
 
 Files/modules:
 
-- Modify `agent-forge/fixtures/w2-golden/cases/*.json`.
-- Modify `agent-forge/fixtures/w2-golden/baseline.json`.
-- Modify `agent-forge/fixtures/w2-golden/thresholds.json`.
-- Add `agent-forge/scripts/generate-w2-golden-fixtures.php`.
-- Modify `agent-forge/scripts/run-w2-evals.php`.
+- Modify `agent-forge/fixtures/clinical-document-golden/cases/*.json`.
+- Modify `agent-forge/fixtures/clinical-document-golden/baseline.json`.
+- Modify `agent-forge/fixtures/clinical-document-golden/thresholds.json`.
+- Add `agent-forge/scripts/generate-clinical-document-golden-fixtures.php`.
+- Modify `agent-forge/scripts/run-clinical-document-evals.php`.
 
 Database changes: None.
 
@@ -429,7 +429,7 @@ Implementation tasks:
 
 - Expand to 50 synthetic/demo cases.
 - Enforce required rubrics: `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`.
-- Keep W2 gated rubrics: `bounding_box_present`, `deleted_document_not_retrieved`.
+- Keep clinical document gated rubrics: `bounding_box_present`, `deleted_document_not_retrieved`.
 - Fail on any required threshold drop or >5% regression.
 
 Acceptance criteria:
@@ -499,7 +499,7 @@ Files/modules:
 - Modify `agent-forge/scripts/deploy-vm.sh`.
 - Modify `agent-forge/scripts/rollback-vm.sh`.
 - Modify `agent-forge/scripts/health-check.sh`.
-- Add or modify `agent-forge/scripts/run-w2-deployed-smoke.php`.
+- Add or modify `agent-forge/scripts/run-clinical-document-deployed-smoke.php`.
 - Update reviewer/deployment docs.
 
 Database changes: None beyond existing W2 tables.
@@ -536,8 +536,8 @@ Files/modules:
 - Modify `src/AgentForge/Observability/AgentTelemetry.php`.
 - Modify `src/AgentForge/Observability/SensitiveLogPolicy.php`.
 - Modify `src/AgentForge/Observability/PsrRequestLogger.php`.
-- Add `agent-forge/scripts/render-w2-cost-latency-report.php`.
-- Add `agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md`.
+- Add `agent-forge/scripts/render-clinical-document-cost-latency-report.php`.
+- Add `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`.
 
 Database changes: None unless telemetry is persisted in a W2 table; prefer existing sanitized logs and eval artifacts.
 
@@ -614,7 +614,7 @@ Files/modules:
 - Finalize `README.md`.
 - Finalize `AGENTFORGE-REVIEWER-GUIDE.md`.
 - Finalize `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md`.
-- Finalize `agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md`.
+- Finalize `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`.
 - Save final eval/deployed smoke artifacts under `agent-forge/eval-results/`.
 - Add demo video link/reference in reviewer docs.
 
@@ -622,7 +622,7 @@ Database changes: None.
 
 Tests/evals first:
 
-- Run `agent-forge/scripts/check-w2.sh`.
+- Run `agent-forge/scripts/check-clinical-document.sh`.
 - Run deployed smoke.
 - Run health check.
 - Run documentation/link tests.
@@ -654,10 +654,10 @@ Dependencies: H1-H5.
 Use one main command:
 
 ```bash
-agent-forge/scripts/check-w2.sh
+agent-forge/scripts/check-clinical-document.sh
 ```
 
-`check-w2.sh` should run, in order:
+`check-clinical-document.sh` should run, in order:
 
 ```bash
 git diff --check
@@ -665,19 +665,19 @@ php -l library/ajax/upload.php
 find src/AgentForge tests/Tests/Isolated/AgentForge agent-forge/scripts -name '*.php' -print0 | xargs -0 -n 1 php -l
 find agent-forge/scripts -name '*.sh' -print0 | xargs -0 -n 1 bash -n
 composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
-php agent-forge/scripts/run-w2-evals.php
+php agent-forge/scripts/run-clinical-document-evals.php
 composer phpstan -- --error-format=raw src/AgentForge tests/Tests/Isolated/AgentForge interface/patient_file/summary/agent_request.php library/ajax/upload.php
-vendor/bin/phpcs <changed AgentForge/OpenEMR W2 PHP files>
+vendor/bin/phpcs <changed AgentForge/OpenEMR clinical document PHP files>
 ```
 
 Supporting scripts:
 
 - `agent-forge/scripts/process-document-jobs.php` runs worker one-shot or loop mode.
-- `agent-forge/scripts/index-w2-guidelines.php` rebuilds guideline chunks and embeddings.
-- `agent-forge/scripts/generate-w2-golden-fixtures.php` deterministically regenerates/validates golden metadata.
-- `agent-forge/scripts/run-w2-evals.php` runs the W2 gate and writes artifacts.
-- `agent-forge/scripts/render-w2-cost-latency-report.php` writes the cost/latency report.
-- `agent-forge/scripts/run-w2-deployed-smoke.php` proves deployed Week 2 flow.
+- `agent-forge/scripts/index-clinical-guidelines.php` rebuilds guideline chunks and embeddings.
+- `agent-forge/scripts/generate-clinical-document-golden-fixtures.php` deterministically regenerates/validates golden metadata.
+- `agent-forge/scripts/run-clinical-document-evals.php` runs the clinical document gate and writes artifacts.
+- `agent-forge/scripts/render-clinical-document-cost-latency-report.php` writes the cost/latency report.
+- `agent-forge/scripts/run-clinical-document-deployed-smoke.php` proves deployed Week 2 flow.
 
 The eval runner must fail when required rubrics fall below thresholds, regress by more than 5%, schema validation fails, a clinical claim lacks citation, raw PHI appears in logs, deleted document facts remain retrievable, duplicate upload creates duplicate facts, or the runner cannot complete.
 
@@ -711,4 +711,4 @@ Week 2 is done when:
 - Do not let `supervisor` become opaque model routing. Start deterministic and only add model selection where bounded by tests.
 - Lab promotion can duplicate chart facts if provenance/fingerprint rules are weak. Implement idempotency before broad extraction.
 - Retraction/deletion is post-MVP but submission-critical because wrong-document uploads must not keep poisoning evidence.
-- Keep scripts few and boring. `check-w2.sh` is the main gate; extra scripts should be helpers called by that gate or by documented deploy/smoke flows.
+- Keep scripts few and boring. `check-clinical-document.sh` is the main gate; extra scripts should be helpers called by that gate or by documented deploy/smoke flows.

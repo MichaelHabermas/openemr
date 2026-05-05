@@ -38,7 +38,7 @@ M1 intentionally makes the gate fail at the `Run Clinical document evals` step b
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
 4. Eval-driven CI: 50 cases, 5 boolean rubrics, PR-blocking via `agentforge-evals.yml`. — §6.
-5. Integrate, deploy behind `AGENTFORGE_W2_ENABLED`, demo video, cost/latency report. — §7, §9.
+5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal.
 

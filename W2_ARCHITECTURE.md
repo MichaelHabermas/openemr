@@ -454,7 +454,7 @@ Deleted or retracted document facts are excluded from retrieval.
 Guideline chunks are global and versioned. The MVP corpus is intentionally small and primary-care focused so retrieval behavior can be inspected and evaluated. It is stored under:
 
 ```text
-agent-forge/fixtures/w2-corpus/
+agent-forge/fixtures/clinical-guideline-corpus/
 ```
 
 Initial corpus sources:
@@ -470,10 +470,10 @@ OpenEMR-local demo guideline note for out-of-corpus refusal calibration
 The indexing script normalizes these sources into roughly 25-50 section-level chunks for MVP:
 
 ```text
-php agent-forge/scripts/index-w2-guidelines.php
+php agent-forge/scripts/index-clinical-guidelines.php
 ```
 
-Each chunk has a stable `chunk_id`, source title, source file/URL, section, text, and `corpus_version`. `corpus_version` is a checked-in string such as `w2-demo-2026-05-04`; changing corpus content requires updating the version and rerunning the indexing/eval command.
+Each chunk has a stable `chunk_id`, source title, source file/URL, section, text, and `corpus_version`. `corpus_version` is a checked-in string such as `clinical-guideline-demo-2026-05-04`; changing corpus content requires updating the version and rerunning the indexing/eval command.
 
 ```text
 agentforge_guideline_chunks
@@ -752,13 +752,13 @@ bottleneck analysis
 The report is rendered by:
 
 ```text
-php agent-forge/scripts/render-w2-cost-latency-report.php
+php agent-forge/scripts/render-clinical-document-cost-latency-report.php
 ```
 
 The script reads W2 eval/job telemetry and writes:
 
 ```text
-agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md
+agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md
 ```
 
 ## 17. Eval Gate
@@ -770,19 +770,19 @@ AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `ag
 One command is the source of truth for local, CI, and grader reruns:
 
 ```text
-php agent-forge/scripts/run-w2-evals.php
+php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
-The existing `agent-forge/fixtures/w2-golden` directory becomes the 50-case Week 2 golden set.
+The existing `agent-forge/fixtures/clinical-document-golden` directory becomes the 50-case clinical document golden set.
 
 Baseline storage and comparison are checked into the repo:
 
 ```text
-agent-forge/fixtures/w2-golden/baseline.json
-agent-forge/fixtures/w2-golden/thresholds.json
+agent-forge/fixtures/clinical-document-golden/baseline.json
+agent-forge/fixtures/clinical-document-golden/thresholds.json
 ```
 
-`run-w2-evals.php` writes the current run to `agent-forge/eval-results/`, compares rubric pass rates against `baseline.json`, and fails when any required rubric drops below threshold or regresses by more than 5%. Baseline updates require an explicit commit to the baseline file.
+`run-clinical-document-evals.php` writes the current run to `agent-forge/eval-results/`, compares rubric pass rates against `baseline.json`, and fails when any required rubric drops below threshold or regresses by more than 5%. Baseline updates require an explicit commit to the baseline file.
 
 Required boolean rubrics:
 
@@ -821,7 +821,7 @@ Eval artifacts are saved under `agent-forge/eval-results`.
 The PR-blocking mechanism is a checked-in Git hook/CI command wrapper:
 
 ```text
-agent-forge/scripts/check-w2.sh
+agent-forge/scripts/check-clinical-document.sh
 ```
 
 That script runs the smallest useful bundle for Week 2:
@@ -830,7 +830,7 @@ That script runs the smallest useful bundle for Week 2:
 schema tests
 document job/fact unit tests
 retrieval tests
-php agent-forge/scripts/run-w2-evals.php
+php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
 ## 18. Example Documents And Synthetic Expansion
@@ -875,7 +875,7 @@ All documents and facts are synthetic/demo only.
 The expansion script is:
 
 ```text
-php agent-forge/scripts/generate-w2-golden-fixtures.php
+php agent-forge/scripts/generate-clinical-document-golden-fixtures.php
 ```
 
 It creates deterministic synthetic case metadata and expected outputs from templates. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
@@ -994,9 +994,9 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored, vectorized, cited, and surfaced when clinically relevant. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
-| 50-case golden dataset | `agent-forge/fixtures/w2-golden` expands to 50 synthetic/demo cases. |
+| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` expands to 50 synthetic/demo cases. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`. |
-| PR-blocking CI or Git Hook | `agent-forge/scripts/check-w2.sh` runs tests and `run-w2-evals.php`; the same command is used by CI/hook and graders. |
+| PR-blocking CI or Git Hook | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is used by CI/hook and graders. |
 | No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |
-| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings render to `agent-forge/docs/week2/W2_COST_LATENCY_REPORT.md`. |
+| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings render to `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`. |
 | Deployed observable flow | Runtime includes `openemr`, MariaDB 11.8, automatic `agentforge-worker`, VM deploy/rollback scripts, and worker health/readiness proof. |
