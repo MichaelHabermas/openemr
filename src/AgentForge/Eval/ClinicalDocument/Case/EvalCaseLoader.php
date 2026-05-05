@@ -25,7 +25,7 @@ final class EvalCaseLoader
         $files = glob(rtrim($casesDir, '/') . '/*.json') ?: [];
         sort($files);
 
-        return array_map(fn (string $file): EvalCase => $this->loadFile($file), $files);
+        return array_map($this->loadFile(...), $files);
     }
 
     public function loadFile(string $file): EvalCase
@@ -140,6 +140,6 @@ final class EvalCaseLoader
             return [];
         }
 
-        return array_values(array_filter($value, 'is_string'));
+        return array_values(array_filter($value, is_string(...)));
     }
 }

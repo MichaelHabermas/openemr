@@ -14,9 +14,9 @@ namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric;
 
 use OpenEMR\AgentForge\StringKeyedArray;
 
-final class CitationPresentRubric implements Rubric
+final readonly class CitationPresentRubric implements Rubric
 {
-    public function __construct(private readonly CitationShape $citationShape = new CitationShape())
+    public function __construct(private CitationShape $citationShape = new CitationShape())
     {
     }
 

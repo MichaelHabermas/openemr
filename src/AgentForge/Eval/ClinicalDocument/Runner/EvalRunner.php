@@ -18,11 +18,11 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricInputs;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricRegistry;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricStatus;
 
-final class EvalRunner
+final readonly class EvalRunner
 {
     public function __construct(
-        private readonly ExtractionSystemAdapter $adapter,
-        private readonly RubricRegistry $rubrics,
+        private ExtractionSystemAdapter $adapter,
+        private RubricRegistry $rubrics,
     ) {
     }
 

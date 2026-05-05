@@ -180,7 +180,7 @@ class PatientPortalService
      * @param mixed|null $default
      * @return mixed
      */
-    public function getRequest(string $param = null, mixed $default = null): mixed
+    public function getRequest(?string $param = null, mixed $default = null): mixed
     {
         if ($param) {
             return $_REQUEST[$param] ?? $default;

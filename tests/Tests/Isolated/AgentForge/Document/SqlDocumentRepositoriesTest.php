@@ -140,7 +140,7 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public array $statements = [];
 
     /** @param list<array<string, mixed>> $records */
-    public function __construct(private array $records, private int $affectedRows = 1)
+    public function __construct(private readonly array $records, private readonly int $affectedRows = 1)
     {
     }
 

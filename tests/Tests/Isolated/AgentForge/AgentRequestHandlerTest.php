@@ -14,9 +14,9 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Conversation\ConversationStore;
 use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;

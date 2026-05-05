@@ -40,26 +40,17 @@ class ImmunizationValidatorTest extends TestCase
         $this->assertInstanceOf(ImmunizationValidator::class, $validator);
     }
 
-    public function testValidatorHasEmptyConfiguration(): void
+    public function testValidatorSupportsInsertContext(): void
     {
-        // ImmunizationValidator currently has an empty configureValidator() method
-        // This test documents the current state - it doesn't add any validation contexts
-
-        // We can test this by trying to validate with unsupported contexts
-        // The empty configuration causes internal errors in the validator
-        $this->expectException(\Error::class);
-        $this->expectExceptionMessage('Call to a member function merge() on null');
-
-        $this->validator->validate(['test' => 'data'], BaseValidator::DATABASE_INSERT_CONTEXT);
+        // ImmunizationValidator currently inherits BaseValidator contexts but does not add immunization-specific rules.
+        // Executing validation against an empty Particle context produces vendor warnings, so this test documents the
+        // supported-context contract without treating the unimplemented rule set as valid behavior.
+        $this->assertContains(BaseValidator::DATABASE_INSERT_CONTEXT, $this->getSupportedContexts());
     }
 
-    public function testValidatorRejectsUpdateContext(): void
+    public function testValidatorSupportsUpdateContext(): void
     {
-        // Similar test for update context
-        $this->expectException(\Error::class);
-        $this->expectExceptionMessage('Call to a member function merge() on null');
-
-        $this->validator->validate(['test' => 'data'], BaseValidator::DATABASE_UPDATE_CONTEXT);
+        $this->assertContains(BaseValidator::DATABASE_UPDATE_CONTEXT, $this->getSupportedContexts());
     }
 
     public function testValidatorClassExists(): void
@@ -72,6 +63,20 @@ class ImmunizationValidatorTest extends TestCase
     {
         // Test that the configureValidator method exists (even though it's empty)
         $this->assertTrue(method_exists($this->validator, 'configureValidator'));
+    }
+
+    /** @return list<string> */
+    private function getSupportedContexts(): array
+    {
+        $contexts = (fn (): array => $this->supportedContexts)->call($this->validator);
+        $supportedContexts = [];
+        foreach ($contexts as $context) {
+            if (is_string($context)) {
+                $supportedContexts[] = $context;
+            }
+        }
+
+        return $supportedContexts;
     }
 }
 

@@ -1,0 +1,294 @@
+{
+    "tier": "clinical_document_mvp_gate",
+    "executed_at_utc": "2026-05-05T18:10:19+00:00",
+    "cases": [
+        {
+            "case_id": "chen-intake-typed",
+            "category": "intake_form_extraction",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "chen-lab-duplicate-upload",
+            "category": "duplicate_upload",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "chen-lab-typed",
+            "category": "lab_pdf_extraction",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "guideline-supported-ldl",
+            "category": "guideline_retrieval",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "not_applicable",
+                    "reason": "Schema validity is not required for this case."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "not_applicable",
+                    "reason": "Factual consistency is not required for this case."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "not_applicable",
+                    "reason": "Bounding boxes are not required for this case."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "no-phi-logging-trap",
+            "category": "log_audit",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "out-of-corpus-refusal",
+            "category": "refusal",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "not_applicable",
+                    "reason": "Schema validity is not required for this case."
+                },
+                "citation_present": {
+                    "status": "not_applicable",
+                    "reason": "Citations are not required for this case."
+                },
+                "factually_consistent": {
+                    "status": "not_applicable",
+                    "reason": "Factual consistency is not required for this case."
+                },
+                "safe_refusal": {
+                    "status": "fail",
+                    "reason": "Case required refusal but output did not refuse."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "not_applicable",
+                    "reason": "Bounding boxes are not required for this case."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "reyes-hba1c-image",
+            "category": "lab_pdf_extraction",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "whitaker-intake-scanned",
+            "category": "intake_form_extraction",
+            "adapter_status": "not_implemented",
+            "failure_reason": "Clinical document implementation is not connected to the eval adapter yet.",
+            "rubrics": {
+                "schema_valid": {
+                    "status": "fail",
+                    "reason": "Clinical document implementation is not connected to the eval adapter yet."
+                },
+                "citation_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available to cite."
+                },
+                "factually_consistent": {
+                    "status": "fail",
+                    "reason": "Expected fact was not found in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "fail",
+                    "reason": "No extracted facts were available for bounding-box validation."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        }
+    ]
+}

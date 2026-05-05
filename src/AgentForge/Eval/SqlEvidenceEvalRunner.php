@@ -71,7 +71,7 @@ final readonly class SqlEvidenceEvalRunner
     ): array {
         $startedAt ??= new DateTimeImmutable();
         $results = array_merge(
-            array_map(fn (SqlEvidenceEvalCase $case): array => $this->runCase($case), $cases),
+            array_map($this->runCase(...), $cases),
             $this->runAuthorizationCases(),
         );
         $passed = count(array_filter($results, static fn (array $result): bool => $result['passed'] === true));

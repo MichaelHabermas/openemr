@@ -17,13 +17,13 @@ use OpenEMR\Common\Session\SessionUtil;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-final class SessionConversationStore implements ConversationStore
+final readonly class SessionConversationStore implements ConversationStore
 {
     private const SESSION_KEY = 'agent_forge_conversations';
 
     public function __construct(
-        private readonly int $ttlMs = 1_800_000,
-        private readonly int $maxTurns = 10,
+        private int $ttlMs = 1_800_000,
+        private int $maxTurns = 10,
     ) {
     }
 
@@ -200,7 +200,7 @@ final class SessionConversationStore implements ConversationStore
             return [];
         }
 
-        return array_values(array_filter($value, 'is_string'));
+        return array_values(array_filter($value, is_string(...)));
     }
 
     private function positiveInt(mixed $value): ?int

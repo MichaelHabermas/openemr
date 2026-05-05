@@ -45,7 +45,7 @@ final class DocumentUploadEnqueuerHook
                 return;
             }
 
-            $resolver = $enqueuerResolver ?? [DocumentUploadEnqueuerFactory::class, 'createDefault'];
+            $resolver = $enqueuerResolver ?? DocumentUploadEnqueuerFactory::createDefault(...);
             $enqueuer = $resolver();
             if (!$enqueuer instanceof DocumentUploadEnqueuer) {
                 throw new RuntimeException('Document upload enqueuer resolver returned an invalid service.');

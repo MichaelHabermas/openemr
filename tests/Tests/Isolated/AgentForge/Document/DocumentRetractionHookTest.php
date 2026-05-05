@@ -65,9 +65,7 @@ final class DocumentRetractionHookTest extends TestCase
     {
         $this->expectNotToPerformAssertions();
 
-        DocumentRetractionHook::dispatch(123, static function (): DocumentJobRepository {
-            return new ThrowingDocumentJobRepository();
-        });
+        DocumentRetractionHook::dispatch(123, static fn (): DocumentJobRepository => new ThrowingDocumentJobRepository());
     }
 }
 

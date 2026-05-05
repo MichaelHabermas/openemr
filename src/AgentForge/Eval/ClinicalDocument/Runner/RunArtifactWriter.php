@@ -14,9 +14,9 @@ namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Runner;
 
 use RuntimeException;
 
-final class RunArtifactWriter
+final readonly class RunArtifactWriter
 {
-    public function __construct(private readonly string $resultsDir)
+    public function __construct(private string $resultsDir)
     {
     }
 

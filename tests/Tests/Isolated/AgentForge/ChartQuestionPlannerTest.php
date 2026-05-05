@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
+use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Evidence\ToolSelectionException;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProvider;
 use OpenEMR\AgentForge\Evidence\ToolSelectionRequest;

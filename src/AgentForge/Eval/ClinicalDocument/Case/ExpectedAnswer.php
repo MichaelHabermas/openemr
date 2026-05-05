@@ -44,6 +44,6 @@ final readonly class ExpectedAnswer
             return [];
         }
 
-        return array_values(array_filter($value, 'is_string'));
+        return array_values(array_filter($value, is_string(...)));
     }
 }
