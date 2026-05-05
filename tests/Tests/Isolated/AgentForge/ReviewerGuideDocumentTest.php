@@ -74,9 +74,9 @@ final class ReviewerGuideDocumentTest extends TestCase
                 'AUDIT.md',
                 'USERS.md',
                 'ARCHITECTURE.md',
-                'agent-forge/docs/SPECS.txt',
-                'agent-forge/docs/PRD.md',
-                'agent-forge/docs/PLAN.md',
+                'agent-forge/docs/week1/SPECS.txt',
+                'agent-forge/docs/week1/PRD.md',
+                'agent-forge/docs/week1/PLAN.md',
                 'agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md',
                 'agent-forge/docs/operations/COST-ANALYSIS.md',
                 'agent-forge/docs/evaluation/EVALUATION-TIERS.md',
@@ -165,4 +165,3 @@ final class ReviewerGuideDocumentTest extends TestCase
         ));
     }
 }
-

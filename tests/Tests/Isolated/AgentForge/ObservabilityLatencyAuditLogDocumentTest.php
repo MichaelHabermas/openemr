@@ -19,7 +19,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
     public function testSensitiveAuditLogPolicyDocumentsAllowedForbiddenAndAccessControls(): void
     {
         $architecture = $this->readRepoFile('/ARCHITECTURE.md');
-        $plan = $this->readRepoFile('/agent-forge/docs/PLAN.md');
+        $plan = $this->readRepoFile('/agent-forge/docs/week1/PLAN.md');
         $epic = $this->epicDocument();
         $combined = $architecture . "\n" . $plan . "\n" . $epic;
 
@@ -72,7 +72,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
         $combined = implode("\n", [
             $this->readRepoFile('/ARCHITECTURE.md'),
             $this->readRepoFile('/AUDIT.md'),
-            $this->readRepoFile('/agent-forge/docs/PRD.md'),
+            $this->readRepoFile('/agent-forge/docs/week1/PRD.md'),
             $this->epicDocument(),
         ]);
 
@@ -104,7 +104,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
         $combined = implode("\n", [
             $this->readRepoFile('/ARCHITECTURE.md'),
             $this->readRepoFile('/AUDIT.md'),
-            $this->readRepoFile('/agent-forge/docs/PRD.md'),
+            $this->readRepoFile('/agent-forge/docs/week1/PRD.md'),
             $this->readRepoFile('/agent-forge/docs/operations/COST-ANALYSIS.md'),
             $this->epicDocument(),
         ]);
@@ -183,7 +183,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
         $paths = [
             '/ARCHITECTURE.md',
             '/AUDIT.md',
-            '/agent-forge/docs/PRD.md',
+            '/agent-forge/docs/week1/PRD.md',
             '/agent-forge/docs/operations/COST-ANALYSIS.md',
             '/agent-forge/docs/epics/EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md',
         ];
@@ -206,7 +206,7 @@ final class ObservabilityLatencyAuditLogDocumentTest extends TestCase
         $paths = [
             '/ARCHITECTURE.md',
             '/AUDIT.md',
-            '/agent-forge/docs/PRD.md',
+            '/agent-forge/docs/week1/PRD.md',
             '/agent-forge/docs/README.md',
             '/USERS.md',
             '/agent-forge/docs/evaluation/EVALUATION-TIERS.md',

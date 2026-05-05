@@ -138,8 +138,8 @@ If any safety-critical proof is missing, the status is `implemented but not acce
 
 ## Source Of Truth
 
-- `agent-forge/docs/SPECS.txt`
-- `agent-forge/docs/PRD.md`
+- `agent-forge/docs/week1/SPECS.txt`
+- `agent-forge/docs/week1/PRD.md`
 - `USERS.md`
 - `AUDIT.md`
 - `agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md`

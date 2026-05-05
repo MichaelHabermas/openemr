@@ -158,7 +158,7 @@ Defer out of M1:
 - [x] Mirror the existing `check-local.sh` `run_step` structure.
 - [x] Run whitespace, PHP lint, shell lint, focused isolated PHPUnit, Clinical document evals, phpstan, and changed-file phpcs.
 - [x] Add `CheckClinicalDocumentGateScriptShapeTest`.
-- [ ] Ensure the expected M1 failure is `Run Clinical document evals` due to unmet thresholds. Blocked: the full AgentForge PHPUnit step currently fails first on pre-existing Week 1 documentation link tests for missing `agent-forge/docs/PLAN.md`, `agent-forge/docs/PRD.md`, and `agent-forge/docs/SPECS.txt`.
+- [x] Ensure the expected M1 failure is `Run Clinical document evals` due to unmet thresholds.
 - [x] Document that `check-local.sh` and `check-clinical-document.sh` coexist.
 
 **Suggested Commit:** `test(agentforge-clinical-document): add week 2 gate command`
@@ -562,10 +562,10 @@ Before marking the epic complete:
 ## Implementation Proof
 
 - `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed: 16 tests, 34 assertions.
-- `php agent-forge/scripts/run-clinical-document-evals.php` exited `2` with `threshold_violation` and wrote artifacts under `agent-forge/eval-results/clinical-document-20260505-004159/`.
+- `php agent-forge/scripts/run-clinical-document-evals.php` exited `2` with `threshold_violation` and wrote artifacts under `agent-forge/eval-results/clinical-document-20260505-004654/`.
 - `composer phpstan -- --error-format=raw src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed after running with approval for PHPStan's local worker socket.
 - `vendor/bin/phpcs src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed.
-- `bash agent-forge/scripts/check-clinical-document.sh` is blocked before clinical document evals by unrelated existing AgentForge documentation tests that reference missing Week 1 docs: `agent-forge/docs/PLAN.md`, `agent-forge/docs/PRD.md`, and `agent-forge/docs/SPECS.txt`.
+- `bash agent-forge/scripts/check-clinical-document.sh` now reaches the intended clinical document eval threshold failure after the Week 1 doc-link paths were updated to `agent-forge/docs/week1/`.
 
 ## Risks & Mitigations
 

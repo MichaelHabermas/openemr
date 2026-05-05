@@ -212,9 +212,9 @@ Required root submission artifacts:
 
 Canonical planning and product docs:
 
-- [agent-forge/docs/SPECS.txt](agent-forge/docs/SPECS.txt)
-- [agent-forge/docs/PRD.md](agent-forge/docs/PRD.md)
-- [agent-forge/docs/PLAN.md](agent-forge/docs/PLAN.md)
+- [agent-forge/docs/week1/SPECS.txt](agent-forge/docs/week1/SPECS.txt)
+- [agent-forge/docs/week1/PRD.md](agent-forge/docs/week1/PRD.md)
+- [agent-forge/docs/week1/PLAN.md](agent-forge/docs/week1/PLAN.md)
 - [agent-forge/docs/README.md](agent-forge/docs/README.md)
 - [agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md](agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md)
 
