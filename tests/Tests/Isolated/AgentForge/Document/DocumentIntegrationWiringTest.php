@@ -55,6 +55,20 @@ final class DocumentIntegrationWiringTest extends TestCase
         $this->assertGreaterThan($deletePosition, $retractPosition);
     }
 
+    public function testDocumentDeleteRelationCleanupDoesNotEchoSql(): void
+    {
+        $source = $this->readProjectFile('/interface/patient_file/deleter.php');
+
+        $this->assertStringContainsString(
+            'deleter_row_delete("categories_to_documents", "document_id = ?", [$document], false);',
+            $source,
+        );
+        $this->assertStringContainsString(
+            'deleter_row_delete("gprelations", "type1 = 1 AND id1 = ?", [$document], false);',
+            $source,
+        );
+    }
+
     public function testDirectDocumentDeleteChecksActivePatientOwnership(): void
     {
         $source = $this->readProjectFile('/interface/patient_file/deleter.php');

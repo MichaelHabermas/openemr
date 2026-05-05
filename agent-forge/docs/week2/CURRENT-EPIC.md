@@ -786,7 +786,7 @@ eval failures from M1 remain (expected at this stage).
 
 ## Implementation Progress - 2026-05-05
 
-Status: In progress.
+Status: Completed.
 
 Files changed:
 
@@ -1031,19 +1031,49 @@ Proof run:
 - Docker stack inspection showed `docker/development-easy` services up and
   healthy. The destructive `docker compose down -v` reset was not run because
   it requires explicit approval after the local database deletion warning.
+- Clean reset/reseed validation completed after user approval. The local
+  `docker/development-easy` volumes were reset, the stack recreated, and
+  `agent-forge/scripts/seed-demo-data.sh` plus
+  `agent-forge/scripts/verify-demo-data.sh` passed. Fresh DB checks showed
+  `clinical_document_type_mappings` and `clinical_document_processing_jobs`
+  exist, old `agentforge_document_*` tables count is `0`, visible
+  `AgentForge%` categories count is `0`, and the only active M2 mapping is
+  `Lab Report -> lab_pdf`.
+- Manual clean-stack upload proof passed: uploading
+  `p01-chen-lipid-panel.pdf` to `Lab Report` for `pid=900001` created
+  `document_id=3` and `job_id=1` with `doc_type=lab_pdf`, `status=pending`,
+  `attempts=0`, `lock_token=NULL`, and no retraction metadata.
+- Manual clean-stack delete proof passed: deleting `document_id=3` through the
+  OpenEMR UI set `documents.deleted=1`, removed category links, and retracted
+  `job_id=1` with `retracted_at` set, `retraction_reason=source_document_deleted`,
+  `finished_at` set, and `lock_token=NULL`.
+- Manual already-finished job retraction proof passed: a second upload created
+  `document_id=4` and `job_id=2`; the job was manually set to `succeeded` with
+  `lock_token=manual-finished-token`, then UI deletion set
+  `documents.deleted=1`, removed category links, changed the job to
+  `status=retracted`, cleared `lock_token`, set `retracted_at` and
+  `retraction_reason=source_document_deleted`, and preserved the prior
+  `finished_at`.
+- During manual deletion, the UI initially displayed raw SQL from the existing
+  deleter helper. M2 document deletion now suppresses SQL echo for document
+  relation cleanup while preserving audit/delete behavior; the repeated UI
+  delete was clean.
+- Final focused M2 automation after clean-stack/manual proof passed: focused
+  document/logging PHPUnit (58 tests, 181 assertions), focused PHPCS
+  (15 / 15 files), focused PHPStan with no errors, and `git diff --check`.
+  `agent-forge/scripts/check-clinical-document.sh` reached the expected eval
+  threshold step with AgentForge isolated PHPUnit passing
+  (370 tests, 1755 assertions). The clinical eval verdict remains
+  `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-174601`.
 
 Open proof gaps:
 
-- Fresh-install and upgrade-flow verification now has source-level schema
-  contract tests, but a destructive `docker compose down -v` fresh-stack
-  reset/reseed was not run in this pass. Because the branded M2 schema was
-  never accepted or shipped, final local validation should prefer a reset/reseed
+- Fresh-install verification is proven by clean reset/reseed and manual
+  upload/delete lifecycle proof. Upgrade-flow verification remains limited to
+  source-level schema contract tests; because the branded M2 schema was never
+  accepted or shipped, local validation intentionally preferred reset/reseed
   over supporting old partial `agentforge_document_*` tables.
-- Manual browser deletion through the actual OpenEMR modal still has not been
-  repeated after the clinical-document rename. The corrected upload/retraction
-  behavior is proven through in-container OpenEMR upload plus direct hook/DB
-  transition smoke, and the UI delete path contains the same
-  `DocumentRetractionHook::dispatch(...)` call.
 - The clinical document eval gate still reports `threshold_violation` as
   expected before later worker/extraction epics replace the M1 not-implemented
   adapter.

@@ -55,7 +55,7 @@ $info_msg = "";
  *
  * @param list<scalar> $binds
  */
-function deleter_row_delete(string $table, string $where, array $binds = []): void
+function deleter_row_delete(string $table, string $where, array $binds = [], bool $showSql = true): void
 {
     $session = SessionWrapperFactory::getInstance()->getActiveSession();
 
@@ -81,7 +81,7 @@ function deleter_row_delete(string $table, string $where, array $binds = []): vo
 
     if ($count) {
         $query = "DELETE FROM " . escape_table_name($table) . " WHERE $where";
-        if (!OEGlobalsBag::getInstance()->getBoolean('sql_string_no_show_screen')) {
+        if ($showSql && !OEGlobalsBag::getInstance()->getBoolean('sql_string_no_show_screen')) {
             echo text($query) . "<br />\n";
         }
 
@@ -187,8 +187,8 @@ function delete_document($document): void
 {
     QueryUtils::sqlStatementThrowException("UPDATE `documents` SET `deleted` = 1 WHERE id = ?", [$document]);
     DocumentRetractionHook::dispatch($document);
-    deleter_row_delete("categories_to_documents", "document_id = ?", [$document]);
-    deleter_row_delete("gprelations", "type1 = 1 AND id1 = ?", [$document]);
+    deleter_row_delete("categories_to_documents", "document_id = ?", [$document], false);
+    deleter_row_delete("gprelations", "type1 = 1 AND id1 = ?", [$document], false);
 }
 ?>
 <html>

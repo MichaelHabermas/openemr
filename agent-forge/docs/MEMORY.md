@@ -143,6 +143,15 @@ The focused M2 verification used during implementation included:
   broader patient-delete cleanup path loops through `delete_document()` only
   after admin/super patient-delete authorization, so it is not blocked by the
   active-patient direct-delete guard.
+- Clean reset/reseed M2 proof on 2026-05-05 verified the durable baseline:
+  no old `agentforge_document_*` tables, no visible `AgentForge%` categories,
+  one active `Lab Report -> lab_pdf` mapping, successful upload creates one
+  pending `lab_pdf` job, UI delete retracts the pending job, and UI delete also
+  retracts an already-`succeeded` job while preserving its prior `finished_at`.
+- The OpenEMR deleter helper can echo raw SQL when
+  `sql_string_no_show_screen` is false. M2 document deletion suppresses that
+  SQL echo for document relation cleanup so users do not see
+  `DELETE FROM categories_to_documents ...` during normal document deletion.
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
 
