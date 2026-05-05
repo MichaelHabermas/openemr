@@ -27,8 +27,9 @@ In scope:
 
 - New tables `clinical_document_type_mappings` and `clinical_document_processing_jobs`.
 - `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php` updates.
-- Seed entries in `agent-forge/sql/seed-demo-data.sql` for two demo categories
-  and their mappings.
+- Seed entry in `agent-forge/sql/seed-demo-data.sql` for the existing OpenEMR
+  `Lab Report` category -> `lab_pdf` mapping. `intake_form` remains supported
+  in code but unseeded until a real intake workflow category is selected.
 - New PHP module `src/AgentForge/Document/` containing:
   - Value objects: `DocumentType` (enum), `JobStatus` (enum), `DocumentId`,
     `CategoryId`, `DocumentJobId`.
@@ -38,8 +39,10 @@ In scope:
     `DocumentJobRepository` / `SqlDocumentJobRepository`.
   - Service: `DocumentUploadEnqueuer`.
   - Wiring helper: `DocumentUploadEnqueuerFactory` (static `createDefault()`).
-- Hook in `library/ajax/upload.php` at both call sites of `addNewDocument(...)`
-  — core path (line ~128) and portal path (lines ~90-102).
+- Hook once in `C_Document::upload_action_process()` after
+  `Document::createDocument(...)` succeeds. `addNewDocument(...)` and AJAX
+  wrappers use that shared controller boundary and must not dispatch a second
+  time.
 - `SensitiveLogPolicy::ALLOWED_KEYS` extended for the new W2 telemetry fields.
 - Isolated tests under `tests/Tests/Isolated/AgentForge/Document/` written
   before production code.
@@ -57,15 +60,16 @@ Out of scope (later epics):
 
 Modify:
 
-- `library/ajax/upload.php` — capture `addNewDocument(...)` return, call enqueuer,
-  guard with `try/catch \Throwable`. Apply at both core and portal call sites.
+- `controllers/C_Document.class.php` — dispatch the safe enqueue hook after
+  `Document::createDocument(...)` succeeds, guarded with `try/catch \Throwable`
+  at the hook boundary.
 - `sql/database.sql` — append two CREATE TABLE statements at the AgentForge area
   (or at end with a section header).
 - `sql/8_1_0-to-8_1_1_upgrade.sql` — append idempotent migration directives
   (`#IfNotTable`, `#IfMissingColumn`, `#IfNotRow`).
 - `version.php` — bump `$v_database` from `538` to `539`.
-- `agent-forge/sql/seed-demo-data.sql` — idempotent seeds for the two demo
-  categories and the two mappings.
+- `agent-forge/sql/seed-demo-data.sql` — idempotent seed for the existing
+  `Lab Report -> lab_pdf` mapping only.
 - `src/AgentForge/Observability/SensitiveLogPolicy.php` — add
   `patient_ref`, `document_id`, `doc_type`, `category_id`, `job_id`, `worker`,
   `attempts`, `error_code` to `ALLOWED_KEYS`. Confirm forbidden keys still
@@ -628,13 +632,14 @@ This deliberately matches the existing AgentForge isolated-test convention
 6. Enqueue failures (DB error, missing table, unknown enum, anything) do
    not fail or slow the OpenEMR upload — caught at the Hook boundary and
    sanitized-logged.
-7. Both core (line ~128) and portal (line ~90-102) call sites of
-   `addNewDocument(...)` invoke the same dispatcher.
+7. The shared `C_Document::upload_action_process()` path invokes the dispatcher
+   after document persistence; both core and portal AJAX wrappers rely on that
+   shared path and do not dispatch separately.
 8. `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql` produce the
    same final schema on fresh install vs upgrade.
 9. `version.php` is bumped to `539`.
-10. `agent-forge/sql/seed-demo-data.sql` is idempotent and produces the two
-    seeded categories and two active mappings.
+10. `agent-forge/sql/seed-demo-data.sql` is idempotent and produces exactly one
+    active M2 mapping: existing OpenEMR `Lab Report -> lab_pdf`.
 11. `SensitiveLogPolicy::ALLOWED_KEYS` extended; sanitization tests pass.
 12. All isolated tests pass: `composer phpunit-isolated -- --filter
     'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'`.
@@ -672,11 +677,19 @@ Then:
 
 ```bash
 docker compose exec mysql mysql -uroot -proot openemr \
-  -e "SHOW TABLES LIKE 'agentforge_%';"
+  -e "SHOW TABLES LIKE 'clinical_document_%';"
 ```
 
 Expect rows for `clinical_document_type_mappings` and
-`clinical_document_processing_jobs`.
+`clinical_document_processing_jobs`. Separately verify that old rejected local
+branch tables are absent:
+
+```bash
+docker compose exec mysql mysql -uroot -proot openemr \
+  -e "SHOW TABLES LIKE 'agentforge_document_%';"
+```
+
+Expect no rows.
 
 ### Schema migration on existing install
 
@@ -845,7 +858,8 @@ Acceptance map:
   duplicate `INSERT IGNORE` attempts), and duplicate hook dispatch smoke
   (`job_count_after_duplicate_dispatch=1`).
 - Upload safety: hook tests cover non-array results, missing `doc_id`, invalid
-  ids, and resolver failure without exception escape for modeled failures.
+  ids, resolver failure, and `TypeError`/`\Throwable` failure without exception
+  escape at the procedural OpenEMR workflow boundary.
 - Sanitized logging: enqueuer tests and `SensitiveLogPolicyTest` confirm
   `patient_ref` is hashed and raw `patient_id` is not emitted by the new M2
   enqueue log context; the policy also blocks raw quote/value-style keys such
@@ -1066,6 +1080,19 @@ Proof run:
   (370 tests, 1755 assertions). The clinical eval verdict remains
   `threshold_violation`; artifact:
   `agent-forge/eval-results/clinical-document-20260505-174601`.
+- Final review follow-up fixed the procedural safety boundary: upload and
+  retraction hooks now catch `Throwable` at the OpenEMR workflow edge, log only
+  sanitized error class metadata, and never let AgentForge failures break normal
+  upload/delete behavior. Retraction success logging is asserted. Focused
+  document PHPUnit passed (60 tests, 184 assertions), full
+  `composer phpunit-isolated` passed (3105 tests, 8758 assertions, 3 skipped,
+  14 incomplete), `composer phpcs` passed, `composer phpstan` passed,
+  `composer rector-check` passed, `composer php-syntax-check` passed, and
+  `agent-forge/scripts/check-clinical-document.sh` reached the expected eval
+  threshold step with AgentForge isolated PHPUnit passing
+  (374 tests, 1778 assertions). The clinical eval verdict remains
+  `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-185855`.
 
 Open proof gaps:
 

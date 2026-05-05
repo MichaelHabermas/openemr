@@ -19,11 +19,19 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuer;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
+use OpenEMR\BC\ServiceContainer;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
+use TypeError;
 
 final class DocumentUploadEnqueuerHookTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        ServiceContainer::reset();
+    }
+
     public function testNonArrayResultReturnsWithoutResolvingEnqueuer(): void
     {
         $called = false;
@@ -88,6 +96,22 @@ final class DocumentUploadEnqueuerHookTest extends TestCase
         DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
             throw new RuntimeException('factory unavailable');
         });
+    }
+
+    public function testResolverThrowableIsCaughtAndSanitized(): void
+    {
+        $logger = new DocumentRecordingLogger();
+        ServiceContainer::override(LoggerInterface::class, $logger);
+
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
+            throw new TypeError('typed wiring failed');
+        });
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame('clinical_document.job.hook_failed', $logger->records[0]['message']);
+        $this->assertSame(TypeError::class, $logger->records[0]['context']['error_code']);
+        $this->assertArrayNotHasKey('exception', $logger->records[0]['context']);
     }
 
     public function testResolverValidationExceptionIsCaught(): void

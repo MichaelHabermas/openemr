@@ -12,10 +12,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
-use DomainException;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\BC\ServiceContainer;
-use RuntimeException;
 
 final class DocumentRetractionHook
 {
@@ -47,7 +45,7 @@ final class DocumentRetractionHook
                     'count' => $retracted,
                 ]),
             );
-        } catch (RuntimeException | DomainException $e) {
+        } catch (\Throwable $e) {
             ServiceContainer::getLogger()->error(
                 'clinical_document.retraction_hook_failed',
                 SensitiveLogPolicy::sanitizeContext(['error_code' => $e::class]),

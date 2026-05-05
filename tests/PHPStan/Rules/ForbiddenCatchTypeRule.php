@@ -55,6 +55,17 @@ class ForbiddenCatchTypeRule implements Rule
         \ErrorException::class,
     ];
 
+    /**
+     * Procedural hooks that deliberately absorb all AgentForge failures after
+     * the OpenEMR workflow has already performed its authoritative side effect.
+     *
+     * @var list<string>
+     */
+    private const ALLOWED_SUPPRESSION_PATHS = [
+        'src/AgentForge/Document/DocumentRetractionHook.php',
+        'src/AgentForge/Document/DocumentUploadEnqueuerHook.php',
+    ];
+
     public function __construct(
         private readonly ReflectionProvider $reflectionProvider,
     ) {
@@ -71,6 +82,10 @@ class ForbiddenCatchTypeRule implements Rule
      */
     public function processNode(Node $node, Scope $scope): array
     {
+        if ($this->isAllowlistedForWideCatch($scope->getFile())) {
+            return [];
+        }
+
         if ($this->endsWithThrow($node->stmts)) {
             return [];
         }
@@ -82,6 +97,23 @@ class ForbiddenCatchTypeRule implements Rule
             }
         }
         return $errors;
+    }
+
+    private function isAllowlistedForWideCatch(string $file): bool
+    {
+        $normalizedFile = str_replace('\\', '/', $file);
+        foreach (self::ALLOWED_SUPPRESSION_PATHS as $allowedPath) {
+            $normalizedAllowedPath = ltrim(str_replace('\\', '/', $allowedPath), '/');
+            if (!str_contains($normalizedAllowedPath, '/')) {
+                throw new \LogicException('Forbidden catch allowlist entries must include a path segment.');
+            }
+
+            if ($normalizedFile === $normalizedAllowedPath || str_ends_with($normalizedFile, '/' . $normalizedAllowedPath)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

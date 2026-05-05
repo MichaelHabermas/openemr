@@ -66,6 +66,25 @@ final class ClinicalDocumentPlanningContractTest extends TestCase
         $this->assertStringContainsString('unaccepted branch state', $plan);
     }
 
+    public function testPlanMarksM2CompletedWithExpectedEvalCaveat(): void
+    {
+        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
+
+        $this->assertStringContainsString("### Epic M2 - Schema Migration, Upload Eligibility, And Job Enqueue\n\nStatus: Completed.", $plan);
+        $this->assertStringContainsString('expected `threshold_violation`', $plan);
+    }
+
+    public function testCurrentEpicUsesAcceptedM2SeedAndUploadContracts(): void
+    {
+        $epic = $this->readProjectFile('/agent-forge/docs/week2/CURRENT-EPIC.md');
+
+        $this->assertStringContainsString('`Lab Report` category -> `lab_pdf` mapping', $epic);
+        $this->assertStringContainsString('`intake_form` remains supported', $epic);
+        $this->assertStringContainsString('Hook once in `C_Document::upload_action_process()`', $epic);
+        $this->assertStringNotContainsString('two demo categories', $epic);
+        $this->assertStringNotContainsString("SHOW TABLES LIKE 'agentforge_%'", $epic);
+    }
+
     private function readProjectFile(string $path): string
     {
         $contents = file_get_contents(dirname(__DIR__, 5) . $path);

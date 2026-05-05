@@ -12,8 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
-use DomainException;
-use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\BC\ServiceContainer;
@@ -56,7 +54,7 @@ final class DocumentUploadEnqueuerHook
                 new DocumentId((int) $documentId),
                 new CategoryId((int) $categoryId),
             );
-        } catch (RuntimeException | DomainException | InvalidArgumentException $e) {
+        } catch (\Throwable $e) {
             ServiceContainer::getLogger()->error(
                 'clinical_document.job.hook_failed',
                 SensitiveLogPolicy::sanitizeContext(['error_code' => $e::class]),

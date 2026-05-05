@@ -106,13 +106,14 @@ Dependencies: None.
 
 ### Epic M2 - Schema Migration, Upload Eligibility, And Job Enqueue
 
-Status: In progress.
+Status: Completed.
 
 Implementation note (2026-05-05): M2 code, schema, seed data, upload hook,
-source-document retraction, source-level wiring tests, PHPCS, PHPStan, and
-SQL-level local smoke checks are in place. Acceptance remains open for a clean
-fresh-stack reset/reseed and the expected clinical eval `threshold_violation`
-from later extraction work.
+source-document retraction, source-level wiring tests, PHPCS, PHPStan, clean
+fresh-stack reset/reseed, manual upload/delete lifecycle proof, and safe
+`Throwable` boundary regression tests are in place. The clinical eval still
+reports the expected `threshold_violation` because extraction/worker behavior
+belongs to later epics.
 
 Goal: Reuse OpenEMR upload and enqueue extraction jobs only for mapped document categories.
 
