@@ -55,7 +55,7 @@ MVP does not require third document types, demographic overwrites, broad documen
 
 ### Epic M1 - Clinical Document Eval And Test Skeleton First
 
-Status: Not started.
+Status: Completed.
 
 Goal: Create the failing tests/evals that define the MVP before production code.
 
