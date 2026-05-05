@@ -22,12 +22,12 @@ This folder is the **index** for Week 2 (Clinical Co-Pilot) work: document inges
 - **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — 50-case gate per Week 2 spec; dataset files and judge config land here or beside existing eval fixtures as you wire CI.
 - **Operations / cost** — Extend [../operations/](../operations/) for Week 2 latency and cost reports when measured.
 
-## Week 2 gate
+## clinical document gate
 
-Use this command as the single local/CI Week 2 gate:
+Use this command as the single local/CI clinical document gate:
 
 ```bash
-agent-forge/scripts/check-w2.sh
+agent-forge/scripts/check-clinical-document.sh
 ```
 
 M1 intentionally makes the gate fail at the `Run Clinical document evals` step because the production implementation is not connected yet. Syntax checks, harness tests, and artifact writing should pass; the eval threshold failure is the regression-blocking signal that later epics must turn green.
