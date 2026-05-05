@@ -62,6 +62,9 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - M2 only creates idempotent `pending` document jobs after OpenEMR has successfully stored a document. Extraction, worker execution, fact persistence, guideline retrieval, and UI proof belong to later milestones.
 - Source document deletion is a lifecycle boundary. When an OpenEMR document is deleted, all AgentForge jobs tied to that `document_id` must become non-processable by moving to `retracted` with `retraction_reason=source_document_deleted`.
 - M2 retraction only invalidates current document jobs. Later fact, embedding, retrieval, and chart-promotion tables must carry `document_id` and their own retraction/audit metadata so deleted-source content cannot remain retrievable or promoted.
+- Do not promote any extracted value into existing OpenEMR clinical tables unless the promoted row can be traced back through `document_id`, `job_id`, extracted fact id, source citation, confidence/review status, and promotion status.
+- Users must have an audit/review surface showing what AgentForge inserted, skipped, rejected, left needs-review, or could not promote from a source document.
+- Duplicate prevention must exist at both the extracted-fact layer and the promoted-OpenEMR-row layer. Job idempotency alone is not enough once data is copied into clinical tables.
 - A passing syntax/test subset is not the same as the full clinical gate. Preserve exact gate caveats when an eval threshold is expected to fail before downstream implementation exists.
 
 ## Week 2 M2 Architecture Decisions
@@ -91,6 +94,7 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
   `addNewDocument(...)`. Put document-ingestion dispatch there so core,
   Dropzone, and portal uploads enqueue at most once.
 - Wrong-patient document handling is not a delete workflow problem. M2 treats the OpenEMR upload destination as authoritative, creates a job for the uploaded source document if the category is mapped, and retracts that job if the source document is deleted. Content-level patient mismatch detection, rejection, or review belongs to extraction/verification later.
+- Wrong-patient detection is extraction/verification scope, not M2 upload scope. Future work must compare document-content identifiers to the selected OpenEMR patient and prevent fact promotion while identity is unresolved.
 - Retraction must cover already-finished jobs too. Until downstream fact/promotion tables exist, M2 can overwrite a `succeeded` job to `retracted`; later epics must preserve downstream audit metadata while preventing deleted-source content from being used.
 - During the unclosed M2 branch, local databases that saw the old branded
   document tables/categories should be reset or explicitly cleaned before final
@@ -133,6 +137,12 @@ The focused M2 verification used during implementation included:
 - Review hardening on 2026-05-05 added a direct document-delete patient guard:
   non-super users with `patients:docs_rm` can delete only documents whose
   `documents.foreign_id` matches the active session patient.
+- The direct document-delete guard applies to the request branch that receives
+  `deleter.php?document=<id>`. Users do not see the field as `document_id`,
+  but OpenEMR document delete links submit the document id in the request. The
+  broader patient-delete cleanup path loops through `delete_document()` only
+  after admin/super patient-delete authorization, so it is not blocked by the
+  active-patient direct-delete guard.
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
 

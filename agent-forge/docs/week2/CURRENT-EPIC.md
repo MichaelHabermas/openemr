@@ -856,11 +856,26 @@ Acceptance map:
   updated where `status <> 'retracted'` to `status='retracted'`,
   `retracted_at=NOW()`, `retraction_reason='source_document_deleted'`,
   `finished_at=COALESCE(finished_at, NOW())`, and `lock_token=NULL`.
+- M2 data boundary: M2 does not extract facts, create embeddings, retrieve
+  document facts, or promote any values into existing OpenEMR clinical tables.
+  Deleted-source retraction in M2 only retracts
+  `clinical_document_processing_jobs`; downstream fact, embedding, retrieval,
+  and promoted-row invalidation are explicit later-epic contracts.
 - Wrong-patient document handling: explicitly not M2 content validation.
   OpenEMR upload destination remains authoritative; if the source document is
   deleted, the current AgentForge jobs are retracted. Later extraction,
   identity verification, fact, embedding, retrieval, and chart-promotion epics
   must add downstream invalidation by `document_id`.
+- Future promotion provenance: no extracted value should be written into
+  existing OpenEMR clinical tables unless the promoted row can be traced from
+  source `document_id` to `job_id` to extracted fact id to promoted OpenEMR row,
+  with citation, confidence/review status, and promotion outcome.
+- Direct document-delete guard: users do not see a field named `document_id`,
+  but OpenEMR document delete links submit the document id in a request such as
+  `deleter.php?document=<id>`. The M2 guard applies only to that direct document
+  branch for non-super users; the broader patient-delete cleanup path still
+  loops through `delete_document()` only after admin/super patient-delete
+  authorization.
 
 Proof run:
 
@@ -973,6 +988,10 @@ Proof run:
   `clinical_document_type_mappings.category_id` unique, added schema contract
   tests for fresh/upgrade SQL shape, and added a direct document-delete active
   patient guard for non-super users.
+- M2 closeout safety stubs were added to `PLAN-W2.md` for document identity
+  verification/wrong-patient safeguards, promotion provenance/review/duplicate
+  prevention, and promoted-data retraction/audit. `MEMORY.md` now carries the
+  durable rule that promoted clinical data must never be anonymous side effects.
 - `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'`
   passed after review hardening: 49 tests, 136 assertions.
 - `vendor/bin/phpcs library/ajax/upload.php interface/patient_file/deleter.php src/AgentForge/Document/DocumentUploadEnqueuer.php src/AgentForge/Document/DocumentUploadEnqueuerHook.php tests/Tests/Isolated/AgentForge/Document/DocumentIntegrationWiringTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSchemaContractTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSeedTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerHookTest.php`
@@ -992,6 +1011,15 @@ Proof run:
   (364 tests, 1730 assertions). The clinical eval verdict remains
   `threshold_violation`; artifact:
   `agent-forge/eval-results/clinical-document-20260505-162450`.
+- After adding future safety epic stubs and documentation/source-contract tests,
+  the focused document suite passed (55 tests, 158 assertions), focused PHPCS
+  passed for the new/related planning tests, focused PHPStan passed for the new
+  planning contract test, and `git diff --check` passed.
+- `agent-forge/scripts/check-clinical-document.sh` was rerun after the safety
+  stub closeout. Diff whitespace, PHP syntax, shell syntax, and AgentForge
+  isolated PHPUnit passed (369 tests, 1752 assertions). The clinical eval
+  verdict remains `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-170450`.
 
 Open proof gaps:
 

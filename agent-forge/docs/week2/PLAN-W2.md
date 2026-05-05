@@ -158,12 +158,16 @@ Acceptance criteria:
 - Ineligible uploads remain normal OpenEMR documents.
 - Upload latency is not blocked by extraction.
 - Deleting a source document makes all AgentForge jobs for that document non-processable by setting `status='retracted'`, `retracted_at`, and `retraction_reason='source_document_deleted'`.
+- M2 does not extract facts, create embeddings, retrieve document facts, or promote any values into existing OpenEMR clinical tables.
+- Deleted-source retraction in M2 only retracts `clinical_document_processing_jobs`; downstream fact, embedding, retrieval, and promoted-row invalidation are later-epic contracts.
 - M2 does not detect wrong-patient document content before upload; OpenEMR patient/category selection remains authoritative until later extraction/verification epics add content-level identity checks.
+- Future promotion must carry source provenance from OpenEMR source document to processing job to extracted fact to promoted OpenEMR row.
 
 Definition of done:
 
 - Database install/upgrade path works on a fresh local stack.
 - Enqueue path is covered by isolated tests and W2 eval setup.
+- Final local M2 validation should use a clean DB reset/reseed because the earlier branded M2 schema/categories were unaccepted branch state, not a supported production migration path.
 
 Dependencies: M1.
 
@@ -316,6 +320,83 @@ Definition of done:
 - MVP evals prove lab promotion, intake needs-review storage, duplicate prevention, and document fact search.
 
 Dependencies: M4.
+
+### Epic M5A - Document Identity Verification And Wrong-Patient Safeguards
+
+Status: Not started.
+
+Goal: Prevent extraction and promotion from documents whose content appears to belong to a different patient than the selected OpenEMR upload destination.
+
+Tests/evals first:
+
+- Test extracted document identifiers are compared against the selected OpenEMR patient.
+- Test a mismatch quarantines the document job or requires review before promotion.
+- Test unresolved identity prevents fact promotion and document-fact retrieval eligibility.
+
+Implementation tasks:
+
+- Extract patient identifiers from document content using the strict extraction/citation pipeline.
+- Compare content identifiers against OpenEMR patient demographics using deterministic matching rules.
+- Store identity status and mismatch reason with the document processing outcome.
+- Show a clear review state before any downstream data is promoted or retrieved as patient evidence.
+
+Acceptance criteria:
+
+- Wrong-patient documents cannot promote facts.
+- Ambiguous identity requires review instead of silent acceptance.
+
+Dependencies: M4.
+
+### Epic M5B - Promotion Provenance, Review, And Duplicate Prevention
+
+Status: Not started.
+
+Goal: Make every automatic clinical data change visible, traceable, and idempotent.
+
+Tests/evals first:
+
+- Test promoted rows record `document_id`, `job_id`, extracted fact id, source citation, confidence/review status, and promotion status.
+- Test the review surface reports facts that were promoted, skipped, rejected, left needs-review, or not promotable.
+- Test a second run resolves to `already_exists`, `duplicate_skipped`, or `conflict_needs_review` instead of inserting duplicates.
+
+Implementation tasks:
+
+- Add promotion provenance records that connect source document -> job -> fact -> OpenEMR row.
+- Generate stable fact fingerprints and compare against existing chart rows before promotion.
+- Record explicit promotion outcomes for every promotable fact.
+- Provide a user-visible audit/review surface for document-driven changes.
+
+Acceptance criteria:
+
+- Users can see exactly what AgentForge added and what it did not add.
+- Duplicate clinical rows are not created by retrying or reprocessing a document.
+
+Dependencies: M5.
+
+### Epic M5C - Promoted Data Retraction And Audit
+
+Status: Not started.
+
+Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history.
+
+Tests/evals first:
+
+- Test deleting a source document invalidates downstream facts, embeddings, retrieval eligibility, and promoted OpenEMR rows.
+- Test promoted-row handling follows the row-type policy: deactivate, soft-delete, exclude from evidence, or require review.
+- Test audit history preserves source, action, timestamp, and reason.
+
+Implementation tasks:
+
+- Extend source-document retraction beyond jobs to facts, embeddings, retrieval eligibility, and promoted rows.
+- Define per-table retraction behavior before writing to existing OpenEMR clinical tables.
+- Preserve audit metadata for legal/chart integrity.
+
+Acceptance criteria:
+
+- Deleted-source content cannot remain retrievable or promoted as active evidence.
+- Retraction history is auditable.
+
+Dependencies: M5B.
 
 ### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
 
