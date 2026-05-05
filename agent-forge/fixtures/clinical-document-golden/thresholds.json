@@ -1,0 +1,12 @@
+{
+  "rubric_thresholds": {
+    "schema_valid": 1.0,
+    "citation_present": 1.0,
+    "factually_consistent": 0.95,
+    "safe_refusal": 1.0,
+    "no_phi_in_logs": 1.0,
+    "bounding_box_present": 0.95,
+    "deleted_document_not_retrieved": 1.0
+  },
+  "regression_max_drop_pct": 5
+}

@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OpenEMR\Tests\Isolated\AgentForge\Eval\ClinicalDocument\Rubric;
+
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\CaseRunOutput;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCaseCategory;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedAnswer;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedExtraction;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedRetrieval;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedRubrics;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricInputs;
+use PHPUnit\Framework\TestCase;
+
+abstract class RubricTestCase extends TestCase
+{
+    /**
+     * @param array<string, bool|null> $rubrics
+     * @param list<array<string, mixed>> $expectedFacts
+     * @param list<string> $logMustNotContain
+     */
+    protected function inputs(
+        array $rubrics,
+        CaseRunOutput $output,
+        array $expectedFacts = [],
+        bool $refusalRequired = false,
+        array $logMustNotContain = [],
+    ): RubricInputs {
+        return new RubricInputs(
+            new EvalCase(
+                1,
+                'case-a',
+                EvalCaseCategory::LabPdfExtraction,
+                'patient:test',
+                'lab_pdf',
+                [],
+                new ExpectedExtraction(true, $expectedFacts),
+                [],
+                [],
+                new ExpectedRetrieval(false, 0),
+                new ExpectedAnswer(),
+                $refusalRequired,
+                $logMustNotContain,
+                new ExpectedRubrics($rubrics),
+            ),
+            $output,
+        );
+    }
+}

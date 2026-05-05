@@ -27,3 +27,14 @@ export AGENTFORGE_EVAL_RESULTS_DIR=/path/to/writable/dir
 ```
 
 For SQL evidence evals only, `AGENTFORGE_SQL_EVAL_RESULTS_DIR` overrides the output directory and `AGENTFORGE_SQL_EVAL_ENVIRONMENT` labels the environment in the result file.
+
+## Clinical document eval artifacts
+
+Running `php agent-forge/scripts/run-clinical-document-evals.php` writes a timestamped subdirectory here named like `clinical-document-20260504-120000/`.
+
+Each clinical document run directory contains:
+
+- `run.json` — one entry per golden case, including adapter status and per-rubric result.
+- `summary.json` — per-rubric pass rates and the comparator verdict.
+
+The scaffold uses `NotImplementedAdapter`, so the expected verdict is `threshold_violation` and the command exits with code `2` until later clinical document epics connect real ingestion, extraction, retrieval, and answer behavior.

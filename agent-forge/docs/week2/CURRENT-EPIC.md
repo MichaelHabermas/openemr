@@ -1,5 +1,10 @@
 # Epic M1 — W2 Eval And Test Skeleton First (Implementation Plan)
 
+**Status:** Implemented; full-gate proof blocked by pre-existing Week 1 documentation test failures.
+**Approved:** 2026-05-04
+**Scope:** Backend/test infrastructure.
+**Suggested Commit Scope:** `test(agentforge-w2): add week 2 eval gate skeleton`
+
 ## Context
 
 Week 2 of the AgentForge Clinical Co-Pilot adds multimodal document ingestion (`lab_pdf`, `intake_form`), strict cited extraction, hybrid MariaDB-Vector RAG, supervisor/worker orchestration, and a regression-blocking eval gate (`SPECS-W2.md` §10, `Week-2-AgentForge-Clinical-Co-Pilot.txt` p.4-5). The grading rubric explicitly tests the gate by introducing a regression — a working demo without a regression-blocking eval gate **fails the assignment**.
@@ -9,7 +14,7 @@ Week 2 of the AgentForge Clinical Co-Pilot adds multimodal document ingestion (`
 Epic M1 produces only the gate, the case format, the rubrics, and failing-by-design output. It writes **no** production extraction code. By the end of M1:
 
 - A single command (`agent-forge/scripts/check-w2.sh`) is the Week-2 gate for local dev, CI, and graders.
-- `php agent-forge/scripts/run-w2-evals.php` exits non-zero with structured per-rubric failure output until M2-M7 lands.
+- `php agent-forge/scripts/run-clinical-document-evals.php` exits non-zero with structured per-rubric failure output until M2-M7 lands.
 - Eight MVP cases, two policy files (`thresholds.json`, `baseline.json`), and isolated PHPUnit tests are committed.
 - M2 cannot land without already passing the harness's own tests, ensuring every later epic ships with rubric proof.
 
@@ -21,20 +26,20 @@ This first-principles framing — "the smallest thing that proves the gate works
 | --- | --- |
 | `agent-forge/scripts/run-evals.php` + `lib/eval-runner-functions.php` (W1, ~650 lines, procedural, field-assertion rubrics) | **Parallel.** W2 needs boolean rubrics, document inputs, and supervisor handoffs. Building a new OO module avoids polluting W1's deterministic harness and keeps Week 2 graders' surface clean. |
 | `agent-forge/scripts/check-local.sh` (generic AgentForge gate, runs W1 evals + isolated tests + phpstan + phpcs) | **Pattern reuse.** Mirror the `run_step` helper and structure; do not modify. `check-w2.sh` is a sibling, not a replacement. |
-| `tests/Tests/Isolated/AgentForge/` namespace + bootstrap + `phpunit-isolated.xml` + `composer phpunit-isolated` | **Reuse as-is.** All W2 tests use namespace `OpenEMR\Tests\Isolated\AgentForge`, `final class XxxTest extends TestCase`. Subdirectory precedent: `Reporting/`. W2 tests live in `tests/Tests/Isolated/AgentForge/Eval/W2/`. |
+| `tests/Tests/Isolated/AgentForge/` namespace + bootstrap + `phpunit-isolated.xml` + `composer phpunit-isolated` | **Reuse as-is.** All W2 tests use namespace `OpenEMR\Tests\Isolated\AgentForge`, `final class XxxTest extends TestCase`. Subdirectory precedent: `Reporting/`. Clinical document eval tests live in `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/`. |
 | `src/AgentForge/Observability/SensitiveLogPolicy.php` (allowlist + forbidden keys) | **Reuse via dependency injection.** `NoPhiInLogsRubric` calls into `SensitiveLogPolicy`. H4 expands the allowlist behind the same interface — no rubric change needed. |
-| `src/AgentForge/Eval/` (already contains `SqlEvidenceEvalRunner`, `EvalEvidenceTool`, etc.) | **Coexist.** New code lands under `src/AgentForge/Eval/W2/`. Class names use distinct W2-prefixed types so PSR-4 autoloading and reviewer eye both stay clean. |
-| `agent-forge/fixtures/w2-golden/README.md` (placeholder) | **Replace.** Expand into the real format-and-expansion README. |
+| `src/AgentForge/Eval/` (already contains `SqlEvidenceEvalRunner`, `EvalEvidenceTool`, etc.) | **Coexist.** New code lands under `src/AgentForge/Eval/ClinicalDocument/`. Class names use clinical-document domain language so the code remains understandable after the assignment window closes. |
+| `agent-forge/fixtures/clinical-document-golden/README.md` (placeholder) | **Replace.** Expand into the real format-and-expansion README. |
 | `agent-forge/docs/week2/example-documents/{intake-forms,lab-results}/p0{1-4}-*.{pdf,png}` | **Reference from cases.** Verified layout: `intake-forms/p01-chen-intake-typed.pdf`, `lab-results/p01-chen-lipid-panel.pdf`, `intake-forms/p02-whitaker-intake.pdf`, `lab-results/p02-whitaker-cbc.pdf`, `intake-forms/p03-reyes-intake.png`, `lab-results/p03-reyes-hba1c.png`, `intake-forms/p04-kowalski-intake.png`, `lab-results/p04-kowalski-cmp.pdf`. |
 
 ## Goals
 
-1. **Single command gate** — `agent-forge/scripts/check-w2.sh` mirrors `PLAN-W2.md §7` exactly: `git diff --check`, PHP/SH lint, isolated PHPUnit (AgentForge filter), `run-w2-evals.php`, phpstan, phpcs on changed files.
-2. **Failing-by-design runner** — `php agent-forge/scripts/run-w2-evals.php` exits non-zero with structured per-rubric output until M2+ lands.
-3. **Typed, validated W2 case JSON** — covers inputs, expected extraction, expected promotions, expected document facts, expected retrieval, expected answer sections, and per-rubric expected outcomes.
-4. **Eight MVP cases** committed under `agent-forge/fixtures/w2-golden/cases/`: Chen typed lab, Chen typed intake, image-only lab (Reyes HbA1c), scanned intake (Whitaker), duplicate upload, guideline-supported retrieval, out-of-corpus refusal, and no-PHI logging trap.
+1. **Single command gate** — `agent-forge/scripts/check-w2.sh` mirrors `PLAN-W2.md §7` exactly: `git diff --check`, PHP/SH lint, isolated PHPUnit (AgentForge filter), `run-clinical-document-evals.php`, phpstan, phpcs on changed files.
+2. **Failing-by-design runner** — `php agent-forge/scripts/run-clinical-document-evals.php` exits non-zero with structured per-rubric output until M2+ lands.
+3. **Typed, validated clinical document eval case JSON** — covers inputs, expected extraction, expected promotions, expected document facts, expected retrieval, expected answer sections, and per-rubric expected outcomes.
+4. **Eight MVP cases** committed under `agent-forge/fixtures/clinical-document-golden/cases/`: Chen typed lab, Chen typed intake, image-only lab (Reyes HbA1c), scanned intake (Whitaker), duplicate upload, guideline-supported retrieval, out-of-corpus refusal, and no-PHI logging trap.
 5. **Policy files** — checked-in `thresholds.json` and `baseline.json` so every later epic compares against a stable reference.
-6. **Isolated PHPUnit tests** under `tests/Tests/Isolated/AgentForge/Eval/W2/` proving the case loader, every rubric, the runner, the writer, the comparator, and the gate script behave correctly — independent of any extraction implementation.
+6. **Isolated PHPUnit tests** under `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/` proving the case loader, every rubric, the runner, the writer, the comparator, and the gate script behave correctly — independent of any extraction implementation.
 7. **Eval-results artifacts** under `agent-forge/eval-results/` consumable by H4 (cost/latency report) and FINAL (submission packaging) unchanged.
 
 ## Non-Goals
@@ -45,12 +50,143 @@ This first-principles framing — "the smallest thing that proves the gate works
 - No deployed-smoke or VM artifacts (H3).
 - No Cohere reranker or guideline corpus indexing (M6).
 
+## First-principles cut line
+
+M1 exists to prove the Week 2 gate is real, inspectable, and regression-blocking before production extraction code exists. The critical bottleneck is grader trust in the gate, not extraction accuracy.
+
+Keep in M1:
+
+- Case format.
+- Eight MVP cases.
+- Boolean rubrics.
+- Artifact writer.
+- Baseline/threshold comparator.
+- Single gate script.
+- Focused tests proving the harness works.
+
+Defer out of M1:
+
+- Real extraction adapter wiring.
+- Database/job integration.
+- 50-case expansion.
+- OpenEMR upload, schema, migration, RAG, or supervisor production code.
+
+## Approved Task Breakdown
+
+### Task 1.1: Define The W2 Golden Case Contract
+
+**Description:** Create the versioned JSON case format, MVP fixture README, thresholds, baseline, and eight MVP cases.
+
+**Acceptance Map:** M1 fixture format, MVP cases, rubric scaffolding.
+
+**Proof Required:** `GoldenCasesParseTest` loads every case and rejects malformed required fields.
+
+**Subtasks:**
+
+- [x] Define `case_format_version: 1` and the required top-level case fields.
+- [x] Add `thresholds.json` with per-rubric thresholds and the 5% regression cap.
+- [x] Add `baseline.json` with pre-implementation zero pass rates.
+- [x] Add the eight MVP case JSON files listed in this plan.
+- [x] Replace the placeholder fixture README with format, MVP-vs-H1, and add-a-case guidance.
+
+**Suggested Commit:** `test(agentforge-w2): define golden case fixtures`
+
+### Task 1.2: Build Minimal Typed Eval Core
+
+**Description:** Add clinical document eval case DTOs, loader, adapter interface, `NotImplementedAdapter`, rubric result types, and runner summaries. Keep classes small and injectable.
+
+**Acceptance Map:** The runner can evaluate cases before production code exists.
+
+**Proof Required:** Isolated PHPUnit for loader, runner, adapter behavior, and baseline comparison.
+
+**Subtasks:**
+
+- [x] Implement `EvalCase`, `EvalCaseCategory`, `EvalCaseLoader`, and expected-output DTOs.
+- [x] Implement `ExtractionSystemAdapter`, `CaseRunOutput`, and `NotImplementedAdapter`.
+- [x] Implement `RubricStatus`, `RubricResult`, and `RubricInputs`.
+- [x] Implement the minimal runner summary/value objects needed by the CLI.
+- [x] Add loader and adapter tests before runner integration.
+
+**Suggested Commit:** `test(agentforge-w2): add eval core contracts`
+
+### Task 1.3: Implement Boolean Rubric Scaffolding
+
+**Description:** Add rubrics for `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`, `bounding_box_present`, and deleted/duplicate document retrieval behavior if kept in M1.
+
+**Acceptance Map:** Week 2 required rubrics plus the architecture's bounding-box and duplicate/deleted-document safety requirements.
+
+**Proof Required:** One focused test per rubric using hand-built `CaseRunOutput`.
+
+**Subtasks:**
+
+- [x] Add the `Rubric` interface and `RubricRegistry`.
+- [x] Implement required boolean rubric classes with `pass`, `fail`, and `not_applicable` outcomes.
+- [x] Reuse `SensitiveLogPolicy` through a small log-scanning seam for `no_phi_in_logs`.
+- [x] Share citation and bounding-box validation helpers only where they remove real duplication.
+- [x] Add one isolated test per rubric and registry coverage.
+
+**Suggested Commit:** `test(agentforge-w2): add boolean rubric scaffold`
+
+### Task 1.4: Add Runner Artifact Output
+
+**Description:** Implement `run-clinical-document-evals.php` so it runs all MVP cases, writes timestamped JSON artifacts under `agent-forge/eval-results/`, and exits non-zero for unmet thresholds.
+
+**Acceptance Map:** Eval results are reviewable and fail for missing implementation.
+
+**Proof Required:** CLI smoke test asserts non-zero exit and artifact shape.
+
+**Subtasks:**
+
+- [x] Implement `EvalRunner` as pure orchestration over cases, adapter output, and rubrics.
+- [x] Implement `BaselineComparator` and documented exit-code mapping.
+- [x] Implement `RunArtifactWriter` as the only eval-results filesystem writer.
+- [x] Implement `RunClinicalDocumentEvalsCommand` and the thin `run-clinical-document-evals.php` shim.
+- [x] Add CLI smoke and artifact shape tests.
+
+**Suggested Commit:** `test(agentforge-w2): write eval artifacts`
+
+### Task 1.5: Add Single W2 Gate Script
+
+**Description:** Add `check-w2.sh` as the local/CI command that runs syntax checks, focused isolated tests, Clinical document evals, and static/style checks.
+
+**Acceptance Map:** `PLAN-W2.md` single Week 2 gate requirement.
+
+**Proof Required:** Script shape test plus `bash -n`; final run should fail only at Clinical document eval thresholds, not syntax or harness tests.
+
+**Subtasks:**
+
+- [x] Mirror the existing `check-local.sh` `run_step` structure.
+- [x] Run whitespace, PHP lint, shell lint, focused isolated PHPUnit, Clinical document evals, phpstan, and changed-file phpcs.
+- [x] Add `CheckClinicalDocumentGateScriptShapeTest`.
+- [ ] Ensure the expected M1 failure is `Run Clinical document evals` due to unmet thresholds. Blocked: the full AgentForge PHPUnit step currently fails first on pre-existing Week 1 documentation link tests for missing `agent-forge/docs/PLAN.md`, `agent-forge/docs/PRD.md`, and `agent-forge/docs/SPECS.txt`.
+- [x] Document that `check-local.sh` and `check-w2.sh` coexist.
+
+**Suggested Commit:** `test(agentforge-w2): add week 2 gate command`
+
+### Task 1.6: Document The Gate And Non-Goal
+
+**Description:** Update fixture docs and Week 2 docs to explain MVP vs 50-case expansion, artifact format, and why M1 intentionally has no production extraction.
+
+**Acceptance Map:** Graders can run and interpret the gate without guessing.
+
+**Proof Required:** Documentation file checks and final manual review.
+
+**Subtasks:**
+
+- [x] Add `agent-forge/eval-results/README.md`.
+- [x] Add a Week 2 gate section to `agent-forge/docs/week2/README.md`.
+- [x] State that M1 intentionally fails eval thresholds until later epics land.
+- [x] State that M1 must not add production extraction, upload, migration, RAG, or supervisor code.
+- [x] Re-read the source docs and confirm every M1 acceptance item maps to a task/proof item.
+
+**Suggested Commit:** `docs(agentforge-w2): document eval gate usage`
+
 ## Architecture (SOLID + DRY + Modular)
 
 ### Module layout
 
 ```
-src/AgentForge/Eval/W2/
+src/AgentForge/Eval/ClinicalDocument/
   Case/
     EvalCase.php                       (readonly value object — parsed case)
     EvalCaseLoader.php                 (parses JSON, throws on schema mismatch)
@@ -85,16 +221,17 @@ src/AgentForge/Eval/W2/
     RegressionVerdict.php              (enum: baseline_met, threshold_violation, regression_exceeded, runner_error)
     RubricSummary.php                  (readonly DTO — per-rubric pass rates)
   Cli/
-    RunW2EvalsCommand.php              (entry point invoked by run-w2-evals.php; wires DI)
+    RunClinicalDocumentEvalsCommand.php              (entry point invoked by run-clinical-document-evals.php; wires DI)
 ```
 
 ```
 agent-forge/
   scripts/
-    check-w2.sh                        (single Week-2 gate)
-    run-w2-evals.php                   (thin shim — wires DI and calls RunW2EvalsCommand)
+    check-clinical-document.sh         (domain-named clinical document gate)
+    check-w2.sh                        (Week 2 compatibility wrapper)
+    run-clinical-document-evals.php                   (thin shim — wires DI and calls RunClinicalDocumentEvalsCommand)
   fixtures/
-    w2-golden/
+    clinical-document-golden/
       README.md                        (replaces placeholder; format + MVP-vs-H1 expansion)
       thresholds.json
       baseline.json
@@ -113,7 +250,7 @@ agent-forge/
 ```
 
 ```
-tests/Tests/Isolated/AgentForge/Eval/W2/
+tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/
   Case/
     EvalCaseLoaderTest.php
   Rubric/
@@ -130,8 +267,8 @@ tests/Tests/Isolated/AgentForge/Eval/W2/
     RunArtifactWriterTest.php
     BaselineComparatorTest.php
   Cli/
-    RunW2EvalsScriptSmokeTest.php      (shells out to run-w2-evals.php; asserts exit code != 0)
-    CheckW2ScriptShapeTest.php         (greps check-w2.sh; asserts required commands present)
+    RunClinicalDocumentEvalsScriptSmokeTest.php      (shells out to run-clinical-document-evals.php; asserts exit code != 0)
+    CheckClinicalDocumentGateScriptShapeTest.php         (greps check-clinical-document.sh; asserts required commands present)
     GoldenCasesParseTest.php           (asserts every cases/*.json parses through EvalCaseLoader)
 ```
 
@@ -154,8 +291,8 @@ tests/Tests/Isolated/AgentForge/Eval/W2/
 ### Modular justifications
 
 - Each artifact lives in its own file; one isolated test per production class.
-- The `Eval/W2/` namespace mirrors `Reporting/` precedent — keeps W2 separable from W1 in PR diffs and in code-review eye-tracking.
-- `RunW2EvalsCommand` is the only DI seam — swapping adapters in M2+ is a one-line change.
+- The `Eval/ClinicalDocument/` namespace mirrors `Reporting/` precedent while naming the domain instead of the sprint deadline.
+- `RunClinicalDocumentEvalsCommand` is the only DI seam — swapping adapters in M2+ is a one-line change.
 
 ## Case JSON format
 
@@ -264,7 +401,7 @@ run_step() { local label="$1"; shift; printf '\n==> %s\n' "${label}"; "$@"; }
 
 run_step "Check diff whitespace" git diff --check
 
-run_step "Check PHP syntax (W2 surface)" bash -c \
+run_step "Check PHP syntax (clinical document eval surface)" bash -c \
   "php -l library/ajax/upload.php \
    && find src/AgentForge tests/Tests/Isolated/AgentForge agent-forge/scripts \
         -type f -name '*.php' -print0 | xargs -0 -n 1 php -l > /dev/null"
@@ -275,23 +412,23 @@ run_step "Check shell script syntax" bash -c \
 run_step "Run AgentForge isolated PHPUnit" \
   composer phpunit-isolated -- --filter 'OpenEMR\\\\Tests\\\\Isolated\\\\AgentForge'
 
-run_step "Run W2 evals" \
-  php agent-forge/scripts/run-w2-evals.php
+run_step "Run Clinical document evals" \
+  php agent-forge/scripts/run-clinical-document-evals.php
 
-run_step "Run focused PHPStan (W2 surface)" \
+run_step "Run focused PHPStan (clinical document eval surface)" \
   composer phpstan -- --error-format=raw \
     src/AgentForge \
     tests/Tests/Isolated/AgentForge \
     interface/patient_file/summary/agent_request.php \
     library/ajax/upload.php
 
-run_step "Run PHPCS on changed AgentForge/W2 PHP files" bash -c '
+run_step "Run PHPCS on changed AgentForge clinical document eval PHP files" bash -c '
   files="$(
     { git diff --name-only --diff-filter=ACM; git ls-files --others --exclude-standard; } \
     | grep -E "^(src/AgentForge|tests/Tests/Isolated/AgentForge|agent-forge/scripts|library/ajax/upload\.php)" || true
   )"
   if [[ -z "${files}" ]]; then
-    printf "No changed AgentForge/W2 PHP files to check.\n"
+    printf "No changed AgentForge clinical document eval PHP files to check.\n"
   else
     printf "%s\n" "${files}" | xargs vendor/bin/phpcs
   fi
@@ -302,7 +439,7 @@ printf '\nPASS Week 2 check.\n'
 
 `check-local.sh` is W1's gate; `check-w2.sh` is W2's gate. They coexist. Per PLAN-W2 the W2 gate is the single command graders rerun.
 
-## Eval runner exit codes (documented in `run-w2-evals.php` header)
+## Eval runner exit codes (documented in `run-clinical-document-evals.php` header)
 
 | Code | Meaning |
 | --- | --- |
@@ -331,68 +468,69 @@ printf '\nPASS Week 2 check.\n'
 1. **Phase A — Format & Loader.** Write `EvalCaseLoaderTest` with a tiny inline JSON fixture. Implement `EvalCase`, `EvalCaseCategory`, `EvalCaseLoader`, `Expected*` DTOs. Add `GoldenCasesParseTest` that asserts every committed case file parses cleanly — this is the regression net for the format itself.
 2. **Phase B — Rubrics.** For each of the seven rubrics, write the test with a hand-built `RubricInputs`, then implement the rubric. Each rubric returns `RubricResult{status, reason}`. `NoPhiInLogsRubric` is wired against the existing `SensitiveLogPolicy`.
 3. **Phase C — Runner.** Write `EvalRunnerTest` with stub rubrics + stub adapter. Implement `EvalRunner`, `NotImplementedAdapter`, `RunArtifactWriter`, `BaselineComparator`, `RegressionVerdict`.
-4. **Phase D — Entry points.** Write `RunW2EvalsScriptSmokeTest` that shells `php agent-forge/scripts/run-w2-evals.php` against a tmp fixtures dir and asserts exit code != 0 plus artifact contents. Write `CheckW2ScriptShapeTest` that greps `check-w2.sh` for required commands and confirms `bash -n` passes.
-5. **Phase E — Real cases & docs.** Author the eight MVP cases. Replace `agent-forge/fixtures/w2-golden/README.md` with the real format-and-expansion README. Add `agent-forge/eval-results/README.md`.
+4. **Phase D — Entry points.** Write `RunClinicalDocumentEvalsScriptSmokeTest` that shells `php agent-forge/scripts/run-clinical-document-evals.php` against a tmp fixtures dir and asserts exit code != 0 plus artifact contents. Write `CheckClinicalDocumentGateScriptShapeTest` that greps `check-w2.sh` for required commands and confirms `bash -n` passes.
+5. **Phase E — Real cases & docs.** Author the eight MVP cases. Replace `agent-forge/fixtures/clinical-document-golden/README.md` with the real format-and-expansion README. Add `agent-forge/eval-results/README.md`.
 
 ## Files to add
 
 | File | Type | Purpose |
 | --- | --- | --- |
-| `agent-forge/scripts/check-w2.sh` | script | Single Week-2 gate command. |
-| `agent-forge/scripts/run-w2-evals.php` | script | Thin shim — wires DI and runs `RunW2EvalsCommand`. |
-| `agent-forge/fixtures/w2-golden/README.md` | docs | Format + MVP-vs-H1 expansion (replaces placeholder). |
-| `agent-forge/fixtures/w2-golden/thresholds.json` | data | Per-rubric thresholds + 5% regression cap. |
-| `agent-forge/fixtures/w2-golden/baseline.json` | data | Versioned pre-implementation baseline. |
-| `agent-forge/fixtures/w2-golden/cases/chen-lab-typed.json` | case | MVP. |
-| `agent-forge/fixtures/w2-golden/cases/chen-intake-typed.json` | case | MVP. |
-| `agent-forge/fixtures/w2-golden/cases/reyes-hba1c-image.json` | case | MVP image-only lab. |
-| `agent-forge/fixtures/w2-golden/cases/whitaker-intake-scanned.json` | case | MVP scanned intake. |
-| `agent-forge/fixtures/w2-golden/cases/chen-lab-duplicate-upload.json` | case | MVP idempotency. |
-| `agent-forge/fixtures/w2-golden/cases/guideline-supported-ldl.json` | case | MVP guideline RAG. |
-| `agent-forge/fixtures/w2-golden/cases/out-of-corpus-refusal.json` | case | MVP refusal. |
-| `agent-forge/fixtures/w2-golden/cases/no-phi-logging-trap.json` | case | MVP log audit. |
+| `agent-forge/scripts/check-clinical-document.sh` | script | Domain-named clinical document gate command. |
+| `agent-forge/scripts/check-w2.sh` | script | Week 2 compatibility wrapper for graders. |
+| `agent-forge/scripts/run-clinical-document-evals.php` | script | Thin shim — wires DI and runs `RunClinicalDocumentEvalsCommand`. |
+| `agent-forge/fixtures/clinical-document-golden/README.md` | docs | Format + MVP-vs-H1 expansion (replaces placeholder). |
+| `agent-forge/fixtures/clinical-document-golden/thresholds.json` | data | Per-rubric thresholds + 5% regression cap. |
+| `agent-forge/fixtures/clinical-document-golden/baseline.json` | data | Versioned pre-implementation baseline. |
+| `agent-forge/fixtures/clinical-document-golden/cases/chen-lab-typed.json` | case | MVP. |
+| `agent-forge/fixtures/clinical-document-golden/cases/chen-intake-typed.json` | case | MVP. |
+| `agent-forge/fixtures/clinical-document-golden/cases/reyes-hba1c-image.json` | case | MVP image-only lab. |
+| `agent-forge/fixtures/clinical-document-golden/cases/whitaker-intake-scanned.json` | case | MVP scanned intake. |
+| `agent-forge/fixtures/clinical-document-golden/cases/chen-lab-duplicate-upload.json` | case | MVP idempotency. |
+| `agent-forge/fixtures/clinical-document-golden/cases/guideline-supported-ldl.json` | case | MVP guideline RAG. |
+| `agent-forge/fixtures/clinical-document-golden/cases/out-of-corpus-refusal.json` | case | MVP refusal. |
+| `agent-forge/fixtures/clinical-document-golden/cases/no-phi-logging-trap.json` | case | MVP log audit. |
 | `agent-forge/eval-results/.gitkeep` | data | Reserve directory under git. |
 | `agent-forge/eval-results/README.md` | docs | Artifact format. |
-| `src/AgentForge/Eval/W2/Case/EvalCase.php` | class | Readonly value object. |
-| `src/AgentForge/Eval/W2/Case/EvalCaseLoader.php` | class | JSON → `EvalCase`. |
-| `src/AgentForge/Eval/W2/Case/EvalCaseCategory.php` | enum | Closed set of categories. |
-| `src/AgentForge/Eval/W2/Case/ExpectedExtraction.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Case/ExpectedRetrieval.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Case/ExpectedAnswer.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Case/ExpectedRubrics.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Rubric/Rubric.php` | interface | `evaluate(RubricInputs): RubricResult`. |
-| `src/AgentForge/Eval/W2/Rubric/RubricInputs.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Rubric/RubricResult.php` | class | Readonly. |
-| `src/AgentForge/Eval/W2/Rubric/RubricStatus.php` | enum | pass/fail/not_applicable. |
-| `src/AgentForge/Eval/W2/Rubric/RubricRegistry.php` | class | Indexed lookup of all rubrics. |
-| `src/AgentForge/Eval/W2/Rubric/SchemaValidRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Rubric/CitationPresentRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Rubric/FactuallyConsistentRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Rubric/SafeRefusalRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Rubric/NoPhiInLogsRubric.php` | class | Depends on `SensitiveLogPolicy`. |
-| `src/AgentForge/Eval/W2/Rubric/BoundingBoxPresentRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Rubric/DeletedDocumentNotRetrievedRubric.php` | class | |
-| `src/AgentForge/Eval/W2/Adapter/ExtractionSystemAdapter.php` | interface | Seam. |
-| `src/AgentForge/Eval/W2/Adapter/CaseRunOutput.php` | DTO | Readonly. |
-| `src/AgentForge/Eval/W2/Adapter/NotImplementedAdapter.php` | class | M1 default. |
-| `src/AgentForge/Eval/W2/Runner/EvalRunner.php` | class | Orchestrator (pure). |
-| `src/AgentForge/Eval/W2/Runner/RunArtifactWriter.php` | class | Single I/O surface. |
-| `src/AgentForge/Eval/W2/Runner/BaselineComparator.php` | class | Pure logic. |
-| `src/AgentForge/Eval/W2/Runner/RegressionVerdict.php` | enum | |
-| `src/AgentForge/Eval/W2/Runner/RubricSummary.php` | DTO | |
-| `src/AgentForge/Eval/W2/Cli/RunW2EvalsCommand.php` | class | Wires DI. |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Case/EvalCaseLoaderTest.php` | test | |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Rubric/*Test.php` | tests | One per rubric + registry. |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Runner/*Test.php` | tests | Runner, writer, comparator. |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Cli/RunW2EvalsScriptSmokeTest.php` | test | Shell-out smoke. |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Cli/CheckW2ScriptShapeTest.php` | test | Greps gate script. |
-| `tests/Tests/Isolated/AgentForge/Eval/W2/Cli/GoldenCasesParseTest.php` | test | All eight cases parse. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/EvalCase.php` | class | Readonly value object. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/EvalCaseLoader.php` | class | JSON → `EvalCase`. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/EvalCaseCategory.php` | enum | Closed set of categories. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/ExpectedExtraction.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/ExpectedRetrieval.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/ExpectedAnswer.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Case/ExpectedRubrics.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/Rubric.php` | interface | `evaluate(RubricInputs): RubricResult`. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/RubricInputs.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/RubricResult.php` | class | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/RubricStatus.php` | enum | pass/fail/not_applicable. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/RubricRegistry.php` | class | Indexed lookup of all rubrics. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/SchemaValidRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/CitationPresentRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/FactuallyConsistentRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/SafeRefusalRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/NoPhiInLogsRubric.php` | class | Depends on `SensitiveLogPolicy`. |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/BoundingBoxPresentRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Rubric/DeletedDocumentNotRetrievedRubric.php` | class | |
+| `src/AgentForge/Eval/ClinicalDocument/Adapter/ExtractionSystemAdapter.php` | interface | Seam. |
+| `src/AgentForge/Eval/ClinicalDocument/Adapter/CaseRunOutput.php` | DTO | Readonly. |
+| `src/AgentForge/Eval/ClinicalDocument/Adapter/NotImplementedAdapter.php` | class | M1 default. |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/EvalRunner.php` | class | Orchestrator (pure). |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/RunArtifactWriter.php` | class | Single I/O surface. |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/BaselineComparator.php` | class | Pure logic. |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/RegressionVerdict.php` | enum | |
+| `src/AgentForge/Eval/ClinicalDocument/Runner/RubricSummary.php` | DTO | |
+| `src/AgentForge/Eval/ClinicalDocument/Cli/RunClinicalDocumentEvalsCommand.php` | class | Wires DI. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Case/EvalCaseLoaderTest.php` | test | |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Rubric/*Test.php` | tests | One per rubric + registry. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Runner/*Test.php` | tests | Runner, writer, comparator. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Cli/RunClinicalDocumentEvalsScriptSmokeTest.php` | test | Shell-out smoke. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Cli/CheckClinicalDocumentGateScriptShapeTest.php` | test | Greps gate script. |
+| `tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument/Cli/GoldenCasesParseTest.php` | test | All eight cases parse. |
 
 ## Files to modify
 
 | File | Change |
 | --- | --- |
-| `agent-forge/docs/week2/README.md` | Add a "Week 2 gate" section linking to `agent-forge/scripts/check-w2.sh` and `agent-forge/fixtures/w2-golden/README.md`. No structural changes. |
+| `agent-forge/docs/week2/README.md` | Add a "Week 2 gate" section linking to `agent-forge/scripts/check-w2.sh` and `agent-forge/fixtures/clinical-document-golden/README.md`. No structural changes. |
 
 (`PLAN-W2.md` itself is not modified by M1 — the epic's status is tracked in this file.)
 
@@ -400,26 +538,34 @@ printf '\nPASS Week 2 check.\n'
 
 Before marking the epic complete:
 
-1. **Gate fails for the right reason.** Run `bash agent-forge/scripts/check-w2.sh` from repo root. Expected: non-zero exit, with the failing step being `Run W2 evals` due to thresholds unmet (`NotImplementedAdapter`) — *not* lint, syntax, or unit-test failures. The lint/test/phpstan/phpcs steps must all pass cleanly.
-2. **Harness self-tests pass.** `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\W2'` returns green. The harness is verified independent of any extraction system.
+1. **Gate fails for the right reason.** Run `bash agent-forge/scripts/check-w2.sh` from repo root. Expected: non-zero exit, with the failing step being `Run Clinical document evals` due to thresholds unmet (`NotImplementedAdapter`) — *not* lint, syntax, or unit-test failures. The lint/test/phpstan/phpcs steps must all pass cleanly.
+2. **Harness self-tests pass.** `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` returns green. The harness is verified independent of any extraction system.
 3. **Artifacts written.** After step 1, `agent-forge/eval-results/<UTC-timestamp>/run.json` exists with one entry per case (each with per-rubric `pass|fail|not_applicable` + reason); `summary.json` contains rubric pass rates and the comparator verdict (`threshold_violation` or `regression_exceeded`).
 4. **Cases parse.** `GoldenCasesParseTest` passes — all eight cases load through `EvalCaseLoader` without error.
-5. **Documentation.** `agent-forge/fixtures/w2-golden/README.md` explains case format, the eight MVP cases, the planned 50-case expansion (H1), and how to add a case. `agent-forge/docs/week2/README.md` links to the gate command. `agent-forge/eval-results/README.md` explains the artifact format.
+5. **Documentation.** `agent-forge/fixtures/clinical-document-golden/README.md` explains case format, the eight MVP cases, the planned 50-case expansion (H1), and how to add a case. `agent-forge/docs/week2/README.md` links to the gate command. `agent-forge/eval-results/README.md` explains the artifact format.
 6. **No production extraction code.** `git diff --stat master` matches the file list above — no schema validators, no extraction providers, no migration files, no orchestration classes.
 7. **Full repo gate stays green.** Running existing `agent-forge/scripts/check-local.sh` (W1 gate) still passes — this epic does not regress Week 1.
 
 ## Acceptance Criteria (PLAN-W2.md §M1, restated)
 
-- `php agent-forge/scripts/run-w2-evals.php` runs and fails for missing implementation. ✓
-- `agent-forge/scripts/check-w2.sh` exists and is the single intended local/CI Week 2 gate. ✓
-- The fixture README explains MVP vs later 50-case expansion. ✓
+- [x] `php agent-forge/scripts/run-clinical-document-evals.php` runs and fails for missing implementation.
+- [x] `agent-forge/scripts/check-w2.sh` exists and is the single intended local/CI Week 2 gate.
+- [x] The fixture README explains MVP vs later 50-case expansion.
 
 ## Definition of Done
 
-- Tests/evals committed before any production extraction implementation begins. ✓
-- The runner produces JSON artifacts under `agent-forge/eval-results/`. ✓
-- Every rubric named in `W2_ARCHITECTURE.md` §17 has a class, a test, and a registered entry. ✓
-- Every MVP case named in `PLAN-W2.md` M1 has a JSON file and parses cleanly. ✓
+- [ ] Tests/evals committed before any production extraction implementation begins. Not performed because git commits were not requested.
+- [x] The runner produces JSON artifacts under `agent-forge/eval-results/`.
+- [x] Every rubric named in `W2_ARCHITECTURE.md` §17 has a class, a test, and a registered entry.
+- [x] Every MVP case named in `PLAN-W2.md` M1 has a JSON file and parses cleanly.
+
+## Implementation Proof
+
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed: 16 tests, 34 assertions.
+- `php agent-forge/scripts/run-clinical-document-evals.php` exited `2` with `threshold_violation` and wrote artifacts under `agent-forge/eval-results/clinical-document-20260505-003236/`.
+- `composer phpstan -- --error-format=raw src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed after running with approval for PHPStan's local worker socket.
+- `vendor/bin/phpcs src/AgentForge/Eval/ClinicalDocument tests/Tests/Isolated/AgentForge/Eval/ClinicalDocument agent-forge/scripts/run-clinical-document-evals.php` passed.
+- `bash agent-forge/scripts/check-clinical-document.sh` is blocked before clinical document evals by unrelated existing AgentForge documentation tests that reference missing Week 1 docs: `agent-forge/docs/PLAN.md`, `agent-forge/docs/PRD.md`, and `agent-forge/docs/SPECS.txt`.
 
 ## Risks & Mitigations
 
@@ -430,7 +576,7 @@ Before marking the epic complete:
 | Runner exit-code semantics confuse CI. | Documented in script header; `check-w2.sh` treats any non-zero as fail. |
 | `NoPhiInLogsRubric` requires the W1 `SensitiveLogPolicy` to already cover W2 fields (M3/H4 expand the allowlist). | Rubric depends on a small `LogScanner` interface; H4 expands the policy behind the same interface — no rubric change. |
 | `check-w2.sh` runs slowly. | Mirror `check-local.sh` ordering: lint → tests → evals → static analysis. Fast steps first. |
-| Two parallel eval systems (W1 `run-evals.php` + W2 `run-w2-evals.php`) confuse reviewers. | `agent-forge/fixtures/w2-golden/README.md` and the docs hub explicitly distinguish W1 (field-assertion) from W2 (boolean rubrics). |
+| Two parallel eval systems (W1 `run-evals.php` + W2 `run-clinical-document-evals.php`) confuse reviewers. | `agent-forge/fixtures/clinical-document-golden/README.md` and the docs hub explicitly distinguish W1 (field-assertion) from W2 (boolean rubrics). |
 | Image-only lab fixture (Reyes HbA1c PNG) demands bounding-box from extraction; M1 cannot prove this end-to-end. | M1's `BoundingBoxPresentRubric` only verifies the rubric *shape* against `CaseRunOutput.extraction.bounding_boxes`. M4 makes the rubric pass with real extraction. |
 
 ## Dependencies
@@ -439,4 +585,4 @@ None. M1 is the foundation.
 
 ## Next epic gate
 
-When M1 is complete, M2 begins by extending `ExtractionSystemAdapter` with a real implementation that creates the `agentforge_document_jobs` row and reads back the worker's results. Until that adapter is in place, `check-w2.sh` continues to fail at "Run W2 evals" — exactly the regression-gate behavior the assignment requires.
+When M1 is complete, M2 begins by extending `ExtractionSystemAdapter` with a real implementation that creates the `agentforge_document_jobs` row and reads back the worker's results. Until that adapter is in place, `check-w2.sh` continues to fail at "Run Clinical document evals" — exactly the regression-gate behavior the assignment requires.
