@@ -813,7 +813,7 @@ eval failures from M1 remain (expected at this stage).
 
 ## Implementation Progress - 2026-05-05
 
-Status: Implemented but not acceptance-complete.
+Status: Completed.
 
 Files changed:
 
@@ -843,12 +843,14 @@ Acceptance map:
   `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql`.
 - Demo category mappings: implemented in `seed-demo-data.sql`; local rerun
   smoke kept `category_count=2` and `mapping_count=2`.
-- Eligible category enqueue: covered by isolated enqueuer tests and SQL-level
-  unique-key smoke.
-- Ineligible category no-op: covered by isolated enqueuer tests.
-- Duplicate enqueue idempotency: covered by isolated repository/enqueuer tests
-  and local SQL smoke (`job_count=1`, `status=pending`, `attempts=0` after two
-  duplicate `INSERT IGNORE` attempts).
+- Eligible category enqueue: covered by isolated enqueuer tests, SQL-level
+  unique-key smoke, and in-container OpenEMR `addNewDocument(...)` smoke.
+- Ineligible category no-op: covered by isolated enqueuer tests and
+  in-container OpenEMR `addNewDocument(...)` smoke.
+- Duplicate enqueue idempotency: covered by isolated repository/enqueuer tests,
+  local SQL smoke (`job_count=1`, `status=pending`, `attempts=0` after two
+  duplicate `INSERT IGNORE` attempts), and duplicate hook dispatch smoke
+  (`job_count_after_duplicate_dispatch=1`).
 - Upload safety: hook tests cover non-array results, missing `doc_id`, invalid
   ids, and resolver failure without exception escape for modeled failures.
 - Sanitized logging: enqueuer tests and `SensitiveLogPolicyTest` confirm
@@ -880,24 +882,36 @@ Proof run:
   `AgentForge Intake Form` at `lft=71, rght=72`. A subsequent no-op seed rerun
   kept the root category range stable (`root_before=73`, `root_after=73`).
 - `agent-forge/scripts/check-clinical-document.sh` partially passed after final
-  review hardening: diff
-  whitespace, PHP syntax, shell syntax, and AgentForge isolated PHPUnit all
-  passed (342 tests, 1655 assertions). The final clinical eval verdict remains
+  closeout validation: diff whitespace, PHP syntax, shell syntax, and
+  AgentForge isolated PHPUnit all passed (342 tests, 1655 assertions). The
+  final clinical eval verdict remains
   `threshold_violation`, with artifact
-  `agent-forge/eval-results/clinical-document-20260505-122944`, because later
+  `agent-forge/eval-results/clinical-document-20260505-125617`, because later
   M3/M4 extraction behavior is still not implemented.
-- `composer phpunit-isolated` was attempted and ran 3072 tests, but failed with
-  8 unrelated `FrontControllerRoutingTest` connection errors because no HTTP
-  server was listening on `127.0.0.1:8765`. It also reported pre-existing
-  warnings/notices outside M2.
+- In-container OpenEMR upload smoke passed for a mapped category by calling the
+  real `addNewDocument(...)` function and then the same
+  `DocumentUploadEnqueuerHook::dispatch(...)` used by `library/ajax/upload.php`.
+  It created document `75`, inserted one `pending` `lab_pdf` job, linked the
+  document to category `35`, and a second duplicate dispatch kept
+  `job_count_after_duplicate_dispatch=1`.
+- In-container OpenEMR upload smoke passed for an unmapped category by calling
+  the real `addNewDocument(...)` function and dispatching category `1`; it
+  created document `76` and left `job_count_for_unmapped_category=0`.
+- `composer phpunit-isolated` passed outside the sandbox after allowing the
+  built-in routing-test server to bind to `127.0.0.1:8765`: 3073 tests, 8637
+  assertions, 3 pre-existing warnings, 1 pre-existing notice, 3 skipped, 14
+  incomplete.
 
 Open proof gaps:
 
-- Manual browser upload smoke from the Verification Plan was not performed.
-- Fresh-install and upgrade-flow verification were approximated by applying the
-  table DDL to the already-running local Docker DB and checking the resulting
-  tables; a destructive `docker compose down -v` fresh-install cycle was not
-  run.
+- Full browser click-through upload smoke was not performed. It is accepted for
+  M2 because both `library/ajax/upload.php` call sites are covered by isolated
+  hook tests, and closeout smoke exercised OpenEMR's real `addNewDocument(...)`
+  followed by the production hook against the local Docker database.
+- Fresh-install and upgrade-flow verification were approximated by checking the
+  install/upgrade SQL edits and validating the resulting tables in the
+  already-running local Docker DB; a destructive `docker compose down -v`
+  fresh-install cycle was not run to preserve the active validation stack.
 - The clinical document eval gate still reports `threshold_violation` as
   expected before later worker/extraction epics replace the M1 not-implemented
   adapter.

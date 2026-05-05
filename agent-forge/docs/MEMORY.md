@@ -83,12 +83,19 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 
 ## Week 2 M2 Proof Notes
 
+Last verified: 2026-05-05.
+
 The focused M2 verification used during implementation included:
 
 - Document isolated PHPUnit suite and updated sensitive logging tests passing.
 - PHPCS passing on touched AgentForge document and observability files.
 - PHPStan passing on touched AgentForge document and observability files.
 - SQL smoke proof for idempotent demo category seed behavior.
+- In-container OpenEMR `addNewDocument(...)` smoke proof for mapped enqueue,
+  duplicate dispatch idempotency, and unmapped-category no-op.
+- Full `composer phpunit-isolated` passed outside the sandbox when the
+  routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
+  those routing tests with connection errors.
 - Clinical document gate reaching the eval threshold step, with the known threshold violation still expected until downstream extraction/workflow implementation is connected.
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
