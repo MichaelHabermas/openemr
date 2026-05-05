@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
 use DateTimeImmutable;
+use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Document\CategoryId;
 use OpenEMR\AgentForge\Document\DocumentId;
@@ -143,6 +144,22 @@ final class DocumentUploadEnqueuerTest extends TestCase
         $this->assertNull($jobId);
         $this->assertSame('error', $logger->records[0]['level']);
         $this->assertSame(RuntimeException::class, $logger->records[0]['context']['error_code']);
+    }
+
+    public function testJobRepositoryValidationFailureIsCaughtAndLogged(): void
+    {
+        $logger = new DocumentRecordingLogger();
+
+        $jobId = (new DocumentUploadEnqueuer(
+            InMemoryDocumentTypeMappingRepository::withMapping(7, DocumentType::LabPdf, true),
+            new InvalidDocumentJobRepository(),
+            $logger,
+            new PatientRefHasher('test-salt'),
+        ))->enqueueIfEligible(new PatientId(900001), new DocumentId(123), new CategoryId(7));
+
+        $this->assertNull($jobId);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame(InvalidArgumentException::class, $logger->records[0]['context']['error_code']);
     }
 
     public function testLoggedContextUsesOnlySensitiveLogPolicyAllowedKeys(): void
@@ -323,6 +340,29 @@ final class ThrowingDocumentJobRepository implements DocumentJobRepository
     public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
     {
         throw new RuntimeException('job unavailable');
+    }
+}
+
+final class InvalidDocumentJobRepository implements DocumentJobRepository
+{
+    public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
+    {
+        throw new InvalidArgumentException('invalid job payload');
+    }
+
+    public function findById(DocumentJobId $id): ?DocumentJob
+    {
+        return null;
+    }
+
+    public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
+    {
+        return null;
+    }
+
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        throw new InvalidArgumentException('invalid job payload');
     }
 }
 

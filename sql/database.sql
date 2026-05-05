@@ -15392,7 +15392,7 @@ CREATE TABLE `clinical_document_type_mappings` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`, `doc_type`),
+  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`),
   KEY `idx_clinical_document_type_active` (`active`, `category_id`)
 ) ENGINE=InnoDB;
 

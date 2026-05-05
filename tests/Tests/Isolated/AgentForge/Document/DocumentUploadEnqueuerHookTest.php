@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
 require_once __DIR__ . '/DocumentUploadEnqueuerTest.php';
 
+use InvalidArgumentException;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuer;
 use OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook;
@@ -87,5 +88,21 @@ final class DocumentUploadEnqueuerHookTest extends TestCase
         DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
             throw new RuntimeException('factory unavailable');
         });
+    }
+
+    public function testResolverValidationExceptionIsCaught(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static function (): DocumentUploadEnqueuer {
+            throw new InvalidArgumentException('factory returned invalid wiring');
+        });
+    }
+
+    public function testResolverReturningInvalidServiceIsCaught(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        DocumentUploadEnqueuerHook::dispatch(900001, 7, ['doc_id' => 123], static fn (): object => new \stdClass());
     }
 }

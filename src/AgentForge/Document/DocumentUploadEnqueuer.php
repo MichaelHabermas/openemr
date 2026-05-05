@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document;
 
 use DomainException;
+use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
@@ -53,7 +54,7 @@ final readonly class DocumentUploadEnqueuer
             );
 
             return $jobId;
-        } catch (RuntimeException | DomainException $e) {
+        } catch (RuntimeException | DomainException | InvalidArgumentException $e) {
             $this->logger->error(
                 'clinical_document.job.enqueue_failed',
                 SensitiveLogPolicy::sanitizeContext([

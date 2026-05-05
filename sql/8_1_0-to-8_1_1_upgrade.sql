@@ -113,26 +113,6 @@
 --    desc: Add encounter to the form_misc_billing_options table
 --    arguments: none
 
-SET @rename_clinical_document_type_mappings := IF(
-  (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agentforge_document_type_mappings') = 1
-  AND (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'clinical_document_type_mappings') = 0,
-  'RENAME TABLE `agentforge_document_type_mappings` TO `clinical_document_type_mappings`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_type_mappings_stmt FROM @rename_clinical_document_type_mappings;
-EXECUTE rename_clinical_document_type_mappings_stmt;
-DEALLOCATE PREPARE rename_clinical_document_type_mappings_stmt;
-
-SET @rename_clinical_document_processing_jobs := IF(
-  (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agentforge_document_jobs') = 1
-  AND (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'clinical_document_processing_jobs') = 0,
-  'RENAME TABLE `agentforge_document_jobs` TO `clinical_document_processing_jobs`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_processing_jobs_stmt FROM @rename_clinical_document_processing_jobs;
-EXECUTE rename_clinical_document_processing_jobs_stmt;
-DEALLOCATE PREPARE rename_clinical_document_processing_jobs_stmt;
-
 #IfNotTable clinical_document_type_mappings
 CREATE TABLE `clinical_document_type_mappings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -141,7 +121,7 @@ CREATE TABLE `clinical_document_type_mappings` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`, `doc_type`),
+  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`),
   KEY `idx_clinical_document_type_active` (`active`, `category_id`)
 ) ENGINE=InnoDB;
 #EndIf
@@ -167,46 +147,6 @@ CREATE TABLE `clinical_document_processing_jobs` (
   KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
 ) ENGINE=InnoDB;
 #EndIf
-
-SET @rename_clinical_document_type_mapping_unique := IF(
-  (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_type_mappings' AND index_name = 'uniq_agentforge_doctype_mapping') = 1
-  AND (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_type_mappings' AND index_name = 'uniq_clinical_document_type_mapping') = 0,
-  'ALTER TABLE `clinical_document_type_mappings` RENAME INDEX `uniq_agentforge_doctype_mapping` TO `uniq_clinical_document_type_mapping`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_type_mapping_unique_stmt FROM @rename_clinical_document_type_mapping_unique;
-EXECUTE rename_clinical_document_type_mapping_unique_stmt;
-DEALLOCATE PREPARE rename_clinical_document_type_mapping_unique_stmt;
-
-SET @rename_clinical_document_type_mapping_active := IF(
-  (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_type_mappings' AND index_name = 'idx_agentforge_doctype_active') = 1
-  AND (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_type_mappings' AND index_name = 'idx_clinical_document_type_active') = 0,
-  'ALTER TABLE `clinical_document_type_mappings` RENAME INDEX `idx_agentforge_doctype_active` TO `idx_clinical_document_type_active`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_type_mapping_active_stmt FROM @rename_clinical_document_type_mapping_active;
-EXECUTE rename_clinical_document_type_mapping_active_stmt;
-DEALLOCATE PREPARE rename_clinical_document_type_mapping_active_stmt;
-
-SET @rename_clinical_document_processing_unique := IF(
-  (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_processing_jobs' AND index_name = 'uniq_agentforge_job_doc') = 1
-  AND (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_processing_jobs' AND index_name = 'uniq_clinical_document_processing_job') = 0,
-  'ALTER TABLE `clinical_document_processing_jobs` RENAME INDEX `uniq_agentforge_job_doc` TO `uniq_clinical_document_processing_job`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_processing_unique_stmt FROM @rename_clinical_document_processing_unique;
-EXECUTE rename_clinical_document_processing_unique_stmt;
-DEALLOCATE PREPARE rename_clinical_document_processing_unique_stmt;
-
-SET @rename_clinical_document_processing_status := IF(
-  (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_processing_jobs' AND index_name = 'idx_agentforge_job_status_created') = 1
-  AND (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'clinical_document_processing_jobs' AND index_name = 'idx_clinical_document_processing_status_created') = 0,
-  'ALTER TABLE `clinical_document_processing_jobs` RENAME INDEX `idx_agentforge_job_status_created` TO `idx_clinical_document_processing_status_created`',
-  'SELECT 1'
-);
-PREPARE rename_clinical_document_processing_status_stmt FROM @rename_clinical_document_processing_status;
-EXECUTE rename_clinical_document_processing_status_stmt;
-DEALLOCATE PREPARE rename_clinical_document_processing_status_stmt;
 
 #IfMissingColumn clinical_document_processing_jobs retracted_at
 ALTER TABLE `clinical_document_processing_jobs` ADD COLUMN `retracted_at` datetime NULL;

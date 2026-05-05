@@ -70,8 +70,10 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - `clinical_document_processing_jobs` is the durable queue table for document ingestion jobs.
 - `doc_type` and job status are represented as PHP backed enums and stored as strings in SQL, rather than database-specific enum types.
 - Job enqueue is idempotent for `(patient_id, document_id, doc_type)`.
-- Upload hooks run only after `addNewDocument(...)` returns a usable `doc_id`.
-- The same safe dispatch helper is used by both portal and core upload paths.
+- Upload enqueue dispatch happens once in `C_Document::upload_action_process()`
+  after `Document::createDocument(...)` succeeds. `addNewDocument(...)` already
+  uses that controller path, so outer callers such as `library/ajax/upload.php`
+  must not dispatch again.
 - SQL repositories should go through a small AgentForge database executor boundary instead of duplicating raw helper calls.
 - Value objects should reject non-positive IDs at the boundary.
 - `DocumentRetractionReason` stores modeled source-document lifecycle reasons as strings; M2 has exactly `source_document_deleted`.
@@ -84,12 +86,20 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - Sensitive logging allowlists need both allowed telemetry keys and explicit forbidden raw clinical-content keys. The forbidden list should include raw quote/value/document fields such as `quote`, `quote_or_value`, `raw_quote`, `raw_value`, `document_text`, `document_image`, and `extracted_fields`.
 - Static analysis may reject broad source-level catches of `Throwable` or `Exception`. Prefer catching modeled runtime/domain exceptions in production source, while relying on global error handling for fatal engine errors unless the contract explicitly requires a broader catch.
 - Some isolated suites assume a local server is running. A full `composer phpunit-isolated` can fail for routing tests if `127.0.0.1:8765` is unavailable; record that as environment setup, not as a document-ingestion regression.
-- The standard Documents screen has more than one upload path. The visible
-  "Choose Files" form posts through `C_Document::upload_action_process()`,
-  while Dropzone posts through `library/ajax/upload.php`. Hook both paths for
-  document-ingestion behavior.
+- The standard Documents screen has more than one upload entry point, but
+  `C_Document::upload_action_process()` is the shared storage boundary used by
+  `addNewDocument(...)`. Put document-ingestion dispatch there so core,
+  Dropzone, and portal uploads enqueue at most once.
 - Wrong-patient document handling is not a delete workflow problem. M2 treats the OpenEMR upload destination as authoritative, creates a job for the uploaded source document if the category is mapped, and retracts that job if the source document is deleted. Content-level patient mismatch detection, rejection, or review belongs to extraction/verification later.
 - Retraction must cover already-finished jobs too. Until downstream fact/promotion tables exist, M2 can overwrite a `succeeded` job to `retracted`; later epics must preserve downstream audit metadata while preventing deleted-source content from being used.
+- During the unclosed M2 branch, local databases that saw the old branded
+  document tables/categories should be reset or explicitly cleaned before final
+  validation. Do not over-engineer production-style migration support for
+  unreleased partial table names; fresh install and upgrade SQL should describe
+  the durable clinical-document contract.
+- A document category maps to exactly one clinical document type in M2. Allowing
+  multiple active doc types for the same category makes enqueue behavior depend
+  on insertion order, which is not acceptable for a clinical workflow switch.
 
 ## Week 2 M2 Proof Notes
 
@@ -113,6 +123,16 @@ The focused M2 verification used during implementation included:
   routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
   those routing tests with connection errors.
 - Clinical document gate reaching the eval threshold step, with the known threshold violation still expected until downstream extraction/workflow implementation is connected.
+- Review hardening on 2026-05-05 added source-level integration wiring tests
+  proving `C_Document::upload_action_process()` is the single enqueue point,
+  `library/ajax/upload.php` does not duplicate dispatch, and
+  `interface/patient_file/deleter.php` retracts after `documents.deleted=1`.
+- Review hardening on 2026-05-05 changed
+  `clinical_document_type_mappings` to unique `category_id` so a category
+  cannot map to multiple clinical document types.
+- Review hardening on 2026-05-05 added a direct document-delete patient guard:
+  non-super users with `patients:docs_rm` can delete only documents whose
+  `documents.foreign_id` matches the active session patient.
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
 

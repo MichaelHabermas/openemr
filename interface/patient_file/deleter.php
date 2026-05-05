@@ -297,6 +297,22 @@ function popup_close() {
                     AccessDeniedHelper::deny('Unauthorized document deletion attempt');
                 }
 
+                $row = QueryUtils::querySingleRow("SELECT foreign_id FROM documents WHERE id = ?", [$document]);
+                $documentPatient = filter_var($row['foreign_id'] ?? null, FILTER_VALIDATE_INT);
+                $activePatient = filter_var($session->get('pid'), FILTER_VALIDATE_INT);
+                if (
+                    !AclMain::aclCheckCore('admin', 'super')
+                    && (
+                        $documentPatient === false
+                        || $activePatient === false
+                        || $documentPatient <= 0
+                        || $activePatient <= 0
+                        || $documentPatient !== $activePatient
+                    )
+                ) {
+                    AccessDeniedHelper::deny('Unauthorized document deletion attempt');
+                }
+
                 delete_document($document);
             } elseif ($payment) {
                 if (!AclMain::aclCheckCore('admin', 'super')) {

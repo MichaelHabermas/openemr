@@ -112,7 +112,7 @@ CREATE TABLE `clinical_document_type_mappings` (
   `active`      TINYINT(1)   NOT NULL DEFAULT 1,
   `created_at`  DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`, `doc_type`),
+  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`),
   KEY `idx_clinical_document_type_active` (`active`, `category_id`)
 ) ENGINE=InnoDB;
 ```
@@ -122,11 +122,10 @@ Notes:
 - `doc_type` is constrained at the application layer to the `DocumentType`
   enum cases — no DB-side ENUM so adding doc types in later epics doesn't
   require a migration.
-- `(category_id, doc_type)` is unique so the same category can never map twice
-  to the same doc type. Different doc types could theoretically map to the
-  same category, but the lookup uses `findActiveByCategoryId(...)` and returns
-  the first active mapping; documenting this as "categories must map to at
-  most one active doc type" is the rule the seed enforces.
+- `category_id` is unique so a category maps to exactly one clinical document
+  type in M2. Allowing two active doc types for one OpenEMR category would make
+  enqueue behavior depend on insertion order, which is not acceptable for a
+  clinical workflow switch.
 
 ### `clinical_document_processing_jobs`
 
@@ -416,42 +415,23 @@ final class DocumentUploadEnqueuerFactory
 The factory is a thin wiring shim. It is not unit-tested. The enqueuer
 behind it is fully unit-tested with mock repositories and a spy logger.
 
-## Hook In `library/ajax/upload.php`
+## Hook In `C_Document::upload_action_process()`
 
-Two call sites, both wrapped identically.
+`C_Document::upload_action_process()` is the single integration point for M2.
+It dispatches only after `Document::createDocument(...)` succeeds and a
+document id exists. `addNewDocument(...)` already calls this controller method,
+so the AJAX upload wrapper must not dispatch again from portal or core outer
+call sites.
 
-### Core path (line ~128)
-
-Currently:
-
-```php
-addNewDocument($name, $type, $tmp_name, '', $size, $owner, $patient_id, $category_id);
-```
-
-Change to capture the return and dispatch:
+The intended shape is:
 
 ```php
-$result = addNewDocument($name, $type, $tmp_name, '', $size, $owner, $patient_id, $category_id);
-
-\OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook::dispatch(
-    $patient_id,
-    $category_id,
-    $result,
-);
-```
-
-### Portal path (lines ~90-102)
-
-Currently captures `$data = addNewDocument(...)` and pushes onto `$rtn[]`.
-Add the same dispatch immediately after the existing capture, before the
-`$rtn[]` push (or after — order doesn't matter for portal correctness):
-
-```php
-\OpenEMR\AgentForge\Document\DocumentUploadEnqueuerHook::dispatch(
-    $pid,
-    $category,
-    $data,
-);
+if ($rc) {
+    $error .= $rc . "\n";
+} else {
+    $this->assign("upload_success", "true");
+    DocumentUploadEnqueuerHook::dispatch($patient_id, $category_id, ['doc_id' => $d->get_id()]);
+}
 ```
 
 ### `DocumentUploadEnqueuerHook::dispatch` helper
@@ -822,14 +802,15 @@ Files changed:
   boundary for read/write repositories.
 - `src/AgentForge/Observability/PatientRefHasher.php` added hashed
   `patient:<hash>` telemetry ids.
-- `library/ajax/upload.php` now dispatches the hook after both portal and core
-  `addNewDocument(...)` calls return a `doc_id`.
-- `controllers/C_Document.class.php` now dispatches the same hook after the
-  standard Documents screen's non-Dropzone upload path successfully creates a
-  document.
+- `controllers/C_Document.class.php` now dispatches the safe enqueue hook after
+  the shared OpenEMR document upload process successfully creates a document.
+- `library/ajax/upload.php` now relies on `addNewDocument(...)` routing through
+  `C_Document::upload_action_process()` and does not duplicate enqueue
+  dispatch from outer portal/core AJAX call sites.
 - `interface/patient_file/deleter.php` now calls
   `DocumentRetractionHook::dispatch(...)` after OpenEMR marks a document
-  deleted.
+  deleted; direct document deletes also verify that non-super users are acting
+  on the active session patient.
 - `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php`
   add the two document tables, retraction metadata columns on
   `clinical_document_processing_jobs`, and bump `v_database` to 539.
@@ -839,11 +820,18 @@ Files changed:
   sanitized document telemetry keys.
 - `tests/Tests/Isolated/AgentForge/Document/` and
   `SensitiveLogPolicyTest` cover M2 behavior.
+- Source-level integration tests prove the actual upload and delete wiring:
+  `C_Document` dispatches once, AJAX upload does not duplicate dispatch,
+  `addNewDocument(...)` uses the controller upload process, and delete retraction
+  happens after `documents.deleted=1`.
 
 Acceptance map:
 
 - New schema exists in install and upgrade SQL: implemented in
   `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql`.
+- Mapping determinism: `clinical_document_type_mappings` now has a unique
+  `category_id`, so one OpenEMR category cannot map to multiple clinical
+  document types.
 - Clinical document category mapping: implemented in `seed-demo-data.sql`;
   local rerun smoke kept `branded_categories=0` and exactly one
   `Lab Report -> lab_pdf` mapping.
@@ -979,13 +967,39 @@ Proof run:
   and AgentForge isolated PHPUnit passed (352 tests, 1686 assertions). The
   eval verdict remains `threshold_violation`; artifact:
   `agent-forge/eval-results/clinical-document-20260505-154754`.
+- Review hardening after the M2 full review removed duplicate AJAX enqueue
+  dispatch, made `C_Document::upload_action_process()` the single enqueue
+  integration point, added source-level integration wiring tests, made
+  `clinical_document_type_mappings.category_id` unique, added schema contract
+  tests for fresh/upgrade SQL shape, and added a direct document-delete active
+  patient guard for non-super users.
+- `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Document'`
+  passed after review hardening: 49 tests, 136 assertions.
+- `vendor/bin/phpcs library/ajax/upload.php interface/patient_file/deleter.php src/AgentForge/Document/DocumentUploadEnqueuer.php src/AgentForge/Document/DocumentUploadEnqueuerHook.php tests/Tests/Isolated/AgentForge/Document/DocumentIntegrationWiringTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSchemaContractTest.php tests/Tests/Isolated/AgentForge/Document/ClinicalDocumentSeedTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerHookTest.php`
+  passed: 9 / 9 files.
+- `vendor/bin/phpstan analyze --memory-limit=4G --configuration=phpstan.neon.dist src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document library/ajax/upload.php interface/patient_file/deleter.php .phpstan/baseline/variable.undefined.php`
+  passed after allowing PHPStan to open its local analysis socket.
+- `agent-forge/scripts/check-clinical-document.sh` was rerun after review
+  hardening. Diff whitespace, PHP syntax, shell syntax, and AgentForge isolated
+  PHPUnit passed (363 tests, 1730 assertions). The clinical eval verdict
+  remains `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-162038`.
+- After adding resolver-result validation to the upload hook, the focused
+  document suite passed again (50 tests, 136 assertions), focused PHPCS passed
+  (9 / 9 files), focused PHPStan passed with no errors, `git diff --check`
+  passed, and `agent-forge/scripts/check-clinical-document.sh` reached the
+  expected eval threshold step with AgentForge isolated PHPUnit passing
+  (364 tests, 1730 assertions). The clinical eval verdict remains
+  `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-162450`.
 
 Open proof gaps:
 
-- Fresh-install and upgrade-flow verification were approximated by checking the
-  install/upgrade SQL edits and validating the resulting tables in the
-  already-running local Docker DB; a destructive `docker compose down -v`
-  fresh-install cycle was not run to preserve the active validation stack.
+- Fresh-install and upgrade-flow verification now has source-level schema
+  contract tests, but a destructive `docker compose down -v` fresh-stack
+  reset/reseed was not run in this pass. Because the branded M2 schema was
+  never accepted or shipped, final local validation should prefer a reset/reseed
+  over supporting old partial `agentforge_document_*` tables.
 - Manual browser deletion through the actual OpenEMR modal still has not been
   repeated after the clinical-document rename. The corrected upload/retraction
   behavior is proven through in-container OpenEMR upload plus direct hook/DB

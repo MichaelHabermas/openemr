@@ -1220,7 +1220,7 @@ SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
 WHERE @lab_pdf_cat_id IS NOT NULL
     AND NOT EXISTS (
         SELECT 1 FROM clinical_document_type_mappings
-        WHERE category_id = @lab_pdf_cat_id AND doc_type = 'lab_pdf'
+        WHERE category_id = @lab_pdf_cat_id
     );
 
 COMMIT;

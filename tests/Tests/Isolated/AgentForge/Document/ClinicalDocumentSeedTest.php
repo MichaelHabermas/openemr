@@ -40,7 +40,7 @@ final class ClinicalDocumentSeedTest extends TestCase
         $this->assertStringContainsString("WHERE name = 'Lab Report'", $section);
         $this->assertStringContainsString('INSERT INTO clinical_document_type_mappings', $section);
         $this->assertStringContainsString("SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()", $section);
-        $this->assertStringContainsString('WHERE category_id = @lab_pdf_cat_id AND doc_type = \'lab_pdf\'', $section);
+        $this->assertStringContainsString('WHERE category_id = @lab_pdf_cat_id', $section);
     }
 
     public function testSeedDoesNotMapIntakeFormUntilARealCategoryIsChosen(): void

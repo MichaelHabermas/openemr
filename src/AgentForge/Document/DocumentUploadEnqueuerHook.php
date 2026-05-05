@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document;
 
 use DomainException;
+use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\BC\ServiceContainer;
@@ -24,7 +25,7 @@ final class DocumentUploadEnqueuerHook
      * @param mixed $patientId
      * @param mixed $categoryId
      * @param mixed $result
-     * @param null|callable(): DocumentUploadEnqueuer $enqueuerResolver
+     * @param null|callable(): mixed $enqueuerResolver
      */
     public static function dispatch(
         mixed $patientId,
@@ -45,12 +46,17 @@ final class DocumentUploadEnqueuerHook
             }
 
             $resolver = $enqueuerResolver ?? [DocumentUploadEnqueuerFactory::class, 'createDefault'];
-            $resolver()->enqueueIfEligible(
+            $enqueuer = $resolver();
+            if (!$enqueuer instanceof DocumentUploadEnqueuer) {
+                throw new RuntimeException('Document upload enqueuer resolver returned an invalid service.');
+            }
+
+            $enqueuer->enqueueIfEligible(
                 new PatientId((int) $patientId),
                 new DocumentId((int) $documentId),
                 new CategoryId((int) $categoryId),
             );
-        } catch (RuntimeException | DomainException $e) {
+        } catch (RuntimeException | DomainException | InvalidArgumentException $e) {
             ServiceContainer::getLogger()->error(
                 'clinical_document.job.hook_failed',
                 SensitiveLogPolicy::sanitizeContext(['error_code' => $e::class]),

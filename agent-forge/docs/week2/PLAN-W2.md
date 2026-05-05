@@ -109,10 +109,10 @@ Dependencies: None.
 Status: In progress.
 
 Implementation note (2026-05-05): M2 code, schema, seed data, upload hook,
-source-document retraction, isolated tests, PHPCS, PHPStan, and SQL-level local
-smoke checks are in place. Acceptance remains open for the final UI document
-delete smoke and the expected clinical eval `threshold_violation` from later
-extraction work.
+source-document retraction, source-level wiring tests, PHPCS, PHPStan, and
+SQL-level local smoke checks are in place. Acceptance remains open for a clean
+fresh-stack reset/reseed and the expected clinical eval `threshold_violation`
+from later extraction work.
 
 Goal: Reuse OpenEMR upload and enqueue extraction jobs only for mapped document categories.
 
@@ -130,7 +130,7 @@ Files/modules:
 
 Database changes:
 
-- Add `clinical_document_type_mappings`: `id`, `category_id`, `doc_type`, `active`, `created_at`, unique `(category_id, doc_type)`.
+- Add `clinical_document_type_mappings`: `id`, `category_id`, `doc_type`, `active`, `created_at`, unique `(category_id)` so one category maps to exactly one clinical document type.
 - Add `clinical_document_processing_jobs`: `id`, `patient_id`, `document_id`, `doc_type`, `status`, `attempts`, `lock_token`, `created_at`, `started_at`, `finished_at`, `error_code`, `error_message`, unique `(patient_id, document_id, doc_type)`.
 - Add job retraction metadata: `retracted_at`, `retraction_reason`.
 - Seed only the existing OpenEMR `Lab Report` category -> `lab_pdf`; leave `intake_form` unseeded until a real intake workflow category is chosen.
@@ -146,10 +146,9 @@ Tests/evals first:
 
 Implementation tasks:
 
-- In `library/ajax/upload.php`, capture `addNewDocument(...)` return value for core uploads and call `DocumentUploadEnqueuer::enqueueIfEligible($patientId, $docId, $categoryId)`.
+- In `C_Document::upload_action_process()`, dispatch the safe enqueue hook after `Document::createDocument(...)` succeeds. `addNewDocument(...)` already routes through this path, so outer AJAX callers must not dispatch a second time.
 - Do not modify low-level `Document::createDocument(...)` for AgentForge behavior.
-- Keep portal uploads out of MVP unless the same hook can support them without changing user workflow.
-- Enqueue errors must be logged as sanitized AgentForge metadata and must not fail the OpenEMR upload.
+- Enqueue errors must be logged as sanitized clinical-document metadata and must not fail the OpenEMR upload.
 - After OpenEMR marks a source document deleted, call a safe AgentForge retraction hook that marks all jobs for the document `retracted` with `source_document_deleted`.
 
 Acceptance criteria:
