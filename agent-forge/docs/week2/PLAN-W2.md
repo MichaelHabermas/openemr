@@ -109,9 +109,10 @@ Dependencies: None.
 Status: In progress.
 
 Implementation note (2026-05-05): M2 code, schema, seed data, upload hook,
-isolated tests, PHPCS, PHPStan, and SQL-level local smoke checks are in place.
-Acceptance remains open for the browser/manual upload smoke and the expected
-clinical eval `threshold_violation` from later extraction work.
+source-document retraction, isolated tests, PHPCS, PHPStan, and SQL-level local
+smoke checks are in place. Acceptance remains open for the final UI document
+delete smoke and the expected clinical eval `threshold_violation` from later
+extraction work.
 
 Goal: Reuse OpenEMR upload and enqueue extraction jobs only for mapped document categories.
 
@@ -129,9 +130,10 @@ Files/modules:
 
 Database changes:
 
-- Add `agentforge_document_type_mappings`: `id`, `category_id`, `doc_type`, `active`, `created_at`, unique `(category_id, doc_type)`.
-- Add `agentforge_document_jobs`: `id`, `patient_id`, `document_id`, `doc_type`, `status`, `attempts`, `lock_token`, `created_at`, `started_at`, `finished_at`, `error_code`, `error_message`, unique `(patient_id, document_id, doc_type)`.
-- Seed demo categories `AgentForge Lab PDF` -> `lab_pdf` and `AgentForge Intake Form` -> `intake_form`.
+- Add `clinical_document_type_mappings`: `id`, `category_id`, `doc_type`, `active`, `created_at`, unique `(category_id, doc_type)`.
+- Add `clinical_document_processing_jobs`: `id`, `patient_id`, `document_id`, `doc_type`, `status`, `attempts`, `lock_token`, `created_at`, `started_at`, `finished_at`, `error_code`, `error_message`, unique `(patient_id, document_id, doc_type)`.
+- Add job retraction metadata: `retracted_at`, `retraction_reason`.
+- Seed only the existing OpenEMR `Lab Report` category -> `lab_pdf`; leave `intake_form` unseeded until a real intake workflow category is chosen.
 
 Tests/evals first:
 
@@ -140,6 +142,7 @@ Tests/evals first:
 - Test unmapped categories do not enqueue.
 - Test duplicate upload/job enqueue is idempotent.
 - Test upload hook runs after `addNewDocument(...)` returns `doc_id`.
+- Test source-document deletion retracts every job for the document, including already-finished jobs, and is idempotent.
 
 Implementation tasks:
 
@@ -147,6 +150,7 @@ Implementation tasks:
 - Do not modify low-level `Document::createDocument(...)` for AgentForge behavior.
 - Keep portal uploads out of MVP unless the same hook can support them without changing user workflow.
 - Enqueue errors must be logged as sanitized AgentForge metadata and must not fail the OpenEMR upload.
+- After OpenEMR marks a source document deleted, call a safe AgentForge retraction hook that marks all jobs for the document `retracted` with `source_document_deleted`.
 
 Acceptance criteria:
 
@@ -154,6 +158,8 @@ Acceptance criteria:
 - Eligible categories create exactly one pending AgentForge job.
 - Ineligible uploads remain normal OpenEMR documents.
 - Upload latency is not blocked by extraction.
+- Deleting a source document makes all AgentForge jobs for that document non-processable by setting `status='retracted'`, `retracted_at`, and `retraction_reason='source_document_deleted'`.
+- M2 does not detect wrong-patient document content before upload; OpenEMR patient/category selection remains authoritative until later extraction/verification epics add content-level identity checks.
 
 Definition of done:
 
@@ -278,8 +284,8 @@ Files/modules:
 
 Database changes:
 
-- Add `agentforge_document_facts`: `id`, `patient_id`, `document_id`, `job_id`, `doc_type`, `fact_type`, `certainty`, `fact_fingerprint`, `fact_text`, `structured_value_json`, `citation_json`, `confidence`, `promoted_table`, `promoted_record_id`, `promotion_status`, `retracted_at`, `retraction_reason`, `active`, `created_at`, `deactivated_at`; unique `(patient_id, document_id, doc_type, fact_fingerprint)`.
-- Add `agentforge_document_fact_embeddings`: `fact_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
+- Add `clinical_document_facts`: `id`, `patient_id`, `document_id`, `job_id`, `doc_type`, `fact_type`, `certainty`, `fact_fingerprint`, `fact_text`, `structured_value_json`, `citation_json`, `confidence`, `promoted_table`, `promoted_record_id`, `promotion_status`, `retracted_at`, `retraction_reason`, `active`, `created_at`, `deactivated_at`; unique `(patient_id, document_id, doc_type, fact_fingerprint)`.
+- Add `clinical_document_fact_embeddings`: `fact_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
 - Use existing OpenEMR lab tables: `procedure_order`, `procedure_order_code`, `procedure_report`, and `procedure_result`.
 
 Tests/evals first:
@@ -304,7 +310,7 @@ Acceptance criteria:
 
 - Lab fixture creates chart-readable lab evidence through the existing `LabsEvidenceTool` path or an equivalent OpenEMR Observation-compatible path.
 - Intake findings are searchable and cited but not silently treated as chart truth.
-- Document fact vectors are stored only in `agentforge_document_fact_embeddings`.
+- Document fact vectors are stored only in `clinical_document_fact_embeddings`.
 
 Definition of done:
 
@@ -472,9 +478,9 @@ Files/modules:
 
 Database changes:
 
-- Use `agentforge_document_facts.retracted_at`, `retraction_reason`, `active`, `deactivated_at`.
+- Use `clinical_document_facts.retracted_at`, `retraction_reason`, `active`, `deactivated_at`.
 - Use embedding `active` flags.
-- If needed, add `agentforge_document_retractions`: `id`, `document_id`, `fact_id`, `promoted_table`, `promoted_record_id`, `status`, `created_at`.
+- If needed, add `clinical_document_retractions`: `id`, `document_id`, `fact_id`, `promoted_table`, `promoted_record_id`, `status`, `created_at`.
 
 Tests/evals first:
 

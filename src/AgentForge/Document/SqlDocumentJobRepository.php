@@ -31,7 +31,7 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
     public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
     {
         $this->executor->executeStatement(
-            'INSERT IGNORE INTO agentforge_document_jobs '
+            'INSERT IGNORE INTO clinical_document_processing_jobs '
             . '(patient_id, document_id, doc_type, status, attempts, created_at) '
             . 'VALUES (?, ?, ?, ?, 0, NOW())',
             [$patientId->value, $documentId->value, $docType->value, JobStatus::Pending->value],
@@ -45,12 +45,29 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
         return $job->id;
     }
 
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        return $this->executor->executeAffected(
+            'UPDATE clinical_document_processing_jobs '
+            . 'SET status = ?, retracted_at = NOW(), retraction_reason = ?, '
+            . 'finished_at = COALESCE(finished_at, NOW()), lock_token = NULL '
+            . 'WHERE document_id = ? AND status <> ?',
+            [
+                JobStatus::Retracted->value,
+                $reason->value,
+                $documentId->value,
+                JobStatus::Retracted->value,
+            ],
+        );
+    }
+
     public function findById(DocumentJobId $id): ?DocumentJob
     {
         $records = $this->executor->fetchRecords(
             'SELECT id, patient_id, document_id, doc_type, status, attempts, lock_token, '
-            . 'created_at, started_at, finished_at, error_code, error_message '
-            . 'FROM agentforge_document_jobs WHERE id = ? LIMIT 1',
+            . 'created_at, started_at, finished_at, error_code, error_message, '
+            . 'retracted_at, retraction_reason '
+            . 'FROM clinical_document_processing_jobs WHERE id = ? LIMIT 1',
             [$id->value],
         );
 
@@ -64,8 +81,9 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
     ): ?DocumentJob {
         $records = $this->executor->fetchRecords(
             'SELECT id, patient_id, document_id, doc_type, status, attempts, lock_token, '
-            . 'created_at, started_at, finished_at, error_code, error_message '
-            . 'FROM agentforge_document_jobs '
+            . 'created_at, started_at, finished_at, error_code, error_message, '
+            . 'retracted_at, retraction_reason '
+            . 'FROM clinical_document_processing_jobs '
             . 'WHERE patient_id = ? AND document_id = ? AND doc_type = ? LIMIT 1',
             [$patientId->value, $documentId->value, $docType->value],
         );
@@ -89,6 +107,8 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
             finishedAt: $this->optionalDateTime($record['finished_at'] ?? null),
             errorCode: $this->optionalString($record['error_code'] ?? null),
             errorMessage: $this->optionalString($record['error_message'] ?? null),
+            retractedAt: $this->optionalDateTime($record['retracted_at'] ?? null),
+            retractionReason: $this->optionalRetractionReason($record['retraction_reason'] ?? null),
         );
     }
 
@@ -130,5 +150,14 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository
         }
 
         return new DateTimeImmutable($this->stringValue($value, 'date_time'));
+    }
+
+    private function optionalRetractionReason(mixed $value): ?DocumentRetractionReason
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return DocumentRetractionReason::fromStringOrThrow($this->stringValue($value, 'retraction_reason'));
     }
 }

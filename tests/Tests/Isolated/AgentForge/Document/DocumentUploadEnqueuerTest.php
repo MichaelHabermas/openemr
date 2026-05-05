@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentJobRepository;
+use OpenEMR\AgentForge\Document\DocumentRetractionReason;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\DocumentTypeMapping;
 use OpenEMR\AgentForge\Document\DocumentTypeMappingRepository;
@@ -53,7 +54,7 @@ final class DocumentUploadEnqueuerTest extends TestCase
         $this->assertNull($job->lockToken);
         $this->assertCount(1, $logger->records);
         $this->assertSame('info', $logger->records[0]['level']);
-        $this->assertSame('agentforge.document.job.enqueued', $logger->records[0]['message']);
+        $this->assertSame('clinical_document.job.enqueued', $logger->records[0]['message']);
         $this->assertSame($hasher->hash(new PatientId(900001)), $logger->records[0]['context']['patient_ref']);
         $this->assertArrayNotHasKey('patient_id', $logger->records[0]['context']);
     }
@@ -230,6 +231,8 @@ final class InMemoryDocumentJobRepository implements DocumentJobRepository
             finishedAt: null,
             errorCode: null,
             errorMessage: null,
+            retractedAt: null,
+            retractionReason: null,
         );
 
         return $id;
@@ -244,6 +247,36 @@ final class InMemoryDocumentJobRepository implements DocumentJobRepository
         }
 
         return null;
+    }
+
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        $retracted = 0;
+        foreach ($this->jobs as $index => $job) {
+            if ($job->documentId->value !== $documentId->value || $job->status === JobStatus::Retracted) {
+                continue;
+            }
+
+            $this->jobs[$index] = new DocumentJob(
+                id: $job->id,
+                patientId: $job->patientId,
+                documentId: $job->documentId,
+                docType: $job->docType,
+                status: JobStatus::Retracted,
+                attempts: $job->attempts,
+                lockToken: null,
+                createdAt: $job->createdAt,
+                startedAt: $job->startedAt,
+                finishedAt: $job->finishedAt ?? new DateTimeImmutable('2026-05-05T00:00:00+00:00'),
+                errorCode: $job->errorCode,
+                errorMessage: $job->errorMessage,
+                retractedAt: new DateTimeImmutable('2026-05-05T00:00:00+00:00'),
+                retractionReason: $reason,
+            );
+            $retracted++;
+        }
+
+        return $retracted;
     }
 
     public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
@@ -285,6 +318,11 @@ final class ThrowingDocumentJobRepository implements DocumentJobRepository
     public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
     {
         return null;
+    }
+
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        throw new RuntimeException('job unavailable');
     }
 }
 

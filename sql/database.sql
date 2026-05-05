@@ -15383,21 +15383,21 @@ INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('org
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('organization-type', 'bus', 'Non-Healthcare Business or Corporation', 110);
 INSERT INTO `list_options` (`list_id`, `option_id`, `title`, `seq`) VALUES ('organization-type', 'other', 'Other', 120);
 
--- AgentForge Week 2 document ingestion tables
-DROP TABLE IF EXISTS `agentforge_document_type_mappings`;
-CREATE TABLE `agentforge_document_type_mappings` (
+-- Week 2 clinical document ingestion tables
+DROP TABLE IF EXISTS `clinical_document_type_mappings`;
+CREATE TABLE `clinical_document_type_mappings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `category_id` int(11) NOT NULL,
   `doc_type` varchar(32) NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_agentforge_doctype_mapping` (`category_id`, `doc_type`),
-  KEY `idx_agentforge_doctype_active` (`active`, `category_id`)
+  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`, `doc_type`),
+  KEY `idx_clinical_document_type_active` (`active`, `category_id`)
 ) ENGINE=InnoDB;
 
-DROP TABLE IF EXISTS `agentforge_document_jobs`;
-CREATE TABLE `agentforge_document_jobs` (
+DROP TABLE IF EXISTS `clinical_document_processing_jobs`;
+CREATE TABLE `clinical_document_processing_jobs` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `patient_id` int(11) NOT NULL,
   `document_id` int(11) NOT NULL,
@@ -15410,9 +15410,11 @@ CREATE TABLE `agentforge_document_jobs` (
   `finished_at` datetime NULL,
   `error_code` varchar(64) NULL,
   `error_message` text NULL,
+  `retracted_at` datetime NULL,
+  `retraction_reason` varchar(64) NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_agentforge_job_doc` (`patient_id`, `document_id`, `doc_type`),
-  KEY `idx_agentforge_job_status_created` (`status`, `created_at`)
+  UNIQUE KEY `uniq_clinical_document_processing_job` (`patient_id`, `document_id`, `doc_type`),
+  KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
 ) ENGINE=InnoDB;
 
 -- Doctrine Migrations tracking

@@ -52,7 +52,7 @@ final class DocumentUploadEnqueuerHook
             );
         } catch (RuntimeException | DomainException $e) {
             ServiceContainer::getLogger()->error(
-                'agentforge.document.job.hook_failed',
+                'clinical_document.job.hook_failed',
                 SensitiveLogPolicy::sanitizeContext(['error_code' => $e::class]),
             );
         }

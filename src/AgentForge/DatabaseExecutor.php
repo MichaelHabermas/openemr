@@ -24,5 +24,8 @@ interface DatabaseExecutor
     public function executeStatement(string $sql, array $binds = []): void;
 
     /** @param list<mixed> $binds */
+    public function executeAffected(string $sql, array $binds = []): int;
+
+    /** @param list<mixed> $binds */
     public function insert(string $sql, array $binds = []): int;
 }

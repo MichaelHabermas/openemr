@@ -29,6 +29,14 @@ final class DefaultDatabaseExecutor implements DatabaseExecutor
         QueryUtils::sqlStatementThrowException($sql, $binds);
     }
 
+    public function executeAffected(string $sql, array $binds = []): int
+    {
+        QueryUtils::sqlStatementThrowException($sql, $binds);
+        $affected = QueryUtils::affectedRows();
+
+        return $affected === false ? 0 : $affected;
+    }
+
     public function insert(string $sql, array $binds = []): int
     {
         return QueryUtils::sqlInsert($sql, $binds);

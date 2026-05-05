@@ -18,6 +18,8 @@ interface DocumentJobRepository
 {
     public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId;
 
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int;
+
     public function findById(DocumentJobId $id): ?DocumentJob;
 
     public function findOneByUniqueKey(

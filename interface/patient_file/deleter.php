@@ -20,6 +20,7 @@
 
 require_once('../globals.php');
 
+use OpenEMR\AgentForge\Document\DocumentRetractionHook;
 use OpenEMR\BC\Utilities;
 use OpenEMR\Billing\BillingUtilities;
 use OpenEMR\Common\Acl\AccessDeniedHelper;
@@ -185,6 +186,7 @@ function form_delete($formdir, $formid, $patient_id, $encounter_id): void
 function delete_document($document): void
 {
     QueryUtils::sqlStatementThrowException("UPDATE `documents` SET `deleted` = 1 WHERE id = ?", [$document]);
+    DocumentRetractionHook::dispatch($document);
     deleter_row_delete("categories_to_documents", "document_id = ?", [$document]);
     deleter_row_delete("gprelations", "type1 = 1 AND id1 = ?", [$document]);
 }

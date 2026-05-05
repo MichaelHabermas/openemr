@@ -42,7 +42,7 @@ final readonly class DocumentUploadEnqueuer
 
             $jobId = $this->jobs->enqueue($patientId, $documentId, $mapping->docType);
             $this->logger->info(
-                'agentforge.document.job.enqueued',
+                'clinical_document.job.enqueued',
                 SensitiveLogPolicy::sanitizeContext([
                     'patient_ref' => $this->patientRefHasher->hash($patientId),
                     'document_id' => $documentId->value,
@@ -55,7 +55,7 @@ final readonly class DocumentUploadEnqueuer
             return $jobId;
         } catch (RuntimeException | DomainException $e) {
             $this->logger->error(
-                'agentforge.document.job.enqueue_failed',
+                'clinical_document.job.enqueue_failed',
                 SensitiveLogPolicy::sanitizeContext([
                     'document_id' => $documentId->value,
                     'category_id' => $categoryId->value,

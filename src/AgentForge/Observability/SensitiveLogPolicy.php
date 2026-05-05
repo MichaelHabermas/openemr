@@ -45,8 +45,11 @@ final class SensitiveLogPolicy
         'doc_type' => true,
         'job_id' => true,
         'worker' => true,
+        'status' => true,
         'attempts' => true,
+        'count' => true,
         'error_code' => true,
+        'retraction_reason' => true,
     ];
 
     /** @var array<string, true> */

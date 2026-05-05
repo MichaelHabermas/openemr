@@ -35,7 +35,7 @@ final readonly class SqlDocumentTypeMappingRepository implements DocumentTypeMap
     {
         $records = $this->executor->fetchRecords(
             'SELECT id, category_id, doc_type, active, created_at '
-            . 'FROM agentforge_document_type_mappings '
+            . 'FROM clinical_document_type_mappings '
             . 'WHERE category_id = ? AND active = 1 '
             . 'ORDER BY id ASC LIMIT 1',
             [$categoryId->value],
@@ -48,7 +48,7 @@ final readonly class SqlDocumentTypeMappingRepository implements DocumentTypeMap
         try {
             return $this->hydrate($records[0]);
         } catch (DomainException | InvalidArgumentException $e) {
-            $this->logger->warning('agentforge.document.mapping.invalid', [
+            $this->logger->warning('clinical_document.mapping.invalid', [
                 'category_id' => $categoryId->value,
                 'error_code' => $e::class,
             ]);

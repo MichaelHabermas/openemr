@@ -30,6 +30,8 @@ final readonly class DocumentJob
         public ?DateTimeImmutable $finishedAt,
         public ?string $errorCode,
         public ?string $errorMessage,
+        public ?DateTimeImmutable $retractedAt,
+        public ?DocumentRetractionReason $retractionReason,
     ) {
     }
 }

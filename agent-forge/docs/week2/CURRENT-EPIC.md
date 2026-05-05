@@ -25,7 +25,7 @@ exactly as before.
 
 In scope:
 
-- New tables `agentforge_document_type_mappings` and `agentforge_document_jobs`.
+- New tables `clinical_document_type_mappings` and `clinical_document_processing_jobs`.
 - `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php` updates.
 - Seed entries in `agent-forge/sql/seed-demo-data.sql` for two demo categories
   and their mappings.
@@ -102,18 +102,18 @@ Reused (do NOT duplicate):
 
 ## Schema
 
-### `agentforge_document_type_mappings`
+### `clinical_document_type_mappings`
 
 ```sql
-CREATE TABLE `agentforge_document_type_mappings` (
+CREATE TABLE `clinical_document_type_mappings` (
   `id`          INT          NOT NULL AUTO_INCREMENT,
   `category_id` INT          NOT NULL,
   `doc_type`    VARCHAR(32)  NOT NULL,
   `active`      TINYINT(1)   NOT NULL DEFAULT 1,
   `created_at`  DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_agentforge_doctype_mapping` (`category_id`, `doc_type`),
-  KEY `idx_agentforge_doctype_active` (`active`, `category_id`)
+  UNIQUE KEY `uniq_clinical_document_type_mapping` (`category_id`, `doc_type`),
+  KEY `idx_clinical_document_type_active` (`active`, `category_id`)
 ) ENGINE=InnoDB;
 ```
 
@@ -128,10 +128,10 @@ Notes:
   the first active mapping; documenting this as "categories must map to at
   most one active doc type" is the rule the seed enforces.
 
-### `agentforge_document_jobs`
+### `clinical_document_processing_jobs`
 
 ```sql
-CREATE TABLE `agentforge_document_jobs` (
+CREATE TABLE `clinical_document_processing_jobs` (
   `id`            BIGINT       NOT NULL AUTO_INCREMENT,
   `patient_id`    INT          NOT NULL,
   `document_id`   INT          NOT NULL,
@@ -145,8 +145,8 @@ CREATE TABLE `agentforge_document_jobs` (
   `error_code`    VARCHAR(64)      NULL,
   `error_message` TEXT             NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_agentforge_job_doc` (`patient_id`, `document_id`, `doc_type`),
-  KEY `idx_agentforge_job_status_created` (`status`, `created_at`)
+  UNIQUE KEY `uniq_clinical_document_processing_job` (`patient_id`, `document_id`, `doc_type`),
+  KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
 ) ENGINE=InnoDB;
 ```
 
@@ -167,12 +167,12 @@ Notes:
 Append at the end using OpenEMR's existing migration syntax:
 
 ```text
-#IfNotTable agentforge_document_type_mappings
-CREATE TABLE `agentforge_document_type_mappings` ( ... ) ENGINE=InnoDB;
+#IfNotTable clinical_document_type_mappings
+CREATE TABLE `clinical_document_type_mappings` ( ... ) ENGINE=InnoDB;
 #EndIf
 
-#IfNotTable agentforge_document_jobs
-CREATE TABLE `agentforge_document_jobs` ( ... ) ENGINE=InnoDB;
+#IfNotTable clinical_document_processing_jobs
+CREATE TABLE `clinical_document_processing_jobs` ( ... ) ENGINE=InnoDB;
 #EndIf
 ```
 
@@ -182,34 +182,27 @@ Change `$v_database` from `538` to `539`. No other version fields change.
 
 ### Seed (`agent-forge/sql/seed-demo-data.sql`)
 
-Idempotent insert pattern for the two demo categories and their mappings.
+Idempotent insert pattern for existing OpenEMR categories and their mappings.
 Sketch:
 
 ```sql
--- AgentForge Lab PDF
-INSERT INTO categories (name, parent, aco_spec)
-SELECT 'AgentForge Lab PDF', 1, 'patients|docs'
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE name = 'AgentForge Lab PDF');
+SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'Lab Report' LIMIT 1);
 
-SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'AgentForge Lab PDF' LIMIT 1);
-
-INSERT INTO agentforge_document_type_mappings (category_id, doc_type, active, created_at)
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
 SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
 WHERE NOT EXISTS (
-  SELECT 1 FROM agentforge_document_type_mappings
+  SELECT 1 FROM clinical_document_type_mappings
   WHERE category_id = @lab_pdf_cat_id AND doc_type = 'lab_pdf'
 );
 
--- AgentForge Intake Form: same pattern with name='AgentForge Intake Form', doc_type='intake_form'.
+-- intake_form is supported by code but intentionally not seeded until a real
+-- OpenEMR intake workflow category is chosen.
 ```
 
 Notes:
 
 - The pattern is idempotent: re-running the seed does not duplicate rows.
-- `parent=1` matches OpenEMR's "Categories" root.
-- `aco_spec='patients|docs'` matches the default for chart-attached categories.
-- The `categories.id` allocation goes through whatever sequence OpenEMR uses
-  on insert — the seed reads back the id by name immediately after.
+- The seed must not create visible implementation-branded document categories.
 
 ## Module Design (`src/AgentForge/Document/`)
 
@@ -324,7 +317,7 @@ interface DocumentJobRepository
 `SqlDocumentTypeMappingRepository`:
 
 - Queries `SELECT id, category_id, doc_type, active, created_at
-  FROM agentforge_document_type_mappings
+  FROM clinical_document_type_mappings
   WHERE category_id = ? AND active = 1
   LIMIT 1`.
 - Hydrates a `DocumentTypeMapping` (skipping unknown `doc_type` strings → log
@@ -333,7 +326,7 @@ interface DocumentJobRepository
 `SqlDocumentJobRepository`:
 
 - `enqueue(...)`:
-  - `INSERT INTO agentforge_document_jobs (...) VALUES (...)` with
+  - `INSERT INTO clinical_document_processing_jobs (...) VALUES (...)` with
     `created_at = NOW()`, `status = 'pending'`, `attempts = 0`.
   - On duplicate-key (the unique constraint), do a `SELECT id` for the
     existing row and return its id. Two acceptable implementations:
@@ -368,7 +361,7 @@ final class DocumentUploadEnqueuer
 
             $jobId = $this->jobs->enqueue($patientId, $documentId, $mapping->docType);
 
-            $this->logger->info('agentforge.document.job.enqueued', [
+            $this->logger->info('clinical_document.job.enqueued', [
                 'patient_ref' => $this->patientRefHasher->hash($patientId),
                 'document_id' => $documentId->value,
                 'category_id' => $categoryId->value,
@@ -378,7 +371,7 @@ final class DocumentUploadEnqueuer
 
             return $jobId;
         } catch (\Throwable $e) {
-            $this->logger->error('agentforge.document.job.enqueue_failed', [
+            $this->logger->error('clinical_document.job.enqueue_failed', [
                 'document_id' => $documentId->value,
                 'category_id' => $categoryId->value,
                 'error_code'  => $e::class,
@@ -542,7 +535,7 @@ Uses the in-memory stubs plus a recording logger. Cases:
 1. **Mapped active category → one pending job created.** Stub mapping is
    active; enqueue returns a non-null `DocumentJobId`; stub job repo has
    exactly one job with `status = pending`, `attempts = 0`,
-   `lock_token = null`. Logger received `agentforge.document.job.enqueued`
+   `lock_token = null`. Logger received `clinical_document.job.enqueued`
    exactly once.
 
 2. **Mapped inactive category → no enqueue.** Stub returns null on inactive
@@ -559,7 +552,7 @@ Uses the in-memory stubs plus a recording logger. Cases:
 
 5. **Mapping repo throws → caught and logged, returns null.** Stub mapping
    repo throws `\RuntimeException`; result is `null`; zero jobs; logger
-   received `agentforge.document.job.enqueue_failed` once with `error_code`
+   received `clinical_document.job.enqueue_failed` once with `error_code`
    = the exception class. No exception escapes `enqueueIfEligible`.
 
 6. **Job repo throws → caught and logged, returns null.** Same shape as 5
@@ -647,8 +640,8 @@ This deliberately matches the existing AgentForge isolated-test convention
 1. Normal OpenEMR upload still creates a `documents` row first; user-facing
    upload behavior is unchanged.
 2. Mapped active category creates exactly one pending row in
-   `agentforge_document_jobs` with the correct `doc_type`.
-3. Unmapped categories create no row in `agentforge_document_jobs`.
+   `clinical_document_processing_jobs` with the correct `doc_type`.
+3. Unmapped categories create no row in `clinical_document_processing_jobs`.
 4. Inactive mappings create no row.
 5. Duplicate uploads of the same `(patient_id, document_id, doc_type)` do
    not create duplicate jobs (DB unique constraint enforces).
@@ -702,8 +695,8 @@ docker compose exec mysql mysql -uroot -proot openemr \
   -e "SHOW TABLES LIKE 'agentforge_%';"
 ```
 
-Expect rows for `agentforge_document_type_mappings` and
-`agentforge_document_jobs`.
+Expect rows for `clinical_document_type_mappings` and
+`clinical_document_processing_jobs`.
 
 ### Schema migration on existing install
 
@@ -722,36 +715,36 @@ Then:
 
 ```bash
 docker compose exec openemr mysql -uroot -proot openemr \
-  -e "SELECT id, name FROM categories WHERE name LIKE 'AgentForge%';"
+  -e "SELECT COUNT(*) AS branded_categories FROM categories WHERE name LIKE 'AgentForge%';"
 docker compose exec openemr mysql -uroot -proot openemr \
-  -e "SELECT category_id, doc_type, active FROM agentforge_document_type_mappings;"
+  -e "SELECT c.name, m.doc_type, m.active FROM clinical_document_type_mappings m JOIN categories c ON c.id = m.category_id;"
 ```
 
-Expect two categories and two active mappings. Re-run the seed; counts do
-not change (idempotency).
+Expect zero branded categories and one active `Lab Report -> lab_pdf` mapping.
+Re-run the seed; counts do not change (idempotency).
 
 ### Hook (manual UI check)
 
 1. Log into OpenEMR at `http://localhost:8300/` as `admin / pass`.
 2. Open a demo patient chart.
-3. Documents → upload a small PDF to category `AgentForge Lab PDF`.
+3. Documents → upload a small PDF to category `Lab Report`.
 4. SQL: `SELECT id, patient_id, document_id, doc_type, status FROM
-   agentforge_document_jobs;` — expect exactly one row, `status='pending'`.
+   clinical_document_processing_jobs;` — expect exactly one row, `status='pending'`.
 5. Upload the same PDF again to the same category — verify still one job
    row (idempotency by unique constraint).
-6. Upload a PDF to a non-AgentForge category (e.g., `Lab Report` id 2) —
+6. Upload a PDF to an unmapped category (for example, `Medical Record`) —
    verify still one job row (no new enqueue).
-7. Upload a PDF to `AgentForge Intake Form` — verify a second job row
-   appears with `doc_type='intake_form'`.
+7. Intake form upload mapping is intentionally not manually smoked in M2 because
+   no real intake workflow category has been selected yet.
 
 ### Failure injection
 
-1. `DROP TABLE agentforge_document_jobs;`
-2. Upload a PDF to `AgentForge Lab PDF`.
+1. `DROP TABLE clinical_document_processing_jobs;`
+2. Upload a PDF to `Lab Report`.
 3. Verify the upload still succeeds (file appears in chart, no error to
    user).
 4. Verify the AgentForge log/error log contains a sanitized
-   `agentforge.document.job.enqueue_failed` entry with `error_code` set
+   `clinical_document.job.enqueue_failed` entry with `error_code` set
    and no patient name, no document text, no PHI.
 5. Re-create the table and verify behavior returns to normal.
 
@@ -775,7 +768,7 @@ eval failures from M1 remain (expected at this stage).
   if only the last doc id is enqueued for a multi-file upload. Earlier
   files in a multi-file upload may not be enqueued at the time of upload;
   M3 can introduce a sweep job that scans recent `documents` rows in
-  mapped categories without an `agentforge_document_jobs` row and back-fills
+  mapped categories without an `clinical_document_processing_jobs` row and back-fills
   if this turns out to matter. Document this as known M2 behavior and
   revisit only if it shows up in eval cases.
 
@@ -787,10 +780,10 @@ eval failures from M1 remain (expected at this stage).
   shim that the enqueuer is decoupled from. If a future epic introduces a
   proper container, the factory becomes a one-line service definition.
 
-- **Seeded category names.** Demo categories are named `AgentForge Lab PDF`
-  and `AgentForge Intake Form`. They are visible in the UI to anyone using
-  the demo seed. This is expected; production deployments would map their
-  real lab/intake categories instead.
+- **Mapped category names.** M2 maps existing OpenEMR categories. It must not
+  create visible implementation-branded document categories. The demo seed maps
+  `Lab Report` to `lab_pdf` and leaves `intake_form` unseeded until a real
+  intake workflow category is selected.
 
 - **Allowlist drift.** Adding `worker` to the allowlist now (before M3
   uses it) is intentional to avoid a second allowlist migration in the
@@ -804,16 +797,16 @@ eval failures from M1 remain (expected at this stage).
 
 ## Notes For Future Epics (Not In Scope)
 
-- M3 will read `agentforge_document_jobs` with `lock_token` for atomic
+- M3 will read `clinical_document_processing_jobs` with `lock_token` for atomic
   claim. Schema is already in place.
 - M3 will add `agentforge_worker_heartbeats` and a `worker` column on
   telemetry events that M2's allowlist already permits.
-- M5 will add `agentforge_document_facts` and embeddings; the `documents.id`
+- M5 will add `clinical_document_facts` and embeddings; the `documents.id`
   it references is the same id we enqueue here.
 
 ## Implementation Progress - 2026-05-05
 
-Status: Completed.
+Status: In progress.
 
 Files changed:
 
@@ -821,6 +814,9 @@ Files changed:
   value objects, DTOs, repository interfaces, SQL repositories,
   `DocumentUploadEnqueuer`, `DocumentUploadEnqueuerFactory`, and
   `DocumentUploadEnqueuerHook`.
+- `src/AgentForge/Document/DocumentRetractionReason.php` and
+  `DocumentRetractionHook.php` added the source-document deletion retraction
+  contract.
 - `src/AgentForge/DatabaseExecutor.php` and
   `src/AgentForge/DefaultDatabaseExecutor.php` added a small AgentForge SQL
   boundary for read/write repositories.
@@ -831,10 +827,14 @@ Files changed:
 - `controllers/C_Document.class.php` now dispatches the same hook after the
   standard Documents screen's non-Dropzone upload path successfully creates a
   document.
+- `interface/patient_file/deleter.php` now calls
+  `DocumentRetractionHook::dispatch(...)` after OpenEMR marks a document
+  deleted.
 - `sql/database.sql`, `sql/8_1_0-to-8_1_1_upgrade.sql`, and `version.php`
-  add the two document tables and bump `v_database` to 539.
-- `agent-forge/sql/seed-demo-data.sql` seeds the two demo document categories
-  and idempotent mappings.
+  add the two document tables, retraction metadata columns on
+  `clinical_document_processing_jobs`, and bump `v_database` to 539.
+- `agent-forge/sql/seed-demo-data.sql` maps the existing `Lab Report` category
+  to `lab_pdf` and does not create implementation-branded document categories.
 - `src/AgentForge/Observability/SensitiveLogPolicy.php` allows the new
   sanitized document telemetry keys.
 - `tests/Tests/Isolated/AgentForge/Document/` and
@@ -844,8 +844,9 @@ Acceptance map:
 
 - New schema exists in install and upgrade SQL: implemented in
   `sql/database.sql` and `sql/8_1_0-to-8_1_1_upgrade.sql`.
-- Demo category mappings: implemented in `seed-demo-data.sql`; local rerun
-  smoke kept `category_count=2` and `mapping_count=2`.
+- Clinical document category mapping: implemented in `seed-demo-data.sql`;
+  local rerun smoke kept `branded_categories=0` and exactly one
+  `Lab Report -> lab_pdf` mapping.
 - Eligible category enqueue: covered by isolated enqueuer tests, SQL-level
   unique-key smoke, in-container OpenEMR `addNewDocument(...)` smoke, and
   manual browser upload smoke through the standard Documents screen.
@@ -862,29 +863,51 @@ Acceptance map:
   enqueue log context; the policy also blocks raw quote/value-style keys such
   as `quote_or_value`, `raw_quote`, `raw_value`, `document_text`, and
   `extracted_fields`.
+- Source-document deletion retraction: implemented at the OpenEMR
+  `delete_document(...)` boundary. All jobs for the deleted `document_id` are
+  updated where `status <> 'retracted'` to `status='retracted'`,
+  `retracted_at=NOW()`, `retraction_reason='source_document_deleted'`,
+  `finished_at=COALESCE(finished_at, NOW())`, and `lock_token=NULL`.
+- Wrong-patient document handling: explicitly not M2 content validation.
+  OpenEMR upload destination remains authoritative; if the source document is
+  deleted, the current AgentForge jobs are retracted. Later extraction,
+  identity verification, fact, embedding, retrieval, and chart-promotion epics
+  must add downstream invalidation by `document_id`.
 
 Proof run:
 
 - `vendor/bin/phpunit -c phpunit-isolated.xml tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
-  passed after final review hardening: 30 tests, 81 assertions.
+  passed after clinical-document naming and seed hardening: 40 tests, 112 assertions.
 - `vendor/bin/phpunit -c phpunit-isolated.xml --filter 'Document|SensitiveLogPolicy'`
   passed: 102 tests, 678 assertions.
 - `vendor/bin/phpcs src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php library/ajax/upload.php`
   passed.
 - `vendor/bin/phpstan analyze --memory-limit=4G --configuration=phpstan.neon.dist src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php src/AgentForge/Observability/PatientRefHasher.php src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php`
   passed after allowing PHPStan to open its local analysis socket.
+- `vendor/bin/phpstan analyse --configuration=phpstan.neon.dist src/AgentForge tests/Tests/Isolated/AgentForge/Document tests/Tests/Isolated/AgentForge/SensitiveLogPolicyTest.php --memory-limit=1G`
+  passed for the full AgentForge source tree plus focused document/logging
+  tests.
+- `composer phpcs -- -n src/AgentForge/Document tests/Tests/Isolated/AgentForge/Document sql/8_1_0-to-8_1_1_upgrade.sql sql/database.sql agent-forge/sql/seed-demo-data.sql`
+  passed: 13 / 13 files.
+- `composer phpcs -- -n src/AgentForge/Document/DocumentRetractionHook.php src/AgentForge/Document/DocumentRetractionReason.php src/AgentForge/Document/DocumentJob.php src/AgentForge/Document/DocumentJobRepository.php src/AgentForge/Document/SqlDocumentJobRepository.php src/AgentForge/DatabaseExecutor.php src/AgentForge/DefaultDatabaseExecutor.php interface/patient_file/deleter.php tests/Tests/Isolated/AgentForge/Document/DocumentRetractionHookTest.php tests/Tests/Isolated/AgentForge/Document/DocumentRetractionReasonTest.php tests/Tests/Isolated/AgentForge/Document/DocumentUploadEnqueuerTest.php tests/Tests/Isolated/AgentForge/Document/SqlDocumentRepositoriesTest.php`
+  passed: 12 / 12 files.
 - Local Docker SQL smoke passed:
-  tables `agentforge_document_jobs` and `agentforge_document_type_mappings`
-  exist; categories `AgentForge Lab PDF` and `AgentForge Intake Form` exist;
-  mappings are active for `lab_pdf` and `intake_form`; rerunning the seed kept
-  counts at two categories and two mappings; duplicate job insert stayed at one
+  tables `clinical_document_processing_jobs` and `clinical_document_type_mappings`
+  exist; `Lab Report` exists; mapping is active for `lab_pdf`; rerunning the
+  seed kept the clinical-document mapping idempotent; duplicate job insert stayed at one
   pending row.
-- After review, the seed category nested-set positions were corrected and
-  re-smoked by deleting only the two AgentForge demo categories/mappings,
-  rerunning the seed, and verifying distinct category ranges:
-  `AgentForge Lab PDF` at `lft=68, rght=69` and
-  `AgentForge Intake Form` at `lft=71, rght=72`. A subsequent no-op seed rerun
-  kept the root category range stable (`root_before=73`, `root_after=73`).
+- After review, the branded category seed approach was deleted. The seed now
+  maps the existing `Lab Report` category directly and does not create document
+  categories for clinical-document processing.
+- Local dev DB was renamed and cleaned after the contract rename:
+  `agentforge_document_type_mappings` -> `clinical_document_type_mappings`,
+  `agentforge_document_jobs` -> `clinical_document_processing_jobs`, old index
+  names were renamed, temporary `AgentForge%` categories were removed,
+  documents `77` and `78` were marked deleted, category links for `77` and
+  `78` were removed, and job `5` for document `78` was retracted.
+- Corrected seed idempotency smoke passed: before and after rerunning
+  `seed-demo-data.sql`, `branded_categories=0` and
+  `Lab Report -> lab_pdf` mapping count stayed `1`.
 - `agent-forge/scripts/check-clinical-document.sh` partially passed after final
   closeout validation: diff whitespace, PHP syntax, shell syntax, and
   AgentForge isolated PHPUnit all passed (342 tests, 1655 assertions). The
@@ -903,18 +926,59 @@ Proof run:
   created document `76` and left `job_count_for_unmapped_category=0`.
 - Manual browser upload smoke initially found a real missed path: uploading
   `p01-chen-lipid-panel.pdf` through the visible standard Documents form
-  created document `77` in `AgentForge Lab PDF` but no AgentForge job. That
+  created document `77` in the temporary branded lab category but no clinical
+  document job. That
   form posts through `C_Document::upload_action_process()`, not the Dropzone
   `library/ajax/upload.php` path.
 - After hooking `C_Document::upload_action_process()`, manual browser upload
   smoke passed: the repeated upload created document `78` for patient `900001`
-  in category `35` (`AgentForge Lab PDF`) and inserted job `5` with
+  in the temporary branded lab category and inserted job `5` with
   `doc_type=lab_pdf`, `status=pending`, `attempts=0`; latest job count for
   document `78` was exactly `1`.
+- Corrected in-container OpenEMR upload smoke passed for the normal workflow:
+  uploading `p01-chen-lipid-panel-clinical-contract.pdf` to existing category
+  `Lab Report` created document `79` and job `6` in
+  `clinical_document_processing_jobs` with `doc_type=lab_pdf`,
+  `status=pending`, and no retraction metadata.
+- Local DB retraction schema delta was applied idempotently to the active dev
+  DB with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`; `DESCRIBE
+  clinical_document_processing_jobs` shows `retracted_at datetime NULL` and
+  `retraction_reason varchar(64) NULL`.
+- Simulated already-finished work proof passed on `document_id=75` / `job_id=3`:
+  the job was set to `succeeded` with a `manual-finished-token`, then
+  `DocumentRetractionHook::dispatch(75)` was invoked through the OpenEMR
+  container with `$ignoreAuth=true`; the row became `status=retracted`,
+  `lock_token=NULL`, `retracted_at=2026-05-05 15:18:26`, and
+  `retraction_reason=source_document_deleted`, while preserving the prior
+  `finished_at=2026-05-05 15:17:51`.
+- Repeated hook dispatch for `document_id=75` was idempotent: the row remained
+  `retracted` and `retracted_at` did not change.
+- Corrected retraction smoke for document `79` passed by applying the same DB
+  state transitions as `delete_document(...)` and invoking
+  `DocumentRetractionHook::dispatch(79)`: `documents.deleted=1`, category link
+  count `0`, job `6` became `status=retracted`, `retracted_at` was set, and
+  `retraction_reason=source_document_deleted`.
 - `composer phpunit-isolated` passed outside the sandbox after allowing the
   built-in routing-test server to bind to `127.0.0.1:8765`: 3073 tests, 8637
   assertions, 3 pre-existing warnings, 1 pre-existing notice, 3 skipped, 14
   incomplete.
+- `composer phpunit-isolated` was rerun during source-retraction hardening and
+  failed only because the local routing test server was unavailable at
+  `127.0.0.1:8765`: 3080 tests, 8640 assertions, 8 connection errors, 3
+  warnings, 1 notice, 3 skipped, 14 incomplete. The failing tests were
+  `OpenEMR\Tests\Isolated\BC\FrontControllerRoutingTest` cases.
+- `agent-forge/scripts/check-clinical-document.sh` was rerun during
+  source-retraction hardening. Diff whitespace, PHP syntax, shell syntax, and
+  AgentForge isolated PHPUnit passed (349 tests, 1672 assertions). The clinical
+  eval verdict remained `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-151634`. The artifact
+  shows the expected M1 downstream gaps: adapter status `not_implemented` for
+  extraction/retrieval cases, while `no_phi_in_logs` passed 8/8.
+- `agent-forge/scripts/check-clinical-document.sh` was rerun after the
+  clinical-document contract rename. Diff whitespace, PHP syntax, shell syntax,
+  and AgentForge isolated PHPUnit passed (352 tests, 1686 assertions). The
+  eval verdict remains `threshold_violation`; artifact:
+  `agent-forge/eval-results/clinical-document-20260505-154754`.
 
 Open proof gaps:
 
@@ -922,6 +986,11 @@ Open proof gaps:
   install/upgrade SQL edits and validating the resulting tables in the
   already-running local Docker DB; a destructive `docker compose down -v`
   fresh-install cycle was not run to preserve the active validation stack.
+- Manual browser deletion through the actual OpenEMR modal still has not been
+  repeated after the clinical-document rename. The corrected upload/retraction
+  behavior is proven through in-container OpenEMR upload plus direct hook/DB
+  transition smoke, and the UI delete path contains the same
+  `DocumentRetractionHook::dispatch(...)` call.
 - The clinical document eval gate still reports `threshold_violation` as
   expected before later worker/extraction epics replace the M1 not-implemented
   adapter.

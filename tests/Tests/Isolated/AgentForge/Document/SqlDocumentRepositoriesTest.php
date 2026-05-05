@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Document\CategoryId;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
+use OpenEMR\AgentForge\Document\DocumentRetractionReason;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
@@ -41,7 +42,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $mapping = (new SqlDocumentTypeMappingRepository($executor))->findActiveByCategoryId(new CategoryId(7));
 
         $this->assertSame(DocumentType::LabPdf, $mapping?->docType);
-        $this->assertStringContainsString('FROM agentforge_document_type_mappings', $executor->queries[0]['sql']);
+        $this->assertStringContainsString('FROM clinical_document_type_mappings', $executor->queries[0]['sql']);
         $this->assertSame([7], $executor->queries[0]['binds']);
     }
 
@@ -61,6 +62,8 @@ final class SqlDocumentRepositoriesTest extends TestCase
                 'finished_at' => null,
                 'error_code' => null,
                 'error_message' => null,
+                'retracted_at' => null,
+                'retraction_reason' => null,
             ],
         ]);
 
@@ -71,7 +74,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         );
 
         $this->assertSame(9, $jobId->value);
-        $this->assertStringContainsString('INSERT IGNORE INTO agentforge_document_jobs', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INSERT IGNORE INTO clinical_document_processing_jobs', $executor->statements[0]['sql']);
         $this->assertSame([900001, 123, 'lab_pdf', 'pending'], $executor->statements[0]['binds']);
         $this->assertStringContainsString('WHERE patient_id = ? AND document_id = ? AND doc_type = ?', $executor->queries[0]['sql']);
     }
@@ -92,6 +95,8 @@ final class SqlDocumentRepositoriesTest extends TestCase
                 'finished_at' => null,
                 'error_code' => null,
                 'error_message' => null,
+                'retracted_at' => null,
+                'retraction_reason' => null,
             ],
         ]);
 
@@ -101,6 +106,28 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertSame(900001, $job->patientId->value);
         $this->assertSame(DocumentType::LabPdf, $job->docType);
         $this->assertSame(JobStatus::Pending, $job->status);
+        $this->assertNull($job->retractedAt);
+        $this->assertNull($job->retractionReason);
+    }
+
+    public function testJobRepositoryRetractsAllJobsForDocument(): void
+    {
+        $executor = new DocumentRepositoryExecutor([], affectedRows: 2);
+
+        $count = (new SqlDocumentJobRepository($executor))->retractByDocument(
+            new DocumentId(123),
+            DocumentRetractionReason::SourceDocumentDeleted,
+        );
+
+        $this->assertSame(2, $count);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('SET status = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('retracted_at = NOW()', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('retraction_reason = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('finished_at = COALESCE(finished_at, NOW())', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('lock_token = NULL', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND status <> ?', $executor->statements[0]['sql']);
+        $this->assertSame(['retracted', 'source_document_deleted', 123, 'retracted'], $executor->statements[0]['binds']);
     }
 }
 
@@ -113,7 +140,7 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public array $statements = [];
 
     /** @param list<array<string, mixed>> $records */
-    public function __construct(private array $records)
+    public function __construct(private array $records, private int $affectedRows = 1)
     {
     }
 
@@ -127,6 +154,13 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public function executeStatement(string $sql, array $binds = []): void
     {
         $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+    }
+
+    public function executeAffected(string $sql, array $binds = []): int
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+
+        return $this->affectedRows;
     }
 
     public function insert(string $sql, array $binds = []): int

@@ -50,7 +50,7 @@ library/ajax/upload.php
   -> addNewDocument(...)
   -> OpenEMR stores file and creates documents.id
   -> AgentForge enqueueIfEligible(patient_id, document_id, category_id)
-  -> agentforge_document_jobs row created
+  -> clinical_document_processing_jobs row created
   -> agentforge-worker processes the job
 ```
 
@@ -70,7 +70,7 @@ AgentForge does not guess every uploaded PDF or image. Eligibility is driven by 
 A new mapping table records which OpenEMR categories trigger Week 2 extraction:
 
 ```text
-agentforge_document_type_mappings
+clinical_document_type_mappings
   id
   category_id
   doc_type
@@ -88,8 +88,8 @@ intake_form
 Seeded demo mappings:
 
 ```text
-AgentForge Lab PDF -> lab_pdf
-AgentForge Intake Form -> intake_form
+Lab Report -> lab_pdf
+(real intake category TBD) -> intake_form
 ```
 
 Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker.
@@ -101,7 +101,7 @@ Document extraction is automatic but not part of the upload request. Upload shou
 When an eligible document is uploaded, AgentForge immediately inserts a pending job:
 
 ```text
-agentforge_document_jobs
+clinical_document_processing_jobs
   id
   patient_id
   document_id
@@ -367,7 +367,7 @@ Certain, schema-valid, cited facts that map safely to existing OpenEMR tables ar
 ### AgentForge Tables
 
 ```text
-agentforge_document_facts
+clinical_document_facts
   id
   patient_id
   document_id
@@ -390,7 +390,7 @@ agentforge_document_facts
 ```
 
 ```text
-agentforge_document_fact_embeddings
+clinical_document_fact_embeddings
   fact_id
   embedding VECTOR(...)
   embedding_model
@@ -417,7 +417,7 @@ deactivate derived AgentForge document facts
 remove/deactivate their embeddings from retrieval
 retract or mark inactive OpenEMR records AgentForge promoted from that document
 stop using those rows as AgentForge evidence
-record the retraction on the originating agentforge_document_facts row
+record the retraction on the originating clinical_document_facts row
 ```
 
 This handles the wrong-document-upload case. If a user uploads the wrong lab PDF and later deletes it, facts derived from that document must not keep poisoning the chart. AgentForge should retract/deactivate rather than hard-delete where OpenEMR supports audit-friendly inactive/voided states. If a destination table has no safe inactive/retracted state, AgentForge stops using the row as evidence and creates a needs-review audit item.

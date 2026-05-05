@@ -60,18 +60,22 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - Do not log raw document text, extracted document fields, quotes, values, or images. These are clinical-content payloads and must stay out of telemetry.
 - Category mappings determine document-ingestion eligibility. Do not infer eligibility from filenames, MIME types, or opportunistic heuristics unless a later epic explicitly changes the contract.
 - M2 only creates idempotent `pending` document jobs after OpenEMR has successfully stored a document. Extraction, worker execution, fact persistence, guideline retrieval, and UI proof belong to later milestones.
+- Source document deletion is a lifecycle boundary. When an OpenEMR document is deleted, all AgentForge jobs tied to that `document_id` must become non-processable by moving to `retracted` with `retraction_reason=source_document_deleted`.
+- M2 retraction only invalidates current document jobs. Later fact, embedding, retrieval, and chart-promotion tables must carry `document_id` and their own retraction/audit metadata so deleted-source content cannot remain retrievable or promoted.
 - A passing syntax/test subset is not the same as the full clinical gate. Preserve exact gate caveats when an eval threshold is expected to fail before downstream implementation exists.
 
 ## Week 2 M2 Architecture Decisions
 
-- `agentforge_document_type_mappings` maps OpenEMR document categories to AgentForge document types.
-- `agentforge_document_jobs` is the durable queue table for document ingestion jobs.
+- `clinical_document_type_mappings` maps OpenEMR document categories to clinical document types.
+- `clinical_document_processing_jobs` is the durable queue table for document ingestion jobs.
 - `doc_type` and job status are represented as PHP backed enums and stored as strings in SQL, rather than database-specific enum types.
 - Job enqueue is idempotent for `(patient_id, document_id, doc_type)`.
 - Upload hooks run only after `addNewDocument(...)` returns a usable `doc_id`.
 - The same safe dispatch helper is used by both portal and core upload paths.
 - SQL repositories should go through a small AgentForge database executor boundary instead of duplicating raw helper calls.
 - Value objects should reject non-positive IDs at the boundary.
+- `DocumentRetractionReason` stores modeled source-document lifecycle reasons as strings; M2 has exactly `source_document_deleted`.
+- `retracted` is terminal for M2 document jobs. Future workers must ignore retracted jobs even if they were previously `pending`, `running`, `failed`, or `succeeded`.
 
 ## Week 2 M2 Lessons Learned
 
@@ -84,6 +88,8 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
   "Choose Files" form posts through `C_Document::upload_action_process()`,
   while Dropzone posts through `library/ajax/upload.php`. Hook both paths for
   document-ingestion behavior.
+- Wrong-patient document handling is not a delete workflow problem. M2 treats the OpenEMR upload destination as authoritative, creates a job for the uploaded source document if the category is mapped, and retracts that job if the source document is deleted. Content-level patient mismatch detection, rejection, or review belongs to extraction/verification later.
+- Retraction must cover already-finished jobs too. Until downstream fact/promotion tables exist, M2 can overwrite a `succeeded` job to `retracted`; later epics must preserve downstream audit metadata while preventing deleted-source content from being used.
 
 ## Week 2 M2 Proof Notes
 
@@ -99,6 +105,10 @@ The focused M2 verification used during implementation included:
   duplicate dispatch idempotency, and unmapped-category no-op.
 - Manual browser upload proof through the standard Documents screen passed
   after the `C_Document::upload_action_process()` hook was added.
+- Source-document retraction focused tests pass for the reason enum, in-memory repository idempotency, SQL repository update shape, and safe hook dispatch/failure behavior.
+- Local DB proof on 2026-05-05 simulated a `succeeded` job for `document_id=75`, invoked `DocumentRetractionHook::dispatch(75)`, and verified `status=retracted`, `lock_token=NULL`, `retracted_at` set, `retraction_reason=source_document_deleted`, with a repeated dispatch leaving the row unchanged.
+- M2 naming correction on 2026-05-05 removed branded persistent document-ingestion contracts: tables are `clinical_document_type_mappings` and `clinical_document_processing_jobs`, log events use `clinical_document.*`, and the seed maps existing `Lab Report -> lab_pdf` without creating visible `AgentForge...` document categories.
+- Corrected local DB proof on 2026-05-05 verified no `AgentForge%` categories, no old `agentforge_document_*` tables, exactly one `Lab Report -> lab_pdf` mapping, successful upload to `Lab Report` creating document `79` / job `6`, and retraction of job `6` after source-document deletion state transition.
 - Full `composer phpunit-isolated` passed outside the sandbox when the
   routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
   those routing tests with connection errors.
@@ -108,8 +118,9 @@ Do not claim full clinical-document acceptance from M2 alone unless schema edits
 
 ## Carry Forward To M3+
 
-- M3 worker work should build on `agentforge_document_jobs`, including `lock_token`, `locked_at`, attempts, heartbeat behavior, and safe retry semantics.
+- M3 worker work should build on `clinical_document_processing_jobs`, including `lock_token`, `locked_at`, attempts, heartbeat behavior, and safe retry semantics.
 - M3/M4 must preserve the upload safety contract: document upload is non-blocking and cannot be broken by AgentForge.
 - Document extraction must continue the no-raw-PHI logging posture established in M2.
 - Before claiming end-to-end acceptance, add or perform a manual browser upload smoke test for both core and portal paths.
 - If an active epic file is refreshed, move any reusable proof gaps, architectural decisions, or safety lessons here first.
+- Durable clinical schema names and user-visible workflow labels must describe the domain, not the implementing module or product. Use names such as `clinical_document_type_mappings` and normal OpenEMR categories such as `Lab Report`; do not introduce branded `AgentForge...` table names or document categories.

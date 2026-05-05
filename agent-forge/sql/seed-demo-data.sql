@@ -1212,67 +1212,15 @@ INSERT INTO procedure_result (
     'final'
 );
 
--- Week 2 document upload categories and AgentForge extraction mappings.
-SET @agentforge_lab_pdf_lft := (SELECT COALESCE(MAX(rght), 0) + 1 FROM categories);
-SET @agentforge_lab_pdf_rght := @agentforge_lab_pdf_lft + 1;
+-- Week 2 clinical document extraction mappings.
+SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'Lab Report' LIMIT 1);
 
-INSERT INTO categories (`id`, `name`, `value`, `parent`, `lft`, `rght`, `aco_spec`, `codes`)
-SELECT (SELECT COALESCE(MAX(c2.id), 0) + 1 FROM categories c2),
-    'AgentForge Lab PDF',
-    '',
-    1,
-    @agentforge_lab_pdf_lft,
-    @agentforge_lab_pdf_rght,
-    'patients|docs',
-    ''
-WHERE NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Lab PDF');
-
-SET @lab_pdf_category_inserted := ROW_COUNT();
-
-UPDATE categories_seq SET id = (SELECT MAX(id) FROM categories);
-UPDATE categories
-SET rght = GREATEST(rght, @agentforge_lab_pdf_rght + 1)
-WHERE name = 'Categories' AND @lab_pdf_category_inserted > 0;
-
-SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'AgentForge Lab PDF' LIMIT 1);
-
-INSERT INTO agentforge_document_type_mappings (category_id, doc_type, active, created_at)
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
 SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
 WHERE @lab_pdf_cat_id IS NOT NULL
     AND NOT EXISTS (
-        SELECT 1 FROM agentforge_document_type_mappings
+        SELECT 1 FROM clinical_document_type_mappings
         WHERE category_id = @lab_pdf_cat_id AND doc_type = 'lab_pdf'
-    );
-
-SET @agentforge_intake_form_lft := (SELECT COALESCE(MAX(rght), 0) + 1 FROM categories);
-SET @agentforge_intake_form_rght := @agentforge_intake_form_lft + 1;
-
-INSERT INTO categories (`id`, `name`, `value`, `parent`, `lft`, `rght`, `aco_spec`, `codes`)
-SELECT (SELECT COALESCE(MAX(c2.id), 0) + 1 FROM categories c2),
-    'AgentForge Intake Form',
-    '',
-    1,
-    @agentforge_intake_form_lft,
-    @agentforge_intake_form_rght,
-    'patients|docs',
-    ''
-WHERE NOT EXISTS (SELECT 1 FROM categories existing WHERE existing.name = 'AgentForge Intake Form');
-
-SET @intake_form_category_inserted := ROW_COUNT();
-
-UPDATE categories_seq SET id = (SELECT MAX(id) FROM categories);
-UPDATE categories
-SET rght = GREATEST(rght, @agentforge_intake_form_rght + 1)
-WHERE name = 'Categories' AND @intake_form_category_inserted > 0;
-
-SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'AgentForge Intake Form' LIMIT 1);
-
-INSERT INTO agentforge_document_type_mappings (category_id, doc_type, active, created_at)
-SELECT @intake_form_cat_id, 'intake_form', 1, NOW()
-WHERE @intake_form_cat_id IS NOT NULL
-    AND NOT EXISTS (
-        SELECT 1 FROM agentforge_document_type_mappings
-        WHERE category_id = @intake_form_cat_id AND doc_type = 'intake_form'
     );
 
 COMMIT;
