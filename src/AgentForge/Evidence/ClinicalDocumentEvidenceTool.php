@@ -136,7 +136,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                     $parts[] = sprintf('%s: %s', $name, $value);
                 }
             }
-            $parts[] = sprintf('Citation: %s, %s, %s', $docType, $page, $field);
+            $parts[] = $this->evidenceCitationSuffix($docType, $page, $field);
 
             return new EvidenceItem(
                 'document',
@@ -162,7 +162,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                 sprintf('%s:%s', $jobId, $field),
                 $this->sourceDate($row),
                 str_replace('_', ' ', $label),
-                EvidenceText::bounded(sprintf('%s; Citation: %s, %s, %s', $value, $docType, $page, $field), 300),
+                EvidenceText::bounded(sprintf('%s; %s', $value, $this->evidenceCitationSuffix($docType, $page, $field)), 300),
                 $this->citationMetadata($row, $fact, $citation, $field, $page),
             );
         }
@@ -180,7 +180,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
     {
         $metadata = [
             'source_type' => $this->string($citation, 'source_type') ?: $this->string($row, 'doc_type'),
-            'source_id' => $this->string($citation, 'source_id') ?: 'document:' . $this->string($row, 'document_id'),
+            'source_id' => $this->string($citation, 'source_id') ?: $this->documentSourceId($row),
             'document_id' => $this->positiveInt($row, 'document_id'),
             'job_id' => $this->positiveInt($row, 'id'),
             'page_or_section' => $page,
@@ -197,6 +197,17 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
             $metadata,
             static fn (mixed $value): bool => $value !== '',
         );
+    }
+
+    /** @param array<string, mixed> $row */
+    private function documentSourceId(array $row): string
+    {
+        return 'document:' . $this->string($row, 'document_id');
+    }
+
+    private function evidenceCitationSuffix(string $docType, string $page, string $field): string
+    {
+        return sprintf('Citation: %s, %s, %s', $docType, $page, $field);
     }
 
     /** @return array{x: float, y: float, width: float, height: float}|null */

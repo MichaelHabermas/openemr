@@ -20,28 +20,52 @@ final readonly class Supervisor
 {
     public function decide(DocumentJob $job, bool $trustedForEvidence): SupervisorDecision
     {
-        $context = [
+        $context = $this->decisionContext($job, $trustedForEvidence);
+
+        if ($job->retractedAt !== null || $job->status === JobStatus::Retracted) {
+            return $this->holdDecision('document_retracted', $context);
+        }
+
+        if ($job->status === JobStatus::Failed) {
+            return $this->holdDecision('document_processing_failed', $context);
+        }
+
+        if ($job->status !== JobStatus::Succeeded) {
+            return $this->handoffDecision(WorkerName::IntakeExtractor, 'document_extraction_required', $context);
+        }
+
+        if (!$trustedForEvidence) {
+            return $this->holdDecision('identity_not_trusted_for_evidence', $context);
+        }
+
+        return $this->handoffDecision(WorkerName::EvidenceRetriever, 'trusted_document_ready_for_evidence', $context);
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    private function decisionContext(DocumentJob $job, bool $trustedForEvidence): array
+    {
+        return [
             'job_status' => $job->status->value,
             'doc_type' => $job->docType->value,
             'trusted_for_evidence' => $trustedForEvidence ? 1 : 0,
         ];
+    }
 
-        if ($job->retractedAt !== null || $job->status === JobStatus::Retracted) {
-            return SupervisorDecision::hold('document_retracted', $context);
-        }
+    /**
+     * @param array<string, scalar|null> $context
+     */
+    private function holdDecision(string $reason, array $context): SupervisorDecision
+    {
+        return SupervisorDecision::hold($reason, $context);
+    }
 
-        if ($job->status === JobStatus::Failed) {
-            return SupervisorDecision::hold('document_processing_failed', $context);
-        }
-
-        if ($job->status !== JobStatus::Succeeded) {
-            return SupervisorDecision::handoff(WorkerName::IntakeExtractor, 'document_extraction_required', $context);
-        }
-
-        if (!$trustedForEvidence) {
-            return SupervisorDecision::hold('identity_not_trusted_for_evidence', $context);
-        }
-
-        return SupervisorDecision::handoff(WorkerName::EvidenceRetriever, 'trusted_document_ready_for_evidence', $context);
+    /**
+     * @param array<string, scalar|null> $context
+     */
+    private function handoffDecision(WorkerName $targetWorker, string $reason, array $context): SupervisorDecision
+    {
+        return SupervisorDecision::handoff($targetWorker, $reason, $context);
     }
 }

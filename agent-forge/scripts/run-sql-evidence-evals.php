@@ -19,19 +19,21 @@ use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCaseRepository;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalRunner;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
-use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/eval-runner-functions.php';
+require_once __DIR__ . '/lib/script-runtime.php';
 
 $repoRoot = AgentForgeRepoPaths::fromScriptsDirectory(__DIR__);
 $groundTruthPath = $repoRoot . '/agent-forge/fixtures/demo-patient-ground-truth.json';
-$resultsDir = getenv('AGENTFORGE_SQL_EVAL_RESULTS_DIR') ?: getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
-$environmentLabel = getenv('AGENTFORGE_SQL_EVAL_ENVIRONMENT') ?: 'local';
-$GLOBALS['OE_SITE_DIR'] = getenv('OE_SITE_DIR') ?: $repoRoot . '/sites/default';
+$resultsDir = agentforge_scripts_env_string(
+    'AGENTFORGE_SQL_EVAL_RESULTS_DIR',
+    agentforge_scripts_env_string('AGENTFORGE_EVAL_RESULTS_DIR', $repoRoot . '/agent-forge/eval-results'),
+);
+$environmentLabel = agentforge_scripts_env_string('AGENTFORGE_SQL_EVAL_ENVIRONMENT', 'local');
+$GLOBALS['OE_SITE_DIR'] = agentforge_scripts_env_string('OE_SITE_DIR', $repoRoot . '/sites/default');
 
-if (!is_dir($resultsDir) && !mkdir($resultsDir, 0775, true) && !is_dir($resultsDir)) {
-    fwrite(STDERR, sprintf("Failed to create SQL eval results directory: %s\n", $resultsDir));
+if (!agentforge_scripts_ensure_directory($resultsDir, 'SQL eval results directory')) {
     exit(2);
 }
 
@@ -57,9 +59,12 @@ $summary = $runner->run(
     $environmentLabel,
 );
 
-$resultPath = sprintf('%s/sql-evidence-eval-results-%s.json', $resultsDir, date('Ymd-His'));
-file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
-EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
+$resultPath = agentforge_scripts_write_eval_result(
+    $resultsDir,
+    'sql-evidence-eval-results',
+    new DateTimeImmutable('now'),
+    $summary,
+);
 
 printf(
     "AgentForge seeded SQL evidence evals: %d passed, %d failed. Results: %s\n",

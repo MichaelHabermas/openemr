@@ -15,9 +15,10 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
-use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 
 require_once __DIR__ . '/code-version.php';
+require_once __DIR__ . '/script-runtime.php';
 
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S = 90;
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_PRIMARY_PID = 900001;
@@ -42,35 +43,32 @@ const AGENTFORGE_DEPLOYED_SMOKE_USER_AGENT = 'AgentForge-DeployedSmoke/1.0';
 function agentforge_deployed_smoke_config(): array
 {
     $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
-    $baseUrl = (string) (getenv('AGENTFORGE_DEPLOYED_URL') ?: 'https://openemr.titleredacted.cc/');
+    $baseUrl = agentforge_scripts_env_string('AGENTFORGE_DEPLOYED_URL', 'https://openemr.titleredacted.cc/');
     if (!str_ends_with($baseUrl, '/')) {
         $baseUrl .= '/';
     }
 
-    $username = (string) (getenv('AGENTFORGE_SMOKE_USER') ?: '');
-    $password = (string) (getenv('AGENTFORGE_SMOKE_PASSWORD') ?: '');
+    $username = agentforge_scripts_env_string('AGENTFORGE_SMOKE_USER');
+    $password = agentforge_scripts_env_string('AGENTFORGE_SMOKE_PASSWORD');
 
-    $secondaryPidRaw = getenv('AGENTFORGE_SMOKE_SECONDARY_PID');
-    $secondaryPid = ($secondaryPidRaw !== false && $secondaryPidRaw !== '')
-        ? (int) $secondaryPidRaw
-        : null;
+    $secondaryPid = agentforge_scripts_env_nullable_int('AGENTFORGE_SMOKE_SECONDARY_PID');
 
     $sshHost = getenv('AGENTFORGE_VM_SSH_HOST');
-    $skipAuditLog = (bool) (getenv('AGENTFORGE_SMOKE_SKIP_AUDIT_LOG') ?: '');
+    $skipAuditLog = agentforge_scripts_env_truthy_legacy('AGENTFORGE_SMOKE_SKIP_AUDIT_LOG');
 
     return [
         'base_url' => $baseUrl,
         'username' => $username,
         'password' => $password,
-        'primary_pid' => (int) (getenv('AGENTFORGE_SMOKE_PRIMARY_PID') ?: AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_PRIMARY_PID),
+        'primary_pid' => agentforge_scripts_env_int('AGENTFORGE_SMOKE_PRIMARY_PID', AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_PRIMARY_PID),
         'secondary_pid' => $secondaryPid,
         'ssh_host' => ($sshHost !== false && $sshHost !== '') ? (string) $sshHost : null,
-        'audit_log_path' => (string) (getenv('AGENTFORGE_VM_AUDIT_LOG_PATH') ?: '/var/log/php-error.log'),
-        'timeout_s' => (int) (getenv('AGENTFORGE_SMOKE_TIMEOUT_S') ?: AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S),
+        'audit_log_path' => agentforge_scripts_env_string('AGENTFORGE_VM_AUDIT_LOG_PATH', '/var/log/php-error.log'),
+        'timeout_s' => agentforge_scripts_env_int('AGENTFORGE_SMOKE_TIMEOUT_S', AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S),
         'skip_audit_log' => $skipAuditLog,
-        'results_dir' => (string) (getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results'),
+        'results_dir' => agentforge_scripts_env_string('AGENTFORGE_EVAL_RESULTS_DIR', $repoRoot . '/agent-forge/eval-results'),
         'repo_root' => $repoRoot,
-        'executor' => (string) (getenv('AGENTFORGE_SMOKE_EXECUTOR') ?: 'local'),
+        'executor' => agentforge_scripts_env_string('AGENTFORGE_SMOKE_EXECUTOR', 'local'),
     ];
 }
 
@@ -90,9 +88,7 @@ function agentforge_deployed_smoke_main(): int
         return 2;
     }
 
-    if (!is_dir($config['results_dir']) && !mkdir($config['results_dir'], 0775, true) && !is_dir($config['results_dir'])) {
-        fwrite(STDERR, sprintf("Failed to create results directory: %s\n", $config['results_dir']));
-
+    if (!agentforge_scripts_ensure_directory($config['results_dir'], 'results directory')) {
         return 2;
     }
 
@@ -172,13 +168,7 @@ function agentforge_deployed_smoke_main(): int
         'cases' => $cases,
     ];
 
-    $resultPath = sprintf(
-        '%s/deployed-smoke-%s.json',
-        rtrim($config['results_dir'], '/'),
-        $startedAt->format('Ymd-His'),
-    );
-    file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n");
-    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
+    $resultPath = agentforge_scripts_write_eval_result($config['results_dir'], 'deployed-smoke', $startedAt, $summary);
 
     printf(
         "Deployed smoke: %d passed, %d failed, %d skipped. Aggregate latency: %d ms. Results: %s\n",
@@ -866,7 +856,6 @@ function agentforge_deployed_smoke_extract_log_fields(string $line): array
 function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array $expected): array
 {
     $issues = [];
-    $forbiddenKeys = ['question', 'answer', 'patient_name', 'full_prompt', 'chart_text'];
     $requiredKeys = ['user_id', 'patient_id', 'decision', 'latency_ms', 'model'];
 
     if (!$auditResult['found']) {
@@ -891,12 +880,9 @@ function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array 
         }
     }
 
-    $forbiddenAbsent = true;
-    foreach ($forbiddenKeys as $key) {
-        if (array_key_exists($key, $fields)) {
-            $forbiddenAbsent = false;
-            $issues[] = sprintf('forbidden key %s present in audit log', $key);
-        }
+    $forbiddenAbsent = !SensitiveLogPolicy::containsForbiddenKey($fields);
+    if (!$forbiddenAbsent) {
+        $issues[] = 'forbidden key(s) present in audit log';
     }
 
     $expectedMatch = true;

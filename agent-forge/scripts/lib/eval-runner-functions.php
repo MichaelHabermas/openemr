@@ -28,23 +28,22 @@ use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\Observability\RequestLog;
-use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 
 require_once __DIR__ . '/code-version.php';
+require_once __DIR__ . '/script-runtime.php';
 
 function agentforge_eval_main(): int
 {
     $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $fixturePath = $repoRoot . '/agent-forge/fixtures/eval-cases.json';
-    $resultsDir = getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
+    $resultsDir = agentforge_scripts_env_string('AGENTFORGE_EVAL_RESULTS_DIR', $repoRoot . '/agent-forge/eval-results');
     $fixture = json_decode((string) file_get_contents($fixturePath), true, 512, JSON_THROW_ON_ERROR);
 
-    if (!is_dir($resultsDir) && !mkdir($resultsDir, 0775, true) && !is_dir($resultsDir)) {
-        fwrite(STDERR, sprintf("Failed to create eval results directory: %s\n", $resultsDir));
-
+    if (!agentforge_scripts_ensure_directory($resultsDir, 'eval results directory')) {
         return 2;
     }
 
@@ -83,9 +82,7 @@ function agentforge_eval_main(): int
         'results' => $results,
     ];
 
-    $resultPath = sprintf('%s/eval-results-%s.json', $resultsDir, $startedAt->format('Ymd-His'));
-    file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
-    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
+    $resultPath = agentforge_scripts_write_eval_result($resultsDir, 'eval-results', $startedAt, $summary);
 
     printf(
         "AgentForge evals: %d passed, %d failed. Results: %s\n",
@@ -435,10 +432,8 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         $failures[] = sprintf('Latency %dms exceeded expected maximum.', $latencyMs);
     }
 
-    foreach (['question', 'answer', 'patient_name', 'full_prompt', 'chart_text'] as $forbiddenLogKey) {
-        if (array_key_exists($forbiddenLogKey, $logContext)) {
-            $failures[] = sprintf('Log context exposed forbidden key %s.', $forbiddenLogKey);
-        }
+    if (SensitiveLogPolicy::containsForbiddenKey($logContext)) {
+        $failures[] = 'Log context exposed one or more forbidden keys.';
     }
 
     $stageTimings = is_array($logContext['stage_timings_ms'] ?? null) ? $logContext['stage_timings_ms'] : [];

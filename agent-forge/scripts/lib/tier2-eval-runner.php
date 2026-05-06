@@ -13,18 +13,18 @@ declare(strict_types=1);
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
 use OpenEMR\AgentForge\Observability\RequestLog;
-use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
 
 require_once __DIR__ . '/eval-runner-functions.php';
+require_once __DIR__ . '/script-runtime.php';
 
 function agentforge_tier2_main(): int
 {
     $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
     $fixturePath = $repoRoot . '/agent-forge/fixtures/tier2-eval-cases.json';
-    $resultsDir = getenv('AGENTFORGE_EVAL_RESULTS_DIR') ?: $repoRoot . '/agent-forge/eval-results';
-    $deadlineMs = (int) (getenv('AGENTFORGE_TIER2_DEADLINE_MS') ?: 30000);
+    $resultsDir = agentforge_scripts_env_string('AGENTFORGE_EVAL_RESULTS_DIR', $repoRoot . '/agent-forge/eval-results');
+    $deadlineMs = agentforge_scripts_env_int('AGENTFORGE_TIER2_DEADLINE_MS', 30000);
 
     if (!is_file($fixturePath)) {
         fwrite(STDERR, sprintf("Tier 2 fixture not found: %s\n", $fixturePath));
@@ -34,9 +34,7 @@ function agentforge_tier2_main(): int
 
     $fixture = json_decode((string) file_get_contents($fixturePath), true, 512, JSON_THROW_ON_ERROR);
 
-    if (!is_dir($resultsDir) && !mkdir($resultsDir, 0775, true) && !is_dir($resultsDir)) {
-        fwrite(STDERR, sprintf("Failed to create eval results directory: %s\n", $resultsDir));
-
+    if (!agentforge_scripts_ensure_directory($resultsDir, 'eval results directory')) {
         return 2;
     }
 
@@ -109,9 +107,7 @@ function agentforge_tier2_main(): int
         'results' => $results,
     ];
 
-    $resultPath = sprintf('%s/tier2-live-%s.json', $resultsDir, $startedAt->format('Ymd-His'));
-    file_put_contents($resultPath, json_encode($summary, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
-    EvalLatestSummaryWriter::tryWriteFromEvalJsonFile($resultPath);
+    $resultPath = agentforge_scripts_write_eval_result($resultsDir, 'tier2-live', $startedAt, $summary);
 
     printf(
         "AgentForge Tier 2 (%s/%s): %d passed, %d failed. Tokens in/out: %d/%d. Estimated cost: $%.6f. Results: %s\n",

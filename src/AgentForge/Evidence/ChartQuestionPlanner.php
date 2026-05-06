@@ -32,6 +32,102 @@ final readonly class ChartQuestionPlanner
     public const SECTION_STALE_VITALS = 'Last-known stale vitals';
     public const SECTION_NOTES = 'Recent notes and last plan';
 
+    /** @var list<string> */
+    private const CHANGE_REVIEW_KEYWORDS = [
+        'changed since',
+        'change since',
+        'changes since',
+        'anything changed',
+        'what changed',
+        'new since',
+        'since last visit',
+        'since previous visit',
+    ];
+
+    /** @var list<string> */
+    private const PRESCRIBING_CHECK_KEYWORDS = [
+        'before prescribing',
+        'before i prescribe',
+        'double-check before prescribing',
+        'double check before prescribing',
+        'prescribing',
+        'prescribe',
+    ];
+
+    /** @var list<string> */
+    private const LAB_KEYWORDS = [
+        'a1c',
+        'lab',
+        'labs',
+        'laboratory',
+        'microalbumin',
+        'glucose',
+        'result',
+        'sodium',
+        'potassium',
+        'creatinine',
+        'cholesterol',
+        'hemoglobin',
+        'panel',
+    ];
+
+    /** @var list<string> */
+    private const MEDICATION_KEYWORDS = [
+        'medication',
+        'medications',
+        'meds',
+        'prescription',
+        'prescriptions',
+        'metformin',
+    ];
+
+    /** @var list<string> */
+    private const ALLERGY_KEYWORDS = [
+        'allergy',
+        'allergies',
+        'allergic',
+        'reaction',
+        'reactions',
+    ];
+
+    /** @var list<string> */
+    private const VITAL_KEYWORDS = [
+        'vital',
+        'vitals',
+        'blood pressure',
+        'bp',
+        'pulse',
+        'temperature',
+        'weight',
+        'height',
+        'oxygen',
+        'o2',
+    ];
+
+    /** @var list<string> */
+    private const PROBLEM_KEYWORDS = [
+        'problem',
+        'problems',
+        'condition',
+        'conditions',
+        'comorbid',
+        'comorbidities',
+    ];
+
+    /** @var list<string> */
+    private const LAST_PLAN_KEYWORDS = [
+        'plan',
+        'note',
+        'notes',
+        'assessment',
+        'follow-up',
+        'follow up',
+        'last visit',
+        'previous visit',
+        'history of present illness',
+        'hpi',
+    ];
+
     public function __construct(
         private ?ToolSelectionProvider $selector = null,
         private LoggerInterface $logger = new NullLogger(),
@@ -261,10 +357,10 @@ final readonly class ChartQuestionPlanner
                 $selectorFallbackReason,
             );
         }
-        if ($this->containsAny($normalized, ['allergy', 'allergies', 'allergic', 'reaction', 'reactions'])) {
+        if ($this->containsAny($normalized, self::ALLERGY_KEYWORDS)) {
             return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
         }
-        if ($this->containsAny($normalized, ['medication', 'medications', 'meds', 'prescription', 'prescriptions', 'metformin'])) {
+        if ($this->containsAny($normalized, self::MEDICATION_KEYWORDS)) {
             return $this->buildPlan(
                 'medication',
                 [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
@@ -275,21 +371,7 @@ final readonly class ChartQuestionPlanner
                 $selectorFallbackReason,
             );
         }
-        if ($this->containsAny($normalized, [
-            'a1c',
-            'lab',
-            'labs',
-            'laboratory',
-            'microalbumin',
-            'glucose',
-            'result',
-            'sodium',
-            'potassium',
-            'creatinine',
-            'cholesterol',
-            'hemoglobin',
-            'panel',
-        ])) {
+        if ($this->containsAny($normalized, self::LAB_KEYWORDS)) {
             return $this->buildPlan(
                 'lab',
                 [self::SECTION_LABS],
@@ -300,13 +382,13 @@ final readonly class ChartQuestionPlanner
                 $selectorFallbackReason,
             );
         }
-        if ($this->containsAny($normalized, ['vital', 'vitals', 'blood pressure', 'bp', 'pulse', 'temperature', 'weight', 'height', 'oxygen', 'o2'])) {
+        if ($this->containsAny($normalized, self::VITAL_KEYWORDS)) {
             return $this->buildPlan('vital', [self::SECTION_VITALS, self::SECTION_STALE_VITALS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
         }
-        if ($this->containsAny($normalized, ['problem', 'problems', 'condition', 'conditions', 'comorbid', 'comorbidities'])) {
+        if ($this->containsAny($normalized, self::PROBLEM_KEYWORDS)) {
             return $this->buildPlan('problem', [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
         }
-        if ($this->containsAny($normalized, ['plan', 'note', 'notes', 'assessment', 'follow-up', 'follow up', 'last visit', 'previous visit', 'history of present illness', 'hpi'])) {
+        if ($this->containsAny($normalized, self::LAST_PLAN_KEYWORDS)) {
             return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
         }
         if ($conversationSummary !== null && $this->looksLikeFollowUp($normalized)) {
@@ -399,121 +481,49 @@ final readonly class ChartQuestionPlanner
     private function selectorIndicatesChangeReview(string $selectedType, string $value): bool
     {
         return $selectedType === 'follow_up_change_review'
-            || $this->containsAny($value, [
-                'changed since',
-                'change since',
-                'changes since',
-                'anything changed',
-                'what changed',
-                'new since',
-                'since last visit',
-                'since previous visit',
-            ]);
+            || $this->containsAny($value, self::CHANGE_REVIEW_KEYWORDS);
     }
 
     private function selectorIndicatesPrescribingCheck(string $selectedType, string $value): bool
     {
         return $selectedType === 'pre_prescribing_chart_check'
-            || $this->containsAny($value, [
-                'before prescribing',
-                'before i prescribe',
-                'double-check before prescribing',
-                'double check before prescribing',
-                'prescribing',
-                'prescribe',
-            ]);
+            || $this->containsAny($value, self::PRESCRIBING_CHECK_KEYWORDS);
     }
 
     private function selectorIndicatesLab(string $selectedType, string $value): bool
     {
         return $selectedType === 'lab'
-            || $this->containsAny($value, [
-                'a1c',
-                'lab',
-                'labs',
-                'laboratory',
-                'microalbumin',
-                'glucose',
-                'result',
-                'sodium',
-                'potassium',
-                'creatinine',
-                'cholesterol',
-                'hemoglobin',
-                'panel',
-            ]);
+            || $this->containsAny($value, self::LAB_KEYWORDS);
     }
 
     private function selectorIndicatesMedication(string $selectedType, string $value): bool
     {
         return $selectedType === 'medication'
-            || $this->containsAny($value, [
-                'medication',
-                'medications',
-                'meds',
-                'prescription',
-                'prescriptions',
-                'metformin',
-            ]);
+            || $this->containsAny($value, self::MEDICATION_KEYWORDS);
     }
 
     private function selectorIndicatesAllergy(string $selectedType, string $value): bool
     {
         return $selectedType === 'allergy'
-            || $this->containsAny($value, [
-                'allergy',
-                'allergies',
-                'allergic',
-                'reaction',
-                'reactions',
-            ]);
+            || $this->containsAny($value, self::ALLERGY_KEYWORDS);
     }
 
     private function selectorIndicatesVital(string $selectedType, string $value): bool
     {
         return $selectedType === 'vital'
-            || $this->containsAny($value, [
-                'vital',
-                'vitals',
-                'blood pressure',
-                'bp',
-                'pulse',
-                'temperature',
-                'weight',
-                'height',
-                'oxygen',
-                'o2',
-            ]);
+            || $this->containsAny($value, self::VITAL_KEYWORDS);
     }
 
     private function selectorIndicatesProblem(string $selectedType, string $value): bool
     {
         return $selectedType === 'problem'
-            || $this->containsAny($value, [
-                'problem',
-                'problems',
-                'condition',
-                'conditions',
-                'comorbid',
-                'comorbidities',
-            ]);
+            || $this->containsAny($value, self::PROBLEM_KEYWORDS);
     }
 
     private function selectorIndicatesLastPlan(string $selectedType, string $value): bool
     {
         return $selectedType === 'last_plan'
-            || $this->containsAny($value, [
-                'plan',
-                'note',
-                'notes',
-                'assessment',
-                'follow-up',
-                'follow up',
-                'last visit',
-                'previous visit',
-                'history of present illness',
-                'hpi',
-            ]);
+            || $this->containsAny($value, self::LAST_PLAN_KEYWORDS);
     }
 
     private function looksLikeVisitBriefing(string $value): bool

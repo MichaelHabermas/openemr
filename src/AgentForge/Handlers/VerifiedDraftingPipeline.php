@@ -141,18 +141,10 @@ final readonly class VerifiedDraftingPipeline
                     $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
 
                     return new VerifiedDraftingResult(
-                        new AgentResponse(
-                            $response->status,
-                            $response->answer,
-                            $response->citations,
-                            $response->missingOrUncheckedSections,
-                            array_values(array_unique(array_merge(
-                                ['The model draft could not be verified; deterministic evidence fallback was used.'],
-                                $fallbackResult->refusalsOrWarnings,
-                            ))),
-                            null,
-                            $response->sections,
-                            $response->citationDetails,
+                        $this->withFallbackWarning(
+                            $response,
+                            'The model draft could not be verified; deterministic evidence fallback was used.',
+                            $fallbackResult->refusalsOrWarnings,
                         ),
                         $this->telemetry(
                             $questionType,
@@ -230,21 +222,13 @@ final readonly class VerifiedDraftingPipeline
         $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
 
         return new VerifiedDraftingResult(
-            new AgentResponse(
-                $response->status,
-                $response->answer,
-                $response->citations,
-                $response->missingOrUncheckedSections,
-                array_values(array_unique(array_merge(
-                    ['The model draft provider could not be reached; deterministic evidence fallback was used.'],
-                    array_values(array_filter(
-                        $fallbackResult->refusalsOrWarnings,
-                        static fn (string $warning): bool => $warning !== self::FIXTURE_DRAFT_WARNING,
-                    )),
-                ))),
-                null,
-                $response->sections,
-                $response->citationDetails,
+            $this->withFallbackWarning(
+                $response,
+                'The model draft provider could not be reached; deterministic evidence fallback was used.',
+                array_values(array_filter(
+                    $fallbackResult->refusalsOrWarnings,
+                    static fn (string $warning): bool => $warning !== self::FIXTURE_DRAFT_WARNING,
+                )),
             ),
             $this->telemetry(
                 $questionType,
@@ -486,6 +470,23 @@ final readonly class VerifiedDraftingPipeline
             'demographics' => 'Demographics',
             default => 'Answer',
         };
+    }
+
+    /**
+     * @param list<string> $additionalWarnings
+     */
+    private function withFallbackWarning(AgentResponse $response, string $warning, array $additionalWarnings = []): AgentResponse
+    {
+        return new AgentResponse(
+            $response->status,
+            $response->answer,
+            $response->citations,
+            $response->missingOrUncheckedSections,
+            array_values(array_unique(array_merge([$warning], $additionalWarnings))),
+            null,
+            $response->sections,
+            $response->citationDetails,
+        );
     }
 
     /**

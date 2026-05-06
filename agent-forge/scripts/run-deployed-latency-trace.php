@@ -13,13 +13,14 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/deployed-smoke-runner.php';
+require_once __DIR__ . '/lib/script-runtime.php';
 
 exit(agentforge_deployed_latency_trace_main());
 
 function agentforge_deployed_latency_trace_main(): int
 {
     $config = agentforge_deployed_smoke_config();
-    $iterations = (int) (getenv('AGENTFORGE_LATENCY_TRACE_ITERATIONS') ?: 20);
+    $iterations = agentforge_scripts_env_int('AGENTFORGE_LATENCY_TRACE_ITERATIONS', 20);
     if ($iterations <= 0) {
         fwrite(STDERR, "AGENTFORGE_LATENCY_TRACE_ITERATIONS must be positive.\n");
 
@@ -58,9 +59,7 @@ function agentforge_deployed_latency_trace_main(): int
         'traces' => $traces,
     ];
 
-    if (!is_dir($config['results_dir']) && !mkdir($config['results_dir'], 0775, true) && !is_dir($config['results_dir'])) {
-        fwrite(STDERR, sprintf("Failed to create results directory: %s\n", $config['results_dir']));
-
+    if (!agentforge_scripts_ensure_directory($config['results_dir'], 'results directory')) {
         return 2;
     }
 

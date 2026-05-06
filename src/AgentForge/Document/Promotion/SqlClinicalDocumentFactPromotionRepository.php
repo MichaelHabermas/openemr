@@ -121,23 +121,19 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             $jobId = $job->id->value;
 
             $existing = $this->existingPromotedFact($job, $factHash);
-            if ($existing !== []) {
-                if ($this->intValue($existing, 'job_id') === $jobId) {
-                    return 'skipped_duplicate';
-                }
-
-                return $this->upsertLedger(
-                    $job,
-                    'lab_result',
-                    $fieldPath,
-                    $row->testName,
-                    $this->labValueJson($row),
-                    $row->citation,
-                    'skipped_duplicate',
-                    $this->nullableString($existing, 'native_table'),
-                    $this->nullableString($existing, 'native_id'),
-                    $factHash,
-                );
+            $existingStatus = $this->statusForExistingFact(
+                $existing,
+                $jobId,
+                $job,
+                'lab_result',
+                $fieldPath,
+                $row->testName,
+                $this->labValueJson($row),
+                $row->citation,
+                $factHash,
+            );
+            if ($existingStatus !== null) {
+                return $existingStatus;
             }
 
             $now = $this->now();
@@ -234,23 +230,19 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $factHash = $this->factHash('intake_finding', $finding->field, $this->stableFindingValueJson($finding));
         return $this->withPromotionLock($job, $factHash, function () use ($job, $finding, $fieldPath, $nativeType, $factHash): string {
             $existing = $this->existingPromotedFact($job, $factHash);
-            if ($existing !== []) {
-                if ($this->intValue($existing, 'job_id') === $job->id->value) {
-                    return 'skipped_duplicate';
-                }
-
-                return $this->upsertLedger(
-                    $job,
-                    'intake_finding',
-                    $fieldPath,
-                    $finding->field,
-                    $this->findingValueJson($finding),
-                    $finding->citation,
-                    'skipped_duplicate',
-                    $this->nullableString($existing, 'native_table'),
-                    $this->nullableString($existing, 'native_id'),
-                    $factHash,
-                );
+            $existingStatus = $this->statusForExistingFact(
+                $existing,
+                $job->id->value,
+                $job,
+                'intake_finding',
+                $fieldPath,
+                $finding->field,
+                $this->findingValueJson($finding),
+                $finding->citation,
+                $factHash,
+            );
+            if ($existingStatus !== null) {
+                return $existingStatus;
             }
 
             $listId = $this->db()->insert(
@@ -283,6 +275,42 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 $factHash,
             );
         });
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @param array<string, mixed> $valueJson
+     */
+    private function statusForExistingFact(
+        array $existing,
+        int $jobId,
+        DocumentJob $job,
+        string $factType,
+        string $fieldPath,
+        string $label,
+        array $valueJson,
+        DocumentCitation $citation,
+        string $factHash,
+    ): ?string {
+        if ($existing === []) {
+            return null;
+        }
+        if ($this->intValue($existing, 'job_id') === $jobId) {
+            return 'skipped_duplicate';
+        }
+
+        return $this->upsertLedger(
+            $job,
+            $factType,
+            $fieldPath,
+            $label,
+            $valueJson,
+            $citation,
+            'skipped_duplicate',
+            $this->nullableString($existing, 'native_table'),
+            $this->nullableString($existing, 'native_id'),
+            $factHash,
+        );
     }
 
     /**

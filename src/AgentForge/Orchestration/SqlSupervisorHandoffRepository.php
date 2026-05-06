@@ -21,6 +21,7 @@ use RuntimeException;
 final readonly class SqlSupervisorHandoffRepository
 {
     private DatabaseExecutor $executor;
+    private const MAX_REQUEST_ID_LENGTH = 64;
     private const MAX_NODE_LENGTH = 64;
     private const MAX_DECISION_LENGTH = 255;
     private const MAX_TASK_TYPE_LENGTH = 64;
@@ -94,7 +95,7 @@ final readonly class SqlSupervisorHandoffRepository
             . '(request_id, job_id, source_node, destination_node, decision_reason, task_type, outcome, '
             . 'latency_ms, error_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
             [
-                $this->boundedNullable($requestId, 64, 'request id'),
+                $this->boundedNullable($requestId, self::MAX_REQUEST_ID_LENGTH, 'request id'),
                 $jobId,
                 WorkerName::Supervisor->value,
                 $this->boundedRequired($destinationNode, self::MAX_NODE_LENGTH, 'destination node'),
