@@ -118,10 +118,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
 
         $factHash = $this->factHash('lab_result', $row->testName, $this->stableLabValueJson($row));
         return $this->withPromotionLock($job, $factHash, function () use ($job, $row, $fieldPath, $factHash): string {
-            $jobId = $job->id?->value;
-            if ($jobId === null) {
-                return 'skipped_missing_job_id';
-            }
+            $jobId = $job->id->value;
 
             $existing = $this->existingPromotedFact($job, $factHash);
             if ($existing !== []) {
@@ -238,7 +235,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         return $this->withPromotionLock($job, $factHash, function () use ($job, $finding, $fieldPath, $nativeType, $factHash): string {
             $existing = $this->existingPromotedFact($job, $factHash);
             if ($existing !== []) {
-                if ($this->intValue($existing, 'job_id') === $job->id?->value) {
+                if ($this->intValue($existing, 'job_id') === $job->id->value) {
                     return 'skipped_duplicate';
                 }
 
