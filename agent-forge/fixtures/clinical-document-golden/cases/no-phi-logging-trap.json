@@ -14,7 +14,7 @@
       "facts": [
         {
           "field_path": "results[0]",
-          "value_contains": "creatinine",
+          "value_contains": "1.4",
           "requires_bounding_box": true
         }
       ]

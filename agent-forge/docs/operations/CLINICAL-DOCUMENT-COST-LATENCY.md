@@ -2,11 +2,11 @@
 
 **Updated:** 2026-05-06
 **Scope:** Week 2 clinical-document checkpoint path: strict document extraction, guideline retrieval, supervisor handoffs, no-PHI logging, and deterministic eval artifacts.
-**Status:** Concise reviewer report from existing telemetry and proof. This is not a production SLO or final 50-case submission benchmark.
+**Status:** Concise reviewer report from existing telemetry and proof. This is not a production SLO; runtime cost/latency fields are still partly placeholders for the clinical-document path.
 
 ## Executive Summary
 
-The current Week 2 clinical-document proof is deterministic checkpoint evidence, not deployed production telemetry. The latest checked-in run, `agent-forge/eval-results/clinical-document-20260506-045203/`, covers 9 synthetic cases across lab PDFs, intake forms, duplicate upload, guideline retrieval, PHI-log trap, unsafe-advice refusal, and out-of-corpus refusal. It met the accepted baseline with all applicable rubrics passing, including schema validity, citations, factual consistency, guideline retrieval, supervisor handoff, answer citation coverage, no-PHI logging, and bounding boxes.
+The current Week 2 H1 clinical-document proof is deterministic fixture-backed evidence, not deployed production telemetry. The accepted H1 run, `agent-forge/eval-results/clinical-document-20260506-204755/`, covers 59 synthetic/demo cases across lab PDFs, intake forms, duplicate upload, guideline retrieval, PHI-log traps, unsafe-advice refusal, out-of-corpus refusal, combined document-plus-guideline grounding, missing data, citation regression, and deleted-document protection. It met the accepted baseline with all applicable rubrics passing, including schema validity, citations, factual consistency, guideline retrieval, supervisor handoff, answer citation coverage, no-PHI logging, bounding boxes, deleted-document exclusion, promotion expectations, and document-fact expectations.
 
 Latency and cost tracking are shaped but not yet fully measured for this path. The clinical-document run records structured supervisor handoffs and a `latency_ms` field, but all handoff latencies are currently `0 ms`; therefore p50 and p95 from that artifact are placeholders, not real runtime measurements. Week 1 deployed latency and live-provider cost telemetry remain the best available operational baseline for the shared AgentForge request path.
 
@@ -14,23 +14,23 @@ Latency and cost tracking are shaped but not yet fully measured for this path. T
 
 | Evidence | What it proves | Limitation |
 | --- | --- | --- |
-| `agent-forge/eval-results/clinical-document-20260506-045203/summary.json` | Latest 9-case clinical-document gate verdict: `baseline_met`; all applicable rubrics pass. | Deterministic checkpoint run, not deployed runtime proof. |
-| `agent-forge/eval-results/clinical-document-20260506-045203/run.json` | Per-case categories, adapter status, supervisor handoffs, answer sections, citation coverage, and no-PHI rubric results. | Handoff `latency_ms` values are `0`; no model token/cost totals. |
-| `agent-forge/fixtures/clinical-document-golden/README.md` | The current MVP has 9 cases and is explicitly not the final 50-case Week 2 gate. | The final submission set is still planned. |
+| `agent-forge/eval-results/clinical-document-20260506-204755/summary.json` | Accepted 59-case H1 clinical-document gate verdict: `baseline_met`; all applicable rubrics pass. | Deterministic fixture-backed run, not deployed runtime proof. |
+| `agent-forge/eval-results/clinical-document-20260506-204755/run.json` | Per-case categories, adapter status, supervisor handoffs, answer sections, citation coverage, and no-PHI rubric results. | Handoff `latency_ms` values are `0`; no model token/cost totals. |
+| `agent-forge/fixtures/clinical-document-golden/README.md` | The current H1 gate has 59 cases and runner-enforced structural coverage. | Deployed smoke, visual source UX, and real cost/latency packaging remain later proof work. |
 | `agent-forge/docs/operations/COST-ANALYSIS.md` | Shared AgentForge token-cost formulas, non-token operating cost ranges, and live-model eval spend framing. | Week 1 chart-agent measurements, not clinical-document-specific costs. |
 | `agent-forge/docs/operations/LATENCY-RESULTS.md` | Deployed demo latency proof for two shared request shapes: A1c p95 `3212 ms`, visit briefing p95 `8309 ms`. | Does not include document ingestion, extraction, embedding, rerank, or Week 2 supervisor path. |
 | `agent-forge/docs/operations/LATENCY-DECOMPOSITION.md` | Stage-timing model and likely latency drivers: evidence collection, draft call, verification, and request handling. | Decomposition predates clinical-document runtime stages. |
 
 ## Current Week 2 Checkpoint Metrics
 
-Latest clinical-document artifact: `agent-forge/eval-results/clinical-document-20260506-045203/`.
+Accepted H1 clinical-document artifact: `agent-forge/eval-results/clinical-document-20260506-204755/`.
 
 | Metric | Value | Interpretation |
 | --- | ---: | --- |
-| Executed at | `2026-05-06T04:52:03+00:00` | Latest checked-in clinical-document run found in the repo. |
-| Cases | `9` | MVP checkpoint, not final 50-case gate. |
+| Executed at | `2026-05-06T20:47:55+00:00` | Accepted H1 clinical-document run. |
+| Cases | `59` | H1 deterministic gate, within the temporary 50-60 case policy. |
 | Verdict | `baseline_met` | Current deterministic baseline was met. |
-| Supervisor handoffs | `9` | Every case records a structured handoff or refusal path. |
+| Supervisor handoffs | `59` | Every case records a structured handoff or refusal path. |
 | Recorded handoff p50 | `0 ms` | Placeholder only; instrumentation field is present but not populated with real timings. |
 | Recorded handoff p95 | `0 ms` | Placeholder only; do not treat as a latency claim. |
 | Model tokens / model cost | Not recorded in this artifact | Use Week 1 live-provider telemetry as the shared provider-cost baseline until Week 2 live path logs extraction, embedding, reranker, and draft costs. |
@@ -39,16 +39,19 @@ Rubric status from the same summary:
 
 | Rubric | Passed | Failed | Not applicable |
 | --- | ---: | ---: | ---: |
-| Schema valid | 6 | 0 | 3 |
-| Citation present | 7 | 0 | 2 |
-| Factually consistent | 6 | 0 | 3 |
-| Guideline retrieval | 2 | 0 | 7 |
-| Safe refusal | 2 | 0 | 7 |
-| Final answer sections | 9 | 0 | 0 |
-| Supervisor handoff | 9 | 0 | 0 |
-| Answer citation coverage | 7 | 0 | 2 |
-| No PHI in logs | 9 | 0 | 0 |
-| Bounding box present | 6 | 0 | 3 |
+| Schema valid | 26 | 0 | 33 |
+| Citation present | 39 | 0 | 20 |
+| Factually consistent | 26 | 0 | 33 |
+| Guideline retrieval | 25 | 0 | 34 |
+| Safe refusal | 20 | 0 | 39 |
+| Final answer sections | 59 | 0 | 0 |
+| Supervisor handoff | 59 | 0 | 0 |
+| Answer citation coverage | 39 | 0 | 20 |
+| No PHI in logs | 59 | 0 | 0 |
+| Bounding box present | 26 | 0 | 33 |
+| Deleted document not retrieved | 2 | 0 | 57 |
+| Promotion expectations | 8 | 0 | 51 |
+| Document fact expectations | 12 | 0 | 47 |
 
 ## Cost Position
 

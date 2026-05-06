@@ -6,21 +6,21 @@
   "doc_type": "intake_form",
   "input": {
     "source_document_path": "agent-forge/docs/example-documents/intake-forms/p04-kowalski-intake.png",
-    "user_question": "Summarize all findings from this intake form including surgical history and allergies."
+    "user_question": "Summarize all findings from this intake form including chief concern and allergies."
   },
   "expected": {
     "extraction": {
       "schema_valid": true,
       "facts": [
         {
-          "field_path": "surgical_history",
-          "value_contains": "appendectomy",
+          "field_path": "chief_concern",
+          "value_contains": "RUQ pain",
           "confidence_min": 0.80,
           "requires_bounding_box": true
         },
         {
           "field_path": "allergy",
-          "value_contains": "penicillin",
+          "value_contains": "Codeine",
           "confidence_min": 0.80,
           "requires_bounding_box": true
         }
@@ -29,7 +29,7 @@
     "promotions": [],
     "document_facts": [
       {
-        "field_path": "surgical_history"
+        "field_path": "chief_concern"
       },
       {
         "field_path": "allergy"

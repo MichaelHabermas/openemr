@@ -15,19 +15,19 @@
         {
           "field_path": "results[0]",
           "test_name": "WBC",
-          "value_contains": "11.2",
+          "value_contains": "5.4",
           "requires_bounding_box": true
         },
         {
           "field_path": "results[1]",
           "test_name": "Hemoglobin",
-          "value_contains": "12.4",
+          "value_contains": "11.1",
           "requires_bounding_box": true
         },
         {
           "field_path": "results[2]",
           "test_name": "Platelets",
-          "value_contains": "245",
+          "value_contains": "248",
           "requires_bounding_box": true
         }
       ]

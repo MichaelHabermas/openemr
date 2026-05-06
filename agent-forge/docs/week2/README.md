@@ -47,11 +47,12 @@ Use this command as the single local/CI clinical document gate:
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-The gate now passes for the implemented M4/M5A/M6 checkpoint path: strict
-fixture-backed document extraction, identity gating, real guideline retrieval
-for guideline cases, boolean rubrics, and artifact writing. It is still not the
-final 50-case Week 2 submission gate; H1 expands the golden set after M7 wires
-the supervisor/final-answer path.
+The gate now passes for the accepted H1 checkpoint path: 59 fixture-backed
+clinical-document cases, identity gating, real guideline retrieval for
+guideline cases, runner-enforced structural H1 coverage, boolean rubric
+thresholds, regression comparison, and artifact writing. Deployed smoke,
+visual source-review UX, and production-measured cost/latency remain later
+Week 2 proof work.
 
 ## Week 2 stages (from spec)
 

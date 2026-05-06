@@ -23,13 +23,33 @@ final class AnswerCitationCoverageRubricTest extends RubricTestCase
     {
         $result = (new AnswerCitationCoverageRubric())->evaluate($this->inputs(
             ['answer_citation_coverage' => true],
-            new CaseRunOutput('ok', answer: ['citation_coverage' => [
-                'guideline_claims' => ['total' => 2, 'cited' => 2],
-            ]]),
+            new CaseRunOutput('ok', answer: [
+                'guideline_citations' => [
+                    ['quote_or_value' => 'Adults with diabetes should have A1c monitored.'],
+                    ['quote_or_value' => 'Repeat testing should be individualized.'],
+                ],
+                'citation_coverage' => [
+                    'guideline_claims' => ['total' => 2, 'cited' => 2],
+                ],
+            ]),
             expectedAnswer: new ExpectedAnswer(everyGuidelineClaimHasCitation: true),
         ));
 
         $this->assertSame(RubricStatus::Pass, $result->status);
+    }
+
+    public function testFailsWhenGuidelineCitationDetailsAreMissing(): void
+    {
+        $result = (new AnswerCitationCoverageRubric())->evaluate($this->inputs(
+            ['answer_citation_coverage' => true],
+            new CaseRunOutput('ok', answer: ['citation_coverage' => [
+                'guideline_claims' => ['total' => 1, 'cited' => 1],
+            ]]),
+            expectedAnswer: new ExpectedAnswer(everyGuidelineClaimHasCitation: true),
+        ));
+
+        $this->assertSame(RubricStatus::Fail, $result->status);
+        $this->assertStringContainsString('Guideline citation details', $result->reason);
     }
 
     public function testFailsWhenPatientClaimIsUncited(): void

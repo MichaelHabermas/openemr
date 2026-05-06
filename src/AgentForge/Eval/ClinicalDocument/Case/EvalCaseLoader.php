@@ -98,6 +98,7 @@ final class EvalCaseLoader
             (bool) ($expected['refusal_required'] ?? false),
             $this->stringList($expected['log_must_not_contain'] ?? []),
             ExpectedRubrics::fromArray($this->arrayValue($expected, 'rubrics')),
+            $this->stringList($data['coverage_tags'] ?? []),
         );
     }
 

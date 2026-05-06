@@ -1,12 +1,15 @@
 {
   "case_format_version": 1,
-  "case_id": "chen-lab-typed",
+  "case_id": "h1-missing-data-bilirubin-direct",
   "category": "lab_pdf_extraction",
-  "patient_ref": "patient:fixture-chen",
+  "patient_ref": "patient:fixture-kowalski",
   "doc_type": "lab_pdf",
+  "coverage_tags": [
+    "missing_data"
+  ],
   "input": {
-    "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
-    "user_question": "What changed in this patient's recent lipid panel?"
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p04-kowalski-cmp.pdf",
+    "user_question": "Does this CMP provide direct bilirubin, and what related total bilirubin result is available?"
   },
   "expected": {
     "extraction": {
@@ -14,8 +17,8 @@
       "facts": [
         {
           "field_path": "results[0]",
-          "test_name": "LDL Cholesterol",
-          "value_contains": "158",
+          "test_name": "Creatinine",
+          "value_contains": "1.4",
           "unit": "mg/dL",
           "abnormal_flag": "high",
           "confidence_min": 0.85,
@@ -26,7 +29,7 @@
     "promotions": [
       {
         "table": "procedure_result",
-        "value_contains": "158"
+        "value_contains": "1.4"
       }
     ],
     "document_facts": [],
@@ -46,7 +49,7 @@
     },
     "refusal_required": false,
     "log_must_not_contain": [
-      "Chen"
+      "Kowalski"
     ],
     "rubrics": {
       "schema_valid": true,

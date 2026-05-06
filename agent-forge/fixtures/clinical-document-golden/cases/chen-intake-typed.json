@@ -14,7 +14,7 @@
       "facts": [
         {
           "field_path": "chief_concern",
-          "value_contains": "follow-up",
+          "value_contains": "chest tightness",
           "confidence_min": 0.8,
           "requires_bounding_box": true
         }

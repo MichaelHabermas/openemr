@@ -1,35 +1,34 @@
 {
   "case_format_version": 1,
-  "case_id": "chen-lab-typed",
-  "category": "lab_pdf_extraction",
-  "patient_ref": "patient:fixture-chen",
-  "doc_type": "lab_pdf",
+  "case_id": "h1-unexpected-location-intake",
+  "category": "intake_form_extraction",
+  "patient_ref": "patient:fixture-kowalski",
+  "doc_type": "intake_form",
+  "coverage_tags": [
+    "unexpected_location"
+  ],
   "input": {
-    "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
-    "user_question": "What changed in this patient's recent lipid panel?"
+    "source_document_path": "agent-forge/docs/example-documents/intake-forms/p04-kowalski-intake.png",
+    "user_question": "The allergy is documented in an unexpected part of the intake image; surface it with citation."
   },
   "expected": {
     "extraction": {
       "schema_valid": true,
       "facts": [
         {
-          "field_path": "results[0]",
-          "test_name": "LDL Cholesterol",
-          "value_contains": "158",
-          "unit": "mg/dL",
-          "abnormal_flag": "high",
-          "confidence_min": 0.85,
+          "field_path": "allergy",
+          "value_contains": "Codeine",
+          "confidence_min": 0.80,
           "requires_bounding_box": true
         }
       ]
     },
-    "promotions": [
+    "promotions": [],
+    "document_facts": [
       {
-        "table": "procedure_result",
-        "value_contains": "158"
+        "field_path": "allergy"
       }
     ],
-    "document_facts": [],
     "retrieval": {
       "guideline_retrieval_required": false,
       "min_guideline_chunks": 0
@@ -37,16 +36,17 @@
     "answer": {
       "required_sections": [
         "Patient Findings",
+        "Needs Human Review",
         "Missing or Not Found"
       ],
       "every_patient_claim_has_citation": true,
       "required_handoff_types": [
-        "lab_pdf"
+        "intake_form"
       ]
     },
     "refusal_required": false,
     "log_must_not_contain": [
-      "Chen"
+      "Kowalski"
     ],
     "rubrics": {
       "schema_valid": true,

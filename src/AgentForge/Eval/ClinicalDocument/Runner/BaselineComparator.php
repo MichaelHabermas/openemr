@@ -30,6 +30,19 @@ final class BaselineComparator
             return RegressionVerdict::ThresholdViolation;
         }
 
+        foreach (array_unique(array_merge(array_keys($rubricThresholds), array_keys($baselineRates))) as $name) {
+            if (!isset($result->rubricSummaries[$name])) {
+                return RegressionVerdict::ThresholdViolation;
+            }
+
+            $thresholdValue = $rubricThresholds[$name] ?? 0.0;
+            $threshold = is_numeric($thresholdValue) ? (float) (string) $thresholdValue : 0.0;
+            $summary = $result->rubricSummaries[$name];
+            if ($threshold > 0.0 && ($summary->passed + $summary->failed) === 0) {
+                return RegressionVerdict::ThresholdViolation;
+            }
+        }
+
         foreach ($result->rubricSummaries as $name => $summary) {
             $thresholdValue = $rubricThresholds[$name] ?? 0.0;
             $threshold = is_numeric($thresholdValue) ? (float) (string) $thresholdValue : 0.0;
@@ -39,7 +52,7 @@ final class BaselineComparator
 
             $baselineValue = $baselineRates[$name] ?? 0.0;
             $baselineRate = is_numeric($baselineValue) ? (float) (string) $baselineValue : 0.0;
-            if (($baselineRate - $summary->passRate) > $maxDrop) {
+            if (($baselineRate - $summary->passRate) - $maxDrop > 0.000000001) {
                 return RegressionVerdict::RegressionExceeded;
             }
         }

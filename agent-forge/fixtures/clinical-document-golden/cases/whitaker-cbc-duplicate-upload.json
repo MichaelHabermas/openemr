@@ -16,7 +16,7 @@
         {
           "field_path": "results[0]",
           "test_name": "WBC",
-          "value_contains": "11.2",
+          "value_contains": "5.4",
           "requires_bounding_box": true
         }
       ]

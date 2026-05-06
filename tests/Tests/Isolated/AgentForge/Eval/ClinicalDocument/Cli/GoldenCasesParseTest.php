@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Eval\ClinicalDocument\Cli;
 
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCaseLoader;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricRegistry;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\StructuralCoveragePolicy;
 use PHPUnit\Framework\TestCase;
 
 final class GoldenCasesParseTest extends TestCase
@@ -22,8 +24,19 @@ final class GoldenCasesParseTest extends TestCase
         $repo = dirname(__DIR__, 7);
         $cases = (new EvalCaseLoader())->loadDirectory($repo . '/agent-forge/fixtures/clinical-document-golden/cases');
 
-        $this->assertCount(50, $cases);
+        $this->assertGreaterThanOrEqual(50, count($cases));
+        $this->assertLessThanOrEqual(60, count($cases));
         $caseIds = array_map(static fn ($case): string => $case->caseId, $cases);
         $this->assertContains('chen-intake-typed', $caseIds);
+    }
+
+    public function testGoldenCasesSatisfyStructuralCoveragePolicy(): void
+    {
+        $repo = dirname(__DIR__, 7);
+        $cases = (new EvalCaseLoader())->loadDirectory($repo . '/agent-forge/fixtures/clinical-document-golden/cases');
+
+        $violations = (new StructuralCoveragePolicy())->validate($cases, new RubricRegistry());
+
+        $this->assertSame([], $violations);
     }
 }

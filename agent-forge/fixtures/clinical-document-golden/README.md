@@ -2,7 +2,7 @@
 
 This directory holds the synthetic/demo clinical document golden dataset, boolean rubrics, thresholds, and baseline for the multimodal Clinical Co-Pilot gate.
 
-The current gate contains 50 deterministic cases across 8 categories: lab PDF extraction, intake form extraction, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, and deleted-document retrieval protection. The suite uses 8 source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski).
+The current H1 gate contains 59 deterministic cases across 6 machine categories and the required Week 2/H1 behavior tags: lab PDF extraction, intake form extraction, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, deleted-document retrieval protection, combined document-plus-guideline grounding, missing-data handling, uncertain allergy review, incomplete collection date review, irrelevant preference filtering, follow-up grounding, and citation-regression protection. The suite uses checked-in source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski).
 
 ## Files
 
@@ -28,37 +28,32 @@ Each case uses `case_format_version: 1` and includes:
 - `expected.refusal_required`
 - `expected.log_must_not_contain`
 - `expected.rubrics`
+- `coverage_tags`
 
 Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is not applicable for that case and is excluded from pass-rate computation.
 
 ## Case coverage
 
-- **Lab PDF extraction** (12 cases): Chen lipid panel (LDL single/multi-result, abnormal flag, bounding box, citation, promotion, follow-up context), Whitaker CBC (WBC elevated, hemoglobin, platelet, multi-result), Reyes HbA1c (abnormal flag, bounding box, citation, promotion, follow-up context), Kowalski CMP (renal marker summary, citation, bounding box).
-- **Intake form extraction** (10 cases): Chen typed intake, Whitaker scanned intake (allergy review, bounding box, human review, needs-review citation), Reyes intake (chief concern, medication list, multi-finding), Kowalski intake (surgical history, allergy, multi-finding).
-- **Duplicate upload** (4 cases): Chen lab duplicate (citation stability, idempotent third check, no-extra-procedure-result), Whitaker CBC duplicate.
-- **Log sanitization** (3 cases): Chen PHI logging trap, Whitaker CBC log sanitized, Kowalski CMP log sanitized.
-- **Guideline retrieval** (8 cases): A1c (elevated context, quarterly review, monitoring frequency), LDL (supported, repeat testing), statin risk factors, blood pressure confirmation, hypertension follow-up.
-- **Out-of-corpus refusal** (7 cases): pediatric asthma, obstetric, mental health, oncology, dermatology, orthopedic, infectious disease, nephrology, emergency triage, medication reconciliation.
-- **Unsafe advice refusal** (5 cases): double insulin dose, ignore allergic reaction, stop taking anticoagulant/antidepressant/medication, self-prescribe, ignore chest pain, ignore blood pressure symptoms, double diabetes medication, self-adjust dose.
-- **Deleted document** (1 case): retracted document not returned in retrieval.
+- **Lab PDF extraction** (10 cases): Chen lipid panel, Whitaker CBC, Reyes HbA1c image, Kowalski CMP, missing-data handling, follow-up grounding, and citation-regression protection.
+- **Intake form extraction** (11 cases): Chen typed intake, Whitaker scanned intake, Reyes intake, Kowalski intake, uncertain allergy review, unexpected-location review, and irrelevant-preference filtering.
+- **Duplicate upload** (2 cases): Chen lab duplicate and Whitaker CBC duplicate.
+- **Log sanitization** (3 cases): lab and intake log-audit traps that check raw patient strings are absent from telemetry.
+- **Guideline retrieval** (13 cases): supported primary-care guideline retrieval, combined document-plus-guideline grounding, and wrong-document retraction protection.
+- **Refusal** (20 cases): out-of-corpus guideline refusals and unsafe advice refusals.
 
 ## 2026-05-06 audit follow-ups
 
-A 2026-05-06 audit identified duplication, scoring, and coverage gaps. The
-items below have been addressed; remaining limitations are listed under
-"Known limitations" further down.
+A 2026-05-06 H1 audit identified duplication, scoring, coverage, threshold, and documentation gaps. The items below have been addressed; remaining limitations are listed under "Known limitations" further down.
 
-### Consolidation (done)
+### H1 expansion and structural policy (done)
 
-The 50-case suite contained seven phrasing-variant clusters (Chen lab LDL,
-Chen intake, Reyes HbA1c, Whitaker intake, Kowalski CMP, chen-lab duplicate
-upload, out-of-corpus refusal) plus the guideline and unsafe-advice clusters.
-Each cluster had multiple cases whose `expected` blocks were byte-identical
-and differed only in `input.user_question` phrasing. 34 redundant cases were
-removed and one canonical case per behavior was kept, leaving 16 cases. Four
-new refusal cases (mental health, oncology, medication reconciliation,
-antidepressant stop-taking) were added afterward to broaden domain coverage,
-bringing the total to 20.
+The accepted H1 suite contains 59 cases, which satisfies the temporary 50-60
+case policy. `StructuralCoveragePolicy` now blocks the eval runner when the
+golden set drops below required category minimums, exceeds 60 cases, omits a
+registered rubric, or loses required H1 coverage tags such as
+`combined_document_guideline`, `missing_data`, `uncertain_allergy`,
+`incomplete_collection_date`, `irrelevant_preference`, `follow_up_grounding`,
+and `citation_regression`.
 
 ### Threshold tightening (done)
 
@@ -67,7 +62,20 @@ bringing the total to 20.
 baseline for those two rubrics is in fact 1.0 (every applicable case passes),
 so the 5% tolerance was masking failures that would not actually be tolerated.
 Both thresholds are now 1.0, matching observed behavior and the safety stance
-of the rest of the suite.
+of the rest of the suite. `deleted_document_not_retrieved` is also listed in
+`thresholds.json`, so deleted-source protection is threshold-gated as well as
+baseline-regression-gated. H1 also gates `promotion_expectations` and
+`document_fact_expectations`, so expected chart-promotion records and
+document-fact records must be emitted with citation metadata and stable fact
+fingerprints.
+
+### Source-document reconciliation (done)
+
+The checked-in extraction sidecars were reconciled against the committed source
+documents during H1 hardening. The accepted values now match the fixture files:
+Chen LDL `158 mg/dL`, Whitaker WBC `5.4`, Whitaker hemoglobin `11.1 g/dL`,
+Whitaker platelets `248`, Reyes HbA1c `8.2%`, and Kowalski creatinine
+`1.4 mg/dL`.
 
 ### Partial-credit recall scoring (done)
 
@@ -97,21 +105,20 @@ They are kept here to inform future work.
   H&Ps, op notes, consult notes, ED triage).
 - No medical coding (LOINC, SNOMED, ICD-10, RxNorm, CPT) in inputs or
   expected outputs; everything is free-text.
-- No negations, uncertainty markers, or temporal qualifiers in expected
-  extractions.
+- Limited negation, uncertainty, and temporal qualifier coverage; H1 includes
+  explicit uncertain allergy and incomplete collection date review cases, but
+  broad note semantics remain future work.
 - Only one scanned/OCR document (Whitaker intake) and one image (Reyes
-  HbA1c); no degraded-input edge cases (rotation, watermark, blur,
-  multi-page bleed-through).
+  HbA1c); H1 tags both, but degraded-input edge cases such as rotation,
+  watermark, blur, and multi-page bleed-through remain future work.
 - Refusal domains (dermatology, orthopedic, nephrology, etc.) are Q&A-only —
   there are still no documents in those domains.
 
 ### Scoring limitations still open
 
-- Rubric failures are free-text reasons, not a structured error category,
-  so cross-run failure attribution still requires manual inspection.
 - Per-case `null` rubric markers gate applicability per case rather than
-  per category; there is no structural enforcement that, e.g., every
-  `lab_pdf` case requires `bounding_box_present`.
+  per category. The suite-level structural policy enforces that every
+  registered rubric appears in at least one applicable golden case.
 
 ## Running
 
@@ -120,10 +127,18 @@ php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
 The runner is expected to exit zero when the fixture-backed strict extraction,
-identity-gating, and real guideline-retrieval path meets `thresholds.json`.
+identity-gating, structural H1 coverage policy, and real guideline-retrieval path meets `thresholds.json`.
 Current artifacts are written under
-`agent-forge/eval-results/clinical-document-<timestamp>/` and represent
-deterministic checkpoint proof, not OpenEMR fact persistence or final
-supervisor answer integration.
+`agent-forge/eval-results/clinical-document-<timestamp>/`.
+
+Latest accepted H1 artifact:
+
+```text
+agent-forge/eval-results/clinical-document-20260506-204755
+```
+
+This is deterministic fixture-backed gate proof. Deployed smoke, visual source
+UX, and final cost/latency packaging are tracked by later Week 2 hardening and
+submission epics.
 
 Week 1 eval fixtures remain in the parent `fixtures/` folder. Keep clinical document fixture names distinct so document-ingestion regressions do not overwrite Week 1 baselines.

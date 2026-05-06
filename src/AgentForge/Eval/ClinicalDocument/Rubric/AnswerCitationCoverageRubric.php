@@ -40,6 +40,9 @@ final class AnswerCitationCoverageRubric implements Rubric
         if ($inputs->case->expectedAnswer->everyGuidelineClaimHasCitation && !$this->claimGroupCovered($coverage, 'guideline_claims')) {
             return new RubricResult($this->name(), RubricStatus::Fail, 'At least one guideline claim lacks a citation.');
         }
+        if ($inputs->case->expectedAnswer->everyGuidelineClaimHasCitation && !$this->guidelineCitationDetailsCovered($inputs)) {
+            return new RubricResult($this->name(), RubricStatus::Fail, 'Guideline citation details were not reported for every guideline claim.');
+        }
 
         $facts = $inputs->output->extraction['facts'] ?? [];
         if (is_array($facts)) {
@@ -64,6 +67,41 @@ final class AnswerCitationCoverageRubric implements Rubric
         $cited = $counts['cited'] ?? null;
 
         return is_int($total) && is_int($cited) && $total > 0 && $total === $cited;
+    }
+
+    private function guidelineCitationDetailsCovered(RubricInputs $inputs): bool
+    {
+        $coverage = $inputs->output->answer['citation_coverage'] ?? [];
+        if (!is_array($coverage)) {
+            return false;
+        }
+        $coverage = StringKeyedArray::filter($coverage);
+        $counts = $coverage['guideline_claims'] ?? null;
+        if (!is_array($counts) || !is_int($counts['total'] ?? null)) {
+            return false;
+        }
+
+        $total = $counts['total'];
+        if ($total < 1) {
+            return false;
+        }
+
+        $citations = $inputs->output->answer['guideline_citations'] ?? null;
+        if (!is_array($citations) || count($citations) < $total) {
+            return false;
+        }
+
+        foreach ($citations as $citation) {
+            if (!is_array($citation)) {
+                return false;
+            }
+            $quote = $citation['quote_or_value'] ?? null;
+            if (!is_string($quote) || trim($quote) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

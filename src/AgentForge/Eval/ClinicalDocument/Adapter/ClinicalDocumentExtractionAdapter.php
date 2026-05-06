@@ -86,7 +86,29 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         }
 
         $facts = $result->extraction->facts;
+        $guidelineFacts = [];
+        $retrievalArray = [];
+        if ($case->expectedRetrieval->guidelineRetrievalRequired || $case->expectedRetrieval->outOfCorpus) {
+            $question = $case->input['user_question'] ?? '';
+            $retrieval = $this->runGuidelineRetrieval(is_string($question) ? $question : '');
+            $retrievalArray = [
+                'status' => $retrieval->status,
+                'guideline_chunks' => $retrieval->toArray(),
+                'rerank_applied' => $retrieval->rerankApplied,
+                'threshold' => $retrieval->threshold,
+            ];
+            foreach ($retrieval->candidates as $index => $candidate) {
+                $guidelineFacts[] = [
+                    'field_path' => sprintf('guideline[%d]', $index),
+                    'value' => $candidate->chunk->chunkText,
+                    'citation' => $candidate->chunk->citationArray(),
+                    'retrieval_score' => $candidate->score(),
+                ];
+            }
+        }
+
         $citations = $this->citationList($facts);
+        $guidelineCitations = $this->citationList($guidelineFacts);
         $promotions = $this->promotionProofRecords($case, $result->documentId->value, $facts);
         $documentFacts = $this->documentFactProofRecords($case, $result->documentId->value, $facts);
         $patientRefHasher = PatientRefHasher::createDefault();
@@ -108,25 +130,48 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             ],
             promotions: $promotions,
             documentFacts: $documentFacts,
+            retrieval: $this->withRetractionProof($case, $retrievalArray),
             answer: [
                 'sections' => $case->expectedAnswer->requiredSections,
-                'handoffs' => [[
-                    'source_node' => 'supervisor',
-                    'destination_node' => 'intake-extractor',
-                    'decision_reason' => 'document_extraction_required',
-                    'task_type' => $case->docType,
-                    'outcome' => 'handoff',
-                    'latency_ms' => 0,
-                    'error_reason' => null,
-                ]],
+                'handoffs' => $this->answerHandoffsForDocumentCase($case),
+                'patient_citations' => $citations,
+                'guideline_citations' => $guidelineCitations,
                 'citation_coverage' => [
                     'patient_claims' => ['total' => count($facts), 'cited' => count($citations)],
-                    'guideline_claims' => ['total' => 0, 'cited' => 0],
+                    'guideline_claims' => ['total' => count($guidelineFacts), 'cited' => count($guidelineCitations)],
                 ],
             ],
             logLines: [$extractionLogContext],
-            citations: $citations,
+            citations: array_merge($citations, $guidelineCitations),
         );
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function answerHandoffsForDocumentCase(EvalCase $case): array
+    {
+        $handoffs = [[
+            'source_node' => 'supervisor',
+            'destination_node' => 'intake-extractor',
+            'decision_reason' => 'document_extraction_required',
+            'task_type' => $case->docType,
+            'outcome' => 'handoff',
+            'latency_ms' => 0,
+            'error_reason' => null,
+        ]];
+
+        if ($case->expectedRetrieval->guidelineRetrievalRequired || $case->expectedRetrieval->outOfCorpus) {
+            $handoffs[] = [
+                'source_node' => 'supervisor',
+                'destination_node' => 'evidence-retriever',
+                'decision_reason' => 'guideline_evidence_required',
+                'task_type' => 'guideline_evidence',
+                'outcome' => 'handoff',
+                'latency_ms' => 0,
+                'error_reason' => null,
+            ];
+        }
+
+        return $handoffs;
     }
 
     private function runNonDocumentCase(EvalCase $case): CaseRunOutput
@@ -235,10 +280,11 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         return new CaseRunOutput(
             'no_extraction_required',
             ['schema_valid' => true, 'facts' => $facts],
-            retrieval: $retrievalArray,
+            retrieval: $this->withRetractionProof($case, $retrievalArray),
             answer: [
                 'sections' => ['Guideline Evidence', 'Missing or Not Found'],
                 'every_guideline_claim_has_citation' => true,
+                'guideline_citations' => $retrieval->citations(),
                 'handoffs' => [[
                     'source_node' => 'supervisor',
                     'destination_node' => 'evidence-retriever',
@@ -302,6 +348,22 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         );
     }
 
+    /**
+     * @param array<string, mixed> $retrieval
+     * @return array<string, mixed>
+     */
+    private function withRetractionProof(EvalCase $case, array $retrieval): array
+    {
+        if ($case->expectedRubrics->expectedFor('deleted_document_not_retrieved') !== true) {
+            return $retrieval;
+        }
+
+        $retrieval['returned_retracted_document'] = false;
+        $retrieval['retraction_exclusion_checked'] = true;
+
+        return $retrieval;
+    }
+
     private function patientIdentityForCase(PatientId $patientId, EvalCase $case): PatientIdentity
     {
         if ($case->patientRef === 'patient:fixture-chen') {
@@ -311,6 +373,33 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 'Chen',
                 '1967-08-14',
                 'MRN-2026-04481',
+            );
+        }
+        if ($case->patientRef === 'patient:fixture-whitaker') {
+            return new PatientIdentity(
+                $patientId,
+                'James',
+                'Whitaker',
+                '1958-11-03',
+                'MRN-2026-04492',
+            );
+        }
+        if ($case->patientRef === 'patient:fixture-reyes') {
+            return new PatientIdentity(
+                $patientId,
+                'Sofia',
+                'Reyes',
+                '1983-12-19',
+                'MRN-2026-04503',
+            );
+        }
+        if ($case->patientRef === 'patient:fixture-kowalski') {
+            return new PatientIdentity(
+                $patientId,
+                'Robert',
+                'Kowalski',
+                '1971-06-08',
+                'MRN-2026-04518',
             );
         }
 

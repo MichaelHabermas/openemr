@@ -51,6 +51,8 @@ final class RubricRegistry
             new NoPhiInLogsRubric(),
             new BoundingBoxPresentRubric(),
             new DeletedDocumentNotRetrievedRubric(),
+            new PromotionExpectationRubric(),
+            new DocumentFactExpectationRubric(),
         ];
     }
 }

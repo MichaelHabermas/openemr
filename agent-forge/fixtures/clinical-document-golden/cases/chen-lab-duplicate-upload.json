@@ -4,6 +4,9 @@
   "category": "duplicate_upload",
   "patient_ref": "patient:fixture-chen",
   "doc_type": "lab_pdf",
+  "coverage_tags": [
+    "duplicate_upload"
+  ],
   "input": {
     "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
     "repeat_upload_count": 2,
@@ -16,7 +19,7 @@
         {
           "field_path": "results[0]",
           "test_name": "LDL Cholesterol",
-          "value_contains": "148",
+          "value_contains": "158",
           "unit": "mg/dL",
           "requires_bounding_box": true
         }

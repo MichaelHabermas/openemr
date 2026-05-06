@@ -1,12 +1,12 @@
 {
   "case_format_version": 1,
-  "case_id": "chen-lab-typed",
+  "case_id": "whitaker-cbc-wbc-normal",
   "category": "lab_pdf_extraction",
-  "patient_ref": "patient:fixture-chen",
+  "patient_ref": "patient:fixture-whitaker",
   "doc_type": "lab_pdf",
   "input": {
-    "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
-    "user_question": "What changed in this patient's recent lipid panel?"
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p02-whitaker-cbc.pdf",
+    "user_question": "What is the WBC count from this CBC result?"
   },
   "expected": {
     "extraction": {
@@ -14,21 +14,16 @@
       "facts": [
         {
           "field_path": "results[0]",
-          "test_name": "LDL Cholesterol",
-          "value_contains": "158",
-          "unit": "mg/dL",
-          "abnormal_flag": "high",
-          "confidence_min": 0.85,
+          "test_name": "WBC",
+          "abnormal_flag": "normal",
+          "value_contains": "5.4",
+          "unit": "K/uL",
+          "confidence_min": 0.90,
           "requires_bounding_box": true
         }
       ]
     },
-    "promotions": [
-      {
-        "table": "procedure_result",
-        "value_contains": "158"
-      }
-    ],
+    "promotions": [],
     "document_facts": [],
     "retrieval": {
       "guideline_retrieval_required": false,
@@ -46,7 +41,7 @@
     },
     "refusal_required": false,
     "log_must_not_contain": [
-      "Chen"
+      "Whitaker"
     ],
     "rubrics": {
       "schema_valid": true,

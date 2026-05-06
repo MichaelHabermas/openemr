@@ -9,7 +9,10 @@
     "supervisor_handoff": 1.0,
     "answer_citation_coverage": 1.0,
     "no_phi_in_logs": 1.0,
-    "bounding_box_present": 1.0
+    "bounding_box_present": 1.0,
+    "deleted_document_not_retrieved": 1.0,
+    "promotion_expectations": 1.0,
+    "document_fact_expectations": 1.0
   },
   "regression_max_drop_pct": 5
 }

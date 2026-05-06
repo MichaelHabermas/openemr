@@ -16,7 +16,7 @@
           "field_path": "results[2]",
           "test_name": "Platelets",
           "abnormal_flag": "normal",
-          "value_contains": "245",
+          "value_contains": "248",
           "unit": "K/uL",
           "confidence_min": 0.90,
           "requires_bounding_box": true

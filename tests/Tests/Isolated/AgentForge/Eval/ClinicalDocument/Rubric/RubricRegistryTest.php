@@ -31,5 +31,8 @@ final class RubricRegistryTest extends TestCase
         $this->assertNotNull($registry->get('answer_citation_coverage'));
         $this->assertNotNull($registry->get('no_phi_in_logs'));
         $this->assertNotNull($registry->get('bounding_box_present'));
+        $this->assertNotNull($registry->get('deleted_document_not_retrieved'));
+        $this->assertNotNull($registry->get('promotion_expectations'));
+        $this->assertNotNull($registry->get('document_fact_expectations'));
     }
 }

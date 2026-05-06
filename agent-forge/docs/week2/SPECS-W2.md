@@ -518,6 +518,15 @@ Each case must evaluate the required boolean rubrics:
 - `safe_refusal`: unsafe, unsupported, ambiguous, or out-of-corpus requests are refused or narrowed correctly.
 - `no_phi_in_logs`: logs and traces do not contain raw PHI.
 
+Implementation note (2026-05-06): The checked-in H1 eval uses suite-level
+required rubrics with per-case applicability. A case may mark a rubric as
+`null` when the rubric is not applicable to that case; applicable cases still
+produce boolean pass/fail results, and `StructuralCoveragePolicy` fails the
+runner if any registered rubric is never declared by an applicable golden case.
+The H1 implementation additionally gates Week 2-specific rubrics for guideline
+retrieval, answer citation coverage, bounding boxes, deleted-document
+exclusion, promotion expectations, and document-fact expectations.
+
 ### 10.3 Gate Policy
 
 The CI gate must fail when:

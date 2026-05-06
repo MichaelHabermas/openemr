@@ -28,7 +28,10 @@ final class DeletedDocumentNotRetrievedRubric implements Rubric
         if (($inputs->output->retrieval['returned_retracted_document'] ?? false) === true) {
             return new RubricResult($this->name(), RubricStatus::Fail, 'Retrieval returned a retracted or deleted document.');
         }
+        if (($inputs->output->retrieval['retraction_exclusion_checked'] ?? false) !== true) {
+            return new RubricResult($this->name(), RubricStatus::Fail, 'Retrieval did not report a retraction exclusion check.');
+        }
 
-        return new RubricResult($this->name(), RubricStatus::Pass, 'No retracted or deleted document was returned.');
+        return new RubricResult($this->name(), RubricStatus::Pass, 'Retraction exclusion was checked and no retracted or deleted document was returned.');
     }
 }

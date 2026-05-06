@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\BaselineComparator;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\EvalRunner;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\RegressionVerdict;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\RunArtifactWriter;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\StructuralCoveragePolicy;
 use OpenEMR\AgentForge\StringKeyedArray;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use RuntimeException;
@@ -37,11 +38,21 @@ final class RunClinicalDocumentEvalsCommand
             $cases = (new EvalCaseLoader())->loadDirectory($fixturesDir . '/cases');
             $thresholds = $this->loadJsonFile($fixturesDir . '/thresholds.json');
             $baseline = $this->loadJsonFile($fixturesDir . '/baseline.json');
+            $rubrics = new RubricRegistry();
+            $coverageViolations = (new StructuralCoveragePolicy())->validate($cases, $rubrics);
+            if ($coverageViolations !== []) {
+                throw new RuntimeException("Clinical document golden coverage policy failed:\n- " . implode("\n- ", $coverageViolations));
+            }
+
             $adapter = new ClinicalDocumentExtractionAdapter($repoDir, $fixturesDir . '/extraction', new SystemMonotonicClock());
-            $result = (new EvalRunner($adapter, new RubricRegistry()))->run($cases);
+            $result = (new EvalRunner($adapter, $rubrics))->run($cases);
             $verdict = (new BaselineComparator())->compare($result, $thresholds, $baseline);
             $resultsDir = getenv('AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR') ?: $repoDir . '/agent-forge/eval-results';
-            $runDir = (new RunArtifactWriter($resultsDir))->write($result, $verdict);
+            $runDir = (new RunArtifactWriter($resultsDir))->write(
+                $result,
+                $verdict,
+                $this->runMetadata($cases, $thresholds, $baseline),
+            );
 
             printf("Clinical document eval verdict: %s\nArtifacts: %s\n", $verdict->value, $runDir);
 
@@ -55,6 +66,39 @@ final class RunClinicalDocumentEvalsCommand
             fwrite(STDERR, 'Clinical document eval runner error: ' . $e->getMessage() . "\n");
             return self::EXIT_RUNNER_ERROR;
         }
+    }
+
+    /**
+     * @param list<\OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase> $cases
+     * @param array<string, mixed> $thresholds
+     * @param array<string, mixed> $baseline
+     * @return array<string, mixed>
+     */
+    private function runMetadata(array $cases, array $thresholds, array $baseline): array
+    {
+        $categoryCounts = [];
+        $coverageTagCounts = [];
+        foreach ($cases as $case) {
+            $category = $case->category->value;
+            $categoryCounts[$category] = ($categoryCounts[$category] ?? 0) + 1;
+            foreach ($case->coverageTags as $tag) {
+                $coverageTagCounts[$tag] = ($coverageTagCounts[$tag] ?? 0) + 1;
+            }
+        }
+        ksort($categoryCounts);
+        ksort($coverageTagCounts);
+
+        $rubricThresholds = is_array($thresholds['rubric_thresholds'] ?? null) ? $thresholds['rubric_thresholds'] : [];
+
+        return [
+            'case_count_policy' => '50-60',
+            'case_count' => count($cases),
+            'baseline_case_count' => is_numeric($baseline['case_count'] ?? null) ? (int) $baseline['case_count'] : null,
+            'threshold_rubrics' => array_keys($rubricThresholds),
+            'category_counts' => $categoryCounts,
+            'coverage_tag_counts' => $coverageTagCounts,
+            'structural_coverage_policy' => 'passed',
+        ];
     }
 
     /** @return array<string, mixed> */

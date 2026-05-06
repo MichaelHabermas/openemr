@@ -6,15 +6,15 @@
   "doc_type": "intake_form",
   "input": {
     "source_document_path": "agent-forge/docs/example-documents/intake-forms/p02-whitaker-intake.pdf",
-    "user_question": "What intake findings need review?"
+    "user_question": "What allergy information is documented on this intake?"
   },
   "expected": {
     "extraction": {
       "schema_valid": true,
       "facts": [
         {
-          "field_path": "needs_review[0]",
-          "value_contains": "allergy",
+          "field_path": "allergy",
+          "value_contains": "NKDA",
           "confidence_min": 0.5,
           "requires_bounding_box": true
         }
@@ -23,8 +23,7 @@
     "promotions": [],
     "document_facts": [
       {
-        "field_path": "needs_review[0]",
-        "classification": "needs_review"
+        "field_path": "allergy"
       }
     ],
     "retrieval": {
@@ -34,7 +33,7 @@
     "answer": {
       "required_sections": [
         "Patient Findings",
-        "Needs Human Review"
+        "Missing or Not Found"
       ],
       "every_patient_claim_has_citation": true,
       "required_handoff_types": [

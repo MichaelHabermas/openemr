@@ -36,7 +36,7 @@
   "findings": [
     {
       "field": "chief_concern",
-      "value": "follow-up for cholesterol management",
+      "value": "Tired during the day, mild chest tightness when walking uphill the past 3 weeks.",
       "certainty": "document_fact",
       "confidence": 0.95,
       "citation": {
@@ -44,10 +44,29 @@
         "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
         "page_or_section": "page 1",
         "field_or_chunk_id": "chief_concern",
-        "quote_or_value": "follow-up for cholesterol management",
+        "quote_or_value": "Tired during the day, mild chest tightness when walking uphill the past 3 weeks.",
         "bounding_box": {
           "x": 0.104,
           "y": 0.196,
+          "width": 0.260,
+          "height": 0.032
+        }
+      }
+    },
+    {
+      "field": "needs_review[0]",
+      "value": "shellfish?? maybe iodine itchy?",
+      "certainty": "needs_review",
+      "confidence": 0.74,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "needs_review[0]",
+        "quote_or_value": "shellfish?? maybe iodine itchy?",
+        "bounding_box": {
+          "x": 0.104,
+          "y": 0.506,
           "width": 0.260,
           "height": 0.032
         }

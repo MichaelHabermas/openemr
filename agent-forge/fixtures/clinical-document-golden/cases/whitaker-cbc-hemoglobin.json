@@ -15,8 +15,8 @@
         {
           "field_path": "results[1]",
           "test_name": "Hemoglobin",
-          "abnormal_flag": "normal",
-          "value_contains": "12.4",
+          "abnormal_flag": "low",
+          "value_contains": "11.1",
           "unit": "g/dL",
           "confidence_min": 0.90,
           "requires_bounding_box": true

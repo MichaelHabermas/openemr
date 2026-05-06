@@ -1,11 +1,11 @@
 {
   "doc_type": "lab_pdf",
   "lab_name": "Golden Fixture Lab",
-  "collected_at": "2026-04-03",
+  "collected_at": "2026-04-18",
   "patient_identity": [
     {
       "kind": "patient_name",
-      "value": "Alex Testpatient",
+      "value": "REYES, SOFIA",
       "field_path": "header.patient_name",
       "certainty": "verified",
       "confidence": 0.98,
@@ -14,13 +14,13 @@
         "source_id": "sha256:fixture",
         "page_or_section": "page 1",
         "field_or_chunk_id": "patient_name",
-        "quote_or_value": "Alex Testpatient",
+        "quote_or_value": "REYES, SOFIA",
         "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
       }
     },
     {
       "kind": "date_of_birth",
-      "value": "1976-04-12",
+      "value": "1983-12-19",
       "field_path": "header.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -29,7 +29,7 @@
         "source_id": "sha256:fixture",
         "page_or_section": "page 1",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1976-04-12",
+        "quote_or_value": "1983-12-19",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }
@@ -37,10 +37,10 @@
   "results": [
     {
       "test_name": "Hemoglobin A1c",
-      "value": "7.4 %",
+      "value": "8.2 %",
       "unit": "%",
       "reference_range": "<5.7 %",
-      "collected_at": "2026-04-03",
+      "collected_at": "2026-04-18",
       "abnormal_flag": "high",
       "certainty": "verified",
       "confidence": 0.94,
@@ -49,7 +49,7 @@
         "source_id": "sha256:ce070ae2f28b0015acd29d068ae0af84155bdc1a98aac81d4a6d3f68687f7f77",
         "page_or_section": "image",
         "field_or_chunk_id": "results[0]",
-        "quote_or_value": "Hemoglobin A1c 7.4 %",
+        "quote_or_value": "Hemoglobin A1c 8.2 %",
         "bounding_box": {
           "x": 0.096,
           "y": 0.238,

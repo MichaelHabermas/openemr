@@ -15,7 +15,7 @@
         {
           "field_path": "results[0]",
           "test_name": "Hemoglobin A1c",
-          "value_contains": "7",
+          "value_contains": "8.2",
           "unit": "%",
           "confidence_min": 0.85,
           "requires_bounding_box": true
@@ -25,7 +25,8 @@
     "promotions": [
       {
         "table": "procedure_result",
-        "test_name": "Hemoglobin A1c"
+        "test_name": "Hemoglobin A1c",
+        "value_contains": "8.2"
       }
     ],
     "document_facts": [],

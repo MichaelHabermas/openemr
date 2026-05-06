@@ -26,9 +26,16 @@ final class RunArtifactWriterTest extends TestCase
         $runDir = (new RunArtifactWriter($dir))->write(
             new EvalRunResult([['case_id' => 'case-a']], ['schema_valid' => new RubricSummary('schema_valid', 0, 1, 0, 0.0)]),
             RegressionVerdict::ThresholdViolation,
+            ['case_count_policy' => '50-60'],
         );
 
         $this->assertFileExists($runDir . '/run.json');
         $this->assertFileExists($runDir . '/summary.json');
+        $summary = json_decode((string) file_get_contents($runDir . '/summary.json'), true);
+        $this->assertIsArray($summary);
+        $metadata = $summary['metadata'] ?? null;
+        $this->assertIsArray($metadata);
+        $this->assertSame(1, $summary['case_count'] ?? null);
+        $this->assertSame('50-60', $metadata['case_count_policy'] ?? null);
     }
 }

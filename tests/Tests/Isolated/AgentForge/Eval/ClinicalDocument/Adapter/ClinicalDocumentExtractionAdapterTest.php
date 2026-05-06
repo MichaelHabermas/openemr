@@ -35,7 +35,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertSame('LDL Cholesterol', $fact['test_name'] ?? null);
         $value = $fact['value'] ?? null;
         $this->assertIsScalar($value);
-        $this->assertStringContainsString('148', (string) $value);
+        $this->assertStringContainsString('158', (string) $value);
         $this->assertTrue((new CitationShape())->factHasValidCitation($fact));
         $this->assertTrue((new CitationShape())->factHasBoundingBox($fact));
     }
@@ -55,7 +55,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertIsString($promotion['fact_fingerprint'] ?? null);
         $this->assertStringStartsWith('sha256:', $promotion['fact_fingerprint']);
         $this->assertIsScalar($promotion['value'] ?? null);
-        $this->assertStringContainsString('148', (string) $promotion['value']);
+        $this->assertStringContainsString('158', (string) $promotion['value']);
         $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($promotion)));
     }
 
@@ -66,14 +66,20 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertSame('extraction_completed', $output->status);
         $this->assertSame([], $output->promotions);
         $documentFacts = $output->documentFacts;
-        $this->assertCount(1, $documentFacts);
-        $fact = $documentFacts[0];
+        $this->assertCount(2, $documentFacts);
+        $fact = null;
+        foreach ($documentFacts as $candidate) {
+            if (($candidate['field_path'] ?? null) === 'chief_concern') {
+                $fact = $candidate;
+                break;
+            }
+        }
+        $this->assertIsArray($fact);
         $this->assertSame('intake_form', $fact['doc_type'] ?? null);
-        $this->assertSame('chief_concern', $fact['field_path'] ?? null);
         $this->assertSame('document_fact', $fact['fact_type'] ?? null);
         $this->assertTrue($fact['active'] ?? false);
         $this->assertIsScalar($fact['fact_text'] ?? null);
-        $this->assertStringContainsString('cholesterol', (string) $fact['fact_text']);
+        $this->assertStringContainsString('chest tightness', (string) $fact['fact_text']);
         $this->assertIsString($fact['fact_fingerprint'] ?? null);
         $this->assertStringStartsWith('sha256:', $fact['fact_fingerprint']);
         $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($fact)));

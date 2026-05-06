@@ -886,9 +886,10 @@ It summarizes the measured clinical-document cost, latency, and operational cave
 Week 2 requires a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
 Current implementation note (2026-05-06): the checked-in clinical document
-golden set is the 50-case submission set. It gates strict fixture-backed
+golden set is the 59-case H1 submission set. It gates strict fixture-backed
 extraction, identity checks, real guideline retrieval, safe refusal, citation
-shape, bounding boxes, supervisor/final-answer behavior, and no-PHI logging.
+shape, bounding boxes, supervisor/final-answer behavior, no-PHI logging, and
+runner-enforced structural coverage for the required H1 scenarios.
 
 AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `agent-forge/scripts`.
 
@@ -899,8 +900,8 @@ php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
 The existing `agent-forge/fixtures/clinical-document-golden` directory is the
-clinical document golden set location. It contains the 50-case Week 2 submission
-set.
+clinical document golden set location. It contains the 59-case Week 2 H1
+submission set.
 
 Baseline storage and comparison are checked into the repo:
 
@@ -909,7 +910,7 @@ agent-forge/fixtures/clinical-document-golden/baseline.json
 agent-forge/fixtures/clinical-document-golden/thresholds.json
 ```
 
-`run-clinical-document-evals.php` writes the current run to `agent-forge/eval-results/`, compares rubric pass rates against `baseline.json`, and fails when any required rubric drops below threshold or regresses by more than 5%. Baseline updates require an explicit commit to the baseline file.
+`run-clinical-document-evals.php` validates structural coverage, writes the current run to `agent-forge/eval-results/`, compares rubric pass rates against `baseline.json`, and fails when any required rubric drops below threshold or regresses by more than 5%. Baseline updates require an explicit commit to the baseline file.
 
 Required boolean rubrics:
 
@@ -927,9 +928,11 @@ Additional gated Week 2 rubrics:
 deleted_document_not_retrieved
 bounding_box_present
 guideline_retrieval
+promotion_expectations
+document_fact_expectations
 ```
 
-Other checks such as duplicate prevention and uncertain-finding visibility are reported as case-level assertions, but the required five rubrics plus the Week 2 gated rubrics are the PR-blocking summary metrics.
+Other checks such as duplicate prevention and uncertain-finding visibility are reported as case-level assertions, but the required five rubrics plus the Week 2 gated rubrics are the blocking summary metrics.
 
 The gate fails when:
 
@@ -1000,7 +1003,7 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-The 50-case set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
+The 59-case H1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
 
 ## 19. Deployment Runtime
 
@@ -1118,9 +1121,9 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored with citation metadata for review, but are excluded from active evidence and chart promotion until resolved. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
-| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 50 synthetic/demo cases. |
-| Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`. |
-| PR-blocking CI or Git Hook | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is used by CI/hook and graders. |
+| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 59 synthetic/demo H1 cases. |
+| Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`; Week 2 gated rubrics also protect guideline retrieval, bounding boxes, deleted-document exclusion, promotion expectations, and document-fact expectations. |
+| Blocking gate command | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is intended for CI/hook and grader reruns. |
 | No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |
-| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings are documented in `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`. |
+| Cost and latency report | `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md` documents the accepted deterministic artifact and explicitly marks runtime latency and model cost fields as not yet measured for the clinical-document path. |
 | Deployed observable flow | Runtime includes `openemr`, MariaDB 11.8, automatic `agentforge-worker`, VM deploy/rollback scripts, and worker health/readiness proof. |

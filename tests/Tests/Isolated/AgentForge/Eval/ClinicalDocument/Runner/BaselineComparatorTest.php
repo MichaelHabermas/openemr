@@ -49,4 +49,79 @@ final class BaselineComparatorTest extends TestCase
 
         $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
     }
+
+    public function testRegressionExceededWhenDropIsGreaterThanConfiguredTolerance(): void
+    {
+        $result = new EvalRunResult([], [
+            'citation_present' => new RubricSummary('citation_present', 94, 6, 0, 0.94),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['citation_present' => 0.0], 'regression_max_drop_pct' => 5],
+            ['rubric_pass_rates' => ['citation_present' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::RegressionExceeded, $verdict);
+    }
+
+    public function testBaselineMetWhenDropEqualsConfiguredTolerance(): void
+    {
+        $result = new EvalRunResult([], [
+            'safe_refusal' => new RubricSummary('safe_refusal', 95, 5, 0, 0.95),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['safe_refusal' => 0.0], 'regression_max_drop_pct' => 5],
+            ['rubric_pass_rates' => ['safe_refusal' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::BaselineMet, $verdict);
+    }
+
+    public function testThresholdViolationWhenBelowThresholdButWithinRegressionTolerance(): void
+    {
+        $result = new EvalRunResult([], [
+            'no_phi_in_logs' => new RubricSummary('no_phi_in_logs', 96, 4, 0, 0.96),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['no_phi_in_logs' => 0.97], 'regression_max_drop_pct' => 5],
+            ['rubric_pass_rates' => ['no_phi_in_logs' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
+    }
+
+    public function testThresholdViolationWhenProtectedRubricIsMissingFromResult(): void
+    {
+        $result = new EvalRunResult([], [
+            'schema_valid' => new RubricSummary('schema_valid', 1, 0, 0, 1.0),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['schema_valid' => 1.0, 'citation_present' => 1.0], 'regression_max_drop_pct' => 5],
+            ['rubric_pass_rates' => ['schema_valid' => 1.0, 'citation_present' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
+    }
+
+    public function testThresholdViolationWhenProtectedRubricHasNoApplicableCases(): void
+    {
+        $result = new EvalRunResult([], [
+            'citation_present' => new RubricSummary('citation_present', 0, 0, 10, 0.0),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['citation_present' => 1.0], 'regression_max_drop_pct' => 5],
+            ['rubric_pass_rates' => ['citation_present' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
+    }
 }

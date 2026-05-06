@@ -673,7 +673,7 @@ Dependencies: M5.
 
 ### Epic H1 - 50-Case Eval Expansion And Regression Policy
 
-Status: Not started.
+Status: Completed.
 
 Goal: Satisfy the full Week 2 50-case eval requirement.
 
@@ -682,8 +682,8 @@ Files/modules:
 - Modify `agent-forge/fixtures/clinical-document-golden/cases/*.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/baseline.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/thresholds.json`.
-- Maintain `agent-forge/fixtures/clinical-document-golden/cases/*.json` as the checked-in 50-case golden set.
-- Modify `agent-forge/scripts/run-clinical-document-evals.php`.
+- Maintain `agent-forge/fixtures/clinical-document-golden/cases/*.json` as the checked-in 50-60 case golden set.
+- Modify `agent-forge/scripts/run-clinical-document-evals.php` and the clinical document eval runner policy.
 
 Database changes: None.
 
@@ -693,19 +693,30 @@ Tests/evals first:
 
 Implementation tasks:
 
-- Expand to 50 synthetic/demo cases.
+- Expand to 50-60 synthetic/demo cases with structural H1 coverage tags.
 - Enforce required rubrics: `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`.
-- Keep clinical document gated rubrics: `bounding_box_present`, `deleted_document_not_retrieved`.
+- Keep clinical document gated rubrics: `bounding_box_present`, `deleted_document_not_retrieved`, `promotion_expectations`, `document_fact_expectations`.
 - Fail on any required threshold drop or >5% regression.
+- Fail when required H1 scenario coverage or registered-rubric coverage disappears.
 
 Acceptance criteria:
 
-- Fewer than 50 cases fails the gate.
+- Fewer than 50 cases or more than 60 cases fails the gate.
 - A deliberate citation, schema, refusal, or no-PHI regression fails.
 
 Definition of done:
 
-- 50-case run writes current results and compares against baseline.
+- 59-case run writes current results and compares against baseline.
+
+Implementation/proof note (2026-05-06): H1 is implemented with a 59-case
+golden set, a runner-enforced `StructuralCoveragePolicy`, all configured
+rubric thresholds at `1.0`, `deleted_document_not_retrieved`,
+`promotion_expectations`, and `document_fact_expectations` explicitly
+threshold-gated, and `regression_max_drop_pct` set to `5`. Focused clinical
+document isolated tests passed (`59 tests, 224 assertions`) and the latest
+clinical document eval artifact is
+`agent-forge/eval-results/clinical-document-20260506-204755` with verdict
+`baseline_met`.
 
 Dependencies: M7.
 

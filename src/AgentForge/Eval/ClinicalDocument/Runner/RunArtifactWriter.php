@@ -20,7 +20,8 @@ final readonly class RunArtifactWriter
     {
     }
 
-    public function write(EvalRunResult $result, RegressionVerdict $verdict): string
+    /** @param array<string, mixed> $metadata */
+    public function write(EvalRunResult $result, RegressionVerdict $verdict, array $metadata = []): string
     {
         $runDir = rtrim($this->resultsDir, '/') . '/clinical-document-' . gmdate('Ymd-His');
         if (!is_dir($runDir) && !mkdir($runDir, 0775, true) && !is_dir($runDir)) {
@@ -30,12 +31,15 @@ final readonly class RunArtifactWriter
         $run = [
             'tier' => 'clinical_document_mvp_gate',
             'executed_at_utc' => gmdate('c'),
+            'metadata' => $metadata,
             'cases' => $result->caseResults,
         ];
         $summary = [
             'tier' => 'clinical_document_mvp_gate',
             'executed_at_utc' => gmdate('c'),
             'verdict' => $verdict->value,
+            'case_count' => count($result->caseResults),
+            'metadata' => $metadata,
             'rubrics' => array_map(
                 static fn (RubricSummary $summary): array => [
                     'passed' => $summary->passed,

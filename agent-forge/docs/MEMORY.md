@@ -449,3 +449,43 @@ Last verified: 2026-05-06.
   behavior, richer guideline citation details, and closed the deterministic
   fixture fallback gap where guideline evidence could be mislabeled as patient
   facts. The clinical eval handoff shape now mirrors the database contract.
+
+## Week 2 H1 Implementation Notes
+
+Last verified: 2026-05-06.
+
+- H1 is implemented with 59 checked-in clinical-document golden cases under
+  `agent-forge/fixtures/clinical-document-golden/cases/`, staying inside the
+  temporary 50-60 case policy.
+- The H1 suite now includes structural coverage tags for clean typed lab,
+  scanned lab, image-only lab, typed intake, scanned intake, unexpected
+  location, uncertain allergy, incomplete collection date, irrelevant
+  preference, duplicate upload, wrong-document retraction, missing data,
+  out-of-corpus guideline, no-PHI logging trap, follow-up grounding, citation
+  regression, and combined document-plus-guideline grounding.
+- `StructuralCoveragePolicy` runs inside
+  `RunClinicalDocumentEvalsCommand` before the adapter executes. It fails the
+  gate if case count leaves 50-60, required category minimums are lost,
+  required H1 coverage tags are absent, or a registered rubric is never
+  declared by an applicable case.
+- `baseline.json` now records `case_count: 59`; `thresholds.json` keeps all
+  configured rubric thresholds at `1.0`, includes
+  `deleted_document_not_retrieved`, `promotion_expectations`, and
+  `document_fact_expectations`, and preserves
+  `regression_max_drop_pct: 5`.
+- H1 hardening reconciled extraction sidecars to the checked-in source
+  documents, added real fixture patient identities for Whitaker, Reyes, and
+  Kowalski, and made deleted-document proof require an explicit retraction
+  exclusion check.
+- Regression policy proof covers threshold violations, case-count drops, drops
+  greater than 5%, and the exact-5% boundary. `BaselineComparator` uses a small
+  epsilon so floating-point precision does not turn exactly 5% into a false
+  `regression_exceeded` verdict.
+- Latest focused proof: `composer phpunit-isolated -- --filter
+  'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed
+  `59 tests, 224 assertions`. Latest eval proof:
+  `agent-forge/eval-results/clinical-document-20260506-204755` with verdict
+  `baseline_met`.
+- The H1 eval is deterministic fixture-backed proof. Deployed Week 2 smoke,
+  visual source UX, and real cost/latency packaging remain later hardening and
+  final-submission concerns.

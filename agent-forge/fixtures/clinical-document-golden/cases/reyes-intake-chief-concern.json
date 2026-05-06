@@ -14,7 +14,7 @@
       "facts": [
         {
           "field_path": "chief_concern",
-          "value_contains": "chest pain",
+          "value_contains": "blurry vision",
           "confidence_min": 0.80,
           "requires_bounding_box": true
         }

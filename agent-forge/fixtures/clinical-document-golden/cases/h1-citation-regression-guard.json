@@ -1,23 +1,27 @@
 {
   "case_format_version": 1,
-  "case_id": "chen-lab-typed",
+  "case_id": "h1-citation-regression-guard",
   "category": "lab_pdf_extraction",
-  "patient_ref": "patient:fixture-chen",
+  "patient_ref": "patient:fixture-whitaker",
   "doc_type": "lab_pdf",
+  "coverage_tags": [
+    "scanned_lab",
+    "citation_regression"
+  ],
   "input": {
-    "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
-    "user_question": "What changed in this patient's recent lipid panel?"
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p02-whitaker-cbc.pdf",
+    "user_question": "Verify that the low hemoglobin claim is cited to the exact CBC result."
   },
   "expected": {
     "extraction": {
       "schema_valid": true,
       "facts": [
         {
-          "field_path": "results[0]",
-          "test_name": "LDL Cholesterol",
-          "value_contains": "158",
-          "unit": "mg/dL",
-          "abnormal_flag": "high",
+          "field_path": "results[1]",
+          "test_name": "Hemoglobin",
+          "value_contains": "11.1",
+          "unit": "g/dL",
+          "abnormal_flag": "low",
           "confidence_min": 0.85,
           "requires_bounding_box": true
         }
@@ -26,7 +30,7 @@
     "promotions": [
       {
         "table": "procedure_result",
-        "value_contains": "158"
+        "value_contains": "11.1"
       }
     ],
     "document_facts": [],
@@ -46,7 +50,7 @@
     },
     "refusal_required": false,
     "log_must_not_contain": [
-      "Chen"
+      "Whitaker"
     ],
     "rubrics": {
       "schema_valid": true,

@@ -4,7 +4,7 @@
   "patient_identity": [
     {
       "kind": "patient_name",
-      "value": "Alex Testpatient",
+      "value": "James E. Whitaker",
       "field_path": "demographics.patient_name",
       "certainty": "verified",
       "confidence": 0.98,
@@ -13,13 +13,13 @@
         "source_id": "sha256:fixture",
         "page_or_section": "demographics",
         "field_or_chunk_id": "patient_name",
-        "quote_or_value": "Alex Testpatient",
+        "quote_or_value": "James E. Whitaker",
         "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
       }
     },
     {
       "kind": "date_of_birth",
-      "value": "1976-04-12",
+      "value": "1958-11-03",
       "field_path": "demographics.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -28,23 +28,23 @@
         "source_id": "sha256:fixture",
         "page_or_section": "demographics",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1976-04-12",
+        "quote_or_value": "1958-11-03",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }
   ],
   "findings": [
     {
-      "field": "needs_review[0]",
-      "value": "allergy history needs review",
-      "certainty": "needs_review",
-      "confidence": 0.82,
+      "field": "allergy",
+      "value": "NKDA — No known drug allergies",
+      "certainty": "document_fact",
+      "confidence": 0.95,
       "citation": {
         "source_type": "intake_form",
         "source_id": "sha256:d9a4f49b3ec6c14555b9014c31fb41e5c158a2bb3158c3439fd99df9d8dddd71",
         "page_or_section": "page 1",
-        "field_or_chunk_id": "needs_review[0]",
-        "quote_or_value": "allergy history",
+        "field_or_chunk_id": "allergy",
+        "quote_or_value": "NKDA — No known drug allergies",
         "bounding_box": {
           "x": 0.128,
           "y": 0.344,

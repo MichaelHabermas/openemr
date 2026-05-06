@@ -27,6 +27,8 @@ abstract class RubricTestCase extends TestCase
     /**
      * @param array<string, bool|null> $rubrics
      * @param list<array<string, mixed>> $expectedFacts
+     * @param list<array<string, mixed>> $expectedPromotions
+     * @param list<array<string, mixed>> $expectedDocumentFacts
      * @param list<string> $logMustNotContain
      */
     protected function inputs(
@@ -36,6 +38,8 @@ abstract class RubricTestCase extends TestCase
         bool $refusalRequired = false,
         array $logMustNotContain = [],
         ?ExpectedAnswer $expectedAnswer = null,
+        array $expectedPromotions = [],
+        array $expectedDocumentFacts = [],
     ): RubricInputs {
         return new RubricInputs(
             new EvalCase(
@@ -46,8 +50,8 @@ abstract class RubricTestCase extends TestCase
                 'lab_pdf',
                 [],
                 new ExpectedExtraction(true, $expectedFacts),
-                [],
-                [],
+                $expectedPromotions,
+                $expectedDocumentFacts,
                 new ExpectedRetrieval(false, 0),
                 $expectedAnswer ?? new ExpectedAnswer(),
                 $refusalRequired,

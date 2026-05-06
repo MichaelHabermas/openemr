@@ -19,6 +19,7 @@ final readonly class EvalCase
      * @param list<array<string, mixed>> $expectedPromotions
      * @param list<array<string, mixed>> $expectedDocumentFacts
      * @param list<string> $logMustNotContain
+     * @param list<string> $coverageTags
      */
     public function __construct(
         public int $caseFormatVersion,
@@ -35,6 +36,7 @@ final readonly class EvalCase
         public bool $refusalRequired,
         public array $logMustNotContain,
         public ExpectedRubrics $expectedRubrics,
+        public array $coverageTags = [],
     ) {
     }
 }

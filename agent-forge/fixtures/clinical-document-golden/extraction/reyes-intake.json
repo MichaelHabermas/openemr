@@ -4,7 +4,7 @@
   "patient_identity": [
     {
       "kind": "patient_name",
-      "value": "Alex Testpatient",
+      "value": "Sofia M. Reyes",
       "field_path": "demographics.patient_name",
       "certainty": "verified",
       "confidence": 0.98,
@@ -13,13 +13,13 @@
         "source_id": "sha256:fixture",
         "page_or_section": "demographics",
         "field_or_chunk_id": "patient_name",
-        "quote_or_value": "Alex Testpatient",
+        "quote_or_value": "Sofia M. Reyes",
         "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
       }
     },
     {
       "kind": "date_of_birth",
-      "value": "1976-04-12",
+      "value": "1983-12-19",
       "field_path": "demographics.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -28,7 +28,7 @@
         "source_id": "sha256:fixture",
         "page_or_section": "demographics",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1976-04-12",
+        "quote_or_value": "1983-12-19",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }
@@ -36,7 +36,7 @@
   "findings": [
     {
       "field": "chief_concern",
-      "value": "chest pain and shortness of breath",
+      "value": "blurry vision R eye + numbness in toes ~3 weeks. worried about diabetes complications.",
       "certainty": "document_fact",
       "confidence": 0.94,
       "citation": {
@@ -44,7 +44,7 @@
         "source_id": "sha256:500077eb69905a31763bb3843417f9f89eade39ca1139e9bfd273b025de6f6c5",
         "page_or_section": "page 1",
         "field_or_chunk_id": "chief_concern",
-        "quote_or_value": "chest pain and shortness of breath",
+        "quote_or_value": "blurry vision R eye + numbness in toes ~3 weeks. worried about diabetes complications.",
         "bounding_box": {
           "x": 0.104,
           "y": 0.196,
@@ -55,7 +55,7 @@
     },
     {
       "field": "medication_list",
-      "value": "metformin 500mg BID, lisinopril 10mg daily",
+      "value": "Metformin 1000 mg BID, Ozempic 1 mg SQ weekly, Sertraline 50 mg daily",
       "certainty": "document_fact",
       "confidence": 0.91,
       "citation": {
@@ -63,7 +63,7 @@
         "source_id": "sha256:500077eb69905a31763bb3843417f9f89eade39ca1139e9bfd273b025de6f6c5",
         "page_or_section": "page 1",
         "field_or_chunk_id": "medication_list",
-        "quote_or_value": "metformin 500mg BID, lisinopril 10mg daily",
+        "quote_or_value": "Metformin 1000 mg BID, Ozempic 1 mg SQ weekly, Sertraline 50 mg daily",
         "bounding_box": {
           "x": 0.104,
           "y": 0.240,
