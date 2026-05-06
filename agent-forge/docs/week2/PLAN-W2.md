@@ -356,6 +356,117 @@ Acceptance criteria:
 
 Dependencies: M4.
 
+### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
+
+Status: Not started.
+
+Checkpoint scope: Implement a thin MVP version first: a small intentional primary-care corpus, deterministic indexing/retrieval proof, one supported guideline retrieval path, cited top-k output, and deterministic refusal for out-of-corpus questions. Broader corpus hardening can continue after the checkpoint.
+
+Goal: Retrieve cited guideline evidence using sparse retrieval plus MariaDB Vector plus rerank.
+
+Files/modules:
+
+- Add `agent-forge/fixtures/clinical-guideline-corpus/*.md`.
+- Add `agent-forge/fixtures/clinical-guideline-corpus/corpus-version.txt`.
+- Add `agent-forge/scripts/index-clinical-guidelines.php`.
+- Add `src/AgentForge/Guidelines/GuidelineChunk.php`.
+- Add `src/AgentForge/Guidelines/SqlGuidelineChunkRepository.php`.
+- Add `src/AgentForge/Guidelines/GuidelineCorpusIndexer.php`.
+- Add `src/AgentForge/Guidelines/HybridGuidelineRetriever.php`.
+- Add `src/AgentForge/Guidelines/DeterministicReranker.php`.
+- Add `src/AgentForge/Guidelines/CohereReranker.php`.
+
+Database changes:
+
+- Add `clinical_guideline_chunks`: `id`, `chunk_id`, `corpus_version`, `source_title`, `source_url_or_file`, `section`, `chunk_text`, `citation_json`, `active`, `created_at`; unique `(corpus_version, chunk_id)`.
+- Add `clinical_guideline_chunk_embeddings`: `chunk_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
+
+Tests/evals first:
+
+- Test guideline indexing is deterministic and idempotent.
+- Test sparse search returns expected chunks for lipid, A1c, BP, and preventive screening queries.
+- Test dense retrieval uses MariaDB Vector and never touches patient document fact embeddings.
+- Test rerank is always applied to merged candidates.
+- Test out-of-corpus questions return not-found/refusal instead of invented guideline claims.
+
+Implementation tasks:
+
+- Create small primary-care corpus: ADA A1c monitoring excerpt, ACC/AHA cholesterol excerpt, USPSTF screening excerpt, hypertension excerpt, and OpenEMR-local refusal calibration note.
+- Chunk into roughly 25-50 section-level chunks.
+- Implement sparse retrieval, dense vector retrieval, merge/dedupe, rerank, threshold, and cited top-k output.
+- Use deterministic local reranker for evals and Cohere when `AGENTFORGE_COHERE_API_KEY` is present.
+
+Acceptance criteria:
+
+- At least one supported guideline question retrieves relevant cited evidence.
+- Out-of-corpus questions do not generate guideline claims.
+- Guideline vectors are stored only in `clinical_guideline_chunk_embeddings`.
+
+Definition of done:
+
+- `php agent-forge/scripts/index-clinical-guidelines.php` can rebuild the corpus.
+- Retrieval evals pass with deterministic embeddings/rerank.
+
+Dependencies: M5A for the time-boxed MVP checkpoint. The full post-checkpoint version that relies on patient document facts and deleted-document exclusion depends on M5C.
+
+### Epic M7 - Supervisor, Evidence-Retriever, Final Answer Separation, And MVP Gate
+
+Status: Not started.
+
+Checkpoint scope: Implement a thin MVP version first: deterministic supervisor routing, visible `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever` handoff logs, and a separated demo answer using extraction output plus guideline evidence. Full patient document search, promoted lab-row evidence, and exhaustive verifier hardening continue after the checkpoint.
+
+Goal: Wire the full MVP answer path through `supervisor`, `intake-extractor`, and `evidence-retriever`.
+
+Files/modules:
+
+- Add `src/AgentForge/Orchestration/Supervisor.php`.
+- Add `src/AgentForge/Orchestration/SupervisorDecision.php`.
+- Add `src/AgentForge/Orchestration/SqlSupervisorHandoffRepository.php`.
+- Add `src/AgentForge/Evidence/EvidenceRetrieverWorker.php`.
+- Modify `src/AgentForge/Handlers/VerifiedAgentHandler.php` or add `src/AgentForge/Handlers/Week2AgentHandler.php`.
+- Modify `src/AgentForge/ResponseGeneration/PromptComposer.php`.
+- Modify `src/AgentForge/ResponseGeneration/DraftClaim.php`.
+- Modify `src/AgentForge/Verification/DraftVerifier.php`.
+- Modify `src/AgentForge/Handlers/AgentResponse.php`.
+- Modify `interface/patient_file/summary/agent_request.php`.
+
+Database changes:
+
+- Add `clinical_supervisor_handoffs`: `id`, `request_id`, `job_id`, `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`, `latency_ms`, `error_reason`, `created_at`.
+
+Tests/evals first:
+
+- Test handoff rows record `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever`.
+- Test factual patient questions do not run guideline retrieval unless needed.
+- Test "what changed / what deserves attention" requires patient facts plus guideline evidence.
+- Test final answer sections include Patient Findings, Needs Human Review, Guideline Evidence, and Missing or Not Found.
+- Test every patient claim cites chart/document evidence and every guideline claim cites retrieved guideline chunks.
+- Test unsafe treatment/dosing/diagnosis requests are refused/narrowed.
+
+Implementation tasks:
+
+- Implement deterministic-first `Supervisor` routing rules from `SPECS-W2.md` and this plan.
+- Implement `EvidenceRetrieverWorker` using existing chart evidence tools, `PatientDocumentFactsEvidenceTool`, and `HybridGuidelineRetriever`.
+- Extend response schema with backward-compatible machine-readable citation details while preserving existing `citations` strings.
+- Add draft claim types for guideline evidence and needs-review findings.
+- Update verifier so guideline claims must cite retrieved guideline chunks and patient claims must cite chart/document facts.
+- Ensure logs use `patient_ref`, not raw PHI, for W2 fields.
+
+Acceptance criteria:
+
+- Full MVP vertical slice passes through UI/API path and deterministic eval path.
+- Handoffs are inspectable in SQL.
+- Final response separates patient findings, guideline evidence, and needs-review items.
+
+Definition of done:
+
+- `agent-forge/scripts/check-clinical-document.sh` passes the MVP gate.
+- MVP demo can be run locally without manual extraction steps.
+
+Dependencies: M6.
+
+## 5. Post-MVP / Hardening Epics
+
 ### Epic M5B - Promotion Provenance, Review Outcomes, And Duplicate Prevention
 
 Status: Not started.
@@ -498,117 +609,6 @@ Acceptance criteria:
 - Deleted-source content remains historically reviewable but is excluded from active chart evidence, document search, vector retrieval, and final-answer citations.
 
 Dependencies: M5.
-
-### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
-
-Status: Not started.
-
-Checkpoint scope: Implement a thin MVP version first: a small intentional primary-care corpus, deterministic indexing/retrieval proof, one supported guideline retrieval path, cited top-k output, and deterministic refusal for out-of-corpus questions. Broader corpus hardening can continue after the checkpoint.
-
-Goal: Retrieve cited guideline evidence using sparse retrieval plus MariaDB Vector plus rerank.
-
-Files/modules:
-
-- Add `agent-forge/fixtures/clinical-guideline-corpus/*.md`.
-- Add `agent-forge/fixtures/clinical-guideline-corpus/corpus-version.txt`.
-- Add `agent-forge/scripts/index-clinical-guidelines.php`.
-- Add `src/AgentForge/Guidelines/GuidelineChunk.php`.
-- Add `src/AgentForge/Guidelines/SqlGuidelineChunkRepository.php`.
-- Add `src/AgentForge/Guidelines/GuidelineCorpusIndexer.php`.
-- Add `src/AgentForge/Guidelines/HybridGuidelineRetriever.php`.
-- Add `src/AgentForge/Guidelines/DeterministicReranker.php`.
-- Add `src/AgentForge/Guidelines/CohereReranker.php`.
-
-Database changes:
-
-- Add `clinical_guideline_chunks`: `id`, `chunk_id`, `corpus_version`, `source_title`, `source_url_or_file`, `section`, `chunk_text`, `citation_json`, `active`, `created_at`; unique `(corpus_version, chunk_id)`.
-- Add `clinical_guideline_chunk_embeddings`: `chunk_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
-
-Tests/evals first:
-
-- Test guideline indexing is deterministic and idempotent.
-- Test sparse search returns expected chunks for lipid, A1c, BP, and preventive screening queries.
-- Test dense retrieval uses MariaDB Vector and never touches patient document fact embeddings.
-- Test rerank is always applied to merged candidates.
-- Test out-of-corpus questions return not-found/refusal instead of invented guideline claims.
-
-Implementation tasks:
-
-- Create small primary-care corpus: ADA A1c monitoring excerpt, ACC/AHA cholesterol excerpt, USPSTF screening excerpt, hypertension excerpt, and OpenEMR-local refusal calibration note.
-- Chunk into roughly 25-50 section-level chunks.
-- Implement sparse retrieval, dense vector retrieval, merge/dedupe, rerank, threshold, and cited top-k output.
-- Use deterministic local reranker for evals and Cohere when `AGENTFORGE_COHERE_API_KEY` is present.
-
-Acceptance criteria:
-
-- At least one supported guideline question retrieves relevant cited evidence.
-- Out-of-corpus questions do not generate guideline claims.
-- Guideline vectors are stored only in `clinical_guideline_chunk_embeddings`.
-
-Definition of done:
-
-- `php agent-forge/scripts/index-clinical-guidelines.php` can rebuild the corpus.
-- Retrieval evals pass with deterministic embeddings/rerank.
-
-Dependencies: M5A for the time-boxed MVP checkpoint. The full post-checkpoint version that relies on patient document facts and deleted-document exclusion depends on M5C.
-
-### Epic M7 - Supervisor, Evidence-Retriever, Final Answer Separation, And MVP Gate
-
-Status: Not started.
-
-Checkpoint scope: Implement a thin MVP version first: deterministic supervisor routing, visible `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever` handoff logs, and a separated demo answer using extraction output plus guideline evidence. Full patient document search, promoted lab-row evidence, and exhaustive verifier hardening continue after the checkpoint.
-
-Goal: Wire the full MVP answer path through `supervisor`, `intake-extractor`, and `evidence-retriever`.
-
-Files/modules:
-
-- Add `src/AgentForge/Orchestration/Supervisor.php`.
-- Add `src/AgentForge/Orchestration/SupervisorDecision.php`.
-- Add `src/AgentForge/Orchestration/SqlSupervisorHandoffRepository.php`.
-- Add `src/AgentForge/Evidence/EvidenceRetrieverWorker.php`.
-- Modify `src/AgentForge/Handlers/VerifiedAgentHandler.php` or add `src/AgentForge/Handlers/Week2AgentHandler.php`.
-- Modify `src/AgentForge/ResponseGeneration/PromptComposer.php`.
-- Modify `src/AgentForge/ResponseGeneration/DraftClaim.php`.
-- Modify `src/AgentForge/Verification/DraftVerifier.php`.
-- Modify `src/AgentForge/Handlers/AgentResponse.php`.
-- Modify `interface/patient_file/summary/agent_request.php`.
-
-Database changes:
-
-- Add `clinical_supervisor_handoffs`: `id`, `request_id`, `job_id`, `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`, `latency_ms`, `error_reason`, `created_at`.
-
-Tests/evals first:
-
-- Test handoff rows record `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever`.
-- Test factual patient questions do not run guideline retrieval unless needed.
-- Test "what changed / what deserves attention" requires patient facts plus guideline evidence.
-- Test final answer sections include Patient Findings, Needs Human Review, Guideline Evidence, and Missing or Not Found.
-- Test every patient claim cites chart/document evidence and every guideline claim cites retrieved guideline chunks.
-- Test unsafe treatment/dosing/diagnosis requests are refused/narrowed.
-
-Implementation tasks:
-
-- Implement deterministic-first `Supervisor` routing rules from `SPECS-W2.md` and this plan.
-- Implement `EvidenceRetrieverWorker` using existing chart evidence tools, `PatientDocumentFactsEvidenceTool`, and `HybridGuidelineRetriever`.
-- Extend response schema with backward-compatible machine-readable citation details while preserving existing `citations` strings.
-- Add draft claim types for guideline evidence and needs-review findings.
-- Update verifier so guideline claims must cite retrieved guideline chunks and patient claims must cite chart/document facts.
-- Ensure logs use `patient_ref`, not raw PHI, for W2 fields.
-
-Acceptance criteria:
-
-- Full MVP vertical slice passes through UI/API path and deterministic eval path.
-- Handoffs are inspectable in SQL.
-- Final response separates patient findings, guideline evidence, and needs-review items.
-
-Definition of done:
-
-- `agent-forge/scripts/check-clinical-document.sh` passes the MVP gate.
-- MVP demo can be run locally without manual extraction steps.
-
-Dependencies: M6.
-
-## 5. Post-MVP / Hardening Epics
 
 ### Epic H1 - 50-Case Eval Expansion And Regression Policy
 
