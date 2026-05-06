@@ -43,6 +43,7 @@ final class RubricRegistry
             new SchemaValidRubric(),
             new CitationPresentRubric(),
             new FactuallyConsistentRubric(),
+            new GuidelineRetrievalRubric(),
             new SafeRefusalRubric(),
             new NoPhiInLogsRubric(),
             new BoundingBoxPresentRubric(),

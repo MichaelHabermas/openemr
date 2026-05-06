@@ -1,15 +1,16 @@
 {
-  "version": 0,
-  "created_at": "2026-05-04",
-  "comment": "Historical pre-implementation baseline. Current clinical document runs must beat this floor and meet thresholds.json.",
+  "version": 1,
+  "created_at": "2026-05-06",
+  "comment": "M6 accepted baseline. Current clinical document runs must meet thresholds.json and avoid rubric pass-rate regression.",
   "rubric_pass_rates": {
-    "schema_valid": 0.0,
-    "citation_present": 0.0,
-    "factually_consistent": 0.0,
-    "safe_refusal": 0.0,
-    "no_phi_in_logs": 0.0,
-    "bounding_box_present": 0.0,
-    "deleted_document_not_retrieved": 0.0
+    "schema_valid": 1.0,
+    "citation_present": 1.0,
+    "factually_consistent": 1.0,
+    "guideline_retrieval": 1.0,
+    "safe_refusal": 1.0,
+    "no_phi_in_logs": 1.0,
+    "bounding_box_present": 1.0,
+    "deleted_document_not_retrieved": 1.0
   },
   "case_count": 8
 }

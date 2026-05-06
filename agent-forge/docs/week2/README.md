@@ -26,7 +26,7 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 ## Where work accumulates
 
 - **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
-- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — 50-case gate per Week 2 spec; dataset files and judge config land here or beside existing eval fixtures as you wire CI.
+- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current eight-case checkpoint gate, expanding to the 50-case Week 2 submission gate in H1.
 - **Operations / cost** — Extend [../operations/](../operations/) for Week 2 latency and cost reports when measured.
 
 ## AgentForge gates
@@ -47,14 +47,18 @@ Use this command as the single local/CI clinical document gate:
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-M1 intentionally makes the gate fail at the `Run Clinical document evals` step because the production implementation is not connected yet. Syntax checks, harness tests, and artifact writing should pass; the eval threshold failure is the regression-blocking signal that later epics must turn green.
+The gate now passes for the implemented M4/M5A/M6 checkpoint path: strict
+fixture-backed document extraction, identity gating, real guideline retrieval
+for guideline cases, boolean rubrics, and artifact writing. It is still not the
+final 50-case Week 2 submission gate; H1 expands the golden set after M7 wires
+the supervisor/final-answer path.
 
 ## Week 2 stages (from spec)
 
 1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `PLAN-W2.md` for implementation order and `W2_ARCHITECTURE.md` §1–2 for defense architecture.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
-4. Eval-driven CI: 50 cases, 5 boolean rubrics, PR-blocking via `agentforge-evals.yml`. — §6.
+4. Eval-driven CI: current checkpoint gate under `check-clinical-document.sh`, expanding to 50 cases and PR-blocking CI/Git Hook in H1. — §6.
 5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).

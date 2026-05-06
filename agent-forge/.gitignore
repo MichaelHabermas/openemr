@@ -2,3 +2,4 @@
 eval-results/*.json
 !eval-results/canonical.json
 eval-results/LATEST-SUMMARY-TIER*.md
+eval-results/clinical-document-*/

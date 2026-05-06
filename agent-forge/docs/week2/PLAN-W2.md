@@ -358,7 +358,19 @@ Dependencies: M4.
 
 ### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
 
-Status: Not started.
+Status: Completed.
+
+Implementation note (2026-05-06): M6 added the checked-in
+`agent-forge/fixtures/clinical-guideline-corpus/` corpus with five primary-care
+source files, deterministic section chunking, guideline-only MariaDB Vector
+tables, sparse+dense retrieval, mandatory rerank, thresholded cited output, and
+out-of-corpus refusal. The deterministic eval path now uses real guideline
+retrieval instead of a fake guideline shortcut, and the comprehensive
+`agent-forge/scripts/check-agentforge.sh` gate passed. Live MariaDB 11.8 proof
+inside `docker/development-easy` verified `VECTOR(1536)` DDL, indexed 25 active
+chunks and 25 active embeddings, and exercised vector distance syntax. Direct
+host execution of the indexing script still depends on a working OpenEMR site
+database bootstrap; the Docker/OpenEMR runtime path is the proven path.
 
 Checkpoint scope: Implement a thin MVP version first: a small intentional primary-care corpus, deterministic indexing/retrieval proof, one supported guideline retrieval path, cited top-k output, and deterministic refusal for out-of-corpus questions. Broader corpus hardening can continue after the checkpoint.
 
@@ -379,7 +391,7 @@ Files/modules:
 Database changes:
 
 - Add `clinical_guideline_chunks`: `id`, `chunk_id`, `corpus_version`, `source_title`, `source_url_or_file`, `section`, `chunk_text`, `citation_json`, `active`, `created_at`; unique `(corpus_version, chunk_id)`.
-- Add `clinical_guideline_chunk_embeddings`: `chunk_id`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`.
+- Add `clinical_guideline_chunk_embeddings`: `chunk_id`, `corpus_version`, `embedding VECTOR(1536)`, `embedding_model`, `active`, `created_at`; primary key `(corpus_version, chunk_id)`.
 
 Tests/evals first:
 

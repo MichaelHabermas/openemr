@@ -17,13 +17,13 @@ Lab PDFs frequently contain tables, charts, graphs, etc., so a multimodal model 
 The project does **NOT** want you to “just vectorize” the patient PDFs and throw them into RAG for loose inference.
 
 - Vector/hybrid RAG is **only** for the small **clinical-guideline corpus** (Stage 2, Core Requirement 3)—organization-approved practice reference material **you** select and index (course does not ship corpus files; MVP can be a minimal intentional set).
-- Patient documents (lab PDF + intake form) must go through **strict structured extraction** → Pydantic/Zod schema → JSON, not raw vector search. Patient-derived labs and intake observations persist as **structured OpenEMR/FHIR records**, not as interchangeable guideline chunks.
+- Patient documents (lab PDF + intake form) must go through **strict structured extraction** -> PHP schema/value objects -> JSON, not raw vector search. Patient-derived labs and intake observations persist as **structured OpenEMR/FHIR records** in the full Week 2 path, not as interchangeable guideline chunks.
 
 You still get the benefits of multimodal (charts/tables, imperfect scans, etc.), but the output must be clean, schema-validated, and citation-linked.
 
 ### 2. Does the spec require you to extract the data from the PDF and **actually input it into the lab report tables** in OpenEMR?
 
-**Yes — 100% required (this is one of the core deliverables).**
+**Yes for the full Week 2 deliverable; checkpoint scope can prove extraction and retrieval before broad chart-row promotion.**
 
 Direct quotes from the PDF:
 
@@ -47,7 +47,11 @@ So the flow the spec demands is:
 4. **Persists** those facts back into OpenEMR as FHIR Observation resources or native lab result records.
 5. Every fact stays linked to the original PDF page/section (with visual bounding-box overlay required).
 
-This is **not optional** — it’s part of the MVP and one of the hard gates.
+This is **not optional** for the full Week 2 submission. The time-boxed
+checkpoint plan intentionally lands strict cited extraction, identity gating,
+and guideline retrieval first; promotion provenance, duplicate policy, and
+OpenEMR lab-row persistence are tracked in later `PLAN-W2.md` epics before the
+full gate is claimed.
 
 ### Quick summary for your implementation
 

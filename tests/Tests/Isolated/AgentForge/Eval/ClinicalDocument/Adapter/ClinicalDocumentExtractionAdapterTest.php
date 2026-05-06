@@ -54,6 +54,31 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertSame('refused', $output->status);
         $this->assertTrue($output->answer['refused'] ?? false);
         $this->assertSame([], $output->extraction['facts'] ?? null);
+        $this->assertSame('not_found', $output->retrieval['status'] ?? null);
+        $this->assertTrue($output->retrieval['rerank_applied'] ?? false);
+    }
+
+    public function testGuidelineCaseUsesRetrieverOutputWithCitationAndScore(): void
+    {
+        $output = $this->runCase('guideline-supported-ldl');
+
+        $this->assertSame('no_extraction_required', $output->status);
+        $this->assertSame('found', $output->retrieval['status'] ?? null);
+        $this->assertTrue($output->retrieval['rerank_applied'] ?? false);
+        $chunks = $output->retrieval['guideline_chunks'] ?? null;
+        $this->assertIsArray($chunks);
+        $this->assertNotSame([], $chunks);
+        $firstChunk = $chunks[0] ?? null;
+        $this->assertIsArray($firstChunk);
+        $evidenceText = $firstChunk['evidence_text'] ?? null;
+        $this->assertIsString($evidenceText);
+        $this->assertStringContainsString('LDL', $evidenceText);
+        $this->assertArrayHasKey('rerank_score', $firstChunk);
+        $facts = $output->extraction['facts'] ?? null;
+        $this->assertIsArray($facts);
+        $firstFact = $facts[0] ?? null;
+        $this->assertIsArray($firstFact);
+        $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($firstFact)));
     }
 
     public function testSanitizedLogLinesExcludeRawPhiTrapStrings(): void

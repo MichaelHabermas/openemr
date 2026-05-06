@@ -20,7 +20,7 @@ Core principles:
 
 ## 2. MVP Cut Line
 
-The architecture supports the full Week 2 submission, but implementation must land in a defensible order. The first MVP must prove the vertical slice that graders can see:
+The architecture supports the full Week 2 submission, but implementation must land in a defensible order. The full target vertical slice remains:
 
 ```text
 existing OpenEMR upload
@@ -39,6 +39,14 @@ existing OpenEMR upload
 ```
 
 The MVP is not a broad document AI platform. Anything that does not help prove this path is deferred until the core flow, eval gate, and deployed worker are working.
+
+Checkpoint implementation note (2026-05-06): M6 currently proves the guideline
+retrieval slice, not the full supervisor/final-answer slice. The implemented
+guideline path has a checked-in primary-care corpus, deterministic indexing,
+separate MariaDB Vector tables for guideline chunks, sparse+dense retrieval,
+mandatory rerank, cited top-k output, and deterministic not-found/refusal for
+out-of-corpus questions. M7 remains responsible for production supervisor
+routing and final-answer integration beyond the retrieval/eval proof path.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -581,11 +589,12 @@ The indexing script normalizes these sources into roughly 25-50 section-level ch
 php agent-forge/scripts/index-clinical-guidelines.php
 ```
 
-Each chunk has a stable `chunk_id`, source title, source file/URL, section, text, and `corpus_version`. `corpus_version` is a checked-in string such as `clinical-guideline-demo-2026-05-04`; changing corpus content requires updating the version and rerunning the indexing/eval command.
+Each chunk has a stable `chunk_id`, source title, source file/URL, section, text, and `corpus_version`. `corpus_version` is a checked-in string such as `clinical-guideline-demo-2026-05-06`; changing corpus content requires updating the version and rerunning the indexing/eval command.
 
 ```text
-agentforge_guideline_chunks
+clinical_guideline_chunks
   id
+  chunk_id
   corpus_version
   source_title
   source_url_or_file
@@ -597,13 +606,17 @@ agentforge_guideline_chunks
 ```
 
 ```text
-agentforge_guideline_chunk_embeddings
+clinical_guideline_chunk_embeddings
   chunk_id
+  corpus_version
   embedding VECTOR(...)
   embedding_model
   active
   created_at
 ```
+
+The embedding table is keyed by `(corpus_version, chunk_id)` so corpus versions
+can coexist during rebuilds and old chunk ids do not block a new corpus version.
 
 Guideline retrieval follows the required hybrid RAG flow:
 
@@ -701,7 +714,7 @@ Guideline retrieval runs only when the question asks for interpretation, attenti
 Supervisor handoffs are stored in:
 
 ```text
-agentforge_supervisor_handoffs
+clinical_supervisor_handoffs
   id
   request_id
   job_id
@@ -873,6 +886,13 @@ agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md
 
 Week 2 requires a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
+Current implementation note (2026-05-06): the checked-in clinical document
+golden set is still the eight-case checkpoint set. It now gates strict
+fixture-backed extraction, identity checks, real guideline retrieval, safe
+refusal, citation shape, bounding boxes, and no-PHI logging. H1 expands this to
+the final 50-case submission set after M7 wires the supervisor/final-answer
+path.
+
 AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `agent-forge/scripts`.
 
 One command is the source of truth for local, CI, and grader reruns:
@@ -881,7 +901,9 @@ One command is the source of truth for local, CI, and grader reruns:
 php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
-The existing `agent-forge/fixtures/clinical-document-golden` directory becomes the 50-case clinical document golden set.
+The existing `agent-forge/fixtures/clinical-document-golden` directory is the
+clinical document golden set location. It currently contains the eight-case
+checkpoint set and expands to 50 cases for final Week 2 submission.
 
 Baseline storage and comparison are checked into the repo:
 
@@ -907,9 +929,10 @@ Additional gated Week 2 rubrics:
 ```text
 deleted_document_not_retrieved
 bounding_box_present
+guideline_retrieval
 ```
 
-Other checks such as duplicate prevention and uncertain-finding visibility are reported as case-level assertions, but the required five rubrics plus the two Week 2 gated rubrics are the PR-blocking summary metrics.
+Other checks such as duplicate prevention and uncertain-finding visibility are reported as case-level assertions, but the required five rubrics plus the Week 2 gated rubrics are the PR-blocking summary metrics.
 
 The gate fails when:
 
@@ -1100,7 +1123,7 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | One supervisor | PHP AgentForge supervisor routes extraction/retrieval/final-answer decisions. |
 | `intake-extractor` worker | Required worker name retained; handles both `lab_pdf` and `intake_form`. |
 | `evidence-retriever` worker | Retrieves chart facts, patient document facts, and guideline chunks with citations. |
-| Logged inspectable handoffs | `agentforge_supervisor_handoffs` stores required source, destination, reason, task type, outcome, latency, and error. |
+| Logged inspectable handoffs | Planned `clinical_supervisor_handoffs` stores required source, destination, reason, task type, outcome, latency, and error. |
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored, vectorized, cited, and surfaced when clinically relevant. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |

@@ -197,3 +197,34 @@ CREATE TABLE `clinical_document_worker_heartbeats` (
   KEY `idx_clinical_document_worker_heartbeats_status` (`status`)
 ) ENGINE=InnoDB;
 #EndIf
+
+#IfNotTable clinical_guideline_chunks
+CREATE TABLE `clinical_guideline_chunks` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `chunk_id` varchar(191) NOT NULL,
+  `corpus_version` varchar(191) NOT NULL,
+  `source_title` varchar(255) NOT NULL,
+  `source_url_or_file` varchar(255) NOT NULL,
+  `section` varchar(255) NOT NULL,
+  `chunk_text` text NOT NULL,
+  `citation_json` longtext NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_guideline_chunk_version` (`corpus_version`, `chunk_id`),
+  KEY `idx_clinical_guideline_chunks_active_version` (`active`, `corpus_version`)
+) ENGINE=InnoDB;
+#EndIf
+
+#IfNotTable clinical_guideline_chunk_embeddings
+CREATE TABLE `clinical_guideline_chunk_embeddings` (
+  `chunk_id` varchar(191) NOT NULL,
+  `corpus_version` varchar(191) NOT NULL,
+  `embedding` VECTOR(1536) NOT NULL,
+  `embedding_model` varchar(128) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`corpus_version`, `chunk_id`),
+  KEY `idx_clinical_guideline_embeddings_active` (`active`, `corpus_version`)
+) ENGINE=InnoDB;
+#EndIf

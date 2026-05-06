@@ -22,6 +22,11 @@ use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\FixedPatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
+use OpenEMR\AgentForge\Guidelines\DeterministicGuidelineEmbeddingProvider;
+use OpenEMR\AgentForge\Guidelines\DeterministicReranker;
+use OpenEMR\AgentForge\Guidelines\GuidelineCorpusIndexer;
+use OpenEMR\AgentForge\Guidelines\HybridGuidelineRetriever;
+use OpenEMR\AgentForge\Guidelines\InMemoryGuidelineChunkRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\AgentForge\StringKeyedArray;
@@ -111,52 +116,92 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
 
     private function runNonDocumentCase(EvalCase $case): CaseRunOutput
     {
-        if ($case->refusalRequired) {
+        $question = $case->input['user_question'] ?? '';
+        if (!is_string($question) || trim($question) === '') {
             return new CaseRunOutput(
-                'refused',
+                'no_extraction_required',
                 ['schema_valid' => true, 'facts' => []],
-                answer: ['refused' => true],
                 logLines: [[
-                    'event' => 'clinical_document_eval_refusal',
+                    'event' => 'clinical_document_eval_no_extraction',
                     'case_id' => $case->caseId,
-                    'reason' => 'out_of_corpus',
                 ]],
             );
         }
 
-        if (($case->expectedRubrics->expectedFor('citation_present')) === true) {
-            $fact = [
-                'field_path' => 'guideline[0]',
-                'value' => 'LDL greater than or equal to 130 mg/dL requires guideline-supported review.',
-                'citation' => [
-                    'source_type' => 'guideline',
-                    'source_id' => 'agent-forge-guideline-fixture',
-                    'page_or_section' => 'ldl-management',
-                    'field_or_chunk_id' => 'guideline[0]',
-                    'quote_or_value' => 'LDL greater than or equal to 130',
-                ],
-            ];
+        $retrieval = $this->runGuidelineRetrieval($question);
+        $retrievalArray = [
+            'status' => $retrieval->status,
+            'guideline_chunks' => $retrieval->toArray(),
+            'rerank_applied' => $retrieval->rerankApplied,
+            'threshold' => $retrieval->threshold,
+        ];
 
+        if (!$retrieval->found()) {
             return new CaseRunOutput(
-                'no_extraction_required',
-                ['schema_valid' => true, 'facts' => [$fact]],
+                'refused',
+                ['schema_valid' => true, 'facts' => []],
+                retrieval: $retrievalArray,
+                answer: [
+                    'refused' => true,
+                    'reason' => 'not_found_in_guideline_corpus',
+                    'sections' => ['Missing or Not Found'],
+                ],
                 logLines: [[
-                    'event' => 'clinical_document_eval_guideline',
+                    'event' => 'clinical_document_eval_refusal',
                     'case_id' => $case->caseId,
-                    'citation_count' => 1,
+                    'reason' => 'not_found_in_guideline_corpus',
+                    'retrieved_chunk_count' => 0,
+                    'rerank_applied' => true,
                 ]],
-                citations: [$fact['citation']],
             );
+        }
+
+        $facts = [];
+        foreach ($retrieval->candidates as $index => $candidate) {
+            $facts[] = [
+                'field_path' => sprintf('guideline[%d]', $index),
+                'value' => $candidate->chunk->chunkText,
+                'citation' => $candidate->chunk->citationArray(),
+                'retrieval_score' => $candidate->score(),
+            ];
         }
 
         return new CaseRunOutput(
             'no_extraction_required',
-            ['schema_valid' => true, 'facts' => []],
+            ['schema_valid' => true, 'facts' => $facts],
+            retrieval: $retrievalArray,
+            answer: [
+                'sections' => ['Guideline Evidence', 'Missing or Not Found'],
+                'every_guideline_claim_has_citation' => true,
+            ],
             logLines: [[
-                'event' => 'clinical_document_eval_no_extraction',
+                'event' => 'clinical_document_eval_guideline',
                 'case_id' => $case->caseId,
+                'citation_count' => count($facts),
+                'retrieved_chunk_count' => count($facts),
+                'rerank_applied' => true,
             ]],
+            citations: $retrieval->citations(),
         );
+    }
+
+    private function runGuidelineRetrieval(string $question): \OpenEMR\AgentForge\Guidelines\GuidelineRetrievalResult
+    {
+        $repository = new InMemoryGuidelineChunkRepository();
+        $embeddingProvider = new DeterministicGuidelineEmbeddingProvider();
+        $indexer = new GuidelineCorpusIndexer(
+            $repository,
+            $embeddingProvider,
+            $this->repoDir . '/agent-forge/fixtures/clinical-guideline-corpus',
+        );
+        $indexer->index();
+
+        return (new HybridGuidelineRetriever(
+            $repository,
+            $embeddingProvider,
+            new DeterministicReranker(),
+            $indexer->corpusVersion(),
+        ))->retrieve($question);
     }
 
     private function failed(string $status, string $reason): CaseRunOutput

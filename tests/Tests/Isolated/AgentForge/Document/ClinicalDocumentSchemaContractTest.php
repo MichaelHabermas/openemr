@@ -94,6 +94,29 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
         $this->assertStringContainsString('#IfNotTable clinical_document_worker_heartbeats', $upgradeSql);
     }
 
+    public function testGuidelineVectorSchemaExistsOnFreshInstallAndUpgrade(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
+
+        foreach ([$databaseSql, $upgradeSql] as $sql) {
+            $this->assertStringContainsString('CREATE TABLE `clinical_guideline_chunks`', $sql);
+            $this->assertStringContainsString('CREATE TABLE `clinical_guideline_chunk_embeddings`', $sql);
+            $this->assertStringContainsString('`corpus_version` varchar(191) NOT NULL', $sql);
+            $this->assertStringContainsString('`embedding` VECTOR(1536) NOT NULL', $sql);
+            $this->assertStringContainsString('PRIMARY KEY (`corpus_version`, `chunk_id`)', $sql);
+            $this->assertStringContainsString(
+                'UNIQUE KEY `uniq_clinical_guideline_chunk_version` (`corpus_version`, `chunk_id`)',
+                $sql,
+            );
+            $this->assertStringNotContainsString('uniq_clinical_guideline_chunk_id', $sql);
+            $this->assertStringNotContainsString('clinical_document_fact_embeddings', $sql);
+        }
+
+        $this->assertStringContainsString('#IfNotTable clinical_guideline_chunks', $upgradeSql);
+        $this->assertStringContainsString('#IfNotTable clinical_guideline_chunk_embeddings', $upgradeSql);
+    }
+
     public function testDatabaseVersionBumpedForWorkerHeartbeatSchema(): void
     {
         $databaseSql = $this->readProjectFile('/sql/database.sql');

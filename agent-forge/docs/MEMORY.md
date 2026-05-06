@@ -319,3 +319,41 @@ Last verified: 2026-05-06.
   identity lists; the worker/tool identity gate fails closed when dependencies
   are missing; account numbers are not treated as MRNs; unknown identity status
   values fail closed; nullable chart DOB routes to review instead of crashing.
+
+## Week 2 M6 Implementation Notes
+
+Last verified: 2026-05-06.
+
+- M6 added a guideline-only corpus under
+  `agent-forge/fixtures/clinical-guideline-corpus/` with corpus version
+  `clinical-guideline-demo-2026-05-06` and five checked-in primary-care source
+  files: ADA A1c, ACC/AHA LDL, USPSTF screening, hypertension, and
+  OpenEMR-local refusal calibration.
+- Guideline vectors are stored only in `clinical_guideline_chunk_embeddings`;
+  patient document facts must not be mixed into this table. The embedding table
+  includes `corpus_version` and is keyed by `(corpus_version, chunk_id)` so
+  corpus rebuilds remain versioned.
+- `GuidelineCorpusIndexer` produced 25 stable chunks for the current corpus.
+  The Docker/OpenEMR runtime command
+  `php agent-forge/scripts/index-clinical-guidelines.php` indexed 25 active
+  chunks and 25 active embeddings in MariaDB 11.8. Direct host execution still
+  depends on a working OpenEMR site database bootstrap and may fail when
+  `$GLOBALS['adodb']['db']` is unavailable.
+- `HybridGuidelineRetriever` applies sparse retrieval, dense MariaDB Vector
+  retrieval, merge/dedupe, mandatory rerank, thresholding, and cited result
+  shaping. `DeterministicReranker` is the CI/default path; `CohereReranker` is
+  selected by `GuidelineRerankerFactory` only when `AGENTFORGE_COHERE_API_KEY`
+  is configured.
+- Out-of-corpus guideline questions must return `not_found`/refusal. Generic
+  terms such as "guideline" are treated as low-value retrieval terms so
+  appendicitis, migraine, and rheumatoid arthritis requests do not accidentally
+  retrieve unrelated primary-care chunks.
+- The clinical document eval adapter now uses the real in-memory guideline
+  retriever for guideline cases instead of hardcoded fake guideline facts.
+  `GuidelineRetrievalRubric` is part of the boolean eval gate and the accepted
+  baseline requires `guideline_retrieval` pass rate `1.0`.
+- M6 proof passed the focused guideline/schema/eval tests, clinical document
+  evals, `agent-forge/scripts/check-clinical-document.sh`, and
+  `agent-forge/scripts/check-agentforge.sh` on 2026-05-06. Remaining scope:
+  production supervisor/final-answer integration is M7, live DB proof is manual
+  rather than CI-automated, and SQL sparse search is still LIKE-token based.
