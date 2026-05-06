@@ -13,12 +13,17 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use DomainException;
+use OpenEMR\AgentForge\Llm\ProviderCostCatalog;
 
 final readonly class DraftProviderConfig
 {
+    /** @deprecated Use {@see DraftProviderMode::Fixture} instead. */
     public const MODE_FIXTURE = 'fixture';
+    /** @deprecated Use {@see DraftProviderMode::Disabled} instead. */
     public const MODE_DISABLED = 'disabled';
+    /** @deprecated Use {@see DraftProviderMode::OpenAi} instead. */
     public const MODE_OPENAI = 'openai';
+    /** @deprecated Use {@see DraftProviderMode::Anthropic} instead. */
     public const MODE_ANTHROPIC = 'anthropic';
 
     public string $mode;
@@ -30,7 +35,7 @@ final readonly class DraftProviderConfig
     public float $connectTimeoutSeconds;
 
     public function __construct(
-        string $mode = self::MODE_FIXTURE,
+        string $mode = DraftProviderMode::Fixture->value,
         #[\SensitiveParameter] ?string $apiKey = null,
         ?string $model = null,
         ?float $inputCostPerMillionTokens = null,
@@ -43,10 +48,10 @@ final readonly class DraftProviderConfig
         if ($mode === '') {
             throw new DomainException('Draft provider mode is required.');
         }
-        if ($mode === self::MODE_OPENAI && trim((string) $apiKey) === '') {
+        if ($mode === DraftProviderMode::OpenAi->value && trim((string) $apiKey) === '') {
             throw new DomainException('OpenAI draft provider requires an API key.');
         }
-        if ($mode === self::MODE_ANTHROPIC && trim((string) $apiKey) === '') {
+        if ($mode === DraftProviderMode::Anthropic->value && trim((string) $apiKey) === '') {
             throw new DomainException('Anthropic draft provider requires an API key.');
         }
         if ($timeoutSeconds <= 0.0) {
@@ -61,18 +66,20 @@ final readonly class DraftProviderConfig
             throw new DomainException('Draft provider model is required.');
         }
 
+        $defaultCosts = ProviderCostCatalog::lookup($resolvedModel);
+
         $this->mode = $mode;
         $this->apiKey = $apiKey;
         $this->model = $resolvedModel;
-        $this->inputCostPerMillionTokens = $inputCostPerMillionTokens ?? self::defaultInputCost($resolvedModel);
-        $this->outputCostPerMillionTokens = $outputCostPerMillionTokens ?? self::defaultOutputCost($resolvedModel);
+        $this->inputCostPerMillionTokens = $inputCostPerMillionTokens ?? $defaultCosts->inputCostPerMillionTokens;
+        $this->outputCostPerMillionTokens = $outputCostPerMillionTokens ?? $defaultCosts->outputCostPerMillionTokens;
         $this->timeoutSeconds = $timeoutSeconds;
         $this->connectTimeoutSeconds = $connectTimeoutSeconds;
     }
 
     public static function fixture(): self
     {
-        return new self(self::MODE_FIXTURE);
+        return new self(DraftProviderMode::Fixture->value);
     }
 
     public static function fromEnvironment(): self
@@ -82,12 +89,12 @@ final readonly class DraftProviderConfig
         $anthropicKey = self::envString('AGENTFORGE_ANTHROPIC_API_KEY') ?? self::envString('ANTHROPIC_API_KEY');
 
         $mode = $explicitMode ?? match (true) {
-            $anthropicKey !== null => self::MODE_ANTHROPIC,
-            $openAiKey !== null => self::MODE_OPENAI,
-            default => self::MODE_FIXTURE,
+            $anthropicKey !== null => DraftProviderMode::Anthropic->value,
+            $openAiKey !== null => DraftProviderMode::OpenAi->value,
+            default => DraftProviderMode::Fixture->value,
         };
 
-        if ($mode === self::MODE_ANTHROPIC) {
+        if ($mode === DraftProviderMode::Anthropic->value) {
             return new self(
                 mode: $mode,
                 apiKey: $anthropicKey,
@@ -115,26 +122,8 @@ final readonly class DraftProviderConfig
     private static function defaultModel(string $mode): string
     {
         return match ($mode) {
-            self::MODE_ANTHROPIC => 'claude-haiku-4-5-20251001',
+            DraftProviderMode::Anthropic->value => 'claude-haiku-4-5-20251001',
             default => 'gpt-4o-mini',
-        };
-    }
-
-    private static function defaultInputCost(string $model): ?float
-    {
-        return match ($model) {
-            'gpt-4o-mini' => 0.15,
-            'claude-haiku-4-5-20251001' => 1.00,
-            default => null,
-        };
-    }
-
-    private static function defaultOutputCost(string $model): ?float
-    {
-        return match ($model) {
-            'gpt-4o-mini' => 0.60,
-            'claude-haiku-4-5-20251001' => 5.00,
-            default => null,
         };
     }
 

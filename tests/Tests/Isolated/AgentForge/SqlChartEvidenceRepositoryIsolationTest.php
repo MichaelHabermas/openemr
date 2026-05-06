@@ -13,9 +13,9 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
-use OpenEMR\AgentForge\QueryExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
@@ -101,7 +101,7 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
     }
 }
 
-final class RecordingQueryExecutor implements QueryExecutor
+final class RecordingQueryExecutor implements DatabaseExecutor
 {
     /** @var list<array{sql: string, binds: list<mixed>}> */
     public array $queries = [];
@@ -115,9 +115,23 @@ final class RecordingQueryExecutor implements QueryExecutor
 
         return [];
     }
+
+    public function executeStatement(string $sql, array $binds = []): void
+    {
+    }
+
+    public function executeAffected(string $sql, array $binds = []): int
+    {
+        return 0;
+    }
+
+    public function insert(string $sql, array $binds = []): int
+    {
+        return 0;
+    }
 }
 
-final class MedicationRowsQueryExecutor implements QueryExecutor
+final class MedicationRowsQueryExecutor implements DatabaseExecutor
 {
     public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
@@ -143,5 +157,19 @@ final class MedicationRowsQueryExecutor implements QueryExecutor
         }
 
         return [];
+    }
+
+    public function executeStatement(string $sql, array $binds = []): void
+    {
+    }
+
+    public function executeAffected(string $sql, array $binds = []): int
+    {
+        return 0;
+    }
+
+    public function insert(string $sql, array $binds = []): int
+    {
+        return 0;
     }
 }

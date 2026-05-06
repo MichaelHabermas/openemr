@@ -12,18 +12,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document\Identity;
 
-use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\RowHydrator;
 
 final readonly class SqlPatientIdentityRepository implements PatientIdentityRepository
 {
-    private DatabaseExecutor $executor;
-
-    public function __construct(?DatabaseExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
     }
 
     public function findByPatientId(PatientId $patientId): ?PatientIdentity
@@ -40,41 +36,20 @@ final readonly class SqlPatientIdentityRepository implements PatientIdentityRepo
         $record = $records[0];
 
         return new PatientIdentity(
-            new PatientId($this->intValue($record['pid'] ?? null, 'pid')),
-            $this->stringValue($record['fname'] ?? null, 'fname'),
-            $this->stringValue($record['lname'] ?? null, 'lname'),
-            $this->optionalString($record['DOB'] ?? null),
-            $this->optionalString($record['pubpid'] ?? null),
+            new PatientId(RowHydrator::intValue($record['pid'] ?? null, 'pid')),
+            RowHydrator::stringValue($record['fname'] ?? null, 'fname'),
+            RowHydrator::stringValue($record['lname'] ?? null, 'lname'),
+            self::nullableNonEmptyString($record['DOB'] ?? null, 'DOB'),
+            self::nullableNonEmptyString($record['pubpid'] ?? null, 'pubpid'),
         );
     }
 
-    private function intValue(mixed $value, string $field): int
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (int) $value;
-    }
-
-    private function stringValue(mixed $value, string $field): string
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (string) $value;
-    }
-
-    private function optionalString(mixed $value): ?string
+    private static function nullableNonEmptyString(mixed $value, string $field): ?string
     {
         if ($value === null || $value === '') {
             return null;
         }
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException('Expected nullable scalar.');
-        }
 
-        return (string) $value;
+        return RowHydrator::stringValue($value, $field);
     }
 }

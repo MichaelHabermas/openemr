@@ -13,17 +13,13 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Worker;
 
 use DateTimeImmutable;
-use InvalidArgumentException;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\RowHydrator;
 
 final readonly class SqlWorkerHeartbeatRepository implements WorkerHeartbeatRepository
 {
-    private DatabaseExecutor $executor;
-
-    public function __construct(?DatabaseExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
     }
 
     public function upsert(WorkerHeartbeat $heartbeat): void
@@ -72,42 +68,24 @@ final readonly class SqlWorkerHeartbeatRepository implements WorkerHeartbeatRepo
     private function hydrate(array $record): WorkerHeartbeat
     {
         return new WorkerHeartbeat(
-            workerName: WorkerName::fromStringOrThrow($this->stringValue($record['worker'] ?? null, 'worker')),
-            processId: $this->intValue($record['process_id'] ?? null, 'process_id'),
-            status: WorkerStatus::fromStringOrThrow($this->stringValue($record['status'] ?? null, 'status')),
-            iterationCount: $this->intValue($record['iteration_count'] ?? null, 'iteration_count'),
-            jobsProcessed: $this->intValue($record['jobs_processed'] ?? null, 'jobs_processed'),
-            jobsFailed: $this->intValue($record['jobs_failed'] ?? null, 'jobs_failed'),
-            startedAt: new DateTimeImmutable($this->stringValue($record['started_at'] ?? null, 'started_at')),
-            lastHeartbeatAt: new DateTimeImmutable($this->stringValue($record['last_heartbeat_at'] ?? null, 'last_heartbeat_at')),
-            stoppedAt: $this->optionalDateTime($record['stopped_at'] ?? null),
+            workerName: WorkerName::fromStringOrThrow(RowHydrator::stringValue($record['worker'] ?? null, 'worker')),
+            processId: RowHydrator::intValue($record['process_id'] ?? null, 'process_id'),
+            status: WorkerStatus::fromStringOrThrow(RowHydrator::stringValue($record['status'] ?? null, 'status')),
+            iterationCount: RowHydrator::intValue($record['iteration_count'] ?? null, 'iteration_count'),
+            jobsProcessed: RowHydrator::intValue($record['jobs_processed'] ?? null, 'jobs_processed'),
+            jobsFailed: RowHydrator::intValue($record['jobs_failed'] ?? null, 'jobs_failed'),
+            startedAt: new DateTimeImmutable(RowHydrator::stringValue($record['started_at'] ?? null, 'started_at')),
+            lastHeartbeatAt: new DateTimeImmutable(RowHydrator::stringValue($record['last_heartbeat_at'] ?? null, 'last_heartbeat_at')),
+            stoppedAt: self::optionalDateTime($record['stopped_at'] ?? null),
         );
     }
 
-    private function intValue(mixed $value, string $field): int
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (int) $value;
-    }
-
-    private function stringValue(mixed $value, string $field): string
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (string) $value;
-    }
-
-    private function optionalDateTime(mixed $value): ?DateTimeImmutable
+    private static function optionalDateTime(mixed $value): ?DateTimeImmutable
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        return new DateTimeImmutable($this->stringValue($value, 'date_time'));
+        return new DateTimeImmutable(RowHydrator::stringValue($value, 'date_time'));
     }
 }

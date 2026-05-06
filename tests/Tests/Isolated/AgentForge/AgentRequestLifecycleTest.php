@@ -21,6 +21,8 @@ use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\RequestLogger;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 use PHPUnit\Framework\TestCase;
 
 final class AgentRequestLifecycleTest extends TestCase
@@ -70,8 +72,11 @@ final class AgentRequestLifecycleTest extends TestCase
                 new AgentRequestParser(),
                 new PatientAuthorizationGate(new LifecycleAllowingPatientAccessRepository()),
                 new PlaceholderAgentHandler(),
+                new SystemMonotonicClock(),
             ),
             $logger,
+            new SystemMonotonicClock(),
+            new SystemPsrClock(),
         );
     }
 }

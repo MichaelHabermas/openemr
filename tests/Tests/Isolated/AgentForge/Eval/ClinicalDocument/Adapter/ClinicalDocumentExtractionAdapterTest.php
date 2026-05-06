@@ -16,6 +16,7 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\ClinicalDocumentExtractionA
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCaseLoader;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\CitationShape;
 use OpenEMR\AgentForge\StringKeyedArray;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class ClinicalDocumentExtractionAdapterTest extends TestCase
@@ -118,7 +119,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
     {
         $repo = dirname(__DIR__, 7);
         $case = (new EvalCaseLoader())->loadFile($repo . '/agent-forge/fixtures/clinical-document-golden/cases/' . $caseId . '.json');
-        $adapter = new ClinicalDocumentExtractionAdapter($repo, $repo . '/agent-forge/fixtures/clinical-document-golden/extraction');
+        $adapter = new ClinicalDocumentExtractionAdapter($repo, $repo . '/agent-forge/fixtures/clinical-document-golden/extraction', new SystemMonotonicClock());
 
         return $adapter->runCase($case);
     }

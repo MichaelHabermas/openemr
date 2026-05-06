@@ -14,17 +14,18 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use DomainException;
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\GuzzleException;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Llm\AbstractLlmProvider;
+use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 
-final readonly class OpenAiDraftProvider implements DraftProvider
+final readonly class OpenAiDraftProvider extends AbstractLlmProvider implements DraftProvider
 {
     public function __construct(
-        private ClientInterface $client,
+        ClientInterface $client,
         #[SensitiveParameter] private string $apiKey,
         private string $model,
         private ?float $inputCostPerMillionTokens = null,
@@ -32,37 +33,39 @@ final readonly class OpenAiDraftProvider implements DraftProvider
         private float $configuredTimeoutSeconds = 15.0,
         private PromptComposer $promptComposer = new PromptComposer(),
     ) {
-        if (trim($apiKey) === '') {
-            throw new DomainException('OpenAI draft provider requires an API key.');
-        }
-        if (trim($model) === '') {
-            throw new DomainException('OpenAI draft provider requires a model.');
-        }
+        LlmCredentialGuard::requireApiKey($apiKey, 'OpenAI draft provider');
+        LlmCredentialGuard::requireModel($model, 'OpenAI draft provider');
+
+        parent::__construct($client);
     }
 
     public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
-        if ($deadline->exceeded()) {
-            throw new DraftProviderException('Deadline exceeded before OpenAI draft request.');
-        }
-
-        $timeoutSeconds = min($this->configuredTimeoutSeconds, $deadline->remainingSeconds());
-
-        try {
-            $response = $this->client->request('POST', '/v1/chat/completions', [
+        $response = $this->dispatch(
+            'POST',
+            '/v1/chat/completions',
+            [
                 'headers' => [
                     'Authorization' => sprintf('Bearer %s', $this->apiKey),
                     'Content-Type' => 'application/json',
                 ],
                 'json' => $this->payload($request, $bundle),
-                'timeout' => $timeoutSeconds,
-                DraftProviderRetryMiddleware::DEADLINE_OPTION => $deadline,
-            ]);
-        } catch (GuzzleException $exception) {
-            throw new DraftProviderException('OpenAI draft request failed.', previous: $exception);
-        }
+            ],
+            $deadline,
+            'OpenAI draft',
+        );
 
         return $this->parseResponse($response);
+    }
+
+    protected function configuredTimeoutSeconds(): float
+    {
+        return $this->configuredTimeoutSeconds;
+    }
+
+    protected function exceptionClass(): string
+    {
+        return DraftProviderException::class;
     }
 
     /** @return array<string, mixed> */

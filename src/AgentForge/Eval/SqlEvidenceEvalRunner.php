@@ -20,6 +20,8 @@ use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Time\MonotonicClock;
+use Psr\Clock\ClockInterface;
 
 /**
  * @phpstan-type SqlEvidenceCaseResult array{
@@ -54,8 +56,12 @@ final readonly class SqlEvidenceEvalRunner
     /**
      * @param list<ChartEvidenceTool> $tools
      */
-    public function __construct(private array $tools, private ?PatientAuthorizationGate $authorizationGate = null)
-    {
+    public function __construct(
+        private array $tools,
+        private MonotonicClock $clock,
+        private ClockInterface $wallClock,
+        private ?PatientAuthorizationGate $authorizationGate = null,
+    ) {
     }
 
     /**
@@ -69,7 +75,7 @@ final readonly class SqlEvidenceEvalRunner
         string $environmentLabel,
         ?DateTimeImmutable $startedAt = null,
     ): array {
-        $startedAt ??= new DateTimeImmutable();
+        $startedAt ??= $this->wallClock->now();
         $results = array_merge(
             array_map($this->runCase(...), $cases),
             $this->runAuthorizationCases(),
@@ -92,7 +98,7 @@ final readonly class SqlEvidenceEvalRunner
     /** @return SqlEvidenceCaseResult */
     private function runCase(SqlEvidenceEvalCase $case): array
     {
-        $start = hrtime(true);
+        $startMs = $this->clock->nowMs();
         $failures = [];
         $collected = [
             'citations' => [],
@@ -161,7 +167,7 @@ final readonly class SqlEvidenceEvalRunner
             'description' => $case->description,
             'passed' => $failures === [],
             'failure_reason' => implode(' ', $failures),
-            'latency_ms' => max(0, (int) floor((hrtime(true) - $start) / 1_000_000)),
+            'latency_ms' => max(0, $this->clock->nowMs() - $startMs),
             'citation_count' => count($collected['citations']),
             'missing_sections' => $collected['missing_sections'],
             'failed_sections' => $collected['failed_sections'],
@@ -227,7 +233,7 @@ final readonly class SqlEvidenceEvalRunner
         bool $expectedAllowed,
         string $expectedCode,
     ): array {
-        $start = hrtime(true);
+        $startMs = $this->clock->nowMs();
         $failures = [];
         try {
             $decision = $this->authorizationGate?->decide(
@@ -256,7 +262,7 @@ final readonly class SqlEvidenceEvalRunner
             'description' => $description,
             'passed' => $failures === [],
             'failure_reason' => implode(' ', $failures),
-            'latency_ms' => max(0, (int) floor((hrtime(true) - $start) / 1_000_000)),
+            'latency_ms' => max(0, $this->clock->nowMs() - $startMs),
             'expected_decision_code' => $expectedCode,
         ];
     }

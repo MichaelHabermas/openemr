@@ -12,12 +12,14 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge;
 
+use OpenEMR\AgentForge\Time\MonotonicClock;
+
 final readonly class Deadline
 {
     private int $startMs;
 
     public function __construct(
-        private AgentForgeClock $clock,
+        private MonotonicClock $clock,
         public int $budgetMs,
     ) {
         $this->startMs = $clock->nowMs();

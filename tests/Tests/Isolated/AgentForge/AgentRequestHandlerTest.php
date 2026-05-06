@@ -27,6 +27,7 @@ use OpenEMR\AgentForge\Handlers\AgentRequestParserInterface;
 use OpenEMR\AgentForge\Handlers\AgentRequestResult;
 use OpenEMR\AgentForge\Handlers\EvidenceAgentHandler;
 use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -394,6 +395,7 @@ final class AgentRequestHandlerTest extends TestCase
             $parser ?? new AgentRequestParser(),
             new PatientAuthorizationGate(new ConfigurablePatientAccessRepository($patientExists, $hasRelationship, $repositoryThrows)),
             $agentHandler ?? new PlaceholderAgentHandler(),
+            new SystemMonotonicClock(),
             $logger ?? new HandlerRecordingLogger(),
             $conversationStore ?? new InMemoryConversationStore(),
         );

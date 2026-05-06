@@ -20,11 +20,10 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Observability\StageTimer;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
@@ -33,19 +32,16 @@ final class ConcurrentChartEvidenceCollector implements ChartEvidenceCollector
     /** @var array<string, ChartEvidenceTool> */
     private array $toolsBySection = [];
 
-    private readonly AgentForgeClock $clock;
-
     /** @param list<ChartEvidenceTool> $tools */
     public function __construct(
         array $tools,
-        private readonly ?PrefetchableChartEvidenceRepository $prefetcher = null,
-        private readonly LoggerInterface $logger = new NullLogger(),
-        ?AgentForgeClock $clock = null,
+        private readonly ?PrefetchableChartEvidenceRepository $prefetcher,
+        private readonly LoggerInterface $logger,
+        private readonly MonotonicClock $clock,
     ) {
         foreach ($tools as $tool) {
             $this->toolsBySection[$tool->section()] ??= $tool;
         }
-        $this->clock = $clock ?? new SystemAgentForgeClock();
     }
 
     public function collect(

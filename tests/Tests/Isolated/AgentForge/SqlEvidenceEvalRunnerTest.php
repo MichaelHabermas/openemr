@@ -23,6 +23,8 @@ use OpenEMR\AgentForge\Eval\SqlEvidenceEvalRunner;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 use PHPUnit\Framework\TestCase;
 
 final class SqlEvidenceEvalRunnerTest extends TestCase
@@ -71,7 +73,7 @@ final class SqlEvidenceEvalRunnerTest extends TestCase
                 new EvidenceItem('lab', 'procedure_result', 'agentforge-a1c-2026-04', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
             ])),
             new StaticSqlEvalTool('Recent vitals', EvidenceResult::missing('Recent vitals', 'Recent vitals not found in the chart within 180 days.')),
-        ]);
+        ], new SystemMonotonicClock(), new SystemPsrClock());
 
         $summary = $runner->run([
             new SqlEvidenceEvalCase(
@@ -99,7 +101,7 @@ final class SqlEvidenceEvalRunnerTest extends TestCase
             new StaticSqlEvalTool('Active medications', EvidenceResult::found('Active medications', [
                 new EvidenceItem('medication', 'prescriptions', 'af-rx-p2-warfarin', '2025-11-20', 'Warfarin 2 mg', 'inactive stale row'),
             ])),
-        ]);
+        ], new SystemMonotonicClock(), new SystemPsrClock());
 
         $summary = $runner->run([
             new SqlEvidenceEvalCase(
@@ -121,7 +123,7 @@ final class SqlEvidenceEvalRunnerTest extends TestCase
 
     public function testRunnerCanIncludeSqlAuthorizationCases(): void
     {
-        $runner = new SqlEvidenceEvalRunner([], new PatientAuthorizationGate(new StaticSqlEvalAccessRepository()));
+        $runner = new SqlEvidenceEvalRunner([], new SystemMonotonicClock(), new SystemPsrClock(), new PatientAuthorizationGate(new StaticSqlEvalAccessRepository()));
 
         $summary = $runner->run([], 'fixture-v1', 'abc123', 'isolated', new DateTimeImmutable('2026-05-02T12:00:00+00:00'));
 

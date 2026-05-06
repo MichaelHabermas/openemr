@@ -20,7 +20,7 @@ use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class FixtureDraftProviderTest extends TestCase
@@ -85,6 +85,6 @@ final class FixtureDraftProviderTest extends TestCase
 
     private function deadline(): Deadline
     {
-        return new Deadline(new SystemAgentForgeClock(), 8000);
+        return new Deadline(new SystemMonotonicClock(), 8000);
     }
 }

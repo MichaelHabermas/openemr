@@ -23,7 +23,7 @@ use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
 use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -266,7 +266,7 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
 
     private function deadline(): Deadline
     {
-        return new Deadline(new SystemAgentForgeClock(), 8000);
+        return new Deadline(new SystemMonotonicClock(), 8000);
     }
 
     /**

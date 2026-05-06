@@ -34,6 +34,8 @@ use OpenEMR\AgentForge\Document\Worker\WorkerHeartbeatRepository;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -294,6 +296,8 @@ final class DocumentJobWorkerTest extends TestCase
             $heartbeats ?? new WorkerHeartbeatStore(),
             $logger ?? new WorkerRecordingLogger(),
             new PatientRefHasher('test-salt'),
+            new SystemMonotonicClock(),
+            new SystemPsrClock(),
             12345,
             $sleep,
         );

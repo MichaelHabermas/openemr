@@ -19,7 +19,7 @@ use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
 use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class FixtureExtractionProviderTest extends TestCase
@@ -161,6 +161,6 @@ final class FixtureExtractionProviderTest extends TestCase
 
     private function deadline(): Deadline
     {
-        return new Deadline(new SystemAgentForgeClock(), 8000);
+        return new Deadline(new SystemMonotonicClock(), 8000);
     }
 }

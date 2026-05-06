@@ -17,17 +17,15 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Worker;
 
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\JobStatus;
 
 final readonly class SqlJobClaimer implements JobClaimer
 {
-    private DatabaseExecutor $executor;
-
-    public function __construct(private DocumentJobWorkerRepository $jobs, ?DatabaseExecutor $executor = null)
-    {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
+    public function __construct(
+        private DocumentJobWorkerRepository $jobs,
+        private DatabaseExecutor $executor,
+    ) {
     }
 
     public function claimNext(WorkerName $workerName, LockToken $lockToken): ?DocumentJob

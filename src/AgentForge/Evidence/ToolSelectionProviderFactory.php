@@ -12,10 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\HandlerStack;
+use OpenEMR\AgentForge\Llm\HttpClientBuilder;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
-use OpenEMR\AgentForge\ResponseGeneration\DraftProviderRetryMiddleware;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProviderMode;
 
 final class ToolSelectionProviderFactory
 {
@@ -26,31 +25,28 @@ final class ToolSelectionProviderFactory
 
     public static function create(DraftProviderConfig $config): ?ToolSelectionProvider
     {
-        return match ($config->mode) {
-            DraftProviderConfig::MODE_OPENAI => new OpenAiToolSelectionProvider(
-                self::buildClient('https://api.openai.com', $config),
+        return match (DraftProviderMode::from($config->mode)) {
+            DraftProviderMode::OpenAi => new OpenAiToolSelectionProvider(
+                HttpClientBuilder::withRetryMiddleware(
+                    'https://api.openai.com',
+                    $config->timeoutSeconds,
+                    $config->connectTimeoutSeconds,
+                    'tool_selection_retry',
+                ),
                 (string) $config->apiKey,
                 $config->model,
             ),
-            DraftProviderConfig::MODE_ANTHROPIC => new AnthropicToolSelectionProvider(
-                self::buildClient('https://api.anthropic.com', $config),
+            DraftProviderMode::Anthropic => new AnthropicToolSelectionProvider(
+                HttpClientBuilder::withRetryMiddleware(
+                    'https://api.anthropic.com',
+                    $config->timeoutSeconds,
+                    $config->connectTimeoutSeconds,
+                    'tool_selection_retry',
+                ),
                 (string) $config->apiKey,
                 $config->model,
             ),
-            default => null,
+            DraftProviderMode::Fixture, DraftProviderMode::Disabled => null,
         };
-    }
-
-    private static function buildClient(string $baseUri, DraftProviderConfig $config): Client
-    {
-        $stack = HandlerStack::create();
-        $stack->push(DraftProviderRetryMiddleware::create(), 'tool_selection_retry');
-
-        return new Client([
-            'base_uri' => $baseUri,
-            'timeout' => $config->timeoutSeconds,
-            'connect_timeout' => $config->connectTimeoutSeconds,
-            'handler' => $stack,
-        ]);
     }
 }

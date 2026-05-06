@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document\Extraction;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
@@ -31,6 +30,7 @@ use OpenEMR\AgentForge\Document\Worker\ProcessingResult;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Observability\DocumentExtractionLogContext;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
 
 final readonly class IntakeExtractorWorker implements DocumentJobProcessor
@@ -39,7 +39,7 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         private DocumentExtractionProvider $provider,
         private CertaintyClassifier $classifier,
         private LoggerInterface $logger,
-        private AgentForgeClock $clock,
+        private MonotonicClock $clock,
         private PatientRefHasher $patientRefHasher,
         private int $budgetMs = 60_000,
         private ?PatientIdentityRepository $patientIdentities = null,

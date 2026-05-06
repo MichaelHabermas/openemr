@@ -22,6 +22,7 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\ExtractionErrorCode;
 use OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
+use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
@@ -39,12 +40,8 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         private float $configuredTimeoutSeconds = 30.0,
         private int $maxPdfPages = 6,
     ) {
-        if (trim($apiKey) === '') {
-            throw new DomainException('OpenAI extraction provider requires an API key.');
-        }
-        if (trim($model) === '') {
-            throw new DomainException('OpenAI extraction provider requires a model.');
-        }
+        LlmCredentialGuard::requireApiKey($apiKey, 'OpenAI extraction provider');
+        LlmCredentialGuard::requireModel($model, 'OpenAI extraction provider');
         if ($configuredTimeoutSeconds <= 0.0) {
             throw new DomainException('OpenAI extraction timeout must be greater than zero.');
         }

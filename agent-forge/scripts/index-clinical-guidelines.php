@@ -14,16 +14,16 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Guidelines\DeterministicGuidelineEmbeddingProvider;
 use OpenEMR\AgentForge\Guidelines\GuidelineCorpusIndexer;
 use OpenEMR\AgentForge\Guidelines\SqlGuidelineChunkRepository;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 
 $repo = AgentForgeRepoPaths::fromScriptsDirectory(__DIR__);
 $GLOBALS['OE_SITE_DIR'] = getenv('OE_SITE_DIR') ?: $repo . '/sites/default';
 $corpusDir = $repo . '/agent-forge/fixtures/clinical-guideline-corpus';
 $indexer = new GuidelineCorpusIndexer(
-    new SqlGuidelineChunkRepository(new DefaultDatabaseExecutor()),
+    new SqlGuidelineChunkRepository(new SqlQueryUtilsExecutor()),
     new DeterministicGuidelineEmbeddingProvider(),
     $corpusDir,
 );

@@ -13,14 +13,12 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Orchestration;
 
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use RuntimeException;
 
 final readonly class SqlSupervisorHandoffRepository
 {
-    private DatabaseExecutor $executor;
     private const MAX_REQUEST_ID_LENGTH = 64;
     private const MAX_NODE_LENGTH = 64;
     private const MAX_DECISION_LENGTH = 255;
@@ -28,9 +26,8 @@ final readonly class SqlSupervisorHandoffRepository
     private const MAX_OUTCOME_LENGTH = 64;
     private const MAX_ERROR_LENGTH = 255;
 
-    public function __construct(?DatabaseExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
     }
 
     public function recordRequestHandoff(

@@ -15,6 +15,7 @@ use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProviderMode;
 
 require_once __DIR__ . '/eval-runner-functions.php';
 require_once __DIR__ . '/script-runtime.php';
@@ -46,7 +47,7 @@ function agentforge_tier2_main(): int
         return 2;
     }
 
-    if ($config->mode === DraftProviderConfig::MODE_FIXTURE) {
+    if ($config->mode === DraftProviderMode::Fixture->value) {
         fwrite(STDERR, "Tier 2 refuses to run with the fixture provider.\n");
         fwrite(STDERR, "Export a real key in this shell (AGENTFORGE_OPENAI_API_KEY or AGENTFORGE_ANTHROPIC_API_KEY), or set AGENTFORGE_DRAFT_PROVIDER.\n");
         fwrite(STDERR, "Note: docker/development-easy/.env is loaded by Docker Compose into the container only — host `php` does not read it. Run from the container, e.g.:\n");
@@ -55,7 +56,7 @@ function agentforge_tier2_main(): int
         return 2;
     }
 
-    if ($config->mode === DraftProviderConfig::MODE_DISABLED) {
+    if ($config->mode === DraftProviderMode::Disabled->value) {
         fwrite(STDERR, "Tier 2 refuses to run with the disabled provider.\n");
 
         return 2;

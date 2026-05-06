@@ -16,18 +16,15 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\Worker\DocumentJobWorkerRepository;
 use OpenEMR\AgentForge\Document\Worker\LockToken;
+use OpenEMR\AgentForge\RowHydrator;
 use RuntimeException;
 
 final readonly class SqlDocumentJobRepository implements DocumentJobRepository, DocumentJobWorkerRepository
 {
-    private DatabaseExecutor $executor;
-
-    public function __construct(?DatabaseExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
     }
 
     public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
@@ -182,52 +179,21 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository, 
     private function hydrate(array $record): DocumentJob
     {
         return new DocumentJob(
-            id: new DocumentJobId($this->intValue($record['id'] ?? null, 'id')),
-            patientId: new PatientId($this->intValue($record['patient_id'] ?? null, 'patient_id')),
-            documentId: new DocumentId($this->intValue($record['document_id'] ?? null, 'document_id')),
-            docType: DocumentType::fromStringOrThrow($this->stringValue($record['doc_type'] ?? null, 'doc_type')),
-            status: JobStatus::fromStringOrThrow($this->stringValue($record['status'] ?? null, 'status')),
-            attempts: $this->intValue($record['attempts'] ?? null, 'attempts'),
-            lockToken: $this->optionalString($record['lock_token'] ?? null),
-            createdAt: new DateTimeImmutable($this->stringValue($record['created_at'] ?? null, 'created_at')),
+            id: new DocumentJobId(RowHydrator::intValue($record['id'] ?? null, 'id')),
+            patientId: new PatientId(RowHydrator::intValue($record['patient_id'] ?? null, 'patient_id')),
+            documentId: new DocumentId(RowHydrator::intValue($record['document_id'] ?? null, 'document_id')),
+            docType: DocumentType::fromStringOrThrow(RowHydrator::stringValue($record['doc_type'] ?? null, 'doc_type')),
+            status: JobStatus::fromStringOrThrow(RowHydrator::stringValue($record['status'] ?? null, 'status')),
+            attempts: RowHydrator::intValue($record['attempts'] ?? null, 'attempts'),
+            lockToken: RowHydrator::nullableString($record['lock_token'] ?? null, 'lock_token'),
+            createdAt: new DateTimeImmutable(RowHydrator::stringValue($record['created_at'] ?? null, 'created_at')),
             startedAt: $this->optionalDateTime($record['started_at'] ?? null),
             finishedAt: $this->optionalDateTime($record['finished_at'] ?? null),
-            errorCode: $this->optionalString($record['error_code'] ?? null),
-            errorMessage: $this->optionalString($record['error_message'] ?? null),
+            errorCode: RowHydrator::nullableString($record['error_code'] ?? null, 'error_code'),
+            errorMessage: RowHydrator::nullableString($record['error_message'] ?? null, 'error_message'),
             retractedAt: $this->optionalDateTime($record['retracted_at'] ?? null),
             retractionReason: $this->optionalRetractionReason($record['retraction_reason'] ?? null),
         );
-    }
-
-    private function intValue(mixed $value, string $field): int
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (int) $value;
-    }
-
-    private function stringValue(mixed $value, string $field): string
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (string) $value;
-    }
-
-    private function optionalString(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException('Expected nullable scalar.');
-        }
-
-        return (string) $value;
     }
 
     private function optionalDateTime(mixed $value): ?DateTimeImmutable
@@ -236,7 +202,7 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository, 
             return null;
         }
 
-        return new DateTimeImmutable($this->stringValue($value, 'date_time'));
+        return new DateTimeImmutable(RowHydrator::stringValue($value, 'date_time'));
     }
 
     private function optionalRetractionReason(mixed $value): ?DocumentRetractionReason
@@ -245,6 +211,6 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository, 
             return null;
         }
 
-        return DocumentRetractionReason::fromStringOrThrow($this->stringValue($value, 'retraction_reason'));
+        return DocumentRetractionReason::fromStringOrThrow(RowHydrator::stringValue($value, 'retraction_reason'));
     }
 }

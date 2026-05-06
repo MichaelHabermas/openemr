@@ -20,6 +20,7 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\EvalRunner;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\RegressionVerdict;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\RunArtifactWriter;
 use OpenEMR\AgentForge\StringKeyedArray;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use RuntimeException;
 
 final class RunClinicalDocumentEvalsCommand
@@ -36,7 +37,7 @@ final class RunClinicalDocumentEvalsCommand
             $cases = (new EvalCaseLoader())->loadDirectory($fixturesDir . '/cases');
             $thresholds = $this->loadJsonFile($fixturesDir . '/thresholds.json');
             $baseline = $this->loadJsonFile($fixturesDir . '/baseline.json');
-            $adapter = new ClinicalDocumentExtractionAdapter($repoDir, $fixturesDir . '/extraction');
+            $adapter = new ClinicalDocumentExtractionAdapter($repoDir, $fixturesDir . '/extraction', new SystemMonotonicClock());
             $result = (new EvalRunner($adapter, new RubricRegistry()))->run($cases);
             $verdict = (new BaselineComparator())->compare($result, $thresholds, $baseline);
             $resultsDir = getenv('AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR') ?: $repoDir . '/agent-forge/eval-results';

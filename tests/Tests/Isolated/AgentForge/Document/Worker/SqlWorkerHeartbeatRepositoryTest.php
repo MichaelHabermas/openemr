@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker;
 
 use DateTimeImmutable;
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\Worker\SqlWorkerHeartbeatRepository;
 use OpenEMR\AgentForge\Document\Worker\WorkerHeartbeat;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
@@ -96,7 +97,7 @@ final class HeartbeatSqlExecutor implements DatabaseExecutor
     {
     }
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         $this->queries[] = ['sql' => $sql, 'binds' => $binds];
 

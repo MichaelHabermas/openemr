@@ -16,6 +16,7 @@ use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
 use OpenEMR\AgentForge\Document\Worker\DocumentJobWorkerFactory;
 use OpenEMR\AgentForge\Document\Worker\NoopDocumentJobProcessor;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -24,9 +25,10 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
     public function testEveryWorkerNameMapsToKnownProcessor(): void
     {
         $method = new ReflectionMethod(DocumentJobWorkerFactory::class, 'processorFor');
+        $executor = new FakeDatabaseExecutor();
 
         foreach (WorkerName::cases() as $workerName) {
-            $processor = $method->invoke(null, $workerName);
+            $processor = $method->invoke(null, $workerName, $executor);
             if ($workerName === WorkerName::IntakeExtractor) {
                 $this->assertInstanceOf(IntakeExtractorWorker::class, $processor, $workerName->value);
             } else {

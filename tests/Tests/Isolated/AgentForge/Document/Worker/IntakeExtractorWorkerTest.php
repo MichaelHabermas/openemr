@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use DateTimeImmutable;
-    use OpenEMR\AgentForge\AgentForgeClock;
     use OpenEMR\AgentForge\Auth\PatientId;
     use OpenEMR\AgentForge\Deadline;
     use OpenEMR\AgentForge\Document\DocumentId;
@@ -39,6 +38,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
     use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
     use OpenEMR\AgentForge\StringKeyedArray;
+    use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
     use PHPUnit\Framework\TestCase;
     use Psr\Log\AbstractLogger;
     use Stringable;
@@ -53,7 +53,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new IntakeWorkerStaticProvider(self::strictLabResponse(withIdentity: true)),
                 new CertaintyClassifier(),
                 $logger,
-                new IntakeWorkerClock(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
                 $hasher,
                 patientIdentities: new IntakeWorkerPatientIdentityRepository(),
                 identityChecks: new IntakeWorkerIdentityCheckRepository(),
@@ -88,7 +88,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new IntakeWorkerStaticProvider(self::strictLabResponse(withIdentity: true)),
                 new CertaintyClassifier(),
                 new IntakeWorkerRecordingLogger(),
-                new IntakeWorkerClock(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
                 self::testPatientRefHasher(),
                 patientIdentities: new IntakeWorkerPatientIdentityRepository(),
                 identityChecks: $identityChecks,
@@ -114,7 +114,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 )),
                 new CertaintyClassifier(),
                 new IntakeWorkerRecordingLogger(),
-                new IntakeWorkerClock(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
                 self::testPatientRefHasher(),
             );
 
@@ -140,7 +140,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 )),
                 new CertaintyClassifier(),
                 new IntakeWorkerRecordingLogger(),
-                new IntakeWorkerClock(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
                 self::testPatientRefHasher(),
             );
 
@@ -161,7 +161,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new IntakeWorkerStaticProvider(self::strictLabResponse()),
                 new CertaintyClassifier(),
                 new IntakeWorkerRecordingLogger(),
-                new IntakeWorkerClock(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
                 self::testPatientRefHasher(),
                 patientIdentities: new IntakeWorkerPatientIdentityRepository(),
                 identityChecks: $identityChecks,
@@ -281,14 +281,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'bounding_box' => ['x' => 0.1, 'y' => 0.1, 'width' => 0.2, 'height' => 0.1],
                 ],
             ];
-        }
-    }
-
-    final readonly class IntakeWorkerClock implements AgentForgeClock
-    {
-        public function nowMs(): int
-        {
-            return 1_000;
         }
     }
 

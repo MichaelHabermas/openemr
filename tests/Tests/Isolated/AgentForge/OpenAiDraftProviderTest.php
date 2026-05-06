@@ -12,10 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use BadMethodCallException;
-use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Promise\PromiseInterface;
-use GuzzleHttp\Psr7\Response;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
@@ -24,16 +20,15 @@ use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\OpenAiDraftProvider;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\RecordingHttpClient;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 final class OpenAiDraftProviderTest extends TestCase
 {
     public function testDraftSendsBoundedEvidenceAndParsesStructuredResponse(): void
     {
-        $client = new RecordingOpenAiClient($this->openAiResponse());
+        $client = new RecordingHttpClient($this->openAiResponse());
         $provider = new OpenAiDraftProvider($client, 'test-key', 'gpt-4o-mini', 0.15, 0.60);
 
         $draft = $provider->draft($this->request(), $this->bundle(), $this->deadline());
@@ -74,7 +69,7 @@ final class OpenAiDraftProviderTest extends TestCase
 
     public function testRefusalMessageBecomesRefusalDraft(): void
     {
-        $client = new RecordingOpenAiClient([
+        $client = new RecordingHttpClient([
             'choices' => [
                 ['message' => ['refusal' => 'I cannot assist with that request.']],
             ],
@@ -141,7 +136,7 @@ final class OpenAiDraftProviderTest extends TestCase
 
     private function deadline(): Deadline
     {
-        return new Deadline(new SystemAgentForgeClock(), 8000);
+        return new Deadline(new SystemMonotonicClock(), 8000);
     }
 
     /**
@@ -162,78 +157,5 @@ final class OpenAiDraftProviderTest extends TestCase
         }
 
         return $value;
-    }
-}
-
-final class RecordingOpenAiClient implements ClientInterface
-{
-    /** @var array<string, mixed>|null */
-    private ?array $payload = null;
-
-    /** @param array<string, mixed> $responseBody */
-    public function __construct(private readonly array $responseBody)
-    {
-    }
-
-    /** @param array<mixed> $options */
-    public function send(RequestInterface $request, array $options = []): ResponseInterface
-    {
-        throw new BadMethodCallException('send is not used by this test client.');
-    }
-
-    /** @param array<mixed> $options */
-    public function sendAsync(RequestInterface $request, array $options = []): PromiseInterface
-    {
-        throw new BadMethodCallException('sendAsync is not used by this test client.');
-    }
-
-    /** @param array<mixed> $options */
-    public function request(string $method, $uri, array $options = []): ResponseInterface
-    {
-        $json = $options['json'] ?? null;
-        if (!is_array($json)) {
-            throw new BadMethodCallException('Expected JSON request payload.');
-        }
-        $this->payload = $this->stringKeyedArray($json);
-
-        return new Response(200, [], json_encode($this->responseBody, JSON_THROW_ON_ERROR));
-    }
-
-    /** @param array<mixed> $options */
-    public function requestAsync(string $method, $uri, array $options = []): PromiseInterface
-    {
-        throw new BadMethodCallException('requestAsync is not used by this test client.');
-    }
-
-    public function getConfig(?string $option = null): mixed
-    {
-        return null;
-    }
-
-    /** @return array<string, mixed> */
-    public function lastPayload(): array
-    {
-        if ($this->payload === null) {
-            throw new BadMethodCallException('No request payload was recorded.');
-        }
-
-        return $this->payload;
-    }
-
-    /**
-     * @param array<mixed> $source
-     * @return array<string, mixed>
-     */
-    private function stringKeyedArray(array $source): array
-    {
-        $result = [];
-        foreach ($source as $key => $value) {
-            if (!is_string($key)) {
-                throw new BadMethodCallException('Expected string-keyed JSON payload.');
-            }
-            $result[$key] = $value;
-        }
-
-        return $result;
     }
 }

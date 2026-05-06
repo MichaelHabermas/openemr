@@ -23,7 +23,7 @@ use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\Evidence\ClinicalDocumentEvidenceTool;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class ClinicalDocumentEvidenceToolTest extends TestCase
@@ -31,6 +31,7 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
     public function testTrustedDocumentJobsBecomeCitedEvidence(): void
     {
         $tool = new ClinicalDocumentEvidenceTool(
+            new SystemMonotonicClock(),
             new ClinicalDocumentEvidenceExecutor([
                 [
                     'id' => 17,
@@ -45,7 +46,7 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
             new ClinicalDocumentEvidenceProvider(),
         );
 
-        $result = $tool->collect(new PatientId(900101), new Deadline(new SystemAgentForgeClock(), -1));
+        $result = $tool->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
 
         $this->assertSame('Recent clinical documents', $result->section);
         $this->assertCount(1, $result->items);
@@ -71,12 +72,13 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
     public function testReturnsMissingWhenNoTrustedJobsExist(): void
     {
         $tool = new ClinicalDocumentEvidenceTool(
+            new SystemMonotonicClock(),
             new ClinicalDocumentEvidenceExecutor([]),
             new ClinicalDocumentEvidenceLoader(),
             new ClinicalDocumentEvidenceProvider(),
         );
 
-        $result = $tool->collect(new PatientId(900101), new Deadline(new SystemAgentForgeClock(), -1));
+        $result = $tool->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
 
         $this->assertSame([], $result->items);
         $this->assertSame(['Trusted recent clinical document facts not found in the chart.'], $result->missingSections);
@@ -90,7 +92,7 @@ final readonly class ClinicalDocumentEvidenceExecutor implements DatabaseExecuto
     {
     }
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         return $this->rows;
     }

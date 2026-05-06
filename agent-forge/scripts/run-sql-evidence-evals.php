@@ -14,11 +14,13 @@ declare(strict_types=1);
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
-use OpenEMR\AgentForge\DefaultQueryExecutor;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCaseRepository;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalRunner;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/eval-runner-functions.php';
@@ -37,8 +39,10 @@ if (!agentforge_scripts_ensure_directory($resultsDir, 'SQL eval results director
     exit(2);
 }
 
+$agentForgeDatabaseExecutor = new SqlQueryUtilsExecutor();
+
 try {
-    (new DefaultQueryExecutor())->fetchRecords('SELECT 1 AS agentforge_sql_eval_preflight');
+    $agentForgeDatabaseExecutor->fetchRecords('SELECT 1 AS agentforge_sql_eval_preflight');
 } catch (Throwable $exception) {
     fwrite(STDERR, sprintf("SQL evidence eval preflight failed: %s\n", $exception->getMessage()));
     fwrite(STDERR, "No SQL evidence result file was written.\n");
@@ -49,7 +53,9 @@ try {
 
 $caseRepository = new SqlEvidenceEvalCaseRepository();
 $runner = new SqlEvidenceEvalRunner(
-    EvidenceToolFactory::createDefault(new SqlChartEvidenceRepository()),
+    EvidenceToolFactory::createDefault(new SqlChartEvidenceRepository($agentForgeDatabaseExecutor), new SystemMonotonicClock(), $agentForgeDatabaseExecutor),
+    new SystemMonotonicClock(),
+    new SystemPsrClock(),
     new PatientAuthorizationGate(new SqlPatientAccessRepository()),
 );
 $summary = $runner->run(

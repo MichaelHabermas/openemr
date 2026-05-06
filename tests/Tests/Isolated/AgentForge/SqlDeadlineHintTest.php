@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\SqlDeadlineHint;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
 
 final class SqlDeadlineHintTest extends TestCase
@@ -27,7 +28,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testReturnsOriginalSqlWhenDeadlineBudgetIsNegative(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, -1);
         $sql = 'SELECT id FROM patient_data WHERE pid = ?';
 
@@ -36,7 +37,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testReturnsOriginalSqlWhenDeadlineHasExpired(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 100);
         $clock->advance(200);
         $sql = 'SELECT id FROM patient_data WHERE pid = ?';
@@ -46,7 +47,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testInjectsHintIntoLeadingSelect(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, 5000);
 
         $patched = SqlDeadlineHint::apply('SELECT id FROM patient_data WHERE pid = ?', $deadline);
@@ -59,7 +60,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testInjectsHintIntoFirstSelectInsideParenthesizedUnion(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, 4000);
 
         $sql = '(SELECT id FROM prescriptions WHERE patient_id = ?) UNION ALL '
@@ -76,7 +77,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testDoesNotDoubleInjectHint(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, 5000);
 
         $sql = 'SELECT /*+ MAX_EXECUTION_TIME(1000) */ id FROM patient_data WHERE pid = ?';
@@ -86,7 +87,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testReturnsOriginalSqlWhenNoSelectFound(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, 5000);
 
         $sql = 'UPDATE patient_data SET fname = ? WHERE pid = ?';
@@ -96,7 +97,7 @@ final class SqlDeadlineHintTest extends TestCase
 
     public function testRespectsLeadingWhitespaceWhenInjecting(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, 2500);
 
         $patched = SqlDeadlineHint::apply("\n  SELECT 1", $deadline);

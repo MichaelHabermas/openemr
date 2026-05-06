@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 require_once("../../globals.php");
 
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 
@@ -35,7 +35,7 @@ if (!AclMain::aclCheckCore('patients', 'med')) {
     $deny(403);
 }
 
-$rows = (new DefaultDatabaseExecutor())->fetchRecords(
+$rows = (new SqlQueryUtilsExecutor())->fetchRecords(
     'SELECT j.id '
     . 'FROM clinical_document_processing_jobs j '
     . 'INNER JOIN clinical_document_identity_checks ic ON ic.job_id = j.id '

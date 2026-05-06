@@ -15,7 +15,6 @@ namespace OpenEMR\AgentForge\Document\Identity;
 use JsonException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
@@ -23,11 +22,8 @@ use RuntimeException;
 
 final readonly class SqlDocumentIdentityCheckRepository implements DocumentIdentityCheckRepository
 {
-    private DatabaseExecutor $executor;
-
-    public function __construct(?DatabaseExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
     }
 
     public function saveResult(

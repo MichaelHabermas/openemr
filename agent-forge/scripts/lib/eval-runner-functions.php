@@ -31,6 +31,7 @@ use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 
 require_once __DIR__ . '/code-version.php';
@@ -112,6 +113,7 @@ function agentforge_eval_run_case(array $case, ?DraftProvider $draftProvider = n
         new AgentRequestParser(),
         new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
         agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs, $toolSelectionProvider),
+        new SystemMonotonicClock(),
         conversationStore: $store,
     );
 
@@ -166,6 +168,7 @@ function agentforge_eval_run_multi_turn_case(array $case, ?DraftProvider $draftP
             new AgentRequestParser(),
             new PatientAuthorizationGate(new EvalPatientAccessRepository($scenario)),
             agentforge_eval_agent_handler($scenario, $draftProvider, $deadlineMs, $toolSelectionProvider),
+            new SystemMonotonicClock(),
             conversationStore: $store,
         );
         $lastResult = $handler->handle(
@@ -203,6 +206,7 @@ function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftPr
         agentforge_eval_tools($scenario),
         $draftProvider,
         new DraftVerifier(),
+        new SystemMonotonicClock(),
         deadlineMs: $deadlineMs,
         toolSelectionProvider: $toolSelectionProvider ?? (str_starts_with($scenario, 'selector_') ? new EvalToolSelectionProvider() : null),
     );

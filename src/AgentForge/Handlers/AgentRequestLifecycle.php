@@ -12,15 +12,18 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Handlers;
 
-use DateTimeImmutable;
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\RequestLogger;
+use OpenEMR\AgentForge\Time\MonotonicClock;
+use Psr\Clock\ClockInterface;
 
 final readonly class AgentRequestLifecycle
 {
     public function __construct(
         private AgentRequestHandler $handler,
         private RequestLogger $logger,
+        private MonotonicClock $clock,
+        private ClockInterface $wallClock,
     ) {
     }
 
@@ -33,10 +36,10 @@ final readonly class AgentRequestLifecycle
         bool $hasMedicalRecordAcl,
         bool $csrfValid,
         string $requestId,
-        ?int $startTime = null,
+        ?int $startTimeMs = null,
     ): AgentRequestResult {
-        $startedAt = new DateTimeImmutable();
-        $start = $startTime ?? hrtime(true);
+        $startedAt = $this->wallClock->now();
+        $startMs = $startTimeMs ?? $this->clock->nowMs();
         $result = $this->handler->handle(
             $method,
             $post,
@@ -52,7 +55,7 @@ final readonly class AgentRequestLifecycle
             userId: $sessionUserId,
             patientId: $result->logPatientId,
             decision: $result->decision,
-            latencyMs: max(0, (int) floor((hrtime(true) - $start) / 1_000_000)),
+            latencyMs: max(0, $this->clock->nowMs() - $startMs),
             timestamp: $startedAt,
             telemetry: $result->telemetry,
             conversationId: $result->conversationId,

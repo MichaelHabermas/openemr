@@ -16,10 +16,11 @@ use OpenEMR\AgentForge\ResponseGeneration\AnthropicDraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DisabledDraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderConfig;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
+use OpenEMR\AgentForge\ResponseGeneration\DraftProviderMode;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\OpenAiDraftProvider;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
+use ValueError;
 
 final class DraftProviderFactoryTest extends TestCase
 {
@@ -62,14 +63,14 @@ final class DraftProviderFactoryTest extends TestCase
 
     public function testFixtureModeReturnsFixtureProvider(): void
     {
-        $provider = DraftProviderFactory::create(new DraftProviderConfig(DraftProviderConfig::MODE_FIXTURE));
+        $provider = DraftProviderFactory::create(new DraftProviderConfig(DraftProviderMode::Fixture->value));
 
         $this->assertInstanceOf(FixtureDraftProvider::class, $provider);
     }
 
     public function testDisabledModeReturnsFailClosedProvider(): void
     {
-        $provider = DraftProviderFactory::create(new DraftProviderConfig(DraftProviderConfig::MODE_DISABLED));
+        $provider = DraftProviderFactory::create(new DraftProviderConfig(DraftProviderMode::Disabled->value));
 
         $this->assertInstanceOf(DisabledDraftProvider::class, $provider);
     }
@@ -77,7 +78,7 @@ final class DraftProviderFactoryTest extends TestCase
     public function testOpenAiModeReturnsOpenAiProvider(): void
     {
         $provider = DraftProviderFactory::create(new DraftProviderConfig(
-            mode: DraftProviderConfig::MODE_OPENAI,
+            mode: DraftProviderMode::OpenAi->value,
             apiKey: 'test-key',
             model: 'gpt-4o-mini',
         ));
@@ -88,7 +89,7 @@ final class DraftProviderFactoryTest extends TestCase
     public function testOpenAiDefaultsUseKnownGpt4oMiniPricing(): void
     {
         $config = new DraftProviderConfig(
-            mode: DraftProviderConfig::MODE_OPENAI,
+            mode: DraftProviderMode::OpenAi->value,
             apiKey: 'test-key',
         );
 
@@ -98,12 +99,26 @@ final class DraftProviderFactoryTest extends TestCase
         $this->assertSame(5.0, $config->connectTimeoutSeconds);
     }
 
-    public function testNonDefaultModelDoesNotInheritGpt4oMiniPricing(): void
+    public function testGpt4oModelGetsCatalogPricingNotGpt4oMiniPricing(): void
     {
         $config = new DraftProviderConfig(
-            mode: DraftProviderConfig::MODE_OPENAI,
+            mode: DraftProviderMode::OpenAi->value,
             apiKey: 'test-key',
             model: 'gpt-4o',
+            inputCostPerMillionTokens: null,
+            outputCostPerMillionTokens: null,
+        );
+
+        $this->assertSame(2.50, $config->inputCostPerMillionTokens);
+        $this->assertSame(10.00, $config->outputCostPerMillionTokens);
+    }
+
+    public function testUnknownModelLeavesPricingNull(): void
+    {
+        $config = new DraftProviderConfig(
+            mode: DraftProviderMode::OpenAi->value,
+            apiKey: 'test-key',
+            model: 'gpt-4-something-unknown',
             inputCostPerMillionTokens: null,
             outputCostPerMillionTokens: null,
         );
@@ -115,7 +130,7 @@ final class DraftProviderFactoryTest extends TestCase
     public function testAnthropicModeReturnsAnthropicProvider(): void
     {
         $provider = DraftProviderFactory::create(new DraftProviderConfig(
-            mode: DraftProviderConfig::MODE_ANTHROPIC,
+            mode: DraftProviderMode::Anthropic->value,
             apiKey: 'test-anthropic-key',
         ));
 
@@ -125,7 +140,7 @@ final class DraftProviderFactoryTest extends TestCase
     public function testAnthropicDefaultsUseHaiku45Pricing(): void
     {
         $config = new DraftProviderConfig(
-            mode: DraftProviderConfig::MODE_ANTHROPIC,
+            mode: DraftProviderMode::Anthropic->value,
             apiKey: 'test-anthropic-key',
         );
 
@@ -138,8 +153,8 @@ final class DraftProviderFactoryTest extends TestCase
 
     public function testUnsupportedExternalModeFailsClosed(): void
     {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('not configured');
+        $this->expectException(ValueError::class);
+        $this->expectExceptionMessage('"external-model" is not a valid backing value');
 
         DraftProviderFactory::create(new DraftProviderConfig('external-model'));
     }

@@ -12,8 +12,9 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Reporting;
 
-use DateTimeImmutable;
 use DateTimeInterface;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
+use Psr\Clock\ClockInterface;
 
 final class EvalLatestSummaryWriter
 {
@@ -29,7 +30,7 @@ final class EvalLatestSummaryWriter
      * Reads eval JSON at $jsonPath and overwrites the tier's latest Markdown in the same directory.
      * Never throws to callers; failures go to STDERR. Skipped when AGENTFORGE_SKIP_LATEST_SUMMARY is non-empty.
      */
-    public static function tryWriteFromEvalJsonFile(string $jsonPath): void
+    public static function tryWriteFromEvalJsonFile(string $jsonPath, ?ClockInterface $wallClock = null): void
     {
         $skip = getenv('AGENTFORGE_SKIP_LATEST_SUMMARY');
         if ($skip !== false && $skip !== '') {
@@ -56,7 +57,7 @@ final class EvalLatestSummaryWriter
             $markdown = (new MarkdownEvalSummaryRenderer())->render($run);
             $basename = self::filenameForTierKey($run->tierKey);
             $outPath = rtrim(dirname($jsonPath), '/') . '/' . $basename;
-            $banner = self::buildBannerLine($jsonPath);
+            $banner = self::buildBannerLine($jsonPath, $wallClock ?? new SystemPsrClock());
             $payload = $banner . "\n" . $markdown;
 
             if (file_put_contents($outPath, $payload) === false) {
@@ -78,10 +79,12 @@ final class EvalLatestSummaryWriter
         };
     }
 
-    private static function buildBannerLine(string $jsonPath): string
+    private static function buildBannerLine(string $jsonPath, ClockInterface $wallClock): string
     {
         $base = basename($jsonPath);
-        $utc = (new DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(DateTimeInterface::ATOM);
+        $utc = $wallClock->now()
+            ->setTimezone(new \DateTimeZone('UTC'))
+            ->format(DateTimeInterface::ATOM);
 
         return sprintf('<!-- Generated from %s at %s -->', $base, $utc);
     }

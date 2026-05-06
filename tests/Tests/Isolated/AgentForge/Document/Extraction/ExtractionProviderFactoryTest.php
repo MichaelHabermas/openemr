@@ -21,13 +21,14 @@ use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
+use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderMode;
 use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
 use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class ExtractionProviderFactoryTest extends TestCase
@@ -72,7 +73,7 @@ final class ExtractionProviderFactoryTest extends TestCase
     public function testOpenAiModeReturnsOpenAiProvider(): void
     {
         $provider = ExtractionProviderFactory::create(new ExtractionProviderConfig(
-            mode: ExtractionProviderConfig::MODE_OPENAI,
+            mode: ExtractionProviderMode::OpenAi->value,
             apiKey: 'test-key',
             model: 'gpt-4o-mini',
         ));
@@ -127,7 +128,7 @@ final class ExtractionProviderFactoryTest extends TestCase
 
         $provider = ExtractionProviderFactory::create(
             new ExtractionProviderConfig(
-                mode: ExtractionProviderConfig::MODE_OPENAI,
+                mode: ExtractionProviderMode::OpenAi->value,
                 apiKey: 'k',
                 model: 'gpt-4o-mini',
             ),
@@ -140,7 +141,7 @@ final class ExtractionProviderFactoryTest extends TestCase
             new DocumentId(1),
             new DocumentLoadResult('%PDF', 'application/pdf', 'x.pdf'),
             DocumentType::LabPdf,
-            new Deadline(new SystemAgentForgeClock(), 8000),
+            new Deadline(new SystemMonotonicClock(), 8000),
         );
         $this->assertTrue($response->schemaValid);
         $this->assertInstanceOf(LabPdfExtraction::class, $response->extraction);
@@ -150,7 +151,7 @@ final class ExtractionProviderFactoryTest extends TestCase
     public function testOpenAiDefaultsUseKnownGpt4oPricing(): void
     {
         $config = new ExtractionProviderConfig(
-            mode: ExtractionProviderConfig::MODE_OPENAI,
+            mode: ExtractionProviderMode::OpenAi->value,
             apiKey: 'test-key',
         );
 

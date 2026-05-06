@@ -12,15 +12,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 use OpenEMR\BC\ServiceContainer;
 
 final class DocumentUploadEnqueuerFactory
 {
     public static function createDefault(): DocumentUploadEnqueuer
     {
-        $executor = new DefaultDatabaseExecutor();
+        $executor = new SqlQueryUtilsExecutor();
         $logger = ServiceContainer::getLogger();
 
         return new DocumentUploadEnqueuer(

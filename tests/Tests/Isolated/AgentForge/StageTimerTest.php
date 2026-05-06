@@ -12,22 +12,22 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Observability\StageTimer;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
 
 final class StageTimerTest extends TestCase
 {
     public function testTimingsAreEmptyBeforeAnyStageRecorded(): void
     {
-        $timer = new StageTimer(new StageTimerFakeClock());
+        $timer = new StageTimer(AgentForgeTestFixtures::advanceableMonotonicClock());
 
         self::assertSame([], $timer->timings());
     }
 
     public function testStartAndStopRecordsElapsedMilliseconds(): void
     {
-        $clock = new StageTimerFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $timer = new StageTimer($clock);
 
         $timer->start('evidence');
@@ -39,7 +39,7 @@ final class StageTimerTest extends TestCase
 
     public function testStopWithoutPriorStartIsIgnored(): void
     {
-        $timer = new StageTimer(new StageTimerFakeClock());
+        $timer = new StageTimer(AgentForgeTestFixtures::advanceableMonotonicClock());
 
         $timer->stop('evidence');
 
@@ -48,7 +48,7 @@ final class StageTimerTest extends TestCase
 
     public function testMultipleStagesAreTrackedIndependently(): void
     {
-        $clock = new StageTimerFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $timer = new StageTimer($clock);
 
         $timer->start('evidence');
@@ -71,7 +71,7 @@ final class StageTimerTest extends TestCase
 
     public function testRepeatedStartAndStopOnSameStageAccumulates(): void
     {
-        $clock = new StageTimerFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $timer = new StageTimer($clock);
 
         $timer->start('evidence:problems');
@@ -87,7 +87,7 @@ final class StageTimerTest extends TestCase
 
     public function testNegativeElapsedFromClockAnomalyIsClampedToZero(): void
     {
-        $clock = new StageTimerFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $timer = new StageTimer($clock);
 
         $timer->start('draft');
@@ -99,7 +99,7 @@ final class StageTimerTest extends TestCase
 
     public function testStopClearsStartSoSubsequentStopIsNoOp(): void
     {
-        $clock = new StageTimerFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $timer = new StageTimer($clock);
 
         $timer->start('evidence');
@@ -110,22 +110,5 @@ final class StageTimerTest extends TestCase
         $timer->stop('evidence');
 
         self::assertSame(['evidence' => 10], $timer->timings());
-    }
-}
-
-final class StageTimerFakeClock implements AgentForgeClock
-{
-    public function __construct(private int $nowMs = 0)
-    {
-    }
-
-    public function advance(int $ms): void
-    {
-        $this->nowMs += $ms;
-    }
-
-    public function nowMs(): int
-    {
-        return $this->nowMs;
     }
 }

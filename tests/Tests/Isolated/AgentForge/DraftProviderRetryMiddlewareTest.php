@@ -20,7 +20,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
-use OpenEMR\AgentForge\AgentForgeClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderRetryMiddleware;
 use PHPUnit\Framework\TestCase;
@@ -95,7 +95,7 @@ final class DraftProviderRetryMiddlewareTest extends TestCase
 
     public function testAbortsRetryWhenDeadlineExhausted(): void
     {
-        $clock = new RetryAdvancingClock([0, 100, 5000]);
+        $clock = AgentForgeTestFixtures::tickingMonotonicClock([0, 100, 5000]);
         $deadline = new Deadline($clock, 400);
         $mock = new MockHandler([
             new Response(429),
@@ -116,7 +116,7 @@ final class DraftProviderRetryMiddlewareTest extends TestCase
 
     public function testAbortsRetryWhenRemainingBudgetCannotAffordCallPlusBackoff(): void
     {
-        $clock = new RetryAdvancingClock([0, 50]);
+        $clock = AgentForgeTestFixtures::tickingMonotonicClock([0, 50]);
         $deadline = new Deadline($clock, 200);
         $mock = new MockHandler([
             new Response(429),
@@ -176,19 +176,3 @@ final class DraftProviderRetryMiddlewareTest extends TestCase
     }
 }
 
-final class RetryAdvancingClock implements AgentForgeClock
-{
-    /** @param list<int> $ticks */
-    public function __construct(private array $ticks)
-    {
-    }
-
-    public function nowMs(): int
-    {
-        if ($this->ticks === []) {
-            return 0;
-        }
-
-        return array_shift($this->ticks);
-    }
-}

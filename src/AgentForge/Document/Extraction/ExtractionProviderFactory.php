@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
-use RuntimeException;
 
 final class ExtractionProviderFactory
 {
@@ -28,9 +27,9 @@ final class ExtractionProviderFactory
         ?PdfPageRenderer $pdfRenderer = null,
         ?ClientInterface $httpClient = null,
     ): DocumentExtractionProvider {
-        return match ($config->mode) {
-            ExtractionProviderConfig::MODE_FIXTURE => new FixtureExtractionProvider($config->fixtureManifestPath),
-            ExtractionProviderConfig::MODE_OPENAI => new OpenAiVlmExtractionProvider(
+        return match (ExtractionProviderMode::from($config->mode)) {
+            ExtractionProviderMode::Fixture => new FixtureExtractionProvider($config->fixtureManifestPath),
+            ExtractionProviderMode::OpenAi => new OpenAiVlmExtractionProvider(
                 $httpClient ?? new Client([
                     'base_uri' => 'https://api.openai.com',
                     'timeout' => $config->timeoutSeconds,
@@ -45,10 +44,6 @@ final class ExtractionProviderFactory
                 $config->timeoutSeconds,
                 $config->maxPdfPages,
             ),
-            default => throw new RuntimeException(sprintf(
-                'AgentForge extraction provider mode "%s" is not configured.',
-                $config->mode,
-            )),
         };
     }
 }

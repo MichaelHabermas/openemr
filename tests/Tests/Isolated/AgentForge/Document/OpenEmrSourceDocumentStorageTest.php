@@ -16,6 +16,7 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Document\CategoryId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\OpenEmrSourceDocumentStorage;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -25,6 +26,7 @@ final class OpenEmrSourceDocumentStorageTest extends TestCase
     {
         $legacy = new LegacyDocumentWriterStub(456);
         $storage = new OpenEmrSourceDocumentStorage(
+            new FakeDatabaseExecutor(),
             static fn(DocumentType $docType): CategoryId => new CategoryId(7),
             static fn(): object => $legacy,
         );
@@ -45,6 +47,7 @@ final class OpenEmrSourceDocumentStorageTest extends TestCase
     public function testLegacyStorageErrorFailsStorage(): void
     {
         $storage = new OpenEmrSourceDocumentStorage(
+            new FakeDatabaseExecutor(),
             static fn(DocumentType $docType): CategoryId => new CategoryId(7),
             static fn(): object => new LegacyDocumentWriterStub(0, 'failed'),
         );

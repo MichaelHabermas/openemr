@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
-use OpenEMR\AgentForge\AgentForgeClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\AttachAndExtractTool;
@@ -233,7 +233,7 @@ final class AttachAndExtractToolTest extends TestCase
 
     private static function deadline(): Deadline
     {
-        return new Deadline(new AttachToolClock(), 30_000);
+        return new Deadline(AgentForgeTestFixtures::frozenMonotonicClock(1_000), 30_000);
     }
 
     private static function tempFile(string $bytes): string
@@ -243,14 +243,6 @@ final class AttachAndExtractToolTest extends TestCase
         file_put_contents($file, $bytes);
 
         return $file;
-    }
-}
-
-final readonly class AttachToolClock implements AgentForgeClock
-{
-    public function nowMs(): int
-    {
-        return 1_000;
     }
 }
 

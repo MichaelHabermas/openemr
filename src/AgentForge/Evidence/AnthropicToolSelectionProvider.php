@@ -15,6 +15,7 @@ namespace OpenEMR\AgentForge\Evidence;
 use DomainException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
+use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 
@@ -28,12 +29,8 @@ final readonly class AnthropicToolSelectionProvider implements ToolSelectionProv
         #[SensitiveParameter] private string $apiKey,
         private string $model,
     ) {
-        if (trim($apiKey) === '') {
-            throw new DomainException('Anthropic tool selector requires an API key.');
-        }
-        if (trim($model) === '') {
-            throw new DomainException('Anthropic tool selector requires a model.');
-        }
+        LlmCredentialGuard::requireApiKey($apiKey, 'Anthropic tool selector');
+        LlmCredentialGuard::requireModel($model, 'Anthropic tool selector');
     }
 
     public function select(ToolSelectionRequest $request): ToolSelectionResult

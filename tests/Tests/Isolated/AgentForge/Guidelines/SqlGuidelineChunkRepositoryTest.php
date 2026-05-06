@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Guidelines;
 
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Guidelines\DeterministicGuidelineEmbeddingProvider;
 use OpenEMR\AgentForge\Guidelines\GuidelineChunk;
 use OpenEMR\AgentForge\Guidelines\SqlGuidelineChunkRepository;
@@ -89,7 +90,7 @@ final class GuidelineRepositoryExecutor implements DatabaseExecutor
     {
     }
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         $this->queries[] = ['sql' => $sql, 'binds' => $binds];
 

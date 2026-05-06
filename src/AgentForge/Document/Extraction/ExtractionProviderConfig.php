@@ -13,11 +13,14 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Extraction;
 
 use DomainException;
+use OpenEMR\AgentForge\Llm\ProviderCostCatalog;
 use SensitiveParameter;
 
 final readonly class ExtractionProviderConfig
 {
+    /** @deprecated Use {@see ExtractionProviderMode::Fixture} instead. */
     public const MODE_FIXTURE = 'fixture';
+    /** @deprecated Use {@see ExtractionProviderMode::OpenAi} instead. */
     public const MODE_OPENAI = 'openai';
 
     public string $mode;
@@ -29,7 +32,7 @@ final readonly class ExtractionProviderConfig
     public ?float $outputCostPerMillionTokens;
 
     public function __construct(
-        string $mode = self::MODE_FIXTURE,
+        string $mode = ExtractionProviderMode::Fixture->value,
         #[SensitiveParameter] ?string $apiKey = null,
         ?string $model = null,
         public ?string $fixtureManifestPath = null,
@@ -42,7 +45,7 @@ final readonly class ExtractionProviderConfig
         if ($mode === '') {
             throw new DomainException('Extraction provider mode is required.');
         }
-        if ($mode === self::MODE_OPENAI && trim((string) $apiKey) === '') {
+        if ($mode === ExtractionProviderMode::OpenAi->value && trim((string) $apiKey) === '') {
             throw new DomainException('OpenAI extraction provider requires an API key.');
         }
         if ($timeoutSeconds <= 0.0) {
@@ -60,25 +63,27 @@ final readonly class ExtractionProviderConfig
             throw new DomainException('Extraction provider model is required.');
         }
 
+        $defaultCosts = ProviderCostCatalog::lookup($resolvedModel);
+
         $this->mode = $mode;
         $this->apiKey = $apiKey;
         $this->model = $resolvedModel;
         $this->timeoutSeconds = $timeoutSeconds;
         $this->connectTimeoutSeconds = $connectTimeoutSeconds;
-        $this->inputCostPerMillionTokens = $inputCostPerMillionTokens ?? self::defaultInputCost($resolvedModel);
-        $this->outputCostPerMillionTokens = $outputCostPerMillionTokens ?? self::defaultOutputCost($resolvedModel);
+        $this->inputCostPerMillionTokens = $inputCostPerMillionTokens ?? $defaultCosts->inputCostPerMillionTokens;
+        $this->outputCostPerMillionTokens = $outputCostPerMillionTokens ?? $defaultCosts->outputCostPerMillionTokens;
     }
 
     public static function fixture(?string $manifestPath = null): self
     {
-        return new self(self::MODE_FIXTURE, fixtureManifestPath: $manifestPath);
+        return new self(ExtractionProviderMode::Fixture->value, fixtureManifestPath: $manifestPath);
     }
 
     public static function fromEnvironment(): self
     {
         $explicitMode = self::envString('AGENTFORGE_VLM_PROVIDER');
         $openAiKey = self::envString('AGENTFORGE_OPENAI_API_KEY') ?? self::envString('OPENAI_API_KEY');
-        $mode = $explicitMode ?? ($openAiKey === null ? self::MODE_FIXTURE : self::MODE_OPENAI);
+        $mode = $explicitMode ?? ($openAiKey === null ? ExtractionProviderMode::Fixture->value : ExtractionProviderMode::OpenAi->value);
 
         return new self(
             mode: $mode,
@@ -96,7 +101,7 @@ final readonly class ExtractionProviderConfig
     private static function defaultModel(string $mode): string
     {
         return match ($mode) {
-            self::MODE_OPENAI => 'gpt-4o',
+            ExtractionProviderMode::OpenAi->value => 'gpt-4o',
             default => 'fixture',
         };
     }
@@ -114,24 +119,6 @@ final readonly class ExtractionProviderConfig
         }
 
         return rtrim($dir, '/') . '/manifest.json';
-    }
-
-    private static function defaultInputCost(string $model): ?float
-    {
-        return match ($model) {
-            'gpt-4o' => 2.50,
-            'gpt-4o-mini' => 0.15,
-            default => null,
-        };
-    }
-
-    private static function defaultOutputCost(string $model): ?float
-    {
-        return match ($model) {
-            'gpt-4o' => 10.00,
-            'gpt-4o-mini' => 0.60,
-            default => null,
-        };
     }
 
     private static function envString(string $name): ?string

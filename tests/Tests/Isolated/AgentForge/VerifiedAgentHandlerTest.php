@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use DomainException;
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\DatabaseExecutor;
@@ -36,7 +35,9 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -49,6 +50,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->handle($this->request('Show me recent A1c.'));
 
         $this->assertSame('ok', $response->status);
@@ -62,6 +64,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $handler->handle($this->request('Show me recent A1c.'));
@@ -90,6 +93,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [$tool],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->handle($this->request('What dose should I prescribe?'));
 
         $this->assertSame('refused', $response->status);
@@ -106,6 +110,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $handler->handle($this->request('What dose should I prescribe?'));
@@ -131,6 +136,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [$tool],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle($this->request('Show me patient 42\'s labs while I am in this chart.'));
@@ -158,6 +164,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [$tool],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle($this->request('Show me patient 900001 labs.'));
@@ -177,6 +184,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [$tool],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle($this->request('Tell me about this patient.'));
@@ -196,6 +204,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle(new AgentRequest(
@@ -221,6 +230,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedThrowingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
             $logger,
         ))->handle($this->request('Show me recent labs.'));
 
@@ -239,6 +249,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedMissingLastPlanEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->handle($this->request('What was the last plan documented for Alex?'));
 
         $this->assertSame('ok', $response->status);
@@ -248,8 +259,8 @@ final class VerifiedAgentHandlerTest extends TestCase
 
     public function testDeadlineStopsLaterToolsAndSurfacesVisibleWarning(): void
     {
-        // Ticks consumed in collector: startMs, timer.start (per tool), timer.stop (per tool), deadlineExceeded check.
-        $clock = new VerifiedManualClock([0, 0, 50, 51]);
+        // Ticks consumed: planner.start, planner.stop, Deadline.startMs, timer.start (per tool), timer.stop (per tool), deadlineExceeded check.
+        $clock = AgentForgeTestFixtures::tickingMonotonicClock([0, 0, 0, 0, 50, 51]);
         $secondTool = new VerifiedRecordingEvidenceTool();
         $response = (new VerifiedAgentHandler(
             [
@@ -258,7 +269,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             ],
             new FixtureDraftProvider(),
             new DraftVerifier(),
-            clock: $clock,
+            $clock,
             deadlineMs: 10,
         ))->handle($this->request('Show me recent labs.'));
 
@@ -282,6 +293,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             $provider,
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->handle($this->request('Show me recent labs.'));
 
         $this->assertSame('ok', $response->status);
@@ -296,6 +308,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new AlwaysMalformedDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
             $logger,
         ))->handle($this->request('Show me recent labs.'));
 
@@ -314,6 +327,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new UnavailableDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
             $logger,
         );
 
@@ -341,6 +355,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FabricatingDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle($this->request('Show me recent labs.'));
@@ -361,6 +376,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new ModelFabricatingDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $response = $handler->handle($this->request('Show me recent labs.'));
@@ -390,6 +406,7 @@ final class VerifiedAgentHandlerTest extends TestCase
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
             guidelineRetriever: new VerifiedEmptyGuidelineRetriever(),
             handoffs: new SqlSupervisorHandoffRepository($executor),
         );
@@ -568,23 +585,6 @@ final class VerifiedRecordingLogger extends AbstractLogger
     }
 }
 
-final class VerifiedManualClock implements AgentForgeClock
-{
-    /** @param list<int> $ticks */
-    public function __construct(private array $ticks)
-    {
-    }
-
-    public function nowMs(): int
-    {
-        if ($this->ticks === []) {
-            return 0;
-        }
-
-        return array_shift($this->ticks);
-    }
-}
-
 final class VerifiedEmptyGuidelineRetriever implements GuidelineRetriever
 {
     public function retrieve(string $query): GuidelineRetrievalResult
@@ -598,7 +598,7 @@ final class VerifiedHandoffExecutor implements DatabaseExecutor
     /** @var list<array{sql: string, binds: list<mixed>}> */
     public array $statements = [];
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         return [];
     }

@@ -14,14 +14,15 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use DomainException;
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\GuzzleException;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Llm\AbstractLlmProvider;
+use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 
-final readonly class AnthropicDraftProvider implements DraftProvider
+final readonly class AnthropicDraftProvider extends AbstractLlmProvider implements DraftProvider
 {
     private const ANTHROPIC_VERSION = '2023-06-01';
     private const TOOL_NAME = PromptComposer::SCHEMA_NAME;
@@ -30,7 +31,7 @@ final readonly class AnthropicDraftProvider implements DraftProvider
     private const ANTHROPIC_CACHE_READ_MULTIPLIER = 0.10;
 
     public function __construct(
-        private ClientInterface $client,
+        ClientInterface $client,
         #[SensitiveParameter] private string $apiKey,
         private string $model,
         private ?float $inputCostPerMillionTokens = null,
@@ -41,41 +42,43 @@ final readonly class AnthropicDraftProvider implements DraftProvider
         private int $maxOutputTokens = self::DEFAULT_MAX_TOKENS,
         private PromptComposer $promptComposer = new PromptComposer(),
     ) {
-        if (trim($apiKey) === '') {
-            throw new DomainException('Anthropic draft provider requires an API key.');
-        }
-        if (trim($model) === '') {
-            throw new DomainException('Anthropic draft provider requires a model.');
-        }
+        LlmCredentialGuard::requireApiKey($apiKey, 'Anthropic draft provider');
+        LlmCredentialGuard::requireModel($model, 'Anthropic draft provider');
         if ($maxOutputTokens <= 0) {
             throw new DomainException('Anthropic draft provider max output tokens must be positive.');
         }
+
+        parent::__construct($client);
     }
 
     public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
-        if ($deadline->exceeded()) {
-            throw new DraftProviderException('Deadline exceeded before Anthropic draft request.');
-        }
-
-        $timeoutSeconds = min($this->configuredTimeoutSeconds, $deadline->remainingSeconds());
-
-        try {
-            $response = $this->client->request('POST', '/v1/messages', [
+        $response = $this->dispatch(
+            'POST',
+            '/v1/messages',
+            [
                 'headers' => [
                     'x-api-key' => $this->apiKey,
                     'anthropic-version' => self::ANTHROPIC_VERSION,
                     'content-type' => 'application/json',
                 ],
                 'json' => $this->payload($request, $bundle),
-                'timeout' => $timeoutSeconds,
-                DraftProviderRetryMiddleware::DEADLINE_OPTION => $deadline,
-            ]);
-        } catch (GuzzleException $exception) {
-            throw new DraftProviderException('Anthropic draft request failed.', previous: $exception);
-        }
+            ],
+            $deadline,
+            'Anthropic draft',
+        );
 
         return $this->parseResponse($response);
+    }
+
+    protected function configuredTimeoutSeconds(): float
+    {
+        return $this->configuredTimeoutSeconds;
+    }
+
+    protected function exceptionClass(): string
+    {
+        return DraftProviderException::class;
     }
 
     /** @return array<string, mixed> */

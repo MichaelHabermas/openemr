@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\Document\Promotion;
 
 use DateTimeImmutable;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
@@ -24,14 +23,20 @@ use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
+use Psr\Clock\ClockInterface;
 
 final readonly class SqlClinicalDocumentFactPromotionRepository implements ClinicalDocumentFactPromotionRepository
 {
     private CertaintyClassifier $certaintyClassifier;
+    private ClockInterface $wallClock;
 
-    public function __construct(private ?DatabaseExecutor $executor = null)
-    {
+    public function __construct(
+        private DatabaseExecutor $executor,
+        ?ClockInterface $wallClock = null,
+    ) {
         $this->certaintyClassifier = new CertaintyClassifier();
+        $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
 
     public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction $extraction): PromotionSummary
@@ -531,11 +536,11 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
 
     private function now(): string
     {
-        return (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        return $this->wallClock->now()->format('Y-m-d H:i:s');
     }
 
     private function db(): DatabaseExecutor
     {
-        return $this->executor ?? new DefaultDatabaseExecutor();
+        return $this->executor;
     }
 }

@@ -25,6 +25,7 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use PHPUnit\Framework\TestCase;
 
@@ -35,6 +36,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $pipeline = new VerifiedDraftingPipeline(
             new PipelineProviderThatMustNotBeCalled(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         );
 
         $result = $pipeline->run(
@@ -62,6 +64,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineUnavailableProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
             $this->bundle(),
@@ -100,6 +103,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineUnavailableProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Tell me about this patient.')),
             $this->briefingBundle(),
@@ -125,6 +129,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithoutMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Give me a visit briefing.')),
             $this->briefingBundle(),
@@ -152,6 +157,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Give me a visit briefing.')),
             $this->briefingBundle(),
@@ -168,6 +174,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('What medications are active?')),
             $this->briefingBundle(),
@@ -184,6 +191,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithoutMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('What medications are active?')),
             $this->briefingBundle(),
@@ -202,6 +210,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineFollowUpWithIntakeOnlyProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(
                 new PatientId(900101),
@@ -227,6 +236,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithoutMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Give me a visit briefing.')),
             $this->unsafeNoteBundle(),
@@ -246,6 +256,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineBriefingWithoutMedicationProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Show me patient demographics.')),
             $this->briefingBundle(),
@@ -262,6 +273,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineFabricatingProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
             $this->bundle(),
@@ -278,6 +290,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $result = (new VerifiedDraftingPipeline(
             new PipelineUsageProvider(),
             new DraftVerifier(),
+            new SystemMonotonicClock(),
         ))->run(
             new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
             $this->bundle(),

@@ -12,8 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Observability;
 
-use OpenEMR\AgentForge\AgentForgeClock;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 
 final class StageTimer
 {
@@ -23,7 +22,7 @@ final class StageTimer
     /** @var array<string, int> */
     private array $timingsMs = [];
 
-    public function __construct(private readonly AgentForgeClock $clock = new SystemAgentForgeClock())
+    public function __construct(private readonly MonotonicClock $clock)
     {
     }
 

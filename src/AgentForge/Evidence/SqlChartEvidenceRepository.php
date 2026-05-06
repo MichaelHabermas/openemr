@@ -13,17 +13,13 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\DefaultQueryExecutor;
-use OpenEMR\AgentForge\QueryExecutor;
 
 final readonly class SqlChartEvidenceRepository implements ChartEvidenceRepository
 {
-    private QueryExecutor $executor;
-
-    public function __construct(?QueryExecutor $executor = null)
+    public function __construct(private DatabaseExecutor $executor)
     {
-        $this->executor = $executor ?? new DefaultQueryExecutor();
     }
 
     public function demographics(PatientId $patientId, ?Deadline $deadline = null): ?array

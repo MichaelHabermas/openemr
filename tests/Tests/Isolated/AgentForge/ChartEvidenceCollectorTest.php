@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
@@ -20,7 +19,10 @@ use OpenEMR\AgentForge\Evidence\ChartQuestionPlan;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use OpenEMR\AgentForge\Evidence\SerialChartEvidenceCollector;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use RuntimeException;
 
 final class ChartEvidenceCollectorTest extends TestCase
@@ -34,7 +36,7 @@ final class ChartEvidenceCollectorTest extends TestCase
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
 
-        $run = (new SerialChartEvidenceCollector([$labs, $meds]))->collect(
+        $run = (new SerialChartEvidenceCollector([$labs, $meds], new NullLogger(), new SystemMonotonicClock()))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('lab', ['Recent labs'], 8000, skippedSections: ['Active medications']),
         );
@@ -49,7 +51,7 @@ final class ChartEvidenceCollectorTest extends TestCase
 
     public function testToolFailureIsSanitizedAndPreservedAsFailedSection(): void
     {
-        $run = (new SerialChartEvidenceCollector([new CollectorThrowingTool()]))->collect(
+        $run = (new SerialChartEvidenceCollector([new CollectorThrowingTool()], new NullLogger(), new SystemMonotonicClock()))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('lab', ['Recent labs'], 8000),
         );
@@ -68,7 +70,7 @@ final class ChartEvidenceCollectorTest extends TestCase
                 new EvidenceItem('lab', 'procedure_result', 'a1c', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
             ]),
             $later,
-        ], clock: new CollectorManualClock([0, 50])))->collect(
+        ], new NullLogger(), AgentForgeTestFixtures::tickingMonotonicClock([0, 50])))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('visit_briefing', ['Recent labs', 'Active medications'], 10),
         );
@@ -114,19 +116,3 @@ final class CollectorThrowingTool implements ChartEvidenceTool
     }
 }
 
-final class CollectorManualClock implements AgentForgeClock
-{
-    /** @param list<int> $ticks */
-    public function __construct(private array $ticks)
-    {
-    }
-
-    public function nowMs(): int
-    {
-        if ($this->ticks === []) {
-            return 0;
-        }
-
-        return array_shift($this->ticks);
-    }
-}

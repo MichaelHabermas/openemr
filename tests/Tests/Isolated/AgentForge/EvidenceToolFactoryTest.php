@@ -16,13 +16,19 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class EvidenceToolFactoryTest extends TestCase
 {
     public function testDefaultFactoryBuildsEveryEpicFiveEvidenceTool(): void
     {
-        $tools = EvidenceToolFactory::createDefault($this->emptyRepository());
+        $tools = EvidenceToolFactory::createDefault(
+            $this->emptyRepository(),
+            new SystemMonotonicClock(),
+            new FakeDatabaseExecutor(),
+        );
 
         $this->assertSame(
             [

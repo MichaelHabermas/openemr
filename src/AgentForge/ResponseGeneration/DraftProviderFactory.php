@@ -12,8 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\HandlerStack;
+use OpenEMR\AgentForge\Llm\HttpClientBuilder;
 
 final class DraftProviderFactory
 {
@@ -24,18 +23,28 @@ final class DraftProviderFactory
 
     public static function create(DraftProviderConfig $config): DraftProvider
     {
-        return match ($config->mode) {
-            DraftProviderConfig::MODE_FIXTURE => new FixtureDraftProvider(),
-            DraftProviderConfig::MODE_DISABLED => new DisabledDraftProvider(),
-            DraftProviderConfig::MODE_OPENAI => new OpenAiDraftProvider(
-                self::buildClient('https://api.openai.com', $config),
+        return match (DraftProviderMode::from($config->mode)) {
+            DraftProviderMode::Fixture => new FixtureDraftProvider(),
+            DraftProviderMode::Disabled => new DisabledDraftProvider(),
+            DraftProviderMode::OpenAi => new OpenAiDraftProvider(
+                HttpClientBuilder::withRetryMiddleware(
+                    'https://api.openai.com',
+                    $config->timeoutSeconds,
+                    $config->connectTimeoutSeconds,
+                    'draft_provider_retry',
+                ),
                 (string) $config->apiKey,
                 $config->model,
                 $config->inputCostPerMillionTokens,
                 $config->outputCostPerMillionTokens,
             ),
-            DraftProviderConfig::MODE_ANTHROPIC => new AnthropicDraftProvider(
-                self::buildClient('https://api.anthropic.com', $config),
+            DraftProviderMode::Anthropic => new AnthropicDraftProvider(
+                HttpClientBuilder::withRetryMiddleware(
+                    'https://api.anthropic.com',
+                    $config->timeoutSeconds,
+                    $config->connectTimeoutSeconds,
+                    'draft_provider_retry',
+                ),
                 (string) $config->apiKey,
                 $config->model,
                 $config->inputCostPerMillionTokens,
@@ -43,23 +52,6 @@ final class DraftProviderFactory
                 $config->cacheWriteCostPerMillionTokens,
                 $config->cacheReadCostPerMillionTokens,
             ),
-            default => throw new \RuntimeException(sprintf(
-                'AgentForge draft provider mode "%s" is not configured.',
-                $config->mode,
-            )),
         };
-    }
-
-    private static function buildClient(string $baseUri, DraftProviderConfig $config): Client
-    {
-        $stack = HandlerStack::create();
-        $stack->push(DraftProviderRetryMiddleware::create(), 'draft_provider_retry');
-
-        return new Client([
-            'base_uri' => $baseUri,
-            'timeout' => $config->timeoutSeconds,
-            'connect_timeout' => $config->connectTimeoutSeconds,
-            'handler' => $stack,
-        ]);
     }
 }

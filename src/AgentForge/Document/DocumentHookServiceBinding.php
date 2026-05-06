@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
+
 final class DocumentHookServiceBinding
 {
     private static ?DocumentJobRepository $jobRepositoryOverride = null;
@@ -20,7 +22,7 @@ final class DocumentHookServiceBinding
 
     public static function jobRepository(): DocumentJobRepository
     {
-        return self::$jobRepositoryOverride ?? new SqlDocumentJobRepository();
+        return self::$jobRepositoryOverride ?? new SqlDocumentJobRepository(new SqlQueryUtilsExecutor());
     }
 
     public static function uploadEnqueuer(): DocumentUploadEnqueuer

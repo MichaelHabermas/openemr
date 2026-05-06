@@ -74,3 +74,9 @@ services:
 - class: OpenEMR\PHPStan\Rules\ForbiddenEvalRule
   tags:
   - phpstan.rules.rule
+- class: OpenEMR\PHPStan\Rules\AgentForgeClockHygieneRule
+  tags:
+  - phpstan.rules.rule
+- class: OpenEMR\PHPStan\Rules\ForbiddenAgentForgeWiringRule
+  tags:
+  - phpstan.rules.rule

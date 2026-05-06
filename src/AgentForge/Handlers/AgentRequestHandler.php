@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use DomainException;
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Conversation\ConversationLookup;
 use OpenEMR\AgentForge\Conversation\ConversationState;
@@ -23,7 +22,7 @@ use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
@@ -36,9 +35,9 @@ final readonly class AgentRequestHandler
         private AgentRequestParserInterface $parser,
         private PatientAuthorizationGate $authorizationGate,
         private AgentHandler $agentHandler,
+        private MonotonicClock $clock,
         private LoggerInterface $logger = new NullLogger(),
         private ConversationStore $conversationStore = new InMemoryConversationStore(),
-        private AgentForgeClock $clock = new SystemAgentForgeClock(),
     ) {
     }
 

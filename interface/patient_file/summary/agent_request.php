@@ -18,7 +18,6 @@ use OpenEMR\AgentForge\Auth\MemoizingPatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Conversation\SessionConversationStore;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
@@ -34,6 +33,9 @@ use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\Observability\PsrRequestLogger;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\BC\ServiceContainer;
 use OpenEMR\Common\Acl\AclMain;
@@ -56,7 +58,8 @@ $agentForgeJsonResponse = static function (AgentResponse $response, int $statusC
     exit;
 };
 
-$agentForgeStartTime = hrtime(true);
+$agentForgeClock = new SystemMonotonicClock();
+$agentForgeStartTimeMs = $agentForgeClock->nowMs();
 $agentForgeRequestId = Uuid::uuid4()->toString();
 $agentForgeLogger = new PsrRequestLogger(ServiceContainer::getLogger());
 $request = Request::createFromGlobals();
@@ -73,13 +76,14 @@ $sessionPatientId = $sessionPatientId === false ? null : (int) $sessionPatientId
 $sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
 $sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
 $csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($request->request->getString('csrf_token_form'), session: $session);
-$chartEvidenceRepository = new SqlChartEvidenceRepository();
+$agentForgeDatabaseExecutor = new SqlQueryUtilsExecutor();
+$chartEvidenceRepository = new SqlChartEvidenceRepository($agentForgeDatabaseExecutor);
 $guidelineCorpusVersionFile = dirname(__DIR__, 3) . '/agent-forge/fixtures/clinical-guideline-corpus/corpus-version.txt';
 $guidelineCorpusVersion = is_file($guidelineCorpusVersionFile)
     ? trim((string) file_get_contents($guidelineCorpusVersionFile))
     : '';
 $guidelineRetriever = $guidelineCorpusVersion === '' ? null : new HybridGuidelineRetriever(
-    new SqlGuidelineChunkRepository(new DefaultDatabaseExecutor()),
+    new SqlGuidelineChunkRepository($agentForgeDatabaseExecutor),
     new DeterministicGuidelineEmbeddingProvider(),
     GuidelineRerankerFactory::createDefault(),
     $guidelineCorpusVersion,
@@ -89,18 +93,22 @@ $handler = new AgentRequestLifecycle(
         new AgentRequestParser(),
         new PatientAuthorizationGate(new MemoizingPatientAccessRepository(new SqlPatientAccessRepository())),
         new VerifiedAgentHandler(
-            EvidenceToolFactory::createDefault($chartEvidenceRepository),
+            EvidenceToolFactory::createDefault($chartEvidenceRepository, $agentForgeClock, $agentForgeDatabaseExecutor),
             DraftProviderFactory::createDefault(),
             new DraftVerifier(),
+            $agentForgeClock,
             ServiceContainer::getLogger(),
             toolSelectionProvider: ToolSelectionProviderFactory::createDefault(),
             guidelineRetriever: $guidelineRetriever,
-            handoffs: new SqlSupervisorHandoffRepository(),
+            handoffs: new SqlSupervisorHandoffRepository($agentForgeDatabaseExecutor),
         ),
+        $agentForgeClock,
         ServiceContainer::getLogger(),
         new SessionConversationStore(),
     ),
     $agentForgeLogger,
+    $agentForgeClock,
+    new SystemPsrClock(),
 );
 $result = $handler->handle(
     $request->getMethod(),
@@ -110,7 +118,7 @@ $result = $handler->handle(
     AclMain::aclCheckCore('patients', 'med'),
     $csrfValid,
     $agentForgeRequestId,
-    $agentForgeStartTime,
+    $agentForgeStartTimeMs,
 );
 
 $agentForgeJsonResponse($result->response, $result->statusCode, $agentForgeRequestId);

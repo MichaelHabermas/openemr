@@ -30,13 +30,14 @@ use OpenEMR\AgentForge\Guidelines\InMemoryGuidelineChunkRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\AgentForge\StringKeyedArray;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 
 final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
 {
     public function __construct(
         private readonly string $repoDir,
         private readonly string $extractionFixturesDir,
+        private readonly MonotonicClock $clock,
     ) {
     }
 
@@ -72,7 +73,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             $patientId,
             $absolutePath,
             $docType,
-            new Deadline(new SystemAgentForgeClock(), 30_000),
+            new Deadline($this->clock, 30_000),
         );
         if (!$result->success) {
             return $this->failed(

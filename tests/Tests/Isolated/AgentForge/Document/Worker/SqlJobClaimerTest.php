@@ -14,6 +14,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker;
 
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
@@ -96,7 +97,7 @@ final class WorkerSqlExecutor implements DatabaseExecutor
     {
     }
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         $this->queries[] = ['sql' => $sql, 'binds' => $binds];
 

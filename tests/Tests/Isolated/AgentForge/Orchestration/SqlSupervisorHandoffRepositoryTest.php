@@ -15,6 +15,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Orchestration;
 use DateTimeImmutable;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
@@ -156,7 +157,7 @@ final class SupervisorHandoffExecutor implements DatabaseExecutor
     /** @var list<array{sql: string, binds: list<mixed>}> */
     public array $statements = [];
 
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         return [];
     }

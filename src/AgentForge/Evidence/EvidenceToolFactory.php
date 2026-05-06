@@ -12,11 +12,17 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
+use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Time\MonotonicClock;
+
 final class EvidenceToolFactory
 {
     /** @return list<ChartEvidenceTool> */
-    public static function createDefault(ChartEvidenceRepository $repository): array
-    {
+    public static function createDefault(
+        ChartEvidenceRepository $repository,
+        MonotonicClock $clock,
+        DatabaseExecutor $executor,
+    ): array {
         return [
             new DemographicsEvidenceTool($repository),
             new RecentEncountersEvidenceTool($repository),
@@ -25,7 +31,7 @@ final class EvidenceToolFactory
             new InactiveMedicationHistoryEvidenceTool($repository),
             new AllergiesEvidenceTool($repository),
             new LabsEvidenceTool($repository),
-            new ClinicalDocumentEvidenceTool(),
+            new ClinicalDocumentEvidenceTool($clock, $executor),
             new RecentVitalsEvidenceTool($repository),
             new StaleVitalsEvidenceTool($repository),
             new EncountersNotesEvidenceTool($repository),

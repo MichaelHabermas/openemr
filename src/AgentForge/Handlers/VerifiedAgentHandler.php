@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Handlers;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
@@ -27,7 +26,7 @@ use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use Psr\Log\LoggerInterface;
@@ -41,7 +40,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     private readonly ChartEvidenceCollector $collector;
     private readonly EvidenceRetrieverWorker $evidenceRetriever;
     private readonly VerifiedDraftingPipeline $pipeline;
-    private readonly AgentForgeClock $clock;
+    private readonly MonotonicClock $clock;
     private readonly LoggerInterface $logger;
 
     /**
@@ -51,26 +50,26 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         array $tools,
         DraftProvider $draftProvider,
         DraftVerifier $verifier,
+        MonotonicClock $clock,
         LoggerInterface $logger = new NullLogger(),
-        ?AgentForgeClock $clock = null,
         private readonly int $deadlineMs = 20000,
         ?ChartEvidenceCollector $collector = null,
         ?ToolSelectionProvider $toolSelectionProvider = null,
         ?GuidelineRetriever $guidelineRetriever = null,
         private readonly ?SqlSupervisorHandoffRepository $handoffs = null,
     ) {
-        $this->clock = $clock ?? new SystemAgentForgeClock();
+        $this->clock = $clock;
         $this->logger = $logger;
         $this->planner = new ChartQuestionPlanner($toolSelectionProvider, $logger);
         $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
         $this->evidenceRetriever = new EvidenceRetrieverWorker($this->collector, $guidelineRetriever);
-        $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $logger);
+        $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $this->clock, $logger);
     }
 
     public function handle(AgentRequest $request): AgentResponse
     {
         $this->lastTelemetry = null;
-        $plannerTimer = new StageTimer();
+        $plannerTimer = new StageTimer($this->clock);
         $plannerTimer->start('planner');
         $scopeRefusal = CurrentChartScopePolicy::refusalFor($request->question, $request->patientId);
         if ($scopeRefusal !== null) {

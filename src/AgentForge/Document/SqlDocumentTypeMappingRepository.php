@@ -16,19 +16,17 @@ use DateTimeImmutable;
 use DomainException;
 use InvalidArgumentException;
 use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\RowHydrator;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 final readonly class SqlDocumentTypeMappingRepository implements DocumentTypeMappingRepository
 {
-    private DatabaseExecutor $executor;
     private LoggerInterface $logger;
 
-    public function __construct(?DatabaseExecutor $executor = null, ?LoggerInterface $logger = null)
+    public function __construct(private DatabaseExecutor $executor, ?LoggerInterface $logger = null)
     {
-        $this->executor = $executor ?? new DefaultDatabaseExecutor();
         $this->logger = $logger ?? new NullLogger();
     }
 
@@ -64,29 +62,11 @@ final readonly class SqlDocumentTypeMappingRepository implements DocumentTypeMap
     private function hydrate(array $record): DocumentTypeMapping
     {
         return new DocumentTypeMapping(
-            id: isset($record['id']) ? $this->intValue($record['id'], 'id') : null,
-            categoryId: new CategoryId($this->intValue($record['category_id'] ?? null, 'category_id')),
-            docType: DocumentType::fromStringOrThrow($this->stringValue($record['doc_type'] ?? null, 'doc_type')),
+            id: isset($record['id']) ? RowHydrator::intValue($record['id'], 'id') : null,
+            categoryId: new CategoryId(RowHydrator::intValue($record['category_id'] ?? null, 'category_id')),
+            docType: DocumentType::fromStringOrThrow(RowHydrator::stringValue($record['doc_type'] ?? null, 'doc_type')),
             active: (bool) $record['active'],
-            createdAt: new DateTimeImmutable($this->stringValue($record['created_at'] ?? null, 'created_at')),
+            createdAt: new DateTimeImmutable(RowHydrator::stringValue($record['created_at'] ?? null, 'created_at')),
         );
-    }
-
-    private function intValue(mixed $value, string $field): int
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (int) $value;
-    }
-
-    private function stringValue(mixed $value, string $field): string
-    {
-        if (!is_scalar($value)) {
-            throw new InvalidArgumentException("Expected scalar {$field}.");
-        }
-
-        return (string) $value;
     }
 }

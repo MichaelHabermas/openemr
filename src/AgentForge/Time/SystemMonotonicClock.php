@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Monotonic system clock for AgentForge deadlines.
+ * Production monotonic clock backed by hrtime().
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -10,9 +10,9 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge;
+namespace OpenEMR\AgentForge\Time;
 
-final class SystemAgentForgeClock implements AgentForgeClock
+final class SystemMonotonicClock implements MonotonicClock
 {
     public function nowMs(): int
     {

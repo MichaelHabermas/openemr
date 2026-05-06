@@ -1,7 +1,11 @@
 <?php
 
 /**
- * QueryUtils-backed AgentForge SQL executor.
+ * The single concrete `DatabaseExecutor` implementation, backed by
+ * `OpenEMR\Common\Database\QueryUtils`.
+ *
+ * Read paths apply `SqlDeadlineHint` when a `Deadline` is supplied so a
+ * single hung query cannot outlast the request's remaining budget.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -14,13 +18,13 @@ namespace OpenEMR\AgentForge;
 
 use OpenEMR\Common\Database\QueryUtils;
 
-final class DefaultDatabaseExecutor implements DatabaseExecutor
+final class SqlQueryUtilsExecutor implements DatabaseExecutor
 {
-    public function fetchRecords(string $sql, array $binds = []): array
+    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
         return array_map(
-            self::stringKeyed(...),
-            QueryUtils::fetchRecords($sql, $binds),
+            StringKeyedArray::filter(...),
+            QueryUtils::fetchRecords(SqlDeadlineHint::apply($sql, $deadline), $binds),
         );
     }
 
@@ -40,21 +44,5 @@ final class DefaultDatabaseExecutor implements DatabaseExecutor
     public function insert(string $sql, array $binds = []): int
     {
         return QueryUtils::sqlInsert($sql, $binds);
-    }
-
-    /**
-     * @param array<mixed> $record
-     * @return array<string, mixed>
-     */
-    private static function stringKeyed(array $record): array
-    {
-        $out = [];
-        foreach ($record as $key => $value) {
-            if (is_string($key)) {
-                $out[$key] = $value;
-            }
-        }
-
-        return $out;
     }
 }

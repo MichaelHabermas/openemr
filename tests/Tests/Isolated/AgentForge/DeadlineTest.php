@@ -12,15 +12,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
-use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
 
 final class DeadlineTest extends TestCase
 {
     public function testRemainingMsReturnsBudgetWhenNoTimeHasPassed(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 8000);
 
         self::assertSame(8000, $deadline->remainingMs());
@@ -29,7 +29,7 @@ final class DeadlineTest extends TestCase
 
     public function testRemainingMsDecreasesAsTimeAdvances(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 8000);
 
         $clock->advance(3000);
@@ -40,7 +40,7 @@ final class DeadlineTest extends TestCase
 
     public function testExceededIsFalseWhenElapsedEqualsBudget(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 500);
 
         $clock->advance(500);
@@ -51,7 +51,7 @@ final class DeadlineTest extends TestCase
 
     public function testExceededIsTrueWhenElapsedSurpassesBudget(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 500);
 
         $clock->advance(501);
@@ -62,7 +62,7 @@ final class DeadlineTest extends TestCase
 
     public function testNegativeBudgetActsAsUnboundedDeadline(): void
     {
-        $clock = new DeadlineFakeClock(0);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(0);
         $deadline = new Deadline($clock, -1);
 
         $clock->advance(1_000_000);
@@ -74,7 +74,7 @@ final class DeadlineTest extends TestCase
 
     public function testRemainingSecondsConvertsMillisecondsToSeconds(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 8000);
 
         $clock->advance(3000);
@@ -84,7 +84,7 @@ final class DeadlineTest extends TestCase
 
     public function testRemainingSecondsClampsToMinimumWhenBudgetExhausted(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 500);
 
         $clock->advance(2000);
@@ -95,28 +95,11 @@ final class DeadlineTest extends TestCase
 
     public function testStartTimeIsCapturedAtConstructionNotFirstCall(): void
     {
-        $clock = new DeadlineFakeClock(1000);
+        $clock = AgentForgeTestFixtures::advanceableMonotonicClock(1000);
         $deadline = new Deadline($clock, 8000);
 
         $clock->advance(2000);
 
         self::assertSame(6000, $deadline->remainingMs());
-    }
-}
-
-final class DeadlineFakeClock implements AgentForgeClock
-{
-    public function __construct(private int $nowMs = 0)
-    {
-    }
-
-    public function advance(int $ms): void
-    {
-        $this->nowMs += $ms;
-    }
-
-    public function nowMs(): int
-    {
-        return $this->nowMs;
     }
 }

@@ -20,7 +20,9 @@ use OpenEMR\AgentForge\Evidence\ConcurrentChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
 use OpenEMR\AgentForge\Evidence\PrefetchableChartEvidenceRepository;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 final class ConcurrentChartEvidenceCollectorTest extends TestCase
 {
@@ -34,7 +36,7 @@ final class ConcurrentChartEvidenceCollectorTest extends TestCase
             new EvidenceItem('medication', 'prescriptions', 'metformin', '2026-03-15', 'Metformin ER 500 mg', 'daily'),
         ]);
 
-        $collector = new ConcurrentChartEvidenceCollector([$labs, $meds], $prefetcher);
+        $collector = new ConcurrentChartEvidenceCollector([$labs, $meds], $prefetcher, new NullLogger(), new SystemMonotonicClock());
 
         $collector->collect(
             new PatientId(900001),
@@ -49,7 +51,7 @@ final class ConcurrentChartEvidenceCollectorTest extends TestCase
     public function testSkipsPrefetchWhenPlanHasNoSections(): void
     {
         $prefetcher = new RecordingPrefetchRepository();
-        $collector = new ConcurrentChartEvidenceCollector([], $prefetcher);
+        $collector = new ConcurrentChartEvidenceCollector([], $prefetcher, new NullLogger(), new SystemMonotonicClock());
 
         $collector->collect(
             new PatientId(900001),
@@ -65,7 +67,7 @@ final class ConcurrentChartEvidenceCollectorTest extends TestCase
             new EvidenceItem('lab', 'procedure_result', 'a1c', '2026-04-10', 'Hemoglobin A1c', '7.4 %'),
         ]);
 
-        $run = (new ConcurrentChartEvidenceCollector([$labs]))->collect(
+        $run = (new ConcurrentChartEvidenceCollector([$labs], null, new NullLogger(), new SystemMonotonicClock()))->collect(
             new PatientId(900001),
             new ChartQuestionPlan('lab', ['Recent labs'], 8000),
         );

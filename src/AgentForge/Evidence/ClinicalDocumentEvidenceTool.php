@@ -16,7 +16,6 @@ use DomainException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
@@ -25,12 +24,13 @@ use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use OpenEMR\AgentForge\Document\Worker\OpenEmrDocumentLoader;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 
 final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
 {
     public function __construct(
-        private ?DatabaseExecutor $executor = null,
+        private MonotonicClock $clock,
+        private DatabaseExecutor $executor,
         private ?DocumentLoader $documentLoader = null,
         private ?DocumentExtractionProvider $extractionProvider = null,
         private int $limit = 6,
@@ -60,7 +60,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                     $documentId,
                     $document,
                     $docType,
-                    $deadline ?? new Deadline(new SystemAgentForgeClock(), -1),
+                    $deadline ?? new Deadline($this->clock, -1),
                 );
             } catch (DocumentLoadException | ExtractionProviderException | DomainException) {
                 $failures[] = 'One trusted clinical document could not be read for answer evidence.';
@@ -89,7 +89,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
     /** @return list<array<string, mixed>> */
     private function trustedDocumentRows(PatientId $patientId): array
     {
-        return $this->db()->fetchRecords(
+        return $this->executor->fetchRecords(
             'SELECT j.id, j.patient_id, j.document_id, j.doc_type, j.finished_at, d.date AS document_date '
             . 'FROM clinical_document_processing_jobs j '
             . 'INNER JOIN clinical_document_identity_checks ic ON ic.job_id = j.id '
@@ -289,11 +289,6 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
         }
 
         return $out;
-    }
-
-    private function db(): DatabaseExecutor
-    {
-        return $this->executor ?? new DefaultDatabaseExecutor();
     }
 
     private function loader(): DocumentLoader

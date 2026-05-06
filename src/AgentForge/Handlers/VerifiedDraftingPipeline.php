@@ -24,7 +24,7 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\AgentForge\Verification\KnownMissingDataPolicy;
 use OpenEMR\AgentForge\Verification\VerificationResult;
@@ -39,6 +39,7 @@ final readonly class VerifiedDraftingPipeline
     public function __construct(
         private DraftProvider $draftProvider,
         private DraftVerifier $verifier,
+        private MonotonicClock $clock,
         private LoggerInterface $logger = new NullLogger(),
     ) {
     }
@@ -56,7 +57,7 @@ final readonly class VerifiedDraftingPipeline
         ?StageTimer $timer = null,
         ?Deadline $deadline = null,
     ): VerifiedDraftingResult {
-        $deadline ??= new Deadline(new SystemAgentForgeClock(), -1);
+        $deadline ??= new Deadline($this->clock, -1);
         $knownMissing = KnownMissingDataPolicy::missingSectionsFor($request->question, $bundle);
 
         if ($knownMissing !== []) {
@@ -208,7 +209,7 @@ final readonly class VerifiedDraftingPipeline
             $fallbackDraft = (new FixtureDraftProvider())->draft(
                 $request,
                 $bundle,
-                new Deadline(new SystemAgentForgeClock(), -1),
+                new Deadline($this->clock, -1),
             );
             $fallbackResult = $this->trustedFixtureResult($fallbackDraft, $bundle);
         } catch (DomainException | RuntimeException) {

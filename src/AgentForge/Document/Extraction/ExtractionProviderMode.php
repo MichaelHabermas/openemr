@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Clock boundary for deterministic AgentForge deadline tests.
+ * AgentForge document-extraction provider mode.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -10,9 +10,10 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge;
+namespace OpenEMR\AgentForge\Document\Extraction;
 
-interface AgentForgeClock
+enum ExtractionProviderMode: string
 {
-    public function nowMs(): int;
+    case Fixture = 'fixture';
+    case OpenAi = 'openai';
 }

@@ -17,6 +17,8 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\Time\MonotonicClock;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
@@ -42,10 +44,12 @@ final class DocumentJobWorker
         private readonly WorkerHeartbeatRepository $heartbeats,
         private readonly LoggerInterface $logger,
         private readonly PatientRefHasher $patientRefHasher,
+        private readonly MonotonicClock $clock,
+        private readonly ClockInterface $wallClock,
         private readonly int $processId,
         ?callable $sleep = null,
     ) {
-        $this->startedAt = new DateTimeImmutable();
+        $this->startedAt = $this->wallClock->now();
         $this->sleep = $sleep ?? static function (int $seconds): void {
             sleep($seconds);
         };
@@ -101,7 +105,7 @@ final class DocumentJobWorker
             return;
         }
 
-        $started = microtime(true);
+        $startedMs = $this->clock->nowMs();
 
         try {
             $document = $this->loader->load($job->documentId);
@@ -112,19 +116,19 @@ final class DocumentJobWorker
             $result = ProcessingResult::failed('processor_failed', 'Document processor failed unexpectedly.');
         } catch (Throwable $e) {
             $result = ProcessingResult::failed('processor_failed', 'Document processor failed unexpectedly.');
-            $this->finishClaimedJob($job, $lockToken, $result, $started);
+            $this->finishClaimedJob($job, $lockToken, $result, $startedMs);
             $this->heartbeat(WorkerStatus::Stopped);
             throw $e;
         }
 
-        $this->finishClaimedJob($job, $lockToken, $result, $started);
+        $this->finishClaimedJob($job, $lockToken, $result, $startedMs);
     }
 
     private function finishClaimedJob(
         DocumentJob $job,
         LockToken $lockToken,
         ProcessingResult $result,
-        float $started,
+        int $startedMs,
     ): void {
         if ($job->id === null) {
             return;
@@ -147,20 +151,20 @@ final class DocumentJobWorker
             $this->log('warning', 'clinical_document.worker.job_failed', $this->jobContext($job, [
                 'status' => JobStatus::Failed->value,
                 'error_code' => $result->errorCode,
-                'latency_ms' => $this->latencyMs($started),
+                'latency_ms' => $this->latencyMs($startedMs),
             ]));
             return;
         }
 
         $this->log('info', 'clinical_document.worker.job_completed', $this->jobContext($job, [
             'status' => JobStatus::Succeeded->value,
-            'latency_ms' => $this->latencyMs($started),
+            'latency_ms' => $this->latencyMs($startedMs),
         ]));
     }
 
     private function heartbeat(WorkerStatus $status): void
     {
-        $now = new DateTimeImmutable();
+        $now = $this->wallClock->now();
         $heartbeat = new WorkerHeartbeat(
             workerName: $this->workerName,
             processId: $this->processId,
@@ -213,9 +217,9 @@ final class DocumentJobWorker
         $this->logger->log($level, $event, SensitiveLogPolicy::sanitizeContext(array_merge($base, $context)));
     }
 
-    private function latencyMs(float $started): int
+    private function latencyMs(int $startedMs): int
     {
-        return (int) round((microtime(true) - $started) * 1000);
+        return max(0, $this->clock->nowMs() - $startedMs);
     }
 
     private function dispatchSignals(): void

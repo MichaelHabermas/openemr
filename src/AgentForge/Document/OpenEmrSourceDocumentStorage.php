@@ -14,7 +14,7 @@ namespace OpenEMR\AgentForge\Document;
 
 use Closure;
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\DatabaseExecutor;
 use RuntimeException;
 use Throwable;
 
@@ -30,9 +30,12 @@ final readonly class OpenEmrSourceDocumentStorage implements SourceDocumentStora
      * @param null|Closure(DocumentType): CategoryId $categoryResolver
      * @param null|Closure(): object $documentFactory
      */
-    public function __construct(?Closure $categoryResolver = null, ?Closure $documentFactory = null)
-    {
-        $this->categoryResolver = $categoryResolver ?? self::defaultCategoryResolver();
+    public function __construct(
+        DatabaseExecutor $executor,
+        ?Closure $categoryResolver = null,
+        ?Closure $documentFactory = null,
+    ) {
+        $this->categoryResolver = $categoryResolver ?? self::defaultCategoryResolver($executor);
         $this->documentFactory = $documentFactory ?? static function (): object {
             if (!class_exists(\Document::class)) {
                 require_once dirname(__DIR__, 3) . '/library/classes/Document.class.php';
@@ -105,10 +108,10 @@ final readonly class OpenEmrSourceDocumentStorage implements SourceDocumentStora
     }
 
     /** @return Closure(DocumentType): CategoryId */
-    private static function defaultCategoryResolver(): Closure
+    private static function defaultCategoryResolver(DatabaseExecutor $executor): Closure
     {
-        return static function (DocumentType $docType): CategoryId {
-            $records = (new DefaultDatabaseExecutor())->fetchRecords(
+        return static function (DocumentType $docType) use ($executor): CategoryId {
+            $records = $executor->fetchRecords(
                 'SELECT category_id FROM clinical_document_type_mappings '
                 . 'WHERE doc_type = ? AND active = 1 ORDER BY id ASC LIMIT 1',
                 [$docType->value],

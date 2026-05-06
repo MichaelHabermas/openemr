@@ -16,8 +16,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document\Worker;
 
-use DateTimeImmutable;
-use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
@@ -29,7 +28,9 @@ use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionReposi
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
-use OpenEMR\AgentForge\SystemAgentForgeClock;
+use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
+use OpenEMR\AgentForge\Time\SystemMonotonicClock;
+use OpenEMR\AgentForge\Time\SystemPsrClock;
 use OpenEMR\BC\ServiceContainer;
 use Psr\Log\LoggerInterface;
 
@@ -37,7 +38,7 @@ final class DocumentJobWorkerFactory
 {
     public static function createDefault(WorkerName $workerName): DocumentJobWorker
     {
-        $executor = new DefaultDatabaseExecutor();
+        $executor = new SqlQueryUtilsExecutor();
         $jobs = new SqlDocumentJobRepository($executor);
         $logger = self::workerLogger();
 
@@ -46,19 +47,21 @@ final class DocumentJobWorkerFactory
             new SqlJobClaimer($jobs, $executor),
             $jobs,
             new OpenEmrDocumentLoader(),
-            self::processorFor($workerName),
+            self::processorFor($workerName, $executor),
             new SqlWorkerHeartbeatRepository($executor),
             $logger,
             PatientRefHasher::createDefault(),
+            new SystemMonotonicClock(),
+            new SystemPsrClock(),
             getmypid() ?: 1,
         );
     }
 
     public static function markStopped(WorkerName $workerName, int $processId): void
     {
-        $heartbeats = new SqlWorkerHeartbeatRepository(new DefaultDatabaseExecutor());
+        $heartbeats = new SqlWorkerHeartbeatRepository(new SqlQueryUtilsExecutor());
         $current = $heartbeats->findByWorker($workerName);
-        $now = new DateTimeImmutable();
+        $now = (new SystemPsrClock())->now();
         $iterationCount = 0;
         $jobsProcessed = 0;
         $jobsFailed = 0;
@@ -83,20 +86,20 @@ final class DocumentJobWorkerFactory
         ));
     }
 
-    private static function processorFor(WorkerName $workerName): DocumentJobProcessor
+    private static function processorFor(WorkerName $workerName, DatabaseExecutor $executor): DocumentJobProcessor
     {
         return match ($workerName) {
             WorkerName::IntakeExtractor => new IntakeExtractorWorker(
                 ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment()),
                 new CertaintyClassifier(),
                 self::workerLogger(),
-                new SystemAgentForgeClock(),
+                new SystemMonotonicClock(),
                 PatientRefHasher::createDefault(),
-                patientIdentities: new SqlPatientIdentityRepository(),
-                identityChecks: new SqlDocumentIdentityCheckRepository(),
+                patientIdentities: new SqlPatientIdentityRepository($executor),
+                identityChecks: new SqlDocumentIdentityCheckRepository($executor),
                 identityVerifier: new DocumentIdentityVerifier(),
                 identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
-                factPromotions: new SqlClinicalDocumentFactPromotionRepository(),
+                factPromotions: new SqlClinicalDocumentFactPromotionRepository($executor),
             ),
             WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
         };
