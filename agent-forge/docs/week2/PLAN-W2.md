@@ -609,17 +609,22 @@ Dependencies: M5B.
 
 ### Epic M5C - Promoted Data Retraction And Audit
 
-Status: Not started.
+Status: Implemented with automated proof.
 
 Checkpoint disposition: Deferred until after the MVP checkpoint. Retraction/audit remains submission-critical, especially before promoted data is used as active evidence, but it is not required for the first visible deployed extraction/retrieval demo.
 
-Implementation note (2026-05-06): M5 now deactivates document facts and
-embeddings and suppresses deleted/retracted source content from active evidence
-paths. M5C remains not started because the dedicated retraction service,
-`clinical_document_retractions` audit table, and promoted-row audit ledger are
-still unimplemented.
+Docs/proof note (2026-05-06): Standalone acceptance map and proof log added at
+`agent-forge/docs/epics/EPIC_PROMOTED_DATA_RETRACTION_AND_AUDIT.md`. Automated
+gate proof passed via `agent-forge/scripts/check-clinical-document.sh` with eval
+artifact `agent-forge/eval-results/clinical-document-20260506-191013`.
 
-Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed guideline retrieval or final answers.
+Implementation note (2026-05-06): M5C adds a dedicated retraction
+service/repository, row-level `clinical_document_retractions` audit ledger,
+stale extract-on-read document evidence gates, deleted-source promoted-lab
+suppression, and compatibility handling for legacy promoted facts. Manual
+browser deletion proof remains a possible H2/submission-polish follow-up.
+
+Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed patient evidence retrieval or final answers.
 
 Files/modules:
 
@@ -650,6 +655,19 @@ Acceptance criteria:
 - Deleted-source content cannot remain retrievable or promoted as active evidence.
 - Retraction is append-only from an audit perspective and inactive from an evidence perspective.
 - Deleted-source content remains historically reviewable but is excluded from active chart evidence, document search, vector retrieval, and final-answer citations.
+
+Acceptance/proof mapping:
+
+- Active-evidence exclusion: proven by focused isolated evidence tests and the
+  clinical-document gate artifact `clinical-document-20260506-191013`.
+- Append-only audit: implemented through `clinical_document_retractions` and
+  SQL retraction repository tests that write prior/new state, action,
+  actor/system, reason, and source identifiers.
+- Historical review with active exclusion: automated proof covers preserved
+  rows plus inactive/excluded evidence behavior and embedding deactivation.
+  A document-fact vector retrieval path is not currently implemented, so vector
+  retrieval proof is limited to preventing active vector rows after retraction.
+  Manual/browser review proof was not run in this pass.
 
 Dependencies: M5.
 

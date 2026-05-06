@@ -3,7 +3,7 @@
 --
 -- Keep v_database in sync with $v_database in version.php.
 -- CI will fail if they don't match.
--- v_database: 540
+-- v_database: 541
 --
 
 --
@@ -15545,6 +15545,31 @@ CREATE TABLE `clinical_document_fact_embeddings` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`fact_id`, `embedding_model`),
   KEY `idx_clinical_document_fact_embeddings_active` (`active`, `embedding_model`)
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS `clinical_document_retractions`;
+CREATE TABLE `clinical_document_retractions` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NULL,
+  `fact_id` varchar(255) NULL,
+  `promotion_id` bigint(20) NULL,
+  `promoted_table` varchar(64) NULL,
+  `promoted_record_id` varchar(64) NULL,
+  `prior_state` longtext NULL,
+  `new_state` longtext NULL,
+  `action` varchar(64) NOT NULL,
+  `actor_type` varchar(32) NOT NULL,
+  `actor_id` bigint(20) NULL,
+  `reason` varchar(64) NOT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clinical_document_retraction_document` (`patient_id`, `document_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_job` (`job_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_fact` (`fact_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_promotion` (`promotion_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_reason` (`reason`, `created_at`)
 ) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS `clinical_document_worker_heartbeats`;

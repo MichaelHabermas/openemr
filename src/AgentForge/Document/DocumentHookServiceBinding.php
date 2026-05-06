@@ -12,11 +12,15 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
+use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionService;
+use OpenEMR\AgentForge\Document\Retraction\SqlDocumentRetractionRepository;
 use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 
 final class DocumentHookServiceBinding
 {
     private static ?DocumentJobRepository $jobRepositoryOverride = null;
+
+    private static ?DocumentRetractionService $retractionServiceOverride = null;
 
     private static ?DocumentUploadEnqueuer $uploadEnqueuerOverride = null;
 
@@ -30,12 +34,24 @@ final class DocumentHookServiceBinding
         return self::$uploadEnqueuerOverride ?? DocumentUploadEnqueuerFactory::createDefault();
     }
 
+    public static function retractionService(): DocumentRetractionService
+    {
+        if (self::$retractionServiceOverride !== null) {
+            return self::$retractionServiceOverride;
+        }
+
+        $executor = new SqlQueryUtilsExecutor();
+
+        return new DocumentRetractionService(new SqlDocumentRetractionRepository($executor));
+    }
+
     /**
      * @internal
      */
     public static function resetForTesting(): void
     {
         self::$jobRepositoryOverride = null;
+        self::$retractionServiceOverride = null;
         self::$uploadEnqueuerOverride = null;
     }
 
@@ -53,5 +69,13 @@ final class DocumentHookServiceBinding
     public static function setUploadEnqueuerForTesting(?DocumentUploadEnqueuer $enqueuer): void
     {
         self::$uploadEnqueuerOverride = $enqueuer;
+    }
+
+    /**
+     * @internal
+     */
+    public static function setRetractionServiceForTesting(?DocumentRetractionService $service): void
+    {
+        self::$retractionServiceOverride = $service;
     }
 }

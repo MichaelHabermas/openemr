@@ -172,13 +172,60 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
         $this->assertStringContainsString('#IfNotTable clinical_document_fact_embeddings', $upgradeSql);
     }
 
+    public function testDocumentRetractionAuditSchemaExistsOnFreshInstallAndUpgrade(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
+
+        foreach ([$databaseSql, $upgradeSql] as $sql) {
+            $this->assertStringContainsString('CREATE TABLE `clinical_document_retractions`', $sql);
+            $this->assertStringContainsString('`patient_id` bigint(20) NOT NULL', $sql);
+            $this->assertStringContainsString('`document_id` int(11) NOT NULL', $sql);
+            $this->assertStringContainsString('`job_id` bigint(20) NULL', $sql);
+            $this->assertStringContainsString('`fact_id` varchar(255) NULL', $sql);
+            $this->assertStringContainsString('`promotion_id` bigint(20) NULL', $sql);
+            $this->assertStringContainsString('`promoted_table` varchar(64) NULL', $sql);
+            $this->assertStringContainsString('`promoted_record_id` varchar(64) NULL', $sql);
+            $this->assertStringContainsString('`prior_state` longtext NULL', $sql);
+            $this->assertStringContainsString('`new_state` longtext NULL', $sql);
+            $this->assertStringContainsString('`action` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`actor_type` varchar(32) NOT NULL', $sql);
+            $this->assertStringContainsString('`actor_id` bigint(20) NULL', $sql);
+            $this->assertStringContainsString('`reason` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`created_at` datetime NOT NULL', $sql);
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_retraction_document` (`patient_id`, `document_id`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_retraction_job` (`job_id`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_retraction_fact` (`fact_id`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_retraction_promotion` (`promotion_id`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_retraction_reason` (`reason`, `created_at`)',
+                $sql,
+            );
+        }
+
+        $this->assertStringContainsString('DROP TABLE IF EXISTS `clinical_document_retractions`', $databaseSql);
+        $this->assertStringContainsString('#IfNotTable clinical_document_retractions', $upgradeSql);
+    }
+
     public function testDatabaseVersionBumpedForWorkerHeartbeatSchema(): void
     {
         $databaseSql = $this->readProjectFile('/sql/database.sql');
         $versionPhp = $this->readProjectFile('/version.php');
 
-        $this->assertStringContainsString('-- v_database: 540', $databaseSql);
-        $this->assertStringContainsString('$v_database = 540;', $versionPhp);
+        $this->assertStringContainsString('-- v_database: 541', $databaseSql);
+        $this->assertStringContainsString('$v_database = 541;', $versionPhp);
     }
 
     public function testUpgradeDoesNotCarryUnreleasedBrandedTableRenames(): void

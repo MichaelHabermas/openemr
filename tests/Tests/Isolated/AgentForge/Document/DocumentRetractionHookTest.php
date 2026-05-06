@@ -14,16 +14,13 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
 require_once __DIR__ . '/DocumentUploadEnqueuerTest.php';
 
-use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Document\DocumentHookServiceBinding;
 use OpenEMR\AgentForge\Document\DocumentId;
-use OpenEMR\AgentForge\Document\DocumentJob;
-use OpenEMR\AgentForge\Document\DocumentJobId;
-use OpenEMR\AgentForge\Document\DocumentJobRepository;
 use OpenEMR\AgentForge\Document\DocumentRetractionHook;
 use OpenEMR\AgentForge\Document\DocumentRetractionReason;
-use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionRepository;
+use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionService;
 use OpenEMR\BC\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -41,7 +38,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testNonNumericDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
         $repository = new RetractionRecordingRepository();
-        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
+        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
 
         DocumentRetractionHook::dispatch('not-an-id');
 
@@ -51,7 +48,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testInvalidDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
         $repository = new RetractionRecordingRepository();
-        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
+        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
 
         DocumentRetractionHook::dispatch(0);
 
@@ -62,7 +59,7 @@ final class DocumentRetractionHookTest extends TestCase
     {
         $repository = new RetractionRecordingRepository();
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setJobRepositoryForTesting($repository);
+        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);
@@ -83,7 +80,9 @@ final class DocumentRetractionHookTest extends TestCase
     public function testRepositoryExceptionIsCaughtAndLogged(): void
     {
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setJobRepositoryForTesting(new ThrowingDocumentJobRepository());
+        DocumentHookServiceBinding::setRetractionServiceForTesting(
+            new DocumentRetractionService(new ThrowingRetractionRepository()),
+        );
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);
@@ -98,7 +97,9 @@ final class DocumentRetractionHookTest extends TestCase
     public function testRepositoryThrowableIsCaughtAndSanitized(): void
     {
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setJobRepositoryForTesting(new TypeErrorThrowingDocumentJobRepository());
+        DocumentHookServiceBinding::setRetractionServiceForTesting(
+            new DocumentRetractionService(new TypeErrorThrowingRetractionRepository()),
+        );
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);
@@ -111,54 +112,26 @@ final class DocumentRetractionHookTest extends TestCase
     }
 }
 
-final class TypeErrorThrowingDocumentJobRepository implements DocumentJobRepository
+final class TypeErrorThrowingRetractionRepository implements DocumentRetractionRepository
 {
-    public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
-    {
-        throw new RuntimeException('should not enqueue');
-    }
-
-    public function findById(DocumentJobId $id): ?DocumentJob
-    {
-        return null;
-    }
-
-    public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
-    {
-        return null;
-    }
-
     public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
     {
         throw new TypeError('typed repository wiring failed');
     }
-
-    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
-    {
-        throw new RuntimeException('should not finish');
-    }
-
 }
 
-final class RetractionRecordingRepository implements DocumentJobRepository
+final class ThrowingRetractionRepository implements DocumentRetractionRepository
+{
+    public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
+    {
+        throw new RuntimeException('repository failed');
+    }
+}
+
+final class RetractionRecordingRepository implements DocumentRetractionRepository
 {
     public ?DocumentId $documentId = null;
     public ?DocumentRetractionReason $reason = null;
-
-    public function enqueue(PatientId $patientId, DocumentId $documentId, DocumentType $docType): DocumentJobId
-    {
-        return new DocumentJobId(1);
-    }
-
-    public function findById(DocumentJobId $id): ?DocumentJob
-    {
-        return null;
-    }
-
-    public function findOneByUniqueKey(PatientId $patientId, DocumentId $documentId, DocumentType $docType): ?DocumentJob
-    {
-        return null;
-    }
 
     public function retractByDocument(DocumentId $documentId, DocumentRetractionReason $reason): int
     {
@@ -167,9 +140,4 @@ final class RetractionRecordingRepository implements DocumentJobRepository
 
         return 2;
     }
-
-    public function markFinished(DocumentJobId $id, JobStatus $terminal, ?string $errorCode, ?string $errorMessage): void
-    {
-    }
-
 }

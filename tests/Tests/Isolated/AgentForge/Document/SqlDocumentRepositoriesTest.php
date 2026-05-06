@@ -22,10 +22,12 @@ use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentRetractionReason;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\Retraction\SqlDocumentRetractionRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentTypeMappingRepository;
 use OpenEMR\AgentForge\Document\Worker\LockToken;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class SqlDocumentRepositoriesTest extends TestCase
 {
@@ -112,7 +114,90 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertNull($job->retractionReason);
     }
 
-    public function testJobRepositoryRetractsAllJobsForDocument(): void
+    public function testRetractionRepositoryRetractsAllJobsForDocumentAndWritesAuditRows(): void
+    {
+        $executor = new DocumentRepositoryExecutor([], affectedRows: 2);
+
+        $count = (new SqlDocumentRetractionRepository($executor))->retractByDocument(
+            new DocumentId(123),
+            DocumentRetractionReason::SourceDocumentDeleted,
+        );
+
+        $this->assertSame(2, $count);
+        $this->assertCount(18, $executor->statements);
+        $this->assertSame('START TRANSACTION', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('JSON_OBJECT', $executor->statements[1]['sql']);
+        $this->assertContains('retract_job', $executor->statements[1]['binds']);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('SET status = ?', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('retracted_at = NOW()', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('retraction_reason = ?', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('finished_at = COALESCE(finished_at, NOW())', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('lock_token = NULL', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND status <> ?', $executor->statements[2]['sql']);
+        $this->assertSame(['retracted', 'source_document_deleted', 123, 'retracted'], $executor->statements[2]['binds']);
+        $this->assertContains('retract_promoted_row', $executor->statements[3]['binds']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[4]['sql']);
+        $this->assertContains('retract_legacy_promoted_fact', $executor->statements[7]['binds']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[8]['sql']);
+        $this->assertContains('retract_promotion', $executor->statements[10]['binds']);
+        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[11]['sql']);
+        $this->assertContains('retract_fact', $executor->statements[13]['binds']);
+        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[14]['sql']);
+        $this->assertStringContainsString('retracted_at = COALESCE(retracted_at, NOW())', $executor->statements[14]['sql']);
+        $this->assertStringContainsString('deactivated_at = COALESCE(deactivated_at, NOW())', $executor->statements[14]['sql']);
+        $this->assertContains('deactivate_embedding', $executor->statements[15]['binds']);
+        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[16]['sql']);
+        $this->assertSame('COMMIT', $executor->statements[17]['sql']);
+    }
+
+    public function testRetractionRepositoryCleanupRunsEvenWhenJobAlreadyRetracted(): void
+    {
+        $executor = new DocumentRepositoryExecutor([], affectedRows: 0);
+
+        $count = (new SqlDocumentRetractionRepository($executor))->retractByDocument(
+            new DocumentId(123),
+            DocumentRetractionReason::SourceDocumentDeleted,
+        );
+
+        $this->assertSame(0, $count);
+        $this->assertCount(18, $executor->statements);
+        $this->assertSame('START TRANSACTION', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[4]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[6]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[8]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[9]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[11]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND promotion_status <> ?', $executor->statements[12]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[14]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[16]['sql']);
+        $this->assertSame('COMMIT', $executor->statements[17]['sql']);
+    }
+
+    public function testRetractionRepositoryRollsBackWhenCleanupFails(): void
+    {
+        $executor = new DocumentRepositoryExecutor([], affectedRows: 0, throwOnSql: 'UPDATE clinical_document_processing_jobs');
+
+        try {
+            (new SqlDocumentRetractionRepository($executor))->retractByDocument(
+                new DocumentId(123),
+                DocumentRetractionReason::SourceDocumentDeleted,
+            );
+            $this->fail('Expected retraction SQL failure to be rethrown.');
+        } catch (RuntimeException $runtimeException) {
+            $this->assertSame('synthetic SQL failure', $runtimeException->getMessage());
+        }
+
+        $this->assertSame('START TRANSACTION', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[2]['sql']);
+        $this->assertSame('ROLLBACK', $executor->statements[3]['sql']);
+    }
+
+    public function testJobRepositoryDelegatesRetractionToAuditedRetractionRepository(): void
     {
         $executor = new DocumentRepositoryExecutor([], affectedRows: 2);
 
@@ -122,43 +207,8 @@ final class SqlDocumentRepositoriesTest extends TestCase
         );
 
         $this->assertSame(2, $count);
-        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('SET status = ?', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('retracted_at = NOW()', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('retraction_reason = ?', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('finished_at = COALESCE(finished_at, NOW())', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('lock_token = NULL', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('WHERE document_id = ? AND status <> ?', $executor->statements[0]['sql']);
-        $this->assertSame(['retracted', 'source_document_deleted', 123, 'retracted'], $executor->statements[0]['binds']);
-        $this->assertStringContainsString('clinical_document_promotions', $executor->statements[1]['sql']);
-        $this->assertStringContainsString('clinical_document_promoted_facts', $executor->statements[3]['sql']);
-        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
-        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[7]['sql']);
-        $this->assertStringContainsString('retracted_at = COALESCE(retracted_at, NOW())', $executor->statements[7]['sql']);
-        $this->assertStringContainsString('deactivated_at = COALESCE(deactivated_at, NOW())', $executor->statements[7]['sql']);
-        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[8]['sql']);
-    }
-
-    public function testJobRepositoryRetractCleanupRunsEvenWhenJobAlreadyRetracted(): void
-    {
-        $executor = new DocumentRepositoryExecutor([], affectedRows: 0);
-
-        $count = (new SqlDocumentJobRepository($executor))->retractByDocument(
-            new DocumentId(123),
-            DocumentRetractionReason::SourceDocumentDeleted,
-        );
-
-        $this->assertSame(0, $count);
-        $this->assertCount(9, $executor->statements);
-        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
-        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[1]['sql']);
-        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[2]['sql']);
-        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[3]['sql']);
-        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[4]['sql']);
-        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
-        $this->assertStringContainsString('WHERE document_id = ? AND promotion_status <> ?', $executor->statements[6]['sql']);
-        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[7]['sql']);
-        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[8]['sql']);
+        $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[2]['sql']);
     }
 
     public function testJobRepositoryMarkFinishedReleasesClaim(): void
@@ -235,8 +285,11 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public array $statements = [];
 
     /** @param list<array<string, mixed>> $records */
-    public function __construct(private readonly array $records, private readonly int $affectedRows = 1)
-    {
+    public function __construct(
+        private readonly array $records,
+        private readonly int $affectedRows = 1,
+        private readonly ?string $throwOnSql = null,
+    ) {
     }
 
     public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
@@ -249,11 +302,13 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public function executeStatement(string $sql, array $binds = []): void
     {
         $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
     }
 
     public function executeAffected(string $sql, array $binds = []): int
     {
         $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
 
         return $this->affectedRows;
     }
@@ -261,7 +316,15 @@ final class DocumentRepositoryExecutor implements DatabaseExecutor
     public function insert(string $sql, array $binds = []): int
     {
         $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
 
         return 1;
+    }
+
+    private function throwIfRequested(string $sql): void
+    {
+        if ($this->throwOnSql !== null && str_contains($sql, $this->throwOnSql)) {
+            throw new RuntimeException('synthetic SQL failure');
+        }
     }
 }

@@ -83,17 +83,48 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
         $this->assertSame([], $result->items);
         $this->assertSame(['Trusted recent clinical document facts not found in the chart.'], $result->missingSections);
     }
+
+    public function testTrustedDocumentSqlExcludesRetractedJobsAndDeletedDocuments(): void
+    {
+        $executor = new ClinicalDocumentEvidenceExecutor([]);
+        $tool = new ClinicalDocumentEvidenceTool(
+            new SystemMonotonicClock(),
+            $executor,
+            new ClinicalDocumentEvidenceLoader(),
+            new ClinicalDocumentEvidenceProvider(),
+        );
+
+        $tool->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
+
+        $this->assertStringContainsString('FROM clinical_document_processing_jobs j', $executor->sql);
+        $this->assertStringContainsString('j.status = ?', $executor->sql);
+        $this->assertStringContainsString('j.retracted_at IS NULL', $executor->sql);
+        $this->assertStringContainsString('ic.patient_id = j.patient_id', $executor->sql);
+        $this->assertStringContainsString('ic.document_id = j.document_id', $executor->sql);
+        $this->assertStringContainsString('ic.identity_status IN (?, ?)', $executor->sql);
+        $this->assertStringContainsString('ic.review_required = 0 OR ic.review_decision = ?', $executor->sql);
+        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->sql);
+        $this->assertSame([900101, 'succeeded', 'identity_verified', 'identity_review_approved', 'approved', 'approved'], $executor->binds);
+    }
 }
 
-final readonly class ClinicalDocumentEvidenceExecutor implements DatabaseExecutor
+final class ClinicalDocumentEvidenceExecutor implements DatabaseExecutor
 {
+    public string $sql = '';
+
+    /** @var list<mixed> */
+    public array $binds = [];
+
     /** @param list<array<string, mixed>> $rows */
-    public function __construct(private array $rows)
+    public function __construct(private readonly array $rows)
     {
     }
 
     public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
     {
+        $this->sql = $sql;
+        $this->binds = $binds;
+
         return $this->rows;
     }
 

@@ -96,12 +96,22 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
             . 'INNER JOIN documents d ON d.id = j.document_id '
             . 'WHERE j.patient_id = ? '
             . 'AND j.status = ? '
-            . 'AND ic.identity_status = ? '
-            . 'AND ic.review_required = 0 '
+            . 'AND j.retracted_at IS NULL '
+            . 'AND ic.patient_id = j.patient_id '
+            . 'AND ic.document_id = j.document_id '
+            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
+            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ORDER BY COALESCE(j.finished_at, d.date) DESC '
             . 'LIMIT ' . max(1, min(20, $this->limit)),
-            [$patientId->value, 'succeeded', 'identity_verified'],
+            [
+                $patientId->value,
+                'succeeded',
+                'identity_verified',
+                'identity_review_approved',
+                'approved',
+                'approved',
+            ],
         );
     }
 

@@ -38,9 +38,20 @@ final class SqlDocumentFactEmbeddingRepositoryTest extends TestCase
 
         $this->assertCount(1, $executor->statements);
         $this->assertStringContainsString('INSERT INTO clinical_document_fact_embeddings', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('SELECT f.id, VEC_FromText(?)', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('FROM clinical_document_facts f', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_processing_jobs j ON j.id = f.job_id', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INNER JOIN documents d ON d.id = f.document_id', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('f.active = 1', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('f.retracted_at IS NULL', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('f.deactivated_at IS NULL', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('j.status = ?', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('j.retracted_at IS NULL', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->statements[0]['sql']);
         $this->assertStringNotContainsString('clinical_guideline_chunk_embeddings', $executor->statements[0]['sql']);
-        $this->assertSame(41, $executor->statements[0]['binds'][0]);
-        $this->assertSame('fixed-document-embedding', $executor->statements[0]['binds'][2]);
+        $this->assertSame('fixed-document-embedding', $executor->statements[0]['binds'][1]);
+        $this->assertSame(41, $executor->statements[0]['binds'][2]);
+        $this->assertSame('succeeded', $executor->statements[0]['binds'][3]);
     }
 
     public function testDeactivateByDocumentMarksAllDocumentFactEmbeddingsInactive(): void

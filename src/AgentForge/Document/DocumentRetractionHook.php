@@ -28,7 +28,7 @@ final class DocumentRetractionHook
                 }
 
                 $documentIdVo = new DocumentId($id);
-                $retracted = DocumentHookServiceBinding::jobRepository()->retractByDocument(
+                $retracted = DocumentHookServiceBinding::retractionService()->retractSourceDocument(
                     $documentIdVo,
                     DocumentRetractionReason::SourceDocumentDeleted,
                 );

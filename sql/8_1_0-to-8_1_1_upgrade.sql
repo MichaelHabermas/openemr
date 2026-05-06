@@ -283,6 +283,32 @@ CREATE TABLE `clinical_document_fact_embeddings` (
 ) ENGINE=InnoDB;
 #EndIf
 
+#IfNotTable clinical_document_retractions
+CREATE TABLE `clinical_document_retractions` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NULL,
+  `fact_id` varchar(255) NULL,
+  `promotion_id` bigint(20) NULL,
+  `promoted_table` varchar(64) NULL,
+  `promoted_record_id` varchar(64) NULL,
+  `prior_state` longtext NULL,
+  `new_state` longtext NULL,
+  `action` varchar(64) NOT NULL,
+  `actor_type` varchar(32) NOT NULL,
+  `actor_id` bigint(20) NULL,
+  `reason` varchar(64) NOT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clinical_document_retraction_document` (`patient_id`, `document_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_job` (`job_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_fact` (`fact_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_promotion` (`promotion_id`, `created_at`),
+  KEY `idx_clinical_document_retraction_reason` (`reason`, `created_at`)
+) ENGINE=InnoDB;
+#EndIf
+
 INSERT IGNORE INTO `clinical_document_promotions` (
   `patient_id`,
   `document_id`,

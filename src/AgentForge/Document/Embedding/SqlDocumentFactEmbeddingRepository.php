@@ -36,12 +36,23 @@ final readonly class SqlDocumentFactEmbeddingRepository implements DocumentFactE
         $this->executor->executeStatement(
             'INSERT INTO clinical_document_fact_embeddings '
             . '(fact_id, embedding, embedding_model, active, created_at) '
-            . 'VALUES (?, VEC_FromText(?), ?, 1, NOW()) '
+            . 'SELECT f.id, VEC_FromText(?), ?, 1, NOW() '
+            . 'FROM clinical_document_facts f '
+            . 'INNER JOIN clinical_document_processing_jobs j ON j.id = f.job_id '
+            . 'INNER JOIN documents d ON d.id = f.document_id '
+            . 'WHERE f.id = ? '
+            . 'AND f.active = 1 '
+            . 'AND f.retracted_at IS NULL '
+            . 'AND f.deactivated_at IS NULL '
+            . 'AND j.status = ? '
+            . 'AND j.retracted_at IS NULL '
+            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ON DUPLICATE KEY UPDATE embedding = VALUES(embedding), active = 1, created_at = VALUES(created_at)',
             [
-                $factId,
                 SqlGuidelineChunkRepository::vectorLiteral($embedding),
                 $provider->model(),
+                $factId,
+                'succeeded',
             ],
         );
     }

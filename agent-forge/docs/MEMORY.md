@@ -356,6 +356,27 @@ Last verified: 2026-05-06.
   explicit model name; semantic/live document-vector provider selection remains
   future hardening before depending on dense document-vector ranking.
 
+## Week 2 M5C Retraction/Audit Carry-Forward
+
+Last verified: 2026-05-06.
+
+- M5C acceptance maps every deletion/retraction action to source document,
+  job, prior state, new state, action, actor/system, reason, and timestamp;
+  fact, promotion, and promoted-row fields are populated where applicable and
+  remain nullable for job/fact/embedding-only actions.
+- Per-table promoted-row policy is intentionally narrow: `procedure_result`
+  rows are marked corrected/excluded for AgentForge use, `lists` rows are made
+  inactive, promotions/facts/embeddings are marked inactive/retracted, and no
+  clinical history is hard-deleted.
+- `clinical_document_retractions` is row-level and append-only from an audit
+  perspective. Retraction service writes prior/new state JSON before mutating
+  jobs, facts, embeddings, promotions, and supported native rows inside one
+  transaction.
+- Automated M5C proof passed on 2026-05-06 via focused isolated tests and
+  `agent-forge/scripts/check-clinical-document.sh`; eval artifact:
+  `agent-forge/eval-results/clinical-document-20260506-191013`. Manual/browser
+  deletion proof was not run and can be covered by H2/submission polish.
+
 ## Week 2 M6 Implementation Notes
 
 Last verified: 2026-05-06.
