@@ -25,10 +25,12 @@ use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
 use OpenEMR\AgentForge\Time\SystemPsrClock;
 use Psr\Clock\ClockInterface;
+use Throwable;
 
 final readonly class SqlClinicalDocumentFactPromotionRepository implements ClinicalDocumentFactPromotionRepository
 {
     private CertaintyClassifier $certaintyClassifier;
+    private ClinicalContentFingerprint $fingerprints;
     private ClockInterface $wallClock;
 
     public function __construct(
@@ -36,6 +38,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         ?ClockInterface $wallClock = null,
     ) {
         $this->certaintyClassifier = new CertaintyClassifier();
+        $this->fingerprints = new ClinicalContentFingerprint();
         $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
 
@@ -52,8 +55,10 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             foreach ($extraction->results as $index => $row) {
                 $status = $this->promoteLabRow($job, $row, sprintf('results[%d]', $index));
                 match ($status) {
-                    'promoted' => ++$promoted,
-                    'needs_review' => ++$needsReview,
+                    PromotionOutcome::Promoted->value => ++$promoted,
+                    PromotionOutcome::NeedsReview->value,
+                    PromotionOutcome::ConflictNeedsReview->value,
+                    PromotionOutcome::NotPromotable->value => ++$needsReview,
                     default => ++$skipped,
                 };
             }
@@ -61,8 +66,10 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             foreach ($extraction->findings as $index => $finding) {
                 $status = $this->promoteIntakeFinding($job, $finding, sprintf('findings[%d]', $index));
                 match ($status) {
-                    'promoted' => ++$promoted,
-                    'needs_review' => ++$needsReview,
+                    PromotionOutcome::Promoted->value => ++$promoted,
+                    PromotionOutcome::NeedsReview->value,
+                    PromotionOutcome::ConflictNeedsReview->value,
+                    PromotionOutcome::NotPromotable->value => ++$needsReview,
                     default => ++$skipped,
                 };
             }
@@ -110,22 +117,42 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
     private function promoteLabRow(DocumentJob $job, LabResultRow $row, string $fieldPath): string
     {
         if ($job->id === null) {
-            return 'skipped_missing_job_id';
+            return PromotionOutcome::PromotionFailed->value;
         }
 
+        $stableValue = $this->stableLabValueJson($row);
+        $clinicalContentFingerprint = $this->fingerprints->patientClinicalFingerprint('lab_result', $row->testName, $stableValue);
+        $legacyFactHash = $this->legacyFactHash('lab_result', $row->testName, $stableValue);
+        $factFingerprint = $this->fingerprints->sourceFactFingerprint($job, 'lab_result', $fieldPath, $stableValue);
+        $collectedAt = $this->dateTimeOrNull($row->collectedAt);
         if (
             $this->certaintyClassifier->classify($job->docType, $row) !== Certainty::Verified
             || $row->testName === ''
             || $row->value === ''
+            || $collectedAt === null
         ) {
-            return $this->upsertLedger($job, 'lab_result', $fieldPath, $row->testName, $this->labValueJson($row), $row->citation, 'needs_review');
+            return $this->upsertLedger(
+                $job,
+                'lab_result',
+                $fieldPath,
+                $row->testName,
+                $this->labValueJson($row),
+                $row->citation,
+                PromotionOutcome::NeedsReview,
+                null,
+                null,
+                null,
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $row->confidence,
+                $collectedAt === null ? 'missing_or_invalid_collected_at' : null,
+            );
         }
 
-        $factHash = $this->factHash('lab_result', $row->testName, $this->stableLabValueJson($row));
-        return $this->withPromotionLock($job, $factHash, function () use ($job, $row, $fieldPath, $factHash): string {
+        return $this->withPromotionLock($job, $clinicalContentFingerprint, function () use ($job, $row, $fieldPath, $factFingerprint, $clinicalContentFingerprint, $legacyFactHash, $collectedAt): string {
             $jobId = $job->id->value;
 
-            $existing = $this->existingPromotedFact($job, $factHash);
+            $existing = $this->existingPromotedFact($job, $clinicalContentFingerprint, $legacyFactHash);
             $existingStatus = $this->statusForExistingFact(
                 $existing,
                 $jobId,
@@ -135,14 +162,36 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 $row->testName,
                 $this->labValueJson($row),
                 $row->citation,
-                $factHash,
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $row->confidence,
             );
             if ($existingStatus !== null) {
                 return $existingStatus;
             }
 
+            $chartMatch = $this->existingChartLabMatch($job, $row);
+            if ($chartMatch !== []) {
+                $alreadyExists = $this->sameLabValue($chartMatch, $row);
+                return $this->upsertLedger(
+                    $job,
+                    'lab_result',
+                    $fieldPath,
+                    $row->testName,
+                    $this->labValueJson($row),
+                    $row->citation,
+                    $alreadyExists ? PromotionOutcome::AlreadyExists : PromotionOutcome::ConflictNeedsReview,
+                    'procedure_result',
+                    $this->nullableString($chartMatch, 'procedure_result_id'),
+                    $this->json(['procedure_result_id' => $this->nullableString($chartMatch, 'procedure_result_id')]),
+                    $factFingerprint,
+                    $clinicalContentFingerprint,
+                    $row->confidence,
+                    $alreadyExists ? null : 'existing_chart_row_conflict',
+                );
+            }
+
             $now = $this->now();
-            $collectedAt = $this->dateTimeOrNull($row->collectedAt) ?? $now;
             $orderId = $this->db()->insert(
                 'INSERT INTO procedure_order '
                 . '(provider_id, patient_id, date_collected, date_ordered, order_status, activity, control_id, history_order, procedure_order_type, order_intent) '
@@ -165,7 +214,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 . 'VALUES (?, 1, ?, ?, ?, ?, ?)',
                 [
                     $orderId,
-                    substr('agentforge-' . $factHash, 0, 31),
+                    substr('agentforge-' . $clinicalContentFingerprint, 0, 31),
                     $row->testName,
                     '1',
                     $row->testName,
@@ -180,7 +229,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                     $orderId,
                     $collectedAt,
                     $now,
-                    sprintf('agentforge-job-%d', $jobId),
+                    $jobId,
                     'complete',
                     'reviewed',
                     'AgentForge promoted from verified clinical document.',
@@ -200,7 +249,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                     $row->value,
                     $row->referenceRange,
                     $row->abnormalFlag->value,
-                    sprintf('agentforge-fact:%s', $factHash),
+                    sprintf('agentforge-fact:%s', $clinicalContentFingerprint),
                     $job->documentId->value,
                     'final',
                 ],
@@ -213,10 +262,13 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 $row->testName,
                 $this->labValueJson($row),
                 $row->citation,
-                'promoted',
+                PromotionOutcome::Promoted,
                 'procedure_result',
                 (string) $resultId,
-                $factHash,
+                $this->json(['procedure_result_id' => (string) $resultId]),
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $row->confidence,
             );
         });
     }
@@ -224,17 +276,35 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
     private function promoteIntakeFinding(DocumentJob $job, IntakeFormFinding $finding, string $fieldPath): string
     {
         if ($job->id === null) {
-            return 'skipped_missing_job_id';
+            return PromotionOutcome::PromotionFailed->value;
         }
 
         $nativeType = $this->nativeListType($finding);
+        $stableValue = $this->stableFindingValueJson($finding);
+        $clinicalContentFingerprint = $this->fingerprints->patientClinicalFingerprint('intake_finding', $finding->field, $stableValue);
+        $legacyFactHash = $this->legacyFactHash('intake_finding', $finding->field, $stableValue);
+        $factFingerprint = $this->fingerprints->sourceFactFingerprint($job, 'intake_finding', $fieldPath, $stableValue);
         if ($this->certaintyClassifier->classify($job->docType, $finding) !== Certainty::Verified || $nativeType === null) {
-            return $this->upsertLedger($job, 'intake_finding', $fieldPath, $finding->field, $this->findingValueJson($finding), $finding->citation, 'needs_review');
+            return $this->upsertLedger(
+                $job,
+                'intake_finding',
+                $fieldPath,
+                $finding->field,
+                $this->findingValueJson($finding),
+                $finding->citation,
+                $nativeType === null ? PromotionOutcome::NotPromotable : PromotionOutcome::NeedsReview,
+                null,
+                null,
+                null,
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $finding->confidence,
+                $nativeType === null ? 'no_safe_native_destination' : null,
+            );
         }
 
-        $factHash = $this->factHash('intake_finding', $finding->field, $this->stableFindingValueJson($finding));
-        return $this->withPromotionLock($job, $factHash, function () use ($job, $finding, $fieldPath, $nativeType, $factHash): string {
-            $existing = $this->existingPromotedFact($job, $factHash);
+        return $this->withPromotionLock($job, $clinicalContentFingerprint, function () use ($job, $finding, $fieldPath, $nativeType, $factFingerprint, $clinicalContentFingerprint, $legacyFactHash): string {
+            $existing = $this->existingPromotedFact($job, $clinicalContentFingerprint, $legacyFactHash);
             $existingStatus = $this->statusForExistingFact(
                 $existing,
                 $job->id->value,
@@ -244,7 +314,9 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 $finding->field,
                 $this->findingValueJson($finding),
                 $finding->citation,
-                $factHash,
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $finding->confidence,
             );
             if ($existingStatus !== null) {
                 return $existingStatus;
@@ -259,11 +331,11 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                     $nativeType,
                     $finding->value,
                     $this->now(),
-                    sprintf('AgentForge promoted from document %d; fact:%s', $job->documentId->value, $factHash),
+                    sprintf('AgentForge promoted from document %d; fact:%s', $job->documentId->value, $clinicalContentFingerprint),
                     $job->patientId->value,
                     'AgentForge',
                     'AgentForge',
-                    substr('agentforge-' . $factHash, 0, 20),
+                    substr('agentforge-' . $clinicalContentFingerprint, 0, 20),
                 ],
             );
 
@@ -274,10 +346,13 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 $finding->field,
                 $this->findingValueJson($finding),
                 $finding->citation,
-                'promoted',
+                PromotionOutcome::Promoted,
                 'lists',
                 (string) $listId,
-                $factHash,
+                $this->json(['list_id' => (string) $listId]),
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $finding->confidence,
             );
         });
     }
@@ -295,13 +370,15 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         string $label,
         array $valueJson,
         DocumentCitation $citation,
-        string $factHash,
+        string $factFingerprint,
+        string $clinicalContentFingerprint,
+        float $confidence,
     ): ?string {
         if ($existing === []) {
             return null;
         }
         if ($this->intValue($existing, 'job_id') === $jobId) {
-            return 'skipped_duplicate';
+            return PromotionOutcome::DuplicateSkipped->value;
         }
 
         return $this->upsertLedger(
@@ -311,42 +388,115 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             $label,
             $valueJson,
             $citation,
-            'skipped_duplicate',
-            $this->nullableString($existing, 'native_table'),
-            $this->nullableString($existing, 'native_id'),
-            $factHash,
+            PromotionOutcome::DuplicateSkipped,
+            $this->nullableString($existing, 'promoted_table'),
+            $this->nullableString($existing, 'promoted_record_id'),
+            $this->nullableString($existing, 'promoted_pk_json'),
+            $factFingerprint,
+            $clinicalContentFingerprint,
+            $confidence,
         );
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function existingPromotedFact(DocumentJob $job, string $factHash): array
+    private function existingPromotedFact(DocumentJob $job, string $clinicalContentFingerprint, string $legacyFactHash): array
     {
         $rows = $this->db()->fetchRecords(
-            'SELECT job_id, promotion_status, native_table, native_id '
+            'SELECT job_id, outcome, promoted_table, promoted_record_id, promoted_pk_json '
+            . 'FROM clinical_document_promotions '
+            . 'WHERE patient_id = ? AND clinical_content_fingerprint = ? AND outcome = ? AND active = 1 '
+            . 'ORDER BY id ASC LIMIT 1',
+            [$job->patientId->value, $clinicalContentFingerprint, PromotionOutcome::Promoted->value],
+        );
+        if ($rows !== []) {
+            return $rows[0];
+        }
+
+        $legacyRows = $this->db()->fetchRecords(
+            'SELECT job_id, promotion_status AS outcome, native_table AS promoted_table, native_id AS promoted_record_id, '
+            . 'JSON_OBJECT("legacy_native_id", native_id) AS promoted_pk_json '
             . 'FROM clinical_document_promoted_facts '
             . 'WHERE patient_id = ? AND fact_hash = ? AND promotion_status = ? '
             . 'ORDER BY id ASC LIMIT 1',
-            [$job->patientId->value, $factHash, 'promoted'],
+            [$job->patientId->value, $legacyFactHash, PromotionOutcome::Promoted->value],
+        );
+
+        return $legacyRows[0] ?? [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function existingChartLabMatch(DocumentJob $job, LabResultRow $row): array
+    {
+        $collectedDate = substr($row->collectedAt, 0, 10);
+        if ($row->testName === '' || $row->value === '' || $collectedDate === '') {
+            return [];
+        }
+
+        $rows = $this->db()->fetchRecords(
+            'SELECT pr.procedure_result_id, pr.result, pr.units '
+            . 'FROM procedure_result pr '
+            . 'INNER JOIN procedure_report prep ON prep.procedure_report_id = pr.procedure_report_id '
+            . 'INNER JOIN procedure_order po ON po.procedure_order_id = prep.procedure_order_id '
+            . 'WHERE po.patient_id = ? '
+            . 'AND pr.result_text = ? '
+            . 'AND DATE(pr.date) = ? '
+            . 'AND (pr.document_id IS NULL OR pr.document_id <> ?) '
+            . 'LIMIT 1',
+            [$job->patientId->value, $row->testName, $collectedDate, $job->documentId->value],
         );
 
         return $rows[0] ?? [];
     }
 
+    /** @param array<string, mixed> $row */
+    private function sameLabValue(array $row, LabResultRow $extracted): bool
+    {
+        return $this->normalizeScalar($this->nullableString($row, 'result')) === $this->normalizeScalar($extracted->value)
+            && $this->normalizeScalar($this->nullableString($row, 'units')) === $this->normalizeScalar($extracted->unit);
+    }
+
+    private function normalizeScalar(?string $value): string
+    {
+        return strtolower(trim((string) $value));
+    }
+
+    /** @param array<string, mixed> $valueJson */
+    private function legacyFactHash(string $factType, string $label, array $valueJson): string
+    {
+        return hash('sha256', $this->json([
+            'fact_type' => $factType,
+            'label' => $label,
+            'value' => $valueJson,
+        ]));
+    }
+
     /**
      * @param callable(): string $callback
      */
-    private function withPromotionLock(DocumentJob $job, string $factHash, callable $callback): string
+    private function withPromotionLock(DocumentJob $job, string $clinicalContentFingerprint, callable $callback): string
     {
-        $lockName = sprintf('agentforge-fact:%d:%s', $job->patientId->value, $factHash);
+        $lockName = sprintf('agentforge-fact:%d:%s', $job->patientId->value, $clinicalContentFingerprint);
         $rows = $this->db()->fetchRecords('SELECT GET_LOCK(?, 10) AS acquired', [$lockName]);
         if (!$this->lockAcquired($rows[0]['acquired'] ?? null)) {
-            return 'skipped_lock_timeout';
+            return PromotionOutcome::PromotionFailed->value;
         }
 
         try {
-            return $callback();
+            $this->db()->executeStatement('START TRANSACTION');
+            try {
+                $result = $callback();
+                $this->db()->executeStatement('COMMIT');
+
+                return $result;
+            } catch (Throwable $throwable) {
+                $this->db()->executeStatement('ROLLBACK');
+
+                throw $throwable;
+            }
         } finally {
             $this->db()->fetchRecords('SELECT RELEASE_LOCK(?) AS released', [$lockName]);
         }
@@ -367,39 +517,55 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         string $label,
         array $valueJson,
         DocumentCitation $citation,
-        string $status,
-        ?string $nativeTable = null,
-        ?string $nativeId = null,
-        ?string $knownHash = null,
+        PromotionOutcome $outcome,
+        ?string $promotedTable = null,
+        ?string $promotedRecordId = null,
+        ?string $promotedPkJson = null,
+        string $factFingerprint = '',
+        string $clinicalContentFingerprint = '',
+        ?float $confidence = null,
+        ?string $conflictReason = null,
     ): string {
-        $factHash = $knownHash ?? $this->factHash($factType, $label, $valueJson);
+        $factFingerprint = $factFingerprint !== '' ? $factFingerprint : $this->fingerprints->sourceFactFingerprint($job, $factType, $fieldPath, $valueJson);
+        $clinicalContentFingerprint = $clinicalContentFingerprint !== '' ? $clinicalContentFingerprint : $this->fingerprints->patientClinicalFingerprint($factType, $label, $valueJson);
         $this->db()->executeStatement(
-            'INSERT INTO clinical_document_promoted_facts '
-            . '(job_id, patient_id, document_id, doc_type, fact_type, field_path, display_label, value_json, citation_json, bounding_box_json, fact_hash, promotion_status, native_table, native_id, review_status, created_at, updated_at) '
-            . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
-            . 'ON DUPLICATE KEY UPDATE native_table = VALUES(native_table), native_id = VALUES(native_id), review_status = VALUES(review_status), updated_at = VALUES(updated_at)',
+            'INSERT INTO clinical_document_promotions '
+            . '(patient_id, document_id, job_id, fact_id, doc_type, fact_type, field_path, display_label, value_json, '
+            . 'fact_fingerprint, clinical_content_fingerprint, promoted_table, promoted_record_id, promoted_pk_json, '
+            . 'outcome, duplicate_key, conflict_reason, citation_json, bounding_box_json, confidence, review_status, active, created_at, updated_at) '
+            . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) '
+            . 'ON DUPLICATE KEY UPDATE promoted_table = VALUES(promoted_table), promoted_record_id = VALUES(promoted_record_id), '
+            . 'promoted_pk_json = VALUES(promoted_pk_json), outcome = VALUES(outcome), duplicate_key = VALUES(duplicate_key), '
+            . 'conflict_reason = VALUES(conflict_reason), confidence = VALUES(confidence), review_status = VALUES(review_status), '
+            . 'active = VALUES(active), updated_at = VALUES(updated_at)',
             [
-                $job->id?->value,
                 $job->patientId->value,
                 $job->documentId->value,
+                $job->id?->value,
+                $factFingerprint,
                 $job->docType->value,
                 $factType,
                 $fieldPath,
                 $label,
                 $this->json($valueJson),
+                $factFingerprint,
+                $clinicalContentFingerprint,
+                $promotedTable ?? '',
+                $promotedRecordId,
+                $promotedPkJson,
+                $outcome->value,
+                $clinicalContentFingerprint,
+                $conflictReason,
                 $this->json($this->citationJson($citation)),
                 $citation->boundingBox === null ? null : $this->json($this->boundingBoxJson($citation->boundingBox)),
-                $factHash,
-                $status,
-                $nativeTable,
-                $nativeId,
-                $status === 'needs_review' ? 'needs_review' : 'auto_accepted',
+                $confidence,
+                $outcome->reviewStatus(),
                 $this->now(),
                 $this->now(),
             ],
         );
 
-        return $status;
+        return $outcome->value;
     }
 
     private function nativeListType(IntakeFormFinding $finding): ?string
@@ -467,16 +633,6 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             'field' => strtolower($finding->field),
             'value' => strtolower($finding->value),
         ];
-    }
-
-    /** @param array<string, mixed> $valueJson */
-    private function factHash(string $factType, string $label, array $valueJson): string
-    {
-        return hash('sha256', $this->json([
-            'fact_type' => $factType,
-            'label' => $label,
-            'value' => $valueJson,
-        ]));
     }
 
     /** @param array<string, mixed> $row */

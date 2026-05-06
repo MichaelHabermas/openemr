@@ -130,6 +130,29 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('lock_token = NULL', $executor->statements[0]['sql']);
         $this->assertStringContainsString('WHERE document_id = ? AND status <> ?', $executor->statements[0]['sql']);
         $this->assertSame(['retracted', 'source_document_deleted', 123, 'retracted'], $executor->statements[0]['binds']);
+        $this->assertStringContainsString('clinical_document_promotions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('clinical_document_promoted_facts', $executor->statements[3]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
+    }
+
+    public function testJobRepositoryRetractCleanupRunsEvenWhenJobAlreadyRetracted(): void
+    {
+        $executor = new DocumentRepositoryExecutor([], affectedRows: 0);
+
+        $count = (new SqlDocumentJobRepository($executor))->retractByDocument(
+            new DocumentId(123),
+            DocumentRetractionReason::SourceDocumentDeleted,
+        );
+
+        $this->assertSame(0, $count);
+        $this->assertCount(7, $executor->statements);
+        $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[1]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[2]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[3]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[4]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
+        $this->assertStringContainsString('WHERE document_id = ? AND promotion_status <> ?', $executor->statements[6]['sql']);
     }
 
     public function testJobRepositoryMarkFinishedReleasesClaim(): void

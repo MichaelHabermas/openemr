@@ -202,6 +202,97 @@ CREATE TABLE `clinical_document_promoted_facts` (
 ) ENGINE=InnoDB;
 #EndIf
 
+#IfNotTable clinical_document_promotions
+CREATE TABLE `clinical_document_promotions` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NOT NULL,
+  `fact_id` varchar(255) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `fact_type` varchar(32) NOT NULL,
+  `field_path` varchar(255) NOT NULL,
+  `display_label` varchar(255) NOT NULL,
+  `value_json` longtext NOT NULL,
+  `fact_fingerprint` char(64) NOT NULL,
+  `clinical_content_fingerprint` char(64) NOT NULL,
+  `promoted_table` varchar(64) NOT NULL DEFAULT '',
+  `promoted_record_id` varchar(64) NULL,
+  `promoted_pk_json` longtext NULL,
+  `outcome` varchar(32) NOT NULL,
+  `duplicate_key` varchar(255) NULL,
+  `conflict_reason` text NULL,
+  `citation_json` longtext NOT NULL,
+  `bounding_box_json` longtext NULL,
+  `confidence` decimal(5,4) NULL,
+  `review_status` varchar(32) NOT NULL DEFAULT 'needs_review',
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `retracted_at` datetime NULL,
+  `retraction_reason` varchar(64) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_promotion_target` (`patient_id`, `fact_id`, `promoted_table`),
+  UNIQUE KEY `uniq_clinical_document_promotion_source` (`job_id`, `fact_fingerprint`),
+  KEY `idx_clinical_document_promotion_content` (`patient_id`, `clinical_content_fingerprint`, `active`),
+  KEY `idx_clinical_document_promotion_document` (`patient_id`, `document_id`),
+  KEY `idx_clinical_document_promotion_outcome` (`outcome`, `review_status`, `active`)
+) ENGINE=InnoDB;
+#EndIf
+
+INSERT IGNORE INTO `clinical_document_promotions` (
+  `patient_id`,
+  `document_id`,
+  `job_id`,
+  `fact_id`,
+  `doc_type`,
+  `fact_type`,
+  `field_path`,
+  `display_label`,
+  `value_json`,
+  `fact_fingerprint`,
+  `clinical_content_fingerprint`,
+  `promoted_table`,
+  `promoted_record_id`,
+  `promoted_pk_json`,
+  `outcome`,
+  `duplicate_key`,
+  `citation_json`,
+  `bounding_box_json`,
+  `review_status`,
+  `active`,
+  `created_at`,
+  `updated_at`
+)
+SELECT
+  `patient_id`,
+  `document_id`,
+  `job_id`,
+  `fact_hash`,
+  `doc_type`,
+  `fact_type`,
+  `field_path`,
+  `display_label`,
+  `value_json`,
+  `fact_hash`,
+  `fact_hash`,
+  COALESCE(`native_table`, ''),
+  `native_id`,
+  CASE WHEN `native_id` IS NULL THEN NULL ELSE JSON_OBJECT('legacy_native_id', `native_id`) END,
+  CASE `promotion_status`
+    WHEN 'skipped_duplicate' THEN 'duplicate_skipped'
+    WHEN 'superseded' THEN 'retracted'
+    ELSE `promotion_status`
+  END,
+  `fact_hash`,
+  `citation_json`,
+  `bounding_box_json`,
+  `review_status`,
+  CASE WHEN `promotion_status` = 'superseded' THEN 0 ELSE 1 END,
+  `created_at`,
+  `updated_at`
+FROM `clinical_document_promoted_facts`;
+
 #IfMissingColumn clinical_document_processing_jobs retracted_at
 ALTER TABLE `clinical_document_processing_jobs` ADD COLUMN `retracted_at` datetime NULL;
 #EndIf

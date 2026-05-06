@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\Promotion\PromotionOutcome;
 use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -44,8 +45,12 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(1, $executor->insertCount('procedure_report'));
         $this->assertSame(1, $executor->insertCount('procedure_result'));
         $this->assertSame(1, $executor->ledgerWrites);
-        $this->assertSame('promoted', $executor->lastLedgerStatus);
+        $this->assertSame(PromotionOutcome::Promoted->value, $executor->lastLedgerStatus);
         $this->assertSame('procedure_result', $executor->lastNativeTable);
+        $this->assertSame('auto_accepted', $executor->lastReviewStatus);
+        $this->assertSame(64, strlen($executor->lastFactFingerprint ?? ''));
+        $this->assertSame(64, strlen($executor->lastClinicalContentFingerprint ?? ''));
+        $this->assertStringContainsString('clinical_document_promotions', $executor->lastLedgerSql ?? '');
     }
 
     public function testIdentityBlockedJobDoesNotPromote(): void
@@ -75,7 +80,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $summary->needsReview);
         $this->assertSame(0, $summary->skipped);
         $this->assertSame(1, $executor->insertCount('lists'));
-        $this->assertSame('promoted', $executor->lastLedgerStatus);
+        $this->assertSame(PromotionOutcome::Promoted->value, $executor->lastLedgerStatus);
         $this->assertSame('lists', $executor->lastNativeTable);
     }
 
@@ -107,7 +112,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(1, $summary->skipped);
         $this->assertSame(0, $executor->totalInserts);
         $this->assertSame(1, $executor->ledgerWrites);
-        $this->assertSame('skipped_duplicate', $executor->lastLedgerStatus);
+        $this->assertSame(PromotionOutcome::DuplicateSkipped->value, $executor->lastLedgerStatus);
         $this->assertSame('procedure_result', $executor->lastNativeTable);
     }
 
@@ -117,12 +122,86 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $repository = new SqlClinicalDocumentFactPromotionRepository($executor);
 
         $repository->promote($this->job(DocumentType::LabPdf), $this->labExtraction(0.96));
-        $executor->duplicatePromoted = true;
-        $executor->duplicateJobId = 30;
         $summary = $repository->promote($this->job(DocumentType::LabPdf), $this->labExtraction(0.95));
 
         $this->assertSame(0, $summary->promoted);
         $this->assertSame(1, $summary->skipped);
+        $this->assertSame($executor->ledgerRows[0]['clinical_content_fingerprint'], $executor->lastPromotionLookupBinds[1] ?? null);
+        $this->assertSame(1, $executor->insertCount('procedure_result'));
+    }
+
+    public function testExistingChartRowConflictRecordsReviewOutcomeWithoutNativeWrite(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(
+            trusted: true,
+            existingChartResult: ['procedure_result_id' => '88', 'result' => '151', 'units' => 'mg/dL'],
+        );
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::LabPdf),
+            $this->labExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(0, $summary->skipped);
+        $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(1, $executor->ledgerWrites);
+        $this->assertSame(PromotionOutcome::ConflictNeedsReview->value, $executor->lastLedgerStatus);
+        $this->assertSame('existing_chart_row_conflict', $executor->lastConflictReason);
+        $this->assertSame('needs_review', $executor->lastReviewStatus);
+    }
+
+    public function testIdenticalExistingChartRowRecordsAlreadyExistsWithoutNativeWrite(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(
+            trusted: true,
+            existingChartResult: ['procedure_result_id' => '88', 'result' => '148', 'units' => 'mg/dL'],
+        );
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::LabPdf),
+            $this->labExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(0, $summary->needsReview);
+        $this->assertSame(1, $summary->skipped);
+        $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(1, $executor->ledgerWrites);
+        $this->assertSame(PromotionOutcome::AlreadyExists->value, $executor->lastLedgerStatus);
+        $this->assertNull($executor->lastConflictReason);
+    }
+
+    public function testVerifiedLabWithoutValidCollectionDateNeedsReviewWithoutNativeWrite(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::LabPdf),
+            $this->labExtraction(collectedAt: 'not-a-date'),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(0, $summary->skipped);
+        $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(PromotionOutcome::NeedsReview->value, $executor->lastLedgerStatus);
+        $this->assertSame('missing_or_invalid_collected_at', $executor->lastConflictReason);
+    }
+
+    public function testUnmappedIntakeFactRecordsNotPromotableOutcome(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::IntakeForm),
+            $this->unmappedIntakeExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(0, $summary->skipped);
+        $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(1, $executor->ledgerWrites);
+        $this->assertSame(PromotionOutcome::NotPromotable->value, $executor->lastLedgerStatus);
+        $this->assertSame('no_safe_native_destination', $executor->lastConflictReason);
     }
 
     private function job(DocumentType $type): DocumentJob
@@ -145,12 +224,12 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         );
     }
 
-    private function labExtraction(float $confidence = 0.96): LabPdfExtraction
+    private function labExtraction(float $confidence = 0.96, string $collectedAt = '2026-04-22'): LabPdfExtraction
     {
         return LabPdfExtraction::fromArray([
             'doc_type' => 'lab_pdf',
             'lab_name' => 'Northeast Diagnostic Laboratory',
-            'collected_at' => '2026-04-22',
+            'collected_at' => $collectedAt,
             'patient_identity' => [],
             'results' => [
                 [
@@ -158,7 +237,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'value' => '148',
                     'unit' => 'mg/dL',
                     'reference_range' => '<100',
-                    'collected_at' => '2026-04-22',
+                    'collected_at' => $collectedAt,
                     'abnormal_flag' => 'high',
                     'certainty' => 'verified',
                     'confidence' => $confidence,
@@ -178,6 +257,24 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                 [
                     'field' => 'current_medications',
                     'value' => 'Metformin 500 mg twice daily',
+                    'certainty' => 'verified',
+                    'confidence' => 0.95,
+                    'citation' => $this->citation(),
+                ],
+            ],
+        ]);
+    }
+
+    private function unmappedIntakeExtraction(): IntakeFormExtraction
+    {
+        return IntakeFormExtraction::fromArray([
+            'doc_type' => 'intake_form',
+            'form_name' => 'New patient intake',
+            'patient_identity' => [],
+            'findings' => [
+                [
+                    'field' => 'favorite_color',
+                    'value' => 'Blue',
                     'certainty' => 'verified',
                     'confidence' => 0.95,
                     'citation' => $this->citation(),
@@ -206,6 +303,15 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
     public int $ledgerWrites = 0;
     public ?string $lastLedgerStatus = null;
     public ?string $lastNativeTable = null;
+    public ?string $lastReviewStatus = null;
+    public ?string $lastConflictReason = null;
+    public ?string $lastFactFingerprint = null;
+    public ?string $lastClinicalContentFingerprint = null;
+    public ?string $lastLedgerSql = null;
+    /** @var list<array<string, mixed>> */
+    public array $ledgerRows = [];
+    /** @var list<mixed> */
+    public array $lastPromotionLookupBinds = [];
 
     /** @var array<string, int> */
     private array $inserts = [];
@@ -214,6 +320,8 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
         private bool $trusted,
         public bool $duplicatePromoted = false,
         public int $duplicateJobId = 31,
+        /** @var array<string, mixed> */
+        private array $existingChartResult = [],
     ) {
     }
 
@@ -228,13 +336,33 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
         if (str_contains($sql, 'FROM clinical_document_processing_jobs')) {
             return $this->trusted ? [['id' => 31]] : [];
         }
-        if (str_contains($sql, 'FROM clinical_document_promoted_facts')) {
+        if (str_contains($sql, 'FROM clinical_document_promotions')) {
+            $this->lastPromotionLookupBinds = $binds;
+            foreach ($this->ledgerRows as $row) {
+                if (
+                    ($row['patient_id'] ?? null) === ($binds[0] ?? null)
+                    && ($row['clinical_content_fingerprint'] ?? null) === ($binds[1] ?? null)
+                    && ($row['outcome'] ?? null) === ($binds[2] ?? null)
+                ) {
+                    return [[
+                        'job_id' => $row['job_id'],
+                        'outcome' => $row['outcome'],
+                        'promoted_table' => $row['promoted_table'],
+                        'promoted_record_id' => $row['promoted_record_id'],
+                        'promoted_pk_json' => $row['promoted_pk_json'],
+                    ]];
+                }
+            }
             return $this->duplicatePromoted ? [[
                 'job_id' => $this->duplicateJobId,
-                'promotion_status' => 'promoted',
-                'native_table' => 'procedure_result',
-                'native_id' => '77',
+                'outcome' => 'promoted',
+                'promoted_table' => 'procedure_result',
+                'promoted_record_id' => '77',
+                'promoted_pk_json' => '{"procedure_result_id":"77"}',
             ]] : [];
+        }
+        if (str_contains($sql, 'FROM procedure_result pr')) {
+            return $this->existingChartResult === [] ? [] : [$this->existingChartResult];
         }
 
         return [];
@@ -247,13 +375,29 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
             return;
         }
 
-        if (!str_contains($sql, 'clinical_document_promoted_facts')) {
+        if (!str_contains($sql, 'clinical_document_promotions')) {
             return;
         }
 
+        $this->lastLedgerSql = $sql;
         ++$this->ledgerWrites;
-        $this->lastLedgerStatus = is_string($binds[11] ?? null) ? $binds[11] : null;
-        $this->lastNativeTable = is_string($binds[12] ?? null) ? $binds[12] : null;
+        $this->lastFactFingerprint = is_string($binds[9] ?? null) ? $binds[9] : null;
+        $this->lastClinicalContentFingerprint = is_string($binds[10] ?? null) ? $binds[10] : null;
+        $this->lastNativeTable = is_string($binds[11] ?? null) ? $binds[11] : null;
+        $this->lastLedgerStatus = is_string($binds[14] ?? null) ? $binds[14] : null;
+        $this->lastConflictReason = is_string($binds[16] ?? null) ? $binds[16] : null;
+        $this->lastReviewStatus = is_string($binds[20] ?? null) ? $binds[20] : null;
+        $this->ledgerRows[] = [
+            'patient_id' => $binds[0] ?? null,
+            'document_id' => $binds[1] ?? null,
+            'job_id' => $binds[2] ?? null,
+            'fact_fingerprint' => $binds[9] ?? null,
+            'clinical_content_fingerprint' => $binds[10] ?? null,
+            'promoted_table' => $binds[11] ?? null,
+            'promoted_record_id' => $binds[12] ?? null,
+            'promoted_pk_json' => $binds[13] ?? null,
+            'outcome' => $binds[14] ?? null,
+        ];
     }
 
     public function executeAffected(string $sql, array $binds = []): int

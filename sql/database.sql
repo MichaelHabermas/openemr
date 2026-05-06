@@ -15469,6 +15469,43 @@ CREATE TABLE `clinical_document_promoted_facts` (
   KEY `idx_clinical_document_promoted_status` (`promotion_status`, `review_status`)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS `clinical_document_promotions`;
+CREATE TABLE `clinical_document_promotions` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NOT NULL,
+  `fact_id` varchar(255) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `fact_type` varchar(32) NOT NULL,
+  `field_path` varchar(255) NOT NULL,
+  `display_label` varchar(255) NOT NULL,
+  `value_json` longtext NOT NULL,
+  `fact_fingerprint` char(64) NOT NULL,
+  `clinical_content_fingerprint` char(64) NOT NULL,
+  `promoted_table` varchar(64) NOT NULL DEFAULT '',
+  `promoted_record_id` varchar(64) NULL,
+  `promoted_pk_json` longtext NULL,
+  `outcome` varchar(32) NOT NULL,
+  `duplicate_key` varchar(255) NULL,
+  `conflict_reason` text NULL,
+  `citation_json` longtext NOT NULL,
+  `bounding_box_json` longtext NULL,
+  `confidence` decimal(5,4) NULL,
+  `review_status` varchar(32) NOT NULL DEFAULT 'needs_review',
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `retracted_at` datetime NULL,
+  `retraction_reason` varchar(64) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_promotion_target` (`patient_id`, `fact_id`, `promoted_table`),
+  UNIQUE KEY `uniq_clinical_document_promotion_source` (`job_id`, `fact_fingerprint`),
+  KEY `idx_clinical_document_promotion_content` (`patient_id`, `clinical_content_fingerprint`, `active`),
+  KEY `idx_clinical_document_promotion_document` (`patient_id`, `document_id`),
+  KEY `idx_clinical_document_promotion_outcome` (`outcome`, `review_status`, `active`)
+) ENGINE=InnoDB;
+
 DROP TABLE IF EXISTS `clinical_document_worker_heartbeats`;
 CREATE TABLE `clinical_document_worker_heartbeats` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

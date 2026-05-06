@@ -58,49 +58,90 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository, 
                 JobStatus::Retracted->value,
             ],
         );
-        if ($affected > 0) {
-            $this->executor->executeStatement(
-                'UPDATE procedure_result pr '
-                . 'INNER JOIN clinical_document_promoted_facts pf ON pf.native_table = ? AND pf.native_id = pr.procedure_result_id '
-                . 'SET pr.result_status = ?, pr.comments = CONCAT(COALESCE(pr.comments, \'\'), ?), pf.promotion_status = ?, pf.review_status = ?, pf.updated_at = NOW() '
-                . 'WHERE pf.document_id = ? AND pf.promotion_status = ?',
-                [
-                    'procedure_result',
-                    'corrected',
-                    ' AgentForge source document retracted.',
-                    'superseded',
-                    'needs_review',
-                    $documentId->value,
-                    'promoted',
-                ],
-            );
-            $this->executor->executeStatement(
-                'UPDATE lists l '
-                . 'INNER JOIN clinical_document_promoted_facts pf ON pf.native_table = ? AND pf.native_id = l.id '
-                . 'SET l.activity = 0, l.comments = CONCAT(COALESCE(l.comments, \'\'), ?), pf.promotion_status = ?, pf.review_status = ?, pf.updated_at = NOW() '
-                . 'WHERE pf.document_id = ? AND pf.promotion_status = ?',
-                [
-                    'lists',
-                    ' AgentForge source document retracted.',
-                    'superseded',
-                    'needs_review',
-                    $documentId->value,
-                    'promoted',
-                ],
-            );
-            $this->executor->executeStatement(
-                'UPDATE clinical_document_promoted_facts '
-                . 'SET promotion_status = ?, review_status = ?, updated_at = NOW() '
-                . 'WHERE document_id = ? AND promotion_status IN (?, ?)',
-                [
-                    'superseded',
-                    'needs_review',
-                    $documentId->value,
-                    'needs_review',
-                    'skipped_duplicate',
-                ],
-            );
-        }
+        $this->executor->executeStatement(
+            'UPDATE procedure_result pr '
+            . 'INNER JOIN clinical_document_promotions p ON p.promoted_table = ? AND p.promoted_record_id = pr.procedure_result_id '
+            . 'SET pr.result_status = ?, pr.comments = CONCAT(COALESCE(pr.comments, \'\'), ?), '
+            . 'p.outcome = ?, p.review_status = ?, p.active = 0, p.retracted_at = NOW(), p.retraction_reason = ?, p.updated_at = NOW() '
+            . 'WHERE p.document_id = ? AND p.outcome = ? AND p.active = 1',
+            [
+                'procedure_result',
+                'corrected',
+                ' AgentForge source document retracted.',
+                'retracted',
+                'needs_review',
+                $reason->value,
+                $documentId->value,
+                'promoted',
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE lists l '
+            . 'INNER JOIN clinical_document_promotions p ON p.promoted_table = ? AND p.promoted_record_id = l.id '
+            . 'SET l.activity = 0, l.comments = CONCAT(COALESCE(l.comments, \'\'), ?), '
+            . 'p.outcome = ?, p.review_status = ?, p.active = 0, p.retracted_at = NOW(), p.retraction_reason = ?, p.updated_at = NOW() '
+            . 'WHERE p.document_id = ? AND p.outcome = ? AND p.active = 1',
+            [
+                'lists',
+                ' AgentForge source document retracted.',
+                'retracted',
+                'needs_review',
+                $reason->value,
+                $documentId->value,
+                'promoted',
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE procedure_result pr '
+            . 'INNER JOIN clinical_document_promoted_facts pf ON pf.native_table = ? AND pf.native_id = pr.procedure_result_id '
+            . 'SET pr.result_status = ?, pr.comments = CONCAT(COALESCE(pr.comments, \'\'), ?), pf.promotion_status = ?, pf.review_status = ?, pf.updated_at = NOW() '
+            . 'WHERE pf.document_id = ? AND pf.promotion_status = ?',
+            [
+                'procedure_result',
+                'corrected',
+                ' AgentForge source document retracted.',
+                'retracted',
+                'needs_review',
+                $documentId->value,
+                'promoted',
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE lists l '
+            . 'INNER JOIN clinical_document_promoted_facts pf ON pf.native_table = ? AND pf.native_id = l.id '
+            . 'SET l.activity = 0, l.comments = CONCAT(COALESCE(l.comments, \'\'), ?), pf.promotion_status = ?, pf.review_status = ?, pf.updated_at = NOW() '
+            . 'WHERE pf.document_id = ? AND pf.promotion_status = ?',
+            [
+                'lists',
+                ' AgentForge source document retracted.',
+                'retracted',
+                'needs_review',
+                $documentId->value,
+                'promoted',
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE clinical_document_promotions '
+            . 'SET outcome = ?, review_status = ?, active = 0, retracted_at = COALESCE(retracted_at, NOW()), retraction_reason = ?, updated_at = NOW() '
+            . 'WHERE document_id = ? AND active = 1',
+            [
+                'retracted',
+                'needs_review',
+                $reason->value,
+                $documentId->value,
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE clinical_document_promoted_facts '
+            . 'SET promotion_status = ?, review_status = ?, updated_at = NOW() '
+            . 'WHERE document_id = ? AND promotion_status <> ?',
+            [
+                'retracted',
+                'needs_review',
+                $documentId->value,
+                'retracted',
+            ],
+        );
 
         return $affected;
     }
