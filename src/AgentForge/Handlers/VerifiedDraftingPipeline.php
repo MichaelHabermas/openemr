@@ -525,6 +525,7 @@ final readonly class VerifiedDraftingPipeline
                 'note',
             ],
             'medication' => ['medication'],
+            'follow_up_change_review' => ['document', 'guideline'],
             default => [],
         };
 

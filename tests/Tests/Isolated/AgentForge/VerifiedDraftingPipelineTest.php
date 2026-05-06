@@ -197,6 +197,31 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertContains('medication:prescriptions/af-rx-lisinopril@2026-03-15', $result->response->citations);
     }
 
+    public function testFollowUpReviewAppendsDocumentAndGuidelineEvidenceWhenVerifiedDraftOmitsIt(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineFollowUpWithIntakeOnlyProvider(),
+            new DraftVerifier(),
+        ))->run(
+            new AgentRequest(
+                new PatientId(900101),
+                new AgentQuestion('What changed in recent documents, which evidence is notable, and what sources support it?'),
+            ),
+            $this->documentGuidelineBundle(),
+            'follow_up_change_review',
+            ['Recent clinical documents', 'Guideline Evidence'],
+        );
+
+        $this->assertSame('ok', $result->response->status);
+        $this->assertStringContainsString('chief concern: follow-up for cholesterol management', $result->response->answer);
+        $this->assertStringContainsString('LDL Cholesterol: 148 mg/dL', $result->response->answer);
+        $this->assertStringContainsString('LDL 130 Follow-Up', $result->response->answer);
+        $this->assertContains('document:clinical_document_processing_jobs/22:chief_concern@2026-05-06', $result->response->citations);
+        $this->assertContains('document:clinical_document_processing_jobs/21:results[0]@2026-04-01', $result->response->citations);
+        $this->assertContains('guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/acc-aha-ldl-follow-up-01-ldl-130-follow-up', $result->response->citations);
+    }
+
+
     public function testVisitBriefingDoesNotEchoUnsafeNoteEvidenceDuringCompletion(): void
     {
         $result = (new VerifiedDraftingPipeline(
@@ -348,6 +373,33 @@ final class VerifiedDraftingPipelineTest extends TestCase
             ),
         ]);
     }
+
+    private function documentGuidelineBundle(): EvidenceBundle
+    {
+        return new EvidenceBundle([
+            new EvidenceBundleItem(
+                'document',
+                'document:clinical_document_processing_jobs/22:chief_concern@2026-05-06',
+                '2026-05-06',
+                'chief concern',
+                'follow-up for cholesterol management; Citation: intake_form, page 1, chief_concern',
+            ),
+            new EvidenceBundleItem(
+                'document',
+                'document:clinical_document_processing_jobs/21:results[0]@2026-04-01',
+                '2026-04-01',
+                'LDL Cholesterol',
+                '148 mg/dL; reference range: <100 mg/dL; abnormal: high; Citation: lab_pdf, page 1, results[0]',
+            ),
+            new EvidenceBundleItem(
+                'guideline',
+                'guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/acc-aha-ldl-follow-up-01-ldl-130-follow-up',
+                'unknown',
+                'ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up - LDL 130 Follow-Up',
+                'LDL cholesterol greater than or equal to 130 mg/dL is a primary-care follow-up signal.',
+            ),
+        ]);
+    }
 }
 
 final readonly class PipelineProviderThatMustNotBeCalled implements DraftProvider
@@ -448,6 +500,29 @@ final readonly class PipelineUsageProvider implements DraftProvider
             [],
             [],
             new DraftUsage('mock-usage-provider', 123, 45, 0.0067),
+        );
+    }
+}
+
+final readonly class PipelineFollowUpWithIntakeOnlyProvider implements DraftProvider
+{
+    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    {
+        $intakeLine = 'chief concern: follow-up for cholesterol management; Citation: intake_form, page 1, chief_concern';
+
+        return new DraftResponse(
+            [new DraftSentence('s1', $intakeLine)],
+            [
+                new DraftClaim(
+                    $intakeLine,
+                    DraftClaim::TYPE_PATIENT_FACT,
+                    ['document:clinical_document_processing_jobs/22:chief_concern@2026-05-06'],
+                    's1',
+                ),
+            ],
+            [],
+            [],
+            DraftUsage::fixture(),
         );
     }
 }
