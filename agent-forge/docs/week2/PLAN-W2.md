@@ -41,11 +41,13 @@ Epic progress convention:
 
 ## 2. MVP Cut Line
 
-The MVP is delivered only when this vertical slice works locally and is proven by a blocking Week 2 eval command:
+**May 5 MVP submission checkpoint (course):** On the **deployed** environment, demonstrate lab PDF and intake form ingestion, first structured extraction, and first guideline evidence retrieval. Local development remains normal for iteration; graders expect the checkpoint demo on deployment (stakeholder correction to earlier “working locally” wording). Assignment **recommended steps** (supervisor/workers, CI shape, etc.) should still be visible in draft form—polish can follow.
+
+**Full Week 2 MVP (blocking eval gate):** The vertical slice below is complete when it is proven by the blocking Week 2 eval command (typically run locally/CI), independent of demo packaging:
 
 Existing OpenEMR upload -> eligible category creates extraction job -> PHP worker processes job -> `lab_pdf` and `intake_form` fixtures produce strict cited JSON -> document identity is verified or routed to review -> verified lab facts are promoted into OpenEMR-compatible lab records with provenance -> intake findings are stored as cited document facts / needs-review findings -> retracted or identity-unresolved source content is excluded -> document facts are searchable -> guideline evidence is retrieved with sparse + MariaDB Vector + rerank -> `supervisor` handoffs are logged -> final answer separates patient findings, guideline evidence, and needs-review items -> eval gate proves schemas, citations, refusals, factual consistency, bounding boxes, no-PHI logging, duplicate prevention, and deleted-document exclusion.
 
-MVP does not require third document types, demographic overwrites, broad document AI, a critic agent, or polished submission packaging. The full 50-case eval expansion, deployment proof, visual source overlay polish, cost/latency report, and demo packaging continue after the MVP cut line.
+MVP does not require third document types, demographic overwrites, broad document AI, a critic agent, or polished submission packaging. The full 50-case eval expansion, extended deployment proof beyond the May 5 checkpoint, visual source overlay polish, cost/latency report, and demo packaging continue after the MVP cut line.
 
 ## 3. Dependency Map / Implementation Order
 
@@ -247,7 +249,7 @@ Dependencies: M2.
 
 ### Epic M4 - Strict Extraction Tool And Schemas
 
-Status: Not started.
+Status: Completed.
 
 Goal: Implement `attach_and_extract(patient_id, file_path, doc_type)` semantics and strict cited extraction for both required document types.
 
@@ -268,7 +270,7 @@ Database changes: None beyond M2/M3.
 Tests/evals first:
 
 - Test lab schema requires test name, value, unit, reference range, collection date, abnormal flag, confidence, source citation, and bounding box for verified facts.
-- Test intake schema requires demographics, chief concern, current medications, allergies, family history, other document facts, needs-review findings, and citations.
+- Test intake schema requires flat cited findings with field, value, certainty, confidence, and citation.
 - Test invalid JSON, wrong `document_type`, missing citations, unsupported enums, and missing required fields reject before persistence.
 - Test low-confidence or weak-citation facts become `needs_review` or `document_fact`, not `verified`.
 
@@ -276,7 +278,7 @@ Implementation tasks:
 
 - `AttachAndExtractTool` accepts new file paths for spec/eval calls and existing OpenEMR document references for upload-hook jobs.
 - Source document storage always happens before extraction.
-- Implement typed error codes: unsupported doc type, missing file, storage failure, extraction failure, schema validation failure, persistence failure, duplicate detected.
+- Implement typed M4 error codes: unsupported doc type, missing file, storage failure, extraction failure, and schema validation failure. Persistence and duplicate codes remain deferred until the epics that emit them.
 - `OpenAiVlmExtractionProvider` uses `AGENTFORGE_VLM_PROVIDER`, `AGENTFORGE_VLM_MODEL`, and existing API key patterns.
 - `FixtureExtractionProvider` powers deterministic tests/evals from checked-in fixtures.
 
@@ -291,6 +293,11 @@ Definition of done:
 
 - No extraction output can reach persistence without schema validation.
 - MVP extraction evals pass for lab and intake fixtures.
+- Local cleanup proof on 2026-05-06 added deterministic
+  `CertaintyClassifier`, direct `forExistingDocument()` support,
+  storage-only `SourceDocumentStorage`, `OpenEmrSourceDocumentStorage`,
+  and eval artifact
+  `agent-forge/eval-results/clinical-document-20260506-012908/`.
 
 Dependencies: M3.
 

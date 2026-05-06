@@ -22,10 +22,47 @@ final class FactuallyConsistentRubricTest extends RubricTestCase
     {
         $result = (new FactuallyConsistentRubric())->evaluate($this->inputs(
             ['factually_consistent' => true],
-            new CaseRunOutput('ok', ['facts' => [['test_name' => 'LDL Cholesterol', 'value' => '148 mg/dL']]]),
-            [['test_name' => 'LDL Cholesterol', 'value_contains' => '148']],
+            new CaseRunOutput('ok', ['facts' => [[
+                'field_path' => 'results[0]',
+                'test_name' => 'LDL Cholesterol',
+                'value' => '148 mg/dL',
+                'confidence' => 0.98,
+            ]]]),
+            [['field_path' => 'results[0]', 'test_name' => 'LDL Cholesterol', 'value_contains' => '148', 'confidence_min' => 0.95]],
         ));
 
         $this->assertSame(RubricStatus::Pass, $result->status);
+    }
+
+    public function testRejectsWrongFieldPath(): void
+    {
+        $result = (new FactuallyConsistentRubric())->evaluate($this->inputs(
+            ['factually_consistent' => true],
+            new CaseRunOutput('ok', ['facts' => [[
+                'field_path' => 'results[1]',
+                'test_name' => 'LDL Cholesterol',
+                'value' => '148 mg/dL',
+                'confidence' => 0.98,
+            ]]]),
+            [['field_path' => 'results[0]', 'test_name' => 'LDL Cholesterol', 'value_contains' => '148']],
+        ));
+
+        $this->assertSame(RubricStatus::Fail, $result->status);
+    }
+
+    public function testRejectsLowConfidence(): void
+    {
+        $result = (new FactuallyConsistentRubric())->evaluate($this->inputs(
+            ['factually_consistent' => true],
+            new CaseRunOutput('ok', ['facts' => [[
+                'field_path' => 'results[0]',
+                'test_name' => 'LDL Cholesterol',
+                'value' => '148 mg/dL',
+                'confidence' => 0.70,
+            ]]]),
+            [['field_path' => 'results[0]', 'test_name' => 'LDL Cholesterol', 'confidence_min' => 0.95]],
+        ));
+
+        $this->assertSame(RubricStatus::Fail, $result->status);
     }
 }

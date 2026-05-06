@@ -3,7 +3,7 @@
 Source documents:
 
 - `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf`
-- `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.txt`
+- `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.txt` (updated alongside this spec when clarifications land)
 
 This document converts the Week 2 assignment into an implementation-ready specification. It is the source of truth for the Week 2 multimodal Clinical Co-Pilot scope: clinical document ingestion, structured extraction, guideline retrieval, supervisor/worker routing, citations, evaluation, deployment, and submission proof.
 
@@ -41,6 +41,7 @@ The core Week 2 build includes:
 - A basic hybrid retrieval pipeline using sparse retrieval plus dense retrieval.
 - A reranking step using Cohere Rerank or another reranker that takes retrieved candidate chunks as input and returns a ranked list of candidate chunks with scores.
 - A small clinical-guideline corpus relevant to primary care follow-up workflows.
+- Hybrid retrieval indexes **only** that guideline corpus (organization-approved practice reference material the implementation team selects and ingests; course staff do not ship corpus files—start with a minimal intentional MVP set). Patient-specific observations from uploads persist as structured OpenEMR/FHIR records or compatible chart rows; they are **not** chunked into the guideline vector index as interchangeable retrieval units.
 - One supervisor.
 - Two required workers: `intake-extractor` and `evidence-retriever`.
 - Logged and inspectable supervisor handoffs.
@@ -114,7 +115,7 @@ All deadlines are Central Time (Austin). This spec assumes the Week 2 sprint sta
 | Checkpoint | Deadline | Required Outcome |
 | --- | --- | --- |
 | Architecture Defense | Monday, May 4, 2026, exactly 4 hours after sprint kickoff | Document schemas, RAG design, eval design, security concerns, and key tradeoffs before implementation expands. |
-| MVP | Tuesday, May 5, 2026 at 11:59 PM CT | Lab PDF and intake form ingestion work locally. First structured extraction and first guideline evidence retrieval demo are available. |
+| MVP | Tuesday, May 5, 2026 at 11:59 PM CT | **Deployed:** lab PDF and intake form ingestion; first structured extraction; first guideline evidence retrieval demo. (Stakeholder clarification: MVP checkpoint is demonstrated on deployment, not localhost-only.) |
 | Early Submission | Thursday, May 7, 2026 at 11:59 PM CT | Supervisor plus 2 workers, 50-case eval suite, PR-blocking CI, deployed app, and demo video are complete. |
 | Final | Sunday, May 10, 2026 at 12:00 PM CT | Production-ready Week 2 agent, source-grounded demo, cost/latency report, and interview readiness are complete. |
 
@@ -147,8 +148,8 @@ An equivalent interface is acceptable only if it provides the same inputs, outpu
 
 Acceptance criteria:
 
-- `lab_pdf` upload and extraction work locally.
-- `intake_form` upload and extraction work locally.
+- `lab_pdf` upload and extraction work on the **deployed** MVP environment (local development remains typical for iteration).
+- `intake_form` upload and extraction work on the **deployed** MVP environment (local development remains typical for iteration).
 - Source document storage happens before derived fact persistence.
 - No derived fact is persisted without a source citation.
 - Duplicate document uploads for the same patient do not create duplicate derived observations or records.
@@ -157,6 +158,10 @@ Acceptance criteria:
 ### 5.2 Stage 2 - Build Basic Hybrid RAG
 
 Create a small clinical-guideline corpus relevant to the primary care workflow.
+
+**Corpus definition.** Treat this as **organization-aligned approved practice reference material** (policies, pathways, or guidelines the deploying clinic or hospital agrees clinicians should follow) so answers can cite approved sources instead of relying only on model priors. Course staff do not provide corpus documents; teams select a **small, intentional** set for MVP and expand iteratively.
+
+**Data boundary.** Sparse+dense retrieval and reranking apply **only** to this corpus. Patient-specific labs, intake observations, and similar chart content belong in OpenEMR/FHIR-shaped persistence for structured chart evidence; do not index those as guideline corpus chunks.
 
 The retrieval pipeline must:
 
@@ -352,7 +357,7 @@ The system must:
 
 ### FR-6: Hybrid RAG
 
-The system must maintain a small clinical-guideline corpus and retrieve evidence through:
+The system must maintain a small clinical-guideline corpus (see §5.2: team-selected approved-practice reference material) and retrieve evidence through:
 
 - Sparse keyword search.
 - Dense vector search.

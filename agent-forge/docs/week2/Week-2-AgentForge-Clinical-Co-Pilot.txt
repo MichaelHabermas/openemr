@@ -105,14 +105,16 @@ The Week 2 repo may stay inside the same OpenEMR fork, but your README must clea
 separate Week 1 baseline behavior from Week 2 multimodal behavior. Graders should be able
 to run the core Week 2 flow without guessing which branch, environment variable, or service is
 required.
+Technical debt from Week 1 should be documented; resolving it before adding new surface area
+is encouraged guidance, not a hard MVP gate—teams decide timing.
 
 Project Schedule
 Hard gates. This is a one-week sprint with four checkpoints. All times are Central (Austin).
  Checkpoint             Deadline             Focus
  Architecture Defense   4 hours              Document schemas, RAG and eval design, security
                                              concerns
- MVP                    Tuesday @ 11:59PM    Lab PDF and intake form ingestion working locally; first
-                                             extraction and first evidence retrieval demo.
+ MVP                    Tuesday @ 11:59PM    Deployed: lab PDF and intake form ingestion; first
+                                             extraction and first evidence retrieval demo (not localhost-only).
  Early Submission       Thursday @ 11:59PM   Supervisor plus 2 workers, 50-case eval suite,
                                              PR-blocking CI, deployed app, demo video.
  Final                  Sunday @ Noon        Production-ready Week 2 agent, source-grounded demo,
@@ -182,9 +184,11 @@ fields include demographics fields, chief concern, current medications, allergie
 and source citation.
 
 3. Basic hybrid RAG plus rerank
-Index a small clinical-guideline corpus. Retrieve with sparse+dense search, rerank candidate
+Index a small clinical-guideline corpus (organization-approved practice reference material you
+select; staff do not supply files—start minimal). Retrieve with sparse+dense search, rerank candidate
 chunks with Cohere Rerank or an equivalent reranker, and feed only the top grounded evidence
-to the answer model.
+to the answer model. Patient-derived observations belong in OpenEMR/FHIR records, not as chunks
+in this corpus index.
 
 
 

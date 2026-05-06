@@ -1,7 +1,7 @@
 {
   "version": 0,
   "created_at": "2026-05-04",
-  "comment": "Pre-implementation baseline. Runner returns not_implemented; production must beat this and meet thresholds before this baseline is bumped.",
+  "comment": "Historical pre-implementation baseline. Current clinical document runs must beat this floor and meet thresholds.json.",
   "rubric_pass_rates": {
     "schema_valid": 0.0,
     "citation_present": 0.0,

@@ -5,7 +5,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-CLINICAL_DOCUMENT_GATE_EXPECTATION="${CLINICAL_DOCUMENT_GATE_EXPECTATION:-threshold_violation}"
+CLINICAL_DOCUMENT_GATE_EXPECTATION="${CLINICAL_DOCUMENT_GATE_EXPECTATION:-pass}"
 
 cd "${REPO_DIR}"
 

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric;
 
+use OpenEMR\AgentForge\Eval\ClinicalDocument\ExtractionFactExpectation;
 use OpenEMR\AgentForge\StringKeyedArray;
 
 final class FactuallyConsistentRubric implements Rubric
@@ -52,24 +53,7 @@ final class FactuallyConsistentRubric implements Rubric
                 continue;
             }
 
-            $actualFact = StringKeyedArray::filter($actualFact);
-            $matches = true;
-            foreach ($expectedFact as $key => $expectedValue) {
-                if (str_starts_with((string) $key, 'requires_') || $key === 'confidence_min' || $key === 'field_path') {
-                    continue;
-                }
-
-                if ($key === 'value_contains') {
-                    $actualValue = $actualFact['value'] ?? null;
-                    $matches = $matches && is_scalar($actualValue) && is_scalar($expectedValue) && str_contains((string) $actualValue, (string) $expectedValue);
-                    continue;
-                }
-
-                $actualValue = $actualFact[$key] ?? null;
-                $matches = $matches && is_scalar($actualValue) && is_scalar($expectedValue) && (string) $actualValue === (string) $expectedValue;
-            }
-
-            if ($matches) {
+            if (ExtractionFactExpectation::actualMatchesExpected(StringKeyedArray::filter($actualFact), $expectedFact)) {
                 return true;
             }
         }

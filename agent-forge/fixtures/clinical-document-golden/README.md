@@ -8,7 +8,7 @@ The current MVP contains the eight-case set, not the final 50 cases. The submiss
 
 - `cases/*.json` — versioned golden cases.
 - `thresholds.json` — pass-rate thresholds and the maximum allowed regression drop.
-- `baseline.json` — pre-implementation baseline. It starts at zero because M1 uses `NotImplementedAdapter`.
+- `baseline.json` — historical pre-implementation baseline kept as the regression floor. Current runs must beat it and meet `thresholds.json`.
 
 ## Case format
 
@@ -47,6 +47,6 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
-During the scaffold phase, the runner is expected to exit non-zero because the production adapter is deliberately not implemented. That is the intended proof that the gate blocks missing implementation.
+The M4 runner is expected to exit zero when the fixture-backed strict extraction path meets `thresholds.json`. Current artifacts are written under `agent-forge/eval-results/clinical-document-<timestamp>/` and represent fixture/memory extraction proof, not OpenEMR fact persistence.
 
 Week 1 eval fixtures remain in the parent `fixtures/` folder. Keep clinical document fixture names distinct so document-ingestion regressions do not overwrite Week 1 baselines.

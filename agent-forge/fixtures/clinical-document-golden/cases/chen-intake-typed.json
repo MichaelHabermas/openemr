@@ -5,7 +5,7 @@
   "patient_ref": "patient:fixture-chen",
   "doc_type": "intake_form",
   "input": {
-    "source_document_path": "agent-forge/docs/week2/example-documents/intake-forms/p01-chen-intake-typed.pdf",
+    "source_document_path": "agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf",
     "user_question": "What should I review from the intake form?"
   },
   "expected": {

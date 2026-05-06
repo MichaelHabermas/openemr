@@ -5,7 +5,7 @@
   "patient_ref": "patient:fixture-chen",
   "doc_type": "lab_pdf",
   "input": {
-    "source_document_path": "agent-forge/docs/week2/example-documents/lab-results/p01-chen-lipid-panel.pdf",
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf",
     "repeat_upload_count": 2,
     "user_question": "Did the duplicated lab upload create duplicate facts?"
   },

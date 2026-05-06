@@ -17,7 +17,7 @@ use Symfony\Component\Process\Process;
 
 final class RunClinicalDocumentEvalsScriptSmokeTest extends TestCase
 {
-    public function testScriptRunsAndFailsForMissingImplementation(): void
+    public function testScriptRunsClinicalDocumentEvalSlice(): void
     {
         $repo = dirname(__DIR__, 7);
         $resultsDir = sys_get_temp_dir() . '/clinical-document-eval-smoke-' . bin2hex(random_bytes(4));
@@ -26,8 +26,8 @@ final class RunClinicalDocumentEvalsScriptSmokeTest extends TestCase
         ]);
         $process->run();
 
-        $this->assertSame(2, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
-        $this->assertStringContainsString('threshold_violation', $process->getOutput());
+        $this->assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
+        $this->assertStringContainsString('baseline_met', $process->getOutput());
         $this->assertNotFalse(glob($resultsDir . '/clinical-document-*/run.json'));
     }
 }

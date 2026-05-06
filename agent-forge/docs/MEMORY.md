@@ -68,6 +68,16 @@ Later work can build on Week 1, but Week 1 docs are not automatically controllin
 - Duplicate prevention must exist at both the extracted-fact layer and the promoted-OpenEMR-row layer. Job idempotency alone is not enough once data is copied into clinical tables.
 - A passing syntax/test subset is not the same as the full clinical gate. Preserve exact gate caveats when an eval threshold is expected to fail before downstream implementation exists.
 
+## Week 2 stakeholder clarifications (2026-05-05)
+
+Course Slack alignment (treat as normative for assignment interpretation; see `SPECS-W2.md` for the editable spec):
+
+- **MVP submission demo:** Lab PDF + intake ingestion and first guideline retrieval are demonstrated on **deployment**, not localhost-only (corrects ambiguous PRD/spec wording).
+- **Clinical-guideline corpus:** Organization-approved practice reference material the team selects and indexes; staff do not ship corpus files—use a minimal intentional MVP set, then grow.
+- **Retrieval vs patient data:** Hybrid sparse+dense+rerank applies to the guideline corpus only; patient-derived document facts and observations belong in OpenEMR/FHIR-shaped structured persistence, not as guideline corpus vector chunks.
+- **Recommended steps vs checkpoint focus:** The May 5 checkpoint emphasizes ingestion + retrieval on deploy; broader recommended steps (supervisor/workers/CI) should still be taking shape rather than omitted entirely.
+- **Prior tech debt:** Resolving Week 1 feedback before adding surface area is **guidance**, not a hard MVP requirement—teams choose timing.
+
 ## Week 2 M2 Architecture Decisions
 
 - `clinical_document_type_mappings` maps OpenEMR document categories to clinical document types.
@@ -217,3 +227,57 @@ Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.
   `failed(extraction_not_implemented)`, stopped heartbeat on Docker stop,
   retracted-row skip behavior, two-worker/five-job no-double-processing, and
   sanitized container logs without PHP notices.
+
+## Week 2 M4 Implementation Notes
+
+Last verified: 2026-05-06.
+
+- M4 replaces the M3 no-op processor for `WorkerName::IntakeExtractor` with
+  `IntakeExtractorWorker`. The spec-required `intake-extractor` name remains
+  broader than intake forms and handles both `lab_pdf` and `intake_form`.
+- The extraction provider boundary is `DocumentExtractionProvider::extract()`
+  with `DocumentId`, `DocumentLoadResult`, `DocumentType`, and `Deadline`.
+  M4 supports fixture and OpenAI VLM providers only; disabled/provider-disabled
+  mode remains intentionally absent from extraction.
+- The eval path uses `AttachAndExtractTool` with `InMemorySourceDocumentStorage`
+  and its paired in-memory loader, plus fixture extraction by source-byte
+  SHA-256 manifest. Source fixture paths now point at
+  `agent-forge/docs/example-documents/...`.
+- The M4 cleanup pass added deterministic `CertaintyClassifier` telemetry
+  bucketing, `AttachAndExtractTool::forExistingDocument()`, storage-only
+  `SourceDocumentStorage`, and `OpenEmrSourceDocumentStorage`. The queued
+  production worker path remains independent:
+  `DocumentJobWorker` -> `OpenEmrDocumentLoader` -> `IntakeExtractorWorker`.
+- Bounding boxes for M4 fixtures and evals use the established
+  `{x, y, width, height}` object shape expected by `CitationShape`, not the
+  earlier architecture sketch's `[x0, y0, x1, y1]` array.
+- Cleanup eval artifact `agent-forge/eval-results/clinical-document-20260506-011856/`
+  returned `baseline_met`; it proves fixture/memory strict extraction, not
+  OpenEMR fact persistence.
+- Final M4 local gate passed via `agent-forge/scripts/check-clinical-document.sh`
+  outside the sandbox on 2026-05-05. The sandboxed run can fail PHPStan with
+  `Failed to listen on "tcp://127.0.0.1:0": Operation not permitted (EPERM)`;
+  this is an execution-environment limitation, not an M4 regression.
+- 2026-05-06 host: same script passed again after PHPStan fixes on the clinical
+  document gate paths (481 isolated tests, 2297 assertions, 1 skipped; eval
+  `baseline_met` under
+  `agent-forge/eval-results/clinical-document-20260506-012908/`).
+- Same day: clinical eval also run with `AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR`
+  pointing at `/var/folders/vq/4drfx8g53yx1wpb4_vyfk_f80000gn/T/tmp.K8urMZPvSS/`
+  — `baseline_met`, exit `0`, artifact `clinical-document-20260506-011913`
+  (isolated from repo `eval-results/` tree).
+- Docker `development-easy`: `agentforge-worker` must set
+  `AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST` (or `AGENTFORGE_EXTRACTION_FIXTURES_DIR`) when
+  `AGENTFORGE_VLM_PROVIDER=fixture`; otherwise `FixtureExtractionProvider` loads an empty
+  manifest and every job fails `missing_file` regardless of document bytes. Compose now
+  defaults the manifest path to
+  `/var/www/localhost/htdocs/openemr/agent-forge/fixtures/clinical-document-golden/extraction/manifest.json`.
+- Manual proof same day: core Documents re-upload for patient `900001` stayed HTTP 200
+  (upload safety). After recreating `agentforge-worker`, a fresh golden PDF upload
+  produced job `16` with `status=succeeded`, `error_code=NULL`, and visible sanitized
+  `document.extraction.completed` / `clinical_document.worker.job_completed` logs
+  containing `patient_ref` but no raw document bytes or extracted values. Portal path
+  was not re-run in that transcript.
+- M4 does not persist document facts, promote lab rows, verify patient identity,
+  create embeddings, retrieve guideline evidence, or enforce duplicate chart-row
+  policy. Those remain M5A/M5B/M5/M6/M7 contracts.

@@ -8,16 +8,16 @@ Here’s a clear breakdown based on the PDF (pages 2–5):
 - Then you add an **extra code layer** (`attach_and_extract` tool / intake-extractor worker) that:
   - Takes the uploaded PDF (lab PDF or intake form).
   - Uses a **VLM (Vision Language Model = multimodal LLM)** to extract structured facts.
-- The “Hard Problems” section (page 2) literally calls this out:  
+- The “Hard Problems” section (page 2) literally calls this out:
   > “**Vision extraction without invention** — A VLM can read a scanned form…”
 
 Lab PDFs frequently contain tables, charts, graphs, etc., so a multimodal model (e.g. GPT-4o, Claude-3, ColQwen2, etc.) is the expected way to “see” and infer that information reliably.
 
-**Important nuance**:  
-The project does **NOT** want you to “just vectorize” the patient PDFs and throw them into RAG for loose inference.  
+**Important nuance**:
+The project does **NOT** want you to “just vectorize” the patient PDFs and throw them into RAG for loose inference.
 
-- Vector/hybrid RAG is **only** for the small **clinical-guideline corpus** (Stage 2, Core Requirement 3).  
-- Patient documents (lab PDF + intake form) must go through **strict structured extraction** → Pydantic/Zod schema → JSON, not raw vector search.
+- Vector/hybrid RAG is **only** for the small **clinical-guideline corpus** (Stage 2, Core Requirement 3)—organization-approved practice reference material **you** select and index (course does not ship corpus files; MVP can be a minimal intentional set).
+- Patient documents (lab PDF + intake form) must go through **strict structured extraction** → Pydantic/Zod schema → JSON, not raw vector search. Patient-derived labs and intake observations persist as **structured OpenEMR/FHIR records**, not as interchangeable guideline chunks.
 
 You still get the benefits of multimodal (charts/tables, imperfect scans, etc.), but the output must be clean, schema-validated, and citation-linked.
 
@@ -27,16 +27,16 @@ You still get the benefits of multimodal (charts/tables, imperfect scans, etc.),
 
 Direct quotes from the PDF:
 
-- Page 4, Core Requirement 1:  
+- Page 4, Core Requirement 1:
   > “It must store the source document in OpenEMR, return strict-schema JSON, **and persist derived facts as appropriate FHIR resources or OpenEMR records**.”
 
-- Required lab schema fields (page 4):  
+- Required lab schema fields (page 4):
   > test name, value, unit, reference range, collection date, abnormal flag, and source citation.
 
-- Page 5 (Core/Extension):  
+- Page 5 (Core/Extension):
   > “Lab trend chart widget that uses extracted Observation data.”
 
-- Earlier section (FHIR/OpenEMR integrity):  
+- Earlier section (FHIR/OpenEMR integrity):
   > “Uploaded documents and **derived observations** must round-trip through OpenEMR without creating duplicate or untraceable records.”
 
 So the flow the spec demands is:

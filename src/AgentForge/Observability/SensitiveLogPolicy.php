@@ -58,6 +58,17 @@ final class SensitiveLogPolicy
         'idle_seconds' => true,
         'claimed_count' => true,
         'worker_status' => true,
+        'extraction_provider' => true,
+        'fact_count_verified' => true,
+        'fact_count_document_fact' => true,
+        'fact_count_needs_review' => true,
+        'schema_valid' => true,
+        'pages_rendered' => true,
+        'http_status' => true,
+        'event' => true,
+        'case_id' => true,
+        'fact_count' => true,
+        'citation_count' => true,
     ];
 
     /** @var array<string, true> */

@@ -12,8 +12,8 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
-use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
+use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\DefaultQueryExecutor;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalCaseRepository;
 use OpenEMR\AgentForge\Eval\SqlEvidenceEvalRunner;

@@ -1,0 +1,25 @@
+{
+  "doc_type": "intake_form",
+  "form_name": "Golden Fixture Intake",
+  "findings": [
+    {
+      "field": "needs_review[0]",
+      "value": "allergy history needs review",
+      "certainty": "needs_review",
+      "confidence": 0.82,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:d9a4f49b3ec6c14555b9014c31fb41e5c158a2bb3158c3439fd99df9d8dddd71",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "needs_review[0]",
+        "quote_or_value": "allergy history",
+        "bounding_box": {
+          "x": 0.128,
+          "y": 0.344,
+          "width": 0.210,
+          "height": 0.030
+        }
+      }
+    }
+  ]
+}

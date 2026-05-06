@@ -26,6 +26,22 @@ final class ProcessDocumentJobsScriptShapeTest extends TestCase
         $this->assertSame(0, $process->getExitCode(), $process->getOutput() . $process->getErrorOutput());
     }
 
+    public function testDefaultFactoryWiresIntakeExtractorToEnvironmentConfiguredProvider(): void
+    {
+        $factory = file_get_contents(dirname(__DIR__, 6) . '/src/AgentForge/Document/Worker/DocumentJobWorkerFactory.php');
+        $this->assertIsString($factory);
+
+        $this->assertStringContainsString('WorkerName::IntakeExtractor', $factory);
+        $this->assertStringContainsString('new IntakeExtractorWorker', $factory);
+        $this->assertStringContainsString('ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())', $factory);
+        $this->assertStringContainsString('new CertaintyClassifier()', $factory);
+        $this->assertStringContainsString('PatientRefHasher::createDefault()', $factory);
+        $this->assertStringContainsString('new NoopDocumentJobProcessor()', $factory);
+        $this->assertStringNotContainsString('AttachAndExtractTool', $factory);
+        $this->assertStringNotContainsString('SourceDocumentStorage', $factory);
+        $this->assertStringNotContainsString('OpenEmrSourceDocumentStorage', $factory);
+    }
+
     public function testDevelopmentEasyComposeDefinesAgentForgeWorkerService(): void
     {
         $compose = file_get_contents(dirname(__DIR__, 6) . '/docker/development-easy/docker-compose.yml');

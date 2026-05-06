@@ -330,7 +330,12 @@ For document citations, AgentForge also stores normalized bounding boxes when av
 
 ```json
 {
-  "bounding_box": [0.12, 0.44, 0.62, 0.49]
+  "bounding_box": {
+    "x": 0.12,
+    "y": 0.44,
+    "width": 0.50,
+    "height": 0.05
+  }
 }
 ```
 

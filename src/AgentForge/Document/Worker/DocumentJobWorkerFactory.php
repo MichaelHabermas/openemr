@@ -3,6 +3,10 @@
 /**
  * Factory for the standalone AgentForge document worker CLI.
  *
+ * Queue note: {@see SqlJobClaimer} claims the oldest pending job for any worker name. Only
+ * {@see WorkerName::IntakeExtractor} runs real extraction; other worker names use
+ * {@see NoopDocumentJobProcessor} until their processors are implemented.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
@@ -14,9 +18,15 @@ namespace OpenEMR\AgentForge\Document\Worker;
 
 use DateTimeImmutable;
 use OpenEMR\AgentForge\DefaultDatabaseExecutor;
+use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
+use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
+use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
+use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\BC\ServiceContainer;
+use Psr\Log\LoggerInterface;
 
 final class DocumentJobWorkerFactory
 {
@@ -24,15 +34,16 @@ final class DocumentJobWorkerFactory
     {
         $executor = new DefaultDatabaseExecutor();
         $jobs = new SqlDocumentJobRepository($executor);
+        $logger = self::workerLogger();
 
         return new DocumentJobWorker(
             $workerName,
             new SqlJobClaimer($jobs, $executor),
             $jobs,
             new OpenEmrDocumentLoader(),
-            new NoopDocumentJobProcessor(),
+            self::processorFor($workerName),
             new SqlWorkerHeartbeatRepository($executor),
-            ServiceContainer::getLogger(),
+            $logger,
             PatientRefHasher::createDefault(),
             getmypid() ?: 1,
         );
@@ -65,5 +76,24 @@ final class DocumentJobWorkerFactory
             lastHeartbeatAt: $now,
             stoppedAt: $now,
         ));
+    }
+
+    private static function processorFor(WorkerName $workerName): DocumentJobProcessor
+    {
+        return match ($workerName) {
+            WorkerName::IntakeExtractor => new IntakeExtractorWorker(
+                ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment()),
+                new CertaintyClassifier(),
+                self::workerLogger(),
+                new SystemAgentForgeClock(),
+                PatientRefHasher::createDefault(),
+            ),
+            WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
+        };
+    }
+
+    private static function workerLogger(): LoggerInterface
+    {
+        return ServiceContainer::getDebugLogger();
     }
 }

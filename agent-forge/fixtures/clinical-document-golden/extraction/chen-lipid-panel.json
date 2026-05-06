@@ -1,0 +1,30 @@
+{
+  "doc_type": "lab_pdf",
+  "lab_name": "Golden Fixture Lab",
+  "collected_at": "2026-04-01",
+  "results": [
+    {
+      "test_name": "LDL Cholesterol",
+      "value": "148 mg/dL",
+      "unit": "mg/dL",
+      "reference_range": "<100 mg/dL",
+      "collected_at": "2026-04-01",
+      "abnormal_flag": "high",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:c387cf7d5e4a1f7e5cf8eeab604d808f004ba42d1063f83653a36a773f606a5d",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "results[0]",
+        "quote_or_value": "LDL Cholesterol 148 mg/dL",
+        "bounding_box": {
+          "x": 0.118,
+          "y": 0.312,
+          "width": 0.184,
+          "height": 0.024
+        }
+      }
+    }
+  ]
+}

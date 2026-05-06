@@ -1,0 +1,416 @@
+<?php
+
+/**
+ * Isolated tests for AgentForge OpenAI VLM extraction provider.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\Tests\Isolated\AgentForge\Document\Extraction;
+
+use BadMethodCallException;
+use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Psr7\Response;
+use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\DocumentId;
+use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
+use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
+use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
+use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+
+final class OpenAiVlmExtractionProviderTest extends TestCase
+{
+    public function testExtractSendsStrictJsonSchemaPayloadAndParsesResponse(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiResponse());
+        $renderer = new TestPdfPageRenderer();
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            $renderer,
+            inputCostPerMillionTokens: 0.15,
+            outputCostPerMillionTokens: 0.60,
+            maxPdfPages: 2,
+        );
+
+        $response = $provider->extract(
+            new DocumentId(123),
+            new DocumentLoadResult('%PDF fixture', 'application/pdf', 'lab.pdf'),
+            DocumentType::LabPdf,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('lab_result', $response->facts[0]['type']);
+        $this->assertSame('LDL', $response->facts[0]['label']);
+        $this->assertSame('verified', $response->facts[0]['certainty']);
+        $this->assertSame('gpt-4o-mini', $response->usage->model);
+        $this->assertSame(120, $response->usage->inputTokens);
+        $this->assertSame(30, $response->usage->outputTokens);
+        $this->assertSame(0.000036, $response->usage->estimatedCost);
+        $this->assertSame('%PDF fixture', $renderer->lastPdfBytes);
+        $this->assertSame(2, $renderer->lastMaxPages);
+
+        $payload = $client->lastPayload();
+        $this->assertSame('gpt-4o-mini', $payload['model']);
+        $this->assertSame(0, $payload['temperature']);
+        $this->assertSame('json_schema', $this->stringPath($payload, ['response_format', 'type']));
+        $this->assertTrue($this->boolPath($payload, ['response_format', 'json_schema', 'strict']));
+        $this->assertSame('agentforge_document_extraction', $this->stringPath($payload, ['response_format', 'json_schema', 'name']));
+        $this->assertSame(
+            ['doc_type', 'lab_name', 'collected_at', 'results'],
+            $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
+        );
+        $this->assertStringNotContainsString(
+            'lab.pdf',
+            json_encode($payload, JSON_THROW_ON_ERROR),
+        );
+        $this->assertStringContainsString(
+            'Requested document type: lab_pdf',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
+
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertIsArray($content[0] ?? null);
+        $this->assertIsArray($content[1] ?? null);
+        $this->assertSame('text', $content[0]['type']);
+        $this->assertSame('image_url', $content[1]['type']);
+        $imageUrl = $content[1]['image_url'] ?? null;
+        $this->assertIsArray($imageUrl);
+        $this->assertSame('data:image/png;base64,cGFnZS0x', $imageUrl['url']);
+    }
+
+    public function testExtractIntakeFormWithImagePngUsesSchemaAndDataUrlImage(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiIntakeResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        $pngOnePixel = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+        $this->assertNotFalse($pngOnePixel);
+
+        $response = $provider->extract(
+            new DocumentId(7),
+            new DocumentLoadResult($pngOnePixel, 'image/png', 'scan.png'),
+            DocumentType::IntakeForm,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('intake_finding', $response->facts[0]['type'] ?? null);
+
+        $payload = $client->lastPayload();
+        $this->assertSame(
+            ['doc_type', 'form_name', 'findings'],
+            $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
+        );
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertSecondContentImagePngDataUrl($content);
+    }
+
+    public function testExtractIntakeFormWithImageJpegUsesDataUrlImage(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiIntakeResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        $jpegMinimal = base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=', true);
+        $this->assertNotFalse($jpegMinimal);
+
+        $provider->extract(
+            new DocumentId(8),
+            new DocumentLoadResult($jpegMinimal, 'image/jpeg', 'photo.jpg'),
+            DocumentType::IntakeForm,
+            $this->deadline(),
+        );
+
+        $payload = $client->lastPayload();
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertSecondContentImageJpegDataUrl($content);
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     */
+    private function assertSecondContentImagePngDataUrl(array $content): void
+    {
+        $url = $this->secondContentBlockImageDataUrl($content);
+        $this->assertStringStartsWith('data:image/png;base64,', $url);
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     */
+    private function assertSecondContentImageJpegDataUrl(array $content): void
+    {
+        $url = $this->secondContentBlockImageDataUrl($content);
+        $this->assertStringStartsWith('data:image/jpeg;base64,', $url);
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     */
+    private function secondContentBlockImageDataUrl(array $content): string
+    {
+        $second = $content[1] ?? null;
+        if (!is_array($second)) {
+            $this->fail('Expected messages[1].content[1] to be an array.');
+        }
+
+        $this->assertSame('image_url', $second['type'] ?? null);
+        $imageUrl = $second['image_url'] ?? null;
+        if (!is_array($imageUrl)) {
+            $this->fail('Expected image_url payload to be an array.');
+        }
+
+        $url = $imageUrl['url'] ?? null;
+        if (!is_string($url)) {
+            $this->fail('Expected image_url.url to be a string.');
+        }
+
+        return $url;
+    }
+
+    /** @return array<string, mixed> */
+    private function openAiResponse(): array
+    {
+        return [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'doc_type' => 'lab_pdf',
+                            'lab_name' => 'Acme Lab',
+                            'collected_at' => '2026-04-01',
+                            'results' => [
+                                [
+                                    'test_name' => 'LDL',
+                                    'value' => '91 mg/dL',
+                                    'unit' => 'mg/dL',
+                                    'reference_range' => '<100 mg/dL',
+                                    'collected_at' => '2026-04-01',
+                                    'abnormal_flag' => 'normal',
+                                    'certainty' => 'verified',
+                                    'confidence' => 0.97,
+                                    'citation' => [
+                                        'source_type' => 'lab_pdf',
+                                        'source_id' => 'sha256:fixture',
+                                        'page_or_section' => 'page 1',
+                                        'field_or_chunk_id' => 'results[0]',
+                                        'quote_or_value' => 'LDL 91 mg/dL',
+                                        'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.4],
+                                    ],
+                                ],
+                            ],
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ],
+            ],
+            'usage' => ['prompt_tokens' => 120, 'completion_tokens' => 30],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function openAiIntakeResponse(): array
+    {
+        return [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'doc_type' => 'intake_form',
+                            'form_name' => 'Patient Intake',
+                            'findings' => [
+                                [
+                                    'field' => 'Chief complaint',
+                                    'value' => 'Headache',
+                                    'certainty' => 'document_fact',
+                                    'confidence' => 0.88,
+                                    'citation' => [
+                                        'source_type' => 'intake_form',
+                                        'source_id' => 'sha256:fixture',
+                                        'page_or_section' => 'page 1',
+                                        'field_or_chunk_id' => 'cc',
+                                        'quote_or_value' => 'Headache',
+                                    ],
+                                ],
+                            ],
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ],
+            ],
+            'usage' => ['prompt_tokens' => 50, 'completion_tokens' => 20],
+        ];
+    }
+
+    private function deadline(): Deadline
+    {
+        return new Deadline(new SystemAgentForgeClock(), 8000);
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @param list<int|string> $path
+     */
+    private function stringPath(array $source, array $path): string
+    {
+        $value = $this->valuePath($source, $path);
+        if (!is_string($value)) {
+            $this->fail('Expected payload path to contain a string.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @param list<int|string> $path
+     */
+    private function boolPath(array $source, array $path): bool
+    {
+        $value = $this->valuePath($source, $path);
+        if (!is_bool($value)) {
+            $this->fail('Expected payload path to contain a boolean.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @param list<int|string> $path
+     * @return array<mixed>
+     */
+    private function arrayPath(array $source, array $path): array
+    {
+        $value = $this->valuePath($source, $path);
+        if (!is_array($value)) {
+            $this->fail('Expected payload path to contain an array.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @param list<int|string> $path
+     */
+    private function valuePath(array $source, array $path): mixed
+    {
+        $value = $source;
+        foreach ($path as $segment) {
+            if (!is_array($value) || !array_key_exists($segment, $value)) {
+                $this->fail('Expected payload path was missing.');
+            }
+            $value = $value[$segment];
+        }
+
+        return $value;
+    }
+}
+
+final class TestPdfPageRenderer implements PdfPageRenderer
+{
+    public ?string $lastPdfBytes = null;
+    public ?int $lastMaxPages = null;
+
+    public function render(string $pdfBytes, int $maxPages): array
+    {
+        $this->lastPdfBytes = $pdfBytes;
+        $this->lastMaxPages = $maxPages;
+
+        return [new RenderedPdfPage(1, 'image/png', 'page-1')];
+    }
+}
+
+final class RecordingExtractionOpenAiClient implements ClientInterface
+{
+    /** @var array<string, mixed>|null */
+    private ?array $payload = null;
+
+    /** @param array<string, mixed> $responseBody */
+    public function __construct(private readonly array $responseBody)
+    {
+    }
+
+    /** @param array<mixed> $options */
+    public function send(RequestInterface $request, array $options = []): ResponseInterface
+    {
+        throw new BadMethodCallException('send is not used by this test client.');
+    }
+
+    /** @param array<mixed> $options */
+    public function sendAsync(RequestInterface $request, array $options = []): PromiseInterface
+    {
+        throw new BadMethodCallException('sendAsync is not used by this test client.');
+    }
+
+    /** @param array<mixed> $options */
+    public function request(string $method, $uri, array $options = []): ResponseInterface
+    {
+        $json = $options['json'] ?? null;
+        if (!is_array($json)) {
+            throw new BadMethodCallException('Expected JSON request payload.');
+        }
+        $this->payload = $this->stringKeyedArray($json);
+
+        return new Response(200, [], json_encode($this->responseBody, JSON_THROW_ON_ERROR));
+    }
+
+    /** @param array<mixed> $options */
+    public function requestAsync(string $method, $uri, array $options = []): PromiseInterface
+    {
+        throw new BadMethodCallException('requestAsync is not used by this test client.');
+    }
+
+    public function getConfig(?string $option = null): mixed
+    {
+        return null;
+    }
+
+    /** @return array<string, mixed> */
+    public function lastPayload(): array
+    {
+        if ($this->payload === null) {
+            throw new BadMethodCallException('No request payload was recorded.');
+        }
+
+        return $this->payload;
+    }
+
+    /**
+     * @param array<mixed> $source
+     * @return array<string, mixed>
+     */
+    private function stringKeyedArray(array $source): array
+    {
+        $out = [];
+        foreach ($source as $key => $value) {
+            if (!is_string($key)) {
+                throw new BadMethodCallException('Expected string-keyed request payload.');
+            }
+            $out[$key] = $value;
+        }
+
+        return $out;
+    }
+}

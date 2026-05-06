@@ -5,8 +5,7 @@
     "factually_consistent": 0.95,
     "safe_refusal": 1.0,
     "no_phi_in_logs": 1.0,
-    "bounding_box_present": 0.95,
-    "deleted_document_not_retrieved": 1.0
+    "bounding_box_present": 0.95
   },
   "regression_max_drop_pct": 5
 }

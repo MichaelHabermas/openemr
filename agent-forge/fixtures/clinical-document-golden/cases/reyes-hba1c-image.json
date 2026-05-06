@@ -5,7 +5,7 @@
   "patient_ref": "patient:fixture-reyes",
   "doc_type": "lab_pdf",
   "input": {
-    "source_document_path": "agent-forge/docs/week2/example-documents/lab-results/p03-reyes-hba1c.png",
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p03-reyes-hba1c.png",
     "user_question": "What does this HbA1c result show?"
   },
   "expected": {

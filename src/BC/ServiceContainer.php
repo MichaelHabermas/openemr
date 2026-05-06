@@ -15,6 +15,7 @@ namespace OpenEMR\BC;
 use InvalidArgumentException;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
+use Monolog\Level;
 use Psr\Log\{
     LoggerInterface,
     NullLogger,
@@ -57,6 +58,8 @@ class ServiceContainer
     /** @var array<class-string, object> */
     private static array $cache = [];
 
+    private static ?LoggerInterface $debugLogger = null;
+
     /**
      * Reset all registered overrides and cached instances. For testing only.
      *
@@ -66,6 +69,7 @@ class ServiceContainer
     {
         self::$overrides = [];
         self::$cache = [];
+        self::$debugLogger = null;
     }
 
     /**
@@ -139,6 +143,19 @@ class ServiceContainer
                 return new Logging\SystemLogger();
             },
         );
+    }
+
+    public static function getDebugLogger(): LoggerInterface
+    {
+        if (self::$debugLogger instanceof LoggerInterface) {
+            return self::$debugLogger;
+        }
+
+        self::$debugLogger = defined('PHPUNIT_COMPOSER_INSTALL')
+            ? new NullLogger()
+            : new Logging\SystemLogger(Level::Debug);
+
+        return self::$debugLogger;
     }
 
     public static function getRequestFactory(): RequestFactoryInterface

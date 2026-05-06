@@ -10,7 +10,7 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 
 ## Requirements (source of truth)
 
-- [Week 2 project requirements (text)](SPECS-W2.md) — same content as the PDF, easy to diff.
+- [Week 2 project requirements (text)](SPECS-W2.md) — maintained Week 2 spec (editable source of truth; may diverge from PDF when clarified).
 - [Week 2 requirements (PDF)](Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
 
 **Not Week 2:** [../week1/PRD.md](../week1/PRD.md) and [../week1/PLAN.md](../week1/PLAN.md) are **Week 1** documents (grounded in [../week1/SPECS.txt](../week1/SPECS.txt)). Do not assume they describe multimodal/RAG/worker-graph work unless you fork or extend them explicitly (e.g. `PRD-W2.md`).
@@ -57,7 +57,7 @@ M1 intentionally makes the gate fail at the `Run Clinical document evals` step b
 4. Eval-driven CI: 50 cases, 5 boolean rubrics, PR-blocking via `agentforge-evals.yml`. — §6.
 5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report. — §7, §9.
 
-**Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal.
+**Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).
 
 ## README and env
 

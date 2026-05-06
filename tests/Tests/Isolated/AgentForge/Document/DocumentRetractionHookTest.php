@@ -138,10 +138,6 @@ final class TypeErrorThrowingDocumentJobRepository implements DocumentJobReposit
         throw new RuntimeException('should not finish');
     }
 
-    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
-    {
-        return null;
-    }
 }
 
 final class RetractionRecordingRepository implements DocumentJobRepository
@@ -176,8 +172,4 @@ final class RetractionRecordingRepository implements DocumentJobRepository
     {
     }
 
-    public function findClaimedByLockToken(\OpenEMR\AgentForge\Document\Worker\LockToken $lockToken): ?DocumentJob
-    {
-        return null;
-    }
 }

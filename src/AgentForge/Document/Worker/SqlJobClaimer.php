@@ -3,6 +3,10 @@
 /**
  * SQL-backed AgentForge document job claimer.
  *
+ * Claims the oldest {@see JobStatus::Pending} row without filtering by worker role. Run separate
+ * worker processes only when each process should handle disjoint job types (future: add a column
+ * or routing rule); today multiple worker names may compete for the same rows.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3

@@ -1,0 +1,30 @@
+{
+  "doc_type": "lab_pdf",
+  "lab_name": "Golden Fixture Lab",
+  "collected_at": "2026-04-02",
+  "results": [
+    {
+      "test_name": "Creatinine",
+      "value": "creatinine 1.1 mg/dL",
+      "unit": "mg/dL",
+      "reference_range": "0.7-1.3 mg/dL",
+      "collected_at": "2026-04-02",
+      "abnormal_flag": "normal",
+      "certainty": "verified",
+      "confidence": 0.96,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:22c192d11157e4fd4aeabf292bfa4f921ca6e5ddf325e11f7c8d4aa25aad7533",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "results[0]",
+        "quote_or_value": "Creatinine 1.1 mg/dL",
+        "bounding_box": {
+          "x": 0.112,
+          "y": 0.294,
+          "width": 0.176,
+          "height": 0.024
+        }
+      }
+    }
+  ]
+}

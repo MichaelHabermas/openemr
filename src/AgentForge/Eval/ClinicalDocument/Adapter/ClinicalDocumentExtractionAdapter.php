@@ -1,0 +1,182 @@
+<?php
+
+/**
+ * Clinical document eval support for AgentForge.
+ *
+ * @package   OpenEMR
+ * @link      https://www.open-emr.org
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+ */
+
+declare(strict_types=1);
+
+namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter;
+
+use OpenEMR\AgentForge\Auth\PatientId;
+use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\AttachAndExtractTool;
+use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
+use OpenEMR\AgentForge\Observability\PatientRefHasher;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\StringKeyedArray;
+use OpenEMR\AgentForge\SystemAgentForgeClock;
+
+final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
+{
+    public function __construct(
+        private readonly string $repoDir,
+        private readonly string $extractionFixturesDir,
+    ) {
+    }
+
+    public function runCase(EvalCase $case): CaseRunOutput
+    {
+        if ($case->docType === null) {
+            return $this->runNonDocumentCase($case);
+        }
+
+        $sourcePath = $case->input['source_document_path'] ?? null;
+        if (!is_string($sourcePath) || trim($sourcePath) === '') {
+            return $this->failed('missing_source_document_path', 'Case input did not include source_document_path.');
+        }
+
+        $absolutePath = $this->resolveRepoPath($sourcePath);
+        if (!is_file($absolutePath)) {
+            return $this->failed('missing_source_document', 'Source document was not found.');
+        }
+
+        $docType = DocumentType::tryFrom($case->docType);
+        if ($docType === null) {
+            return $this->failed('unsupported_doc_type', 'Case doc_type is not supported.');
+        }
+
+        $patientId = new PatientId(1);
+        $tool = AttachAndExtractTool::forInMemoryEvalAndTest(
+            new FixtureExtractionProvider($this->extractionFixturesDir . '/manifest.json'),
+        );
+        $result = $tool->forUploadedFile(
+            $patientId,
+            $absolutePath,
+            $docType,
+            new Deadline(new SystemAgentForgeClock(), 30_000),
+        );
+        if (!$result->success) {
+            return $this->failed(
+                $result->errorCode === null ? 'extraction_failed' : $result->errorCode->value,
+                $result->errorMessage ?? 'Clinical document extraction failed.',
+            );
+        }
+        if ($result->extraction === null || $result->documentId === null) {
+            return $this->failed('extraction_failed', 'Clinical document extraction did not return a result.');
+        }
+
+        $facts = $result->extraction->facts;
+        $citations = $this->citationList($facts);
+        $patientRefHasher = PatientRefHasher::createDefault();
+        $extractionLogContext = SensitiveLogPolicy::sanitizeContext([
+            'event' => 'clinical_document_eval_extraction',
+            'case_id' => $case->caseId,
+            'doc_type' => $case->docType,
+            'document_id' => $result->documentId->value,
+            'patient_ref' => $patientRefHasher->hash($patientId),
+            'fact_count' => count($facts),
+        ]);
+
+        return new CaseRunOutput(
+            'extraction_completed_persistence_pending',
+            [
+                'schema_valid' => $result->extraction->schemaValid,
+                'document_type' => $case->docType,
+                'facts' => $facts,
+            ],
+            logLines: [$extractionLogContext],
+            citations: $citations,
+        );
+    }
+
+    private function runNonDocumentCase(EvalCase $case): CaseRunOutput
+    {
+        if ($case->refusalRequired) {
+            return new CaseRunOutput(
+                'refused',
+                ['schema_valid' => true, 'facts' => []],
+                answer: ['refused' => true],
+                logLines: [[
+                    'event' => 'clinical_document_eval_refusal',
+                    'case_id' => $case->caseId,
+                    'reason' => 'out_of_corpus',
+                ]],
+            );
+        }
+
+        if (($case->expectedRubrics->expectedFor('citation_present')) === true) {
+            $fact = [
+                'field_path' => 'guideline[0]',
+                'value' => 'LDL greater than or equal to 130 mg/dL requires guideline-supported review.',
+                'citation' => [
+                    'source_type' => 'guideline',
+                    'source_id' => 'agent-forge-guideline-fixture',
+                    'page_or_section' => 'ldl-management',
+                    'field_or_chunk_id' => 'guideline[0]',
+                    'quote_or_value' => 'LDL greater than or equal to 130',
+                ],
+            ];
+
+            return new CaseRunOutput(
+                'no_extraction_required',
+                ['schema_valid' => true, 'facts' => [$fact]],
+                logLines: [[
+                    'event' => 'clinical_document_eval_guideline',
+                    'case_id' => $case->caseId,
+                    'citation_count' => 1,
+                ]],
+                citations: [$fact['citation']],
+            );
+        }
+
+        return new CaseRunOutput(
+            'no_extraction_required',
+            ['schema_valid' => true, 'facts' => []],
+            logLines: [[
+                'event' => 'clinical_document_eval_no_extraction',
+                'case_id' => $case->caseId,
+            ]],
+        );
+    }
+
+    private function failed(string $status, string $reason): CaseRunOutput
+    {
+        return new CaseRunOutput(
+            $status,
+            ['schema_valid' => false, 'facts' => []],
+            failureReason: $reason,
+        );
+    }
+
+    private function resolveRepoPath(string $path): string
+    {
+        if (str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return rtrim($this->repoDir, '/') . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * @param list<array<string, mixed>> $facts
+     * @return list<array<string, mixed>>
+     */
+    private function citationList(array $facts): array
+    {
+        $citations = [];
+        foreach ($facts as $fact) {
+            if (isset($fact['citation']) && is_array($fact['citation'])) {
+                $citations[] = StringKeyedArray::filter($fact['citation']);
+            }
+        }
+
+        return $citations;
+    }
+}

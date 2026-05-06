@@ -1,0 +1,30 @@
+{
+  "doc_type": "lab_pdf",
+  "lab_name": "Golden Fixture Lab",
+  "collected_at": "2026-04-03",
+  "results": [
+    {
+      "test_name": "Hemoglobin A1c",
+      "value": "7.4 %",
+      "unit": "%",
+      "reference_range": "<5.7 %",
+      "collected_at": "2026-04-03",
+      "abnormal_flag": "high",
+      "certainty": "verified",
+      "confidence": 0.94,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:ce070ae2f28b0015acd29d068ae0af84155bdc1a98aac81d4a6d3f68687f7f77",
+        "page_or_section": "image",
+        "field_or_chunk_id": "results[0]",
+        "quote_or_value": "Hemoglobin A1c 7.4 %",
+        "bounding_box": {
+          "x": 0.096,
+          "y": 0.238,
+          "width": 0.202,
+          "height": 0.028
+        }
+      }
+    }
+  ]
+}

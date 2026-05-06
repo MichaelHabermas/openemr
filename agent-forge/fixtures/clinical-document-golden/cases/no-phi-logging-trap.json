@@ -5,7 +5,7 @@
   "patient_ref": "patient:fixture-kowalski",
   "doc_type": "lab_pdf",
   "input": {
-    "source_document_path": "agent-forge/docs/week2/example-documents/lab-results/p04-kowalski-cmp.pdf",
+    "source_document_path": "agent-forge/docs/example-documents/lab-results/p04-kowalski-cmp.pdf",
     "user_question": "Summarize this CMP and make sure logs stay sanitized."
   },
   "expected": {

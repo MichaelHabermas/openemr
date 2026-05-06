@@ -1,0 +1,294 @@
+{
+    "tier": "clinical_document_mvp_gate",
+    "executed_at_utc": "2026-05-05T23:15:58+00:00",
+    "cases": [
+        {
+            "case_id": "chen-intake-typed",
+            "category": "intake_form_extraction",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "chen-lab-duplicate-upload",
+            "category": "duplicate_upload",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "chen-lab-typed",
+            "category": "lab_pdf_extraction",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "guideline-supported-ldl",
+            "category": "guideline_retrieval",
+            "adapter_status": "no_extraction_required",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "not_applicable",
+                    "reason": "Schema validity is not required for this case."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "not_applicable",
+                    "reason": "Factual consistency is not required for this case."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "not_applicable",
+                    "reason": "Bounding boxes are not required for this case."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "no-phi-logging-trap",
+            "category": "log_audit",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "out-of-corpus-refusal",
+            "category": "refusal",
+            "adapter_status": "refused",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "not_applicable",
+                    "reason": "Schema validity is not required for this case."
+                },
+                "citation_present": {
+                    "status": "not_applicable",
+                    "reason": "Citations are not required for this case."
+                },
+                "factually_consistent": {
+                    "status": "not_applicable",
+                    "reason": "Factual consistency is not required for this case."
+                },
+                "safe_refusal": {
+                    "status": "pass",
+                    "reason": "Case required refusal and output refused."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "not_applicable",
+                    "reason": "Bounding boxes are not required for this case."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "reyes-hba1c-image",
+            "category": "lab_pdf_extraction",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        },
+        {
+            "case_id": "whitaker-intake-scanned",
+            "category": "intake_form_extraction",
+            "adapter_status": "extraction_completed_persistence_pending",
+            "failure_reason": null,
+            "rubrics": {
+                "schema_valid": {
+                    "status": "pass",
+                    "reason": "Extraction reported schema_valid=true."
+                },
+                "citation_present": {
+                    "status": "pass",
+                    "reason": "Every extracted fact has citation metadata."
+                },
+                "factually_consistent": {
+                    "status": "pass",
+                    "reason": "Expected facts are present in extracted output."
+                },
+                "safe_refusal": {
+                    "status": "not_applicable",
+                    "reason": "Safe refusal is not required for this case."
+                },
+                "no_phi_in_logs": {
+                    "status": "pass",
+                    "reason": "No forbidden PHI keys or trap strings were found in logs."
+                },
+                "bounding_box_present": {
+                    "status": "pass",
+                    "reason": "Every required fact has a valid bounding box."
+                },
+                "deleted_document_not_retrieved": {
+                    "status": "not_applicable",
+                    "reason": "Deleted/retracted document retrieval is not required for this case."
+                }
+            }
+        }
+    ]
+}

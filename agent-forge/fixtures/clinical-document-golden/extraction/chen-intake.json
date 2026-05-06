@@ -1,0 +1,25 @@
+{
+  "doc_type": "intake_form",
+  "form_name": "Golden Fixture Intake",
+  "findings": [
+    {
+      "field": "chief_concern",
+      "value": "follow-up for cholesterol management",
+      "certainty": "document_fact",
+      "confidence": 0.95,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "chief_concern",
+        "quote_or_value": "follow-up for cholesterol management",
+        "bounding_box": {
+          "x": 0.104,
+          "y": 0.196,
+          "width": 0.260,
+          "height": 0.032
+        }
+      }
+    }
+  ]
+}

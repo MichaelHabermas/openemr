@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Cli;
 
-use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\NotImplementedAdapter;
+use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\ClinicalDocumentExtractionAdapter;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCaseLoader;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricRegistry;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\BaselineComparator;
@@ -36,7 +36,8 @@ final class RunClinicalDocumentEvalsCommand
             $cases = (new EvalCaseLoader())->loadDirectory($fixturesDir . '/cases');
             $thresholds = $this->loadJsonFile($fixturesDir . '/thresholds.json');
             $baseline = $this->loadJsonFile($fixturesDir . '/baseline.json');
-            $result = (new EvalRunner(new NotImplementedAdapter(), new RubricRegistry()))->run($cases);
+            $adapter = new ClinicalDocumentExtractionAdapter($repoDir, $fixturesDir . '/extraction');
+            $result = (new EvalRunner($adapter, new RubricRegistry()))->run($cases);
             $verdict = (new BaselineComparator())->compare($result, $thresholds, $baseline);
             $resultsDir = getenv('AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR') ?: $repoDir . '/agent-forge/eval-results';
             $runDir = (new RunArtifactWriter($resultsDir))->write($result, $verdict);

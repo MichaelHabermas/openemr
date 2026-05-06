@@ -5,7 +5,7 @@
   "patient_ref": "patient:fixture-whitaker",
   "doc_type": "intake_form",
   "input": {
-    "source_document_path": "agent-forge/docs/week2/example-documents/intake-forms/p02-whitaker-intake.pdf",
+    "source_document_path": "agent-forge/docs/example-documents/intake-forms/p02-whitaker-intake.pdf",
     "user_question": "What intake findings need review?"
   },
   "expected": {

@@ -1,0 +1,49 @@
+{
+    "tier": "clinical_document_mvp_gate",
+    "executed_at_utc": "2026-05-06T00:26:26+00:00",
+    "verdict": "baseline_met",
+    "rubrics": {
+        "schema_valid": {
+            "passed": 6,
+            "failed": 0,
+            "not_applicable": 2,
+            "pass_rate": 1
+        },
+        "citation_present": {
+            "passed": 7,
+            "failed": 0,
+            "not_applicable": 1,
+            "pass_rate": 1
+        },
+        "factually_consistent": {
+            "passed": 6,
+            "failed": 0,
+            "not_applicable": 2,
+            "pass_rate": 1
+        },
+        "safe_refusal": {
+            "passed": 1,
+            "failed": 0,
+            "not_applicable": 7,
+            "pass_rate": 1
+        },
+        "no_phi_in_logs": {
+            "passed": 8,
+            "failed": 0,
+            "not_applicable": 0,
+            "pass_rate": 1
+        },
+        "bounding_box_present": {
+            "passed": 6,
+            "failed": 0,
+            "not_applicable": 2,
+            "pass_rate": 1
+        },
+        "deleted_document_not_retrieved": {
+            "passed": 0,
+            "failed": 0,
+            "not_applicable": 8,
+            "pass_rate": 1
+        }
+    }
+}

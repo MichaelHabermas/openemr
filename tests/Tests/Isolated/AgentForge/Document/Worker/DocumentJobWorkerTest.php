@@ -183,6 +183,7 @@ final class DocumentJobWorkerTest extends TestCase
         $heartbeats = new WorkerHeartbeatStore();
         $logger = new WorkerRecordingLogger();
 
+        $this->expectException(TypeError::class);
         try {
             $this->worker(
                 claimer: new WorkerJobClaimer([$job]),
@@ -192,12 +193,12 @@ final class DocumentJobWorkerTest extends TestCase
                 heartbeats: $heartbeats,
                 logger: $logger,
             )->run(1, 0);
-            $this->fail('Expected processor throwable to propagate after cleanup.');
-        } catch (TypeError) {
+        } finally {
             $this->assertSame(JobStatus::Failed, $repository->finished[0]['status']);
             $this->assertSame('processor_failed', $repository->finished[0]['errorCode']);
             $statuses = $heartbeats->statuses();
-            $this->assertSame('stopped', $statuses[array_key_last($statuses)]);
+            $lastStatus = $statuses[count($statuses) - 1] ?? null;
+            $this->assertSame('stopped', $lastStatus);
             $failure = $this->recordByMessage($logger, 'clinical_document.worker.job_failed');
             $this->assertSame('processor_failed', $failure['context']['error_code']);
             $this->assertArrayNotHasKey('error_message', $failure['context']);
