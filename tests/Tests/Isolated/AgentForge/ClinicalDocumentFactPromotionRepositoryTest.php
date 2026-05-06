@@ -39,6 +39,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $summary->needsReview);
         $this->assertSame(0, $summary->skipped);
         $this->assertSame(1, $executor->insertCount('procedure_order'));
+        $this->assertSame(1, $executor->insertCount('procedure_order_code'));
         $this->assertSame(1, $executor->insertCount('procedure_report'));
         $this->assertSame(1, $executor->insertCount('procedure_result'));
         $this->assertSame(1, $executor->ledgerWrites);
@@ -89,6 +90,38 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $summary->needsReview);
         $this->assertSame(1, $summary->skipped);
         $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(0, $executor->ledgerWrites);
+    }
+
+    public function testDuplicateUploadRecordsLedgerWithoutDuplicateNativeWrite(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true, duplicatePromoted: true, duplicateJobId: 30);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::LabPdf),
+            $this->labExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(0, $summary->needsReview);
+        $this->assertSame(1, $summary->skipped);
+        $this->assertSame(0, $executor->totalInserts);
+        $this->assertSame(1, $executor->ledgerWrites);
+        $this->assertSame('skipped_duplicate', $executor->lastLedgerStatus);
+        $this->assertSame('procedure_result', $executor->lastNativeTable);
+    }
+
+    public function testDuplicateDetectionIgnoresConfidenceVariance(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $repository = new SqlClinicalDocumentFactPromotionRepository($executor);
+
+        $repository->promote($this->job(DocumentType::LabPdf), $this->labExtraction(0.96));
+        $executor->duplicatePromoted = true;
+        $executor->duplicateJobId = 30;
+        $summary = $repository->promote($this->job(DocumentType::LabPdf), $this->labExtraction(0.95));
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->skipped);
     }
 
     private function job(DocumentType $type): DocumentJob
@@ -111,7 +144,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         );
     }
 
-    private function labExtraction(): LabPdfExtraction
+    private function labExtraction(float $confidence = 0.96): LabPdfExtraction
     {
         return LabPdfExtraction::fromArray([
             'doc_type' => 'lab_pdf',
@@ -127,7 +160,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'collected_at' => '2026-04-22',
                     'abnormal_flag' => 'high',
                     'certainty' => 'verified',
-                    'confidence' => 0.96,
+                    'confidence' => $confidence,
                     'citation' => $this->citation(),
                 ],
             ],
@@ -176,17 +209,31 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
     /** @var array<string, int> */
     private array $inserts = [];
 
-    public function __construct(private bool $trusted, private bool $duplicatePromoted = false)
-    {
+    public function __construct(
+        private bool $trusted,
+        public bool $duplicatePromoted = false,
+        public int $duplicateJobId = 31,
+    ) {
     }
 
     public function fetchRecords(string $sql, array $binds = []): array
     {
+        if (str_contains($sql, 'GET_LOCK')) {
+            return [['acquired' => '1']];
+        }
+        if (str_contains($sql, 'RELEASE_LOCK')) {
+            return [['released' => '1']];
+        }
         if (str_contains($sql, 'FROM clinical_document_processing_jobs')) {
             return $this->trusted ? [['id' => 31]] : [];
         }
         if (str_contains($sql, 'FROM clinical_document_promoted_facts')) {
-            return $this->duplicatePromoted ? [['promotion_status' => 'promoted']] : [];
+            return $this->duplicatePromoted ? [[
+                'job_id' => $this->duplicateJobId,
+                'promotion_status' => 'promoted',
+                'native_table' => 'procedure_result',
+                'native_id' => '77',
+            ]] : [];
         }
 
         return [];
@@ -194,6 +241,11 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
 
     public function executeStatement(string $sql, array $binds = []): void
     {
+        if (str_contains($sql, 'INSERT INTO procedure_order_code')) {
+            $this->inserts['procedure_order_code'] = ($this->inserts['procedure_order_code'] ?? 0) + 1;
+            return;
+        }
+
         if (!str_contains($sql, 'clinical_document_promoted_facts')) {
             return;
         }

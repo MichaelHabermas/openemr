@@ -54,13 +54,23 @@ final class CertaintyClassifierTest extends TestCase
         ));
     }
 
-    public function testHighConfidenceIntakeFindingStaysDocumentFact(): void
+    public function testHighConfidenceMappedIntakeFindingCanVerify(): void
+    {
+        $classifier = new CertaintyClassifier();
+
+        $this->assertSame(Certainty::Verified, $classifier->classify(
+            DocumentType::IntakeForm,
+            self::intakeFinding('current_medications', 'Metformin 500 mg twice daily', 0.99, 'Metformin 500 mg twice daily'),
+        ));
+    }
+
+    public function testHighConfidenceUnmappedIntakeFindingStaysDocumentFact(): void
     {
         $classifier = new CertaintyClassifier();
 
         $this->assertSame(Certainty::DocumentFact, $classifier->classify(
             DocumentType::IntakeForm,
-            self::intakeFinding(0.99, 'chest discomfort'),
+            self::intakeFinding('free_text_note', 'Prefers phone calls', 0.99, 'Prefers phone calls'),
         ));
     }
 
@@ -115,11 +125,11 @@ final class CertaintyClassifierTest extends TestCase
         );
     }
 
-    private static function intakeFinding(float $confidence, string $quote): IntakeFormFinding
+    private static function intakeFinding(string $field, string $value, float $confidence, string $quote): IntakeFormFinding
     {
         return new IntakeFormFinding(
-            'chief_complaint',
-            'chest discomfort',
+            $field,
+            $value,
             Certainty::Verified,
             $confidence,
             self::citation(DocumentSourceType::IntakeForm, $quote),

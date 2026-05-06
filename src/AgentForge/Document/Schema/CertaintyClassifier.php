@@ -57,10 +57,29 @@ final readonly class CertaintyClassifier
 
     private function mapsToChartDestination(DocumentType $documentType, LabResultRow | IntakeFormFinding $candidate): bool
     {
-        return $documentType === DocumentType::LabPdf
+        if (
+            $documentType === DocumentType::LabPdf
             && $candidate instanceof LabResultRow
             && $candidate->testName !== ''
             && $candidate->value !== ''
-            && $candidate->unit !== '';
+            && $candidate->unit !== ''
+        ) {
+            return true;
+        }
+
+        if ($documentType !== DocumentType::IntakeForm || !$candidate instanceof IntakeFormFinding) {
+            return false;
+        }
+
+        $field = strtolower($candidate->field . ' ' . $candidate->value);
+        return str_contains($field, 'allerg')
+            || str_contains($field, 'medication')
+            || str_contains($field, 'medicine')
+            || str_contains($field, 'current meds')
+            || str_contains($field, 'family')
+            || str_contains($field, 'problem')
+            || str_contains($field, 'condition')
+            || str_contains($field, 'concern')
+            || str_contains($field, 'chief');
     }
 }

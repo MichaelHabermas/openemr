@@ -35,6 +35,8 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $this->assertStringContainsString('detail.citation.bounding_box', $template);
         $this->assertStringContainsString('agent_document_source.php?document_id=', $template);
         $this->assertStringContainsString("encodeURIComponent(citation.job_id || '')", $template);
+        $this->assertStringContainsString('agent-forge-source-sheet', $template);
+        $this->assertStringNotContainsString('<iframe', $template);
         $this->assertStringContainsString("sourceBox.style.left = (box.x * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.top = (box.y * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.width = (box.width * 100) + '%'", $template);

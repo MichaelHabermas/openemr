@@ -23,9 +23,10 @@
         </div>
         <div id="agent-forge-source-meta" class="small text-muted mb-2"></div>
         <div class="agent-forge-source-page">
-            <iframe id="agent-forge-source-frame" class="agent-forge-source-frame" title="{{ "Source document preview"|xla }}"></iframe>
+            <div class="agent-forge-source-sheet" aria-hidden="true"></div>
             <div id="agent-forge-source-box" class="agent-forge-source-box"></div>
         </div>
+        <a id="agent-forge-source-link" class="btn btn-link btn-sm p-0 mt-2" target="_blank" rel="noopener noreferrer">{{ "Open source document"|xlt }}</a>
         <div id="agent-forge-source-quote" class="small mt-2"></div>
     </div>
 </div>
@@ -63,8 +64,12 @@
     position: relative;
     width: 100%;
 }
-.agent-forge-source-frame {
-    border: 0;
+.agent-forge-source-sheet {
+    background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+        linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+        #fff;
+    background-size: 10% 10%;
     height: 100%;
     width: 100%;
 }
@@ -89,7 +94,7 @@
     const submit = form.querySelector('button[type="submit"]');
     const sourceOverlay = document.getElementById('agent-forge-source-overlay');
     const sourceMeta = document.getElementById('agent-forge-source-meta');
-    const sourceFrame = document.getElementById('agent-forge-source-frame');
+    const sourceLink = document.getElementById('agent-forge-source-link');
     const sourceBox = document.getElementById('agent-forge-source-box');
     const sourceQuote = document.getElementById('agent-forge-source-quote');
     let conversationId = null;
@@ -158,7 +163,7 @@
             citation.field_or_chunk_id || ''
         ].filter(Boolean).join(' | ');
         sourceQuote.textContent = citation.quote_or_value || detail.value || '';
-        sourceFrame.src = 'agent_document_source.php?document_id='
+        sourceLink.href = 'agent_document_source.php?document_id='
             + encodeURIComponent(citation.document_id || '')
             + '&job_id='
             + encodeURIComponent(citation.job_id || '');

@@ -76,6 +76,26 @@ final readonly class EvidenceBundleItem
         return $out;
     }
 
+    /**
+     * @return array{
+     *     source_type: string,
+     *     source_id: string,
+     *     source_date: string,
+     *     display_label: string,
+     *     value: string
+     * }
+     */
+    public function toPromptArray(): array
+    {
+        return [
+            'source_type' => $this->sourceType,
+            'source_id' => $this->sourceId,
+            'source_date' => $this->sourceDate,
+            'display_label' => $this->displayLabel,
+            'value' => $this->value,
+        ];
+    }
+
     private function assertPresent(string $value, string $label): void
     {
         if (trim($value) === '') {

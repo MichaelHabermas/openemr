@@ -25,6 +25,10 @@ final class BaselineComparator
         $maxDropValue = $thresholds['regression_max_drop_pct'] ?? 5;
         $maxDrop = (is_numeric($maxDropValue) ? (float) (string) $maxDropValue : 5.0) / 100.0;
         $hasThresholdViolation = false;
+        $baselineCaseCount = $baseline['case_count'] ?? null;
+        if (is_numeric($baselineCaseCount) && count($result->caseResults) < (int) $baselineCaseCount) {
+            return RegressionVerdict::ThresholdViolation;
+        }
 
         foreach ($result->rubricSummaries as $name => $summary) {
             $thresholdValue = $rubricThresholds[$name] ?? 0.0;

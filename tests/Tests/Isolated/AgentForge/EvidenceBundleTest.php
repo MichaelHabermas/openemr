@@ -85,6 +85,31 @@ final class EvidenceBundleTest extends TestCase
         $this->assertSame(['page_or_section' => 'page 1'], $itemArray['citation']);
     }
 
+    public function testPromptBundleDoesNotExposeNestedCitationMetadata(): void
+    {
+        $bundle = EvidenceBundle::fromEvidenceResults([
+            EvidenceResult::found('Clinical documents', [
+                new EvidenceItem(
+                    'document',
+                    'clinical_document_processing_jobs',
+                    '17:results[0]',
+                    '2026-04-22',
+                    'LDL Cholesterol',
+                    '148 mg/dL',
+                    ['source_id' => 'doc:44', 'page_or_section' => 'page 1'],
+                ),
+            ]),
+        ]);
+
+        $prompt = $bundle->toPromptArray();
+
+        $this->assertArrayNotHasKey('citation', $prompt['evidence'][0]);
+        $this->assertSame(
+            'document:clinical_document_processing_jobs/17:results[0]@2026-04-22',
+            $prompt['evidence'][0]['source_id'],
+        );
+    }
+
     public function testEvidenceBundleRejectsUnexpectedItemObjects(): void
     {
         $this->expectException(DomainException::class);

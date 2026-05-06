@@ -118,7 +118,7 @@ final readonly class EvidenceBundle
     {
         return [
             'evidence' => array_map(
-                static fn (EvidenceBundleItem $item): array => $item->toArray(),
+                static fn (EvidenceBundleItem $item): array => $item->toPromptArray(),
                 $this->items,
             ),
             'missing_sections' => $this->missingSections,

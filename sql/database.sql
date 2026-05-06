@@ -15464,6 +15464,7 @@ CREATE TABLE `clinical_document_promoted_facts` (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_clinical_document_promoted_fact` (`job_id`, `fact_hash`),
+  KEY `idx_clinical_document_promoted_patient_hash` (`patient_id`, `fact_hash`),
   KEY `idx_clinical_document_promoted_patient_document` (`patient_id`, `document_id`),
   KEY `idx_clinical_document_promoted_status` (`promotion_status`, `review_status`)
 ) ENGINE=InnoDB;

@@ -34,4 +34,19 @@ final class BaselineComparatorTest extends TestCase
 
         $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
     }
+
+    public function testThresholdViolationWhenCaseCountDropsBelowBaseline(): void
+    {
+        $result = new EvalRunResult([['case_id' => 'only-one']], [
+            'schema_valid' => new RubricSummary('schema_valid', 1, 0, 0, 1.0),
+        ]);
+
+        $verdict = (new BaselineComparator())->compare(
+            $result,
+            ['rubric_thresholds' => ['schema_valid' => 1.0], 'regression_max_drop_pct' => 5],
+            ['case_count' => 2, 'rubric_pass_rates' => ['schema_valid' => 1.0]],
+        );
+
+        $this->assertSame(RegressionVerdict::ThresholdViolation, $verdict);
+    }
 }
