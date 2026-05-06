@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
@@ -85,9 +86,11 @@ final readonly class VerifiedDraftingPipeline
             );
         }
 
+        $draftRequest = new DraftRequest($request->question, $request->patientId, $request->conversationSummary);
+
         try {
             $timer?->start('draft');
-            $draft = $this->draftWithOneRetry($request, $bundle, $deadline);
+            $draft = $this->draftWithOneRetry($draftRequest, $bundle, $deadline);
             $timer?->stop('draft');
             $timer?->start('verify');
             $result = $this->verifier->verify($draft, $bundle);
@@ -96,7 +99,7 @@ final readonly class VerifiedDraftingPipeline
             $timer?->stop('draft');
             $timer?->stop('verify');
             $fallback = $this->providerUnavailableFallback(
-                $request,
+                $draftRequest,
                 $questionType,
                 $toolsCalled,
                 $skippedChartSections,
@@ -108,7 +111,7 @@ final readonly class VerifiedDraftingPipeline
             }
 
             return $this->loggedDraftFailure(
-                $request,
+                $draftRequest,
                 $questionType,
                 $toolsCalled,
                 $skippedChartSections,
@@ -122,7 +125,7 @@ final readonly class VerifiedDraftingPipeline
             $timer?->stop('draft');
             $timer?->stop('verify');
             return $this->loggedDraftFailure(
-                $request,
+                $draftRequest,
                 $questionType,
                 $toolsCalled,
                 $skippedChartSections,
@@ -136,7 +139,7 @@ final readonly class VerifiedDraftingPipeline
 
         if (!$result->passed) {
             if ($draft->usage->model !== DraftUsage::fixture()->model) {
-                $fallbackDraft = (new FixtureDraftProvider())->draft($request, $bundle, $deadline);
+                $fallbackDraft = (new FixtureDraftProvider())->draft($draftRequest, $bundle, $deadline);
                 $fallbackResult = $this->trustedFixtureResult($fallbackDraft, $bundle);
                 if ($fallbackResult->passed) {
                     $response = $this->toAgentResponse($fallbackDraft, $fallbackResult, $questionType, $bundle);
@@ -193,7 +196,7 @@ final readonly class VerifiedDraftingPipeline
      * @param list<string> $skippedChartSections
      */
     private function providerUnavailableFallback(
-        AgentRequest $request,
+        DraftRequest $draftRequest,
         string $questionType,
         array $toolsCalled,
         array $skippedChartSections,
@@ -202,12 +205,12 @@ final readonly class VerifiedDraftingPipeline
     ): ?VerifiedDraftingResult {
         $this->logger->error('AgentForge draft provider failed; deterministic evidence fallback attempted.', [
             'failure_class' => $exception::class,
-            'patient_id' => $request->patientId->value,
+            'patient_id' => $draftRequest->patientId->value,
         ]);
 
         try {
             $fallbackDraft = (new FixtureDraftProvider())->draft(
-                $request,
+                $draftRequest,
                 $bundle,
                 new Deadline($this->clock, -1),
             );
@@ -334,13 +337,12 @@ final readonly class VerifiedDraftingPipeline
         );
     }
 
-    private function draftWithOneRetry(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    private function draftWithOneRetry(DraftRequest $draftRequest, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         try {
-            return $this->draftProvider->draft($request, $bundle, $deadline);
+            return $this->draftProvider->draft($draftRequest, $bundle, $deadline);
         } catch (DomainException) {
-            // One retry: transient validation gaps from the provider should not immediately fail the visit.
-            return $this->draftProvider->draft($request, $bundle, $deadline);
+            return $this->draftProvider->draft($draftRequest, $bundle, $deadline);
         }
     }
 
@@ -349,7 +351,7 @@ final readonly class VerifiedDraftingPipeline
      * @param list<string> $skippedChartSections
      */
     private function loggedDraftFailure(
-        AgentRequest $request,
+        DraftRequest $draftRequest,
         string $questionType,
         array $toolsCalled,
         array $skippedChartSections,
@@ -361,7 +363,7 @@ final readonly class VerifiedDraftingPipeline
     ): VerifiedDraftingResult {
         $this->logger->error($logMessage, [
             'failure_class' => $exception::class,
-            'patient_id' => $request->patientId->value,
+            'patient_id' => $draftRequest->patientId->value,
         ]);
 
         return new VerifiedDraftingResult(

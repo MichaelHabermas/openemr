@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
 use OpenEMR\AgentForge\Conversation\InMemoryConversationStore;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
@@ -83,10 +84,9 @@ final readonly class AgentRequestHandler
             $timer->stop('request:parse');
             $this->logger->error(
                 'AgentForge request parsing failed unexpectedly.',
-                [
-                    'exception' => $exception,
+                SensitiveLogPolicy::throwableErrorContext($exception, [
                     'request_id' => $requestId,
-                ],
+                ]),
             );
 
             return new AgentRequestResult(
@@ -100,7 +100,7 @@ final readonly class AgentRequestHandler
 
         $timer->start('request:authorize');
         $decision = $this->authorizationGate->decide(
-            $request,
+            $request->patientId,
             $sessionPatientId,
             $sessionUserId,
             $hasMedicalRecordAcl,

@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Document\Embedding;
 
 use DomainException;
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Guidelines\SqlGuidelineChunkRepository;
 
 final readonly class SqlDocumentFactEmbeddingRepository implements DocumentFactEmbeddingRepository
@@ -57,18 +58,14 @@ final readonly class SqlDocumentFactEmbeddingRepository implements DocumentFactE
         );
     }
 
-    public function deactivateByDocument(int $documentId): void
+    public function deactivateByDocument(DocumentId $documentId): void
     {
-        if ($documentId <= 0) {
-            throw new DomainException('Document id must be positive for embedding deactivation.');
-        }
-
         $this->executor->executeStatement(
             'UPDATE clinical_document_fact_embeddings e '
             . 'INNER JOIN clinical_document_facts f ON f.id = e.fact_id '
             . 'SET e.active = 0 '
             . 'WHERE f.document_id = ?',
-            [$documentId],
+            [$documentId->value],
         );
     }
 }

@@ -14,7 +14,7 @@ namespace OpenEMR\AgentForge\Observability;
 
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
+use OpenEMR\AgentForge\Orchestration\NodeName;
 
 final class DocumentExtractionLogContext
 {
@@ -24,14 +24,14 @@ final class DocumentExtractionLogContext
      * @return array<string, mixed>
      */
     public static function intakeExtractionCompleted(
-        WorkerName $workerName,
+        NodeName $nodeName,
         DocumentJob $job,
         ExtractionProviderResponse $response,
         PatientRefHasher $patientRefHasher,
         array $factCounts,
     ): array {
         return SensitiveLogPolicy::sanitizeContext([
-            'worker' => $workerName->value,
+            'worker' => $nodeName->value,
             'job_id' => $job->id?->value,
             'document_id' => $job->documentId->value,
             'patient_ref' => $patientRefHasher->hash($job->patientId),

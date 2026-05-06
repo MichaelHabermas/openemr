@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Auth;
 
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use RuntimeException;
 
 final readonly class PatientAccessPolicy
@@ -22,7 +21,7 @@ final readonly class PatientAccessPolicy
     }
 
     public function decide(
-        AgentRequest $request,
+        PatientId $patientId,
         ?int $sessionPatientId,
         ?int $sessionUserId,
         bool $hasMedicalRecordAcl,
@@ -41,7 +40,7 @@ final readonly class PatientAccessPolicy
             );
         }
 
-        if ($request->patientId->value !== $sessionPatientId) {
+        if ($patientId->value !== $sessionPatientId) {
             return AuthorizationDecision::refuse(
                 'The requested patient does not match the active chart.',
                 'the_requested_patient_does_not_match_the_active_chart',
@@ -56,14 +55,14 @@ final readonly class PatientAccessPolicy
         }
 
         try {
-            if (!$this->repository->patientExists($request->patientId)) {
+            if (!$this->repository->patientExists($patientId)) {
                 return AuthorizationDecision::refuse(
                     'The requested patient chart could not be verified.',
                     'the_requested_patient_chart_could_not_be_verified',
                 );
             }
 
-            if (!$this->repository->userHasDirectRelationship($request->patientId, $sessionUserId)) {
+            if (!$this->repository->userHasDirectRelationship($patientId, $sessionUserId)) {
                 return AuthorizationDecision::refuse(
                     'Patient-specific access could not be verified for this user.',
                     'patient_specific_access_could_not_be_verified_for_this_user',

@@ -27,8 +27,8 @@ use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentJobProcessor;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\Document\Worker\ProcessingResult;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Observability\DocumentExtractionLogContext;
+use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
@@ -82,7 +82,7 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         $this->logger->info(
             'document.extraction.completed',
             DocumentExtractionLogContext::intakeExtractionCompleted(
-                WorkerName::IntakeExtractor,
+                NodeName::IntakeExtractor,
                 $job,
                 $response,
                 $this->patientRefHasher,
@@ -91,7 +91,7 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         );
         if ($promotion !== null) {
             $this->logger->info('document.extraction.promoted', [
-                'worker' => WorkerName::IntakeExtractor->value,
+                'worker' => NodeName::IntakeExtractor->value,
                 'job_id' => $job->id?->value,
                 'document_id' => $job->documentId->value,
                 'promoted' => $promotion->promoted,

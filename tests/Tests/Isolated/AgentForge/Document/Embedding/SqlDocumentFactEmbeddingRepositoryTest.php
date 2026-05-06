@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document\Embedding;
 
 use DomainException;
+use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\Embedding\EmbeddingProvider;
 use OpenEMR\AgentForge\Document\Embedding\SqlDocumentFactEmbeddingRepository;
 use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
@@ -58,7 +59,7 @@ final class SqlDocumentFactEmbeddingRepositoryTest extends TestCase
     {
         $executor = new FakeDatabaseExecutor();
 
-        (new SqlDocumentFactEmbeddingRepository($executor))->deactivateByDocument(44);
+        (new SqlDocumentFactEmbeddingRepository($executor))->deactivateByDocument(new DocumentId(44));
 
         $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[0]['sql']);
         $this->assertStringContainsString('INNER JOIN clinical_document_facts f ON f.id = e.fact_id', $executor->statements[0]['sql']);

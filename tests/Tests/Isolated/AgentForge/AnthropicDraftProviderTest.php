@@ -18,8 +18,8 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\AnthropicDraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\PromptComposer;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
@@ -295,9 +295,9 @@ final class AnthropicDraftProviderTest extends TestCase
         ];
     }
 
-    private function request(): AgentRequest
+    private function request(): DraftRequest
     {
-        return new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent A1c.'));
+        return new DraftRequest(new AgentQuestion('Show me recent A1c.'), new PatientId(900001));
     }
 
     private function bundle(): EvidenceBundle

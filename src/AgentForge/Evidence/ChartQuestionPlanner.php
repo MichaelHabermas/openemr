@@ -32,106 +32,13 @@ final readonly class ChartQuestionPlanner
     public const SECTION_STALE_VITALS = 'Last-known stale vitals';
     public const SECTION_NOTES = 'Recent notes and last plan';
 
-    /** @var list<string> */
-    private const CHANGE_REVIEW_KEYWORDS = [
-        'changed since',
-        'change since',
-        'changes since',
-        'anything changed',
-        'what changed',
-        'new since',
-        'since last visit',
-        'since previous visit',
-    ];
-
-    /** @var list<string> */
-    private const PRESCRIBING_CHECK_KEYWORDS = [
-        'before prescribing',
-        'before i prescribe',
-        'double-check before prescribing',
-        'double check before prescribing',
-        'prescribing',
-        'prescribe',
-    ];
-
-    /** @var list<string> */
-    private const LAB_KEYWORDS = [
-        'a1c',
-        'lab',
-        'labs',
-        'laboratory',
-        'microalbumin',
-        'glucose',
-        'result',
-        'sodium',
-        'potassium',
-        'creatinine',
-        'cholesterol',
-        'hemoglobin',
-        'panel',
-    ];
-
-    /** @var list<string> */
-    private const MEDICATION_KEYWORDS = [
-        'medication',
-        'medications',
-        'meds',
-        'prescription',
-        'prescriptions',
-        'metformin',
-    ];
-
-    /** @var list<string> */
-    private const ALLERGY_KEYWORDS = [
-        'allergy',
-        'allergies',
-        'allergic',
-        'reaction',
-        'reactions',
-    ];
-
-    /** @var list<string> */
-    private const VITAL_KEYWORDS = [
-        'vital',
-        'vitals',
-        'blood pressure',
-        'bp',
-        'pulse',
-        'temperature',
-        'weight',
-        'height',
-        'oxygen',
-        'o2',
-    ];
-
-    /** @var list<string> */
-    private const PROBLEM_KEYWORDS = [
-        'problem',
-        'problems',
-        'condition',
-        'conditions',
-        'comorbid',
-        'comorbidities',
-    ];
-
-    /** @var list<string> */
-    private const LAST_PLAN_KEYWORDS = [
-        'plan',
-        'note',
-        'notes',
-        'assessment',
-        'follow-up',
-        'follow up',
-        'last visit',
-        'previous visit',
-        'history of present illness',
-        'hpi',
-    ];
+    private QuestionTypeRegistry $registry;
 
     public function __construct(
         private ?ToolSelectionProvider $selector = null,
         private LoggerInterface $logger = new NullLogger(),
     ) {
+        $this->registry = new QuestionTypeRegistry();
     }
 
     /** @return list<string> */
@@ -244,59 +151,11 @@ final readonly class ChartQuestionPlanner
         $normalized = strtolower($question->value);
         $selectedType = strtolower(trim($questionType));
 
-        if ($this->selectorIndicatesChangeReview($selectedType, $normalized)) {
+        $match = $this->registry->matchNormalized($selectedType, $normalized);
+        if ($match !== null) {
             return [
-                'question_type' => 'follow_up_change_review',
-                'sections' => self::changeReviewSections(),
-            ];
-        }
-
-        if ($this->selectorIndicatesPrescribingCheck($selectedType, $normalized)) {
-            return [
-                'question_type' => 'pre_prescribing_chart_check',
-                'sections' => self::prescribingCheckSections(),
-            ];
-        }
-
-        if ($this->selectorIndicatesLab($selectedType, $normalized)) {
-            return [
-                'question_type' => 'lab',
-                'sections' => [self::SECTION_LABS],
-            ];
-        }
-
-        if ($this->selectorIndicatesAllergy($selectedType, $normalized)) {
-            return [
-                'question_type' => 'allergy',
-                'sections' => [self::SECTION_ALLERGIES],
-            ];
-        }
-
-        if ($this->selectorIndicatesMedication($selectedType, $normalized)) {
-            return [
-                'question_type' => 'medication',
-                'sections' => [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
-            ];
-        }
-
-        if ($this->selectorIndicatesVital($selectedType, $normalized)) {
-            return [
-                'question_type' => 'vital',
-                'sections' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
-            ];
-        }
-
-        if ($this->selectorIndicatesProblem($selectedType, $normalized)) {
-            return [
-                'question_type' => 'problem',
-                'sections' => [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS],
-            ];
-        }
-
-        if ($this->selectorIndicatesLastPlan($selectedType, $normalized)) {
-            return [
-                'question_type' => 'last_plan',
-                'sections' => [self::SECTION_NOTES],
+                'question_type' => $match->type->value,
+                'sections' => $match->sections,
             ];
         }
 
@@ -332,13 +191,15 @@ final readonly class ChartQuestionPlanner
         ?string $selectorFallbackReason = null,
     ): ChartQuestionPlan {
         $normalized = strtolower($question->value);
-        if ($this->containsAny($normalized, ['birth weight', 'birthweight'])) {
+        if (str_contains($normalized, 'birth weight') || str_contains($normalized, 'birthweight')) {
             return $this->buildPlan('unsupported_fact', [], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
         }
-        if ($this->selectorIndicatesChangeReview('', $normalized)) {
+
+        $match = $this->registry->matchDeterministic($normalized);
+        if ($match !== null) {
             return $this->buildPlan(
-                'follow_up_change_review',
-                self::changeReviewSections(),
+                $match->type->value,
+                $match->sections,
                 $deadlineMs,
                 null,
                 $selectorMode,
@@ -346,51 +207,7 @@ final readonly class ChartQuestionPlanner
                 $selectorFallbackReason,
             );
         }
-        if ($this->selectorIndicatesPrescribingCheck('', $normalized)) {
-            return $this->buildPlan(
-                'pre_prescribing_chart_check',
-                self::prescribingCheckSections(),
-                $deadlineMs,
-                null,
-                $selectorMode,
-                $selectorResult,
-                $selectorFallbackReason,
-            );
-        }
-        if ($this->containsAny($normalized, self::ALLERGY_KEYWORDS)) {
-            return $this->buildPlan('allergy', [self::SECTION_ALLERGIES], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
-        }
-        if ($this->containsAny($normalized, self::MEDICATION_KEYWORDS)) {
-            return $this->buildPlan(
-                'medication',
-                [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
-                $deadlineMs,
-                null,
-                $selectorMode,
-                $selectorResult,
-                $selectorFallbackReason,
-            );
-        }
-        if ($this->containsAny($normalized, self::LAB_KEYWORDS)) {
-            return $this->buildPlan(
-                'lab',
-                [self::SECTION_LABS],
-                $deadlineMs,
-                null,
-                $selectorMode,
-                $selectorResult,
-                $selectorFallbackReason,
-            );
-        }
-        if ($this->containsAny($normalized, self::VITAL_KEYWORDS)) {
-            return $this->buildPlan('vital', [self::SECTION_VITALS, self::SECTION_STALE_VITALS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
-        }
-        if ($this->containsAny($normalized, self::PROBLEM_KEYWORDS)) {
-            return $this->buildPlan('problem', [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
-        }
-        if ($this->containsAny($normalized, self::LAST_PLAN_KEYWORDS)) {
-            return $this->buildPlan('last_plan', [self::SECTION_NOTES], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
-        }
+
         if ($conversationSummary !== null && $this->looksLikeFollowUp($normalized)) {
             $sections = $this->sectionsForPriorQuestionType($conversationSummary->questionType);
             if ($sections !== []) {
@@ -458,18 +275,6 @@ final readonly class ChartQuestionPlanner
         return $valid;
     }
 
-    /** @param list<string> $needles */
-    private function containsAny(string $value, array $needles): bool
-    {
-        foreach ($needles as $needle) {
-            if (str_contains($value, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private function looksLikeFollowUp(string $value): bool
     {
         return (bool) preg_match(
@@ -478,80 +283,27 @@ final readonly class ChartQuestionPlanner
         );
     }
 
-    private function selectorIndicatesChangeReview(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'follow_up_change_review'
-            || $this->containsAny($value, self::CHANGE_REVIEW_KEYWORDS);
-    }
-
-    private function selectorIndicatesPrescribingCheck(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'pre_prescribing_chart_check'
-            || $this->containsAny($value, self::PRESCRIBING_CHECK_KEYWORDS);
-    }
-
-    private function selectorIndicatesLab(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'lab'
-            || $this->containsAny($value, self::LAB_KEYWORDS);
-    }
-
-    private function selectorIndicatesMedication(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'medication'
-            || $this->containsAny($value, self::MEDICATION_KEYWORDS);
-    }
-
-    private function selectorIndicatesAllergy(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'allergy'
-            || $this->containsAny($value, self::ALLERGY_KEYWORDS);
-    }
-
-    private function selectorIndicatesVital(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'vital'
-            || $this->containsAny($value, self::VITAL_KEYWORDS);
-    }
-
-    private function selectorIndicatesProblem(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'problem'
-            || $this->containsAny($value, self::PROBLEM_KEYWORDS);
-    }
-
-    private function selectorIndicatesLastPlan(string $selectedType, string $value): bool
-    {
-        return $selectedType === 'last_plan'
-            || $this->containsAny($value, self::LAST_PLAN_KEYWORDS);
-    }
-
     private function looksLikeVisitBriefing(string $value): bool
     {
-        return $this->containsAny($value, [
-            'visit briefing',
-            'briefing',
-            'summary of this patient',
-            'summarize this patient',
-            'tell me about this patient',
-            'what should i know',
-            'full chart',
-        ]);
+        return str_contains($value, 'visit briefing')
+            || str_contains($value, 'briefing')
+            || str_contains($value, 'summary of this patient')
+            || str_contains($value, 'summarize this patient')
+            || str_contains($value, 'tell me about this patient')
+            || str_contains($value, 'what should i know')
+            || str_contains($value, 'full chart');
     }
 
     /** @return list<string> */
     private function sectionsForPriorQuestionType(string $questionType): array
     {
+        $definition = $this->registry->findByValue($questionType);
+        if ($definition !== null) {
+            return $definition->sections;
+        }
+
         return match ($questionType) {
-            'allergy' => [self::SECTION_ALLERGIES],
-            'medication' => [self::SECTION_MEDICATIONS, self::SECTION_INACTIVE_MEDICATIONS],
-            'lab' => [self::SECTION_LABS],
-            'vital' => [self::SECTION_VITALS, self::SECTION_STALE_VITALS],
-            'problem' => [self::SECTION_DEMOGRAPHICS, self::SECTION_PROBLEMS],
-            'last_plan' => [self::SECTION_NOTES],
             'visit_briefing' => self::visitBriefingSections(),
-            'follow_up_change_review' => self::changeReviewSections(),
-            'pre_prescribing_chart_check' => self::prescribingCheckSections(),
             default => [],
         };
     }
@@ -568,32 +320,6 @@ final readonly class ChartQuestionPlanner
             self::SECTION_LABS,
             self::SECTION_VITALS,
             self::SECTION_NOTES,
-        ];
-    }
-
-    /** @return list<string> */
-    private static function changeReviewSections(): array
-    {
-        return [
-            self::SECTION_ENCOUNTERS,
-            self::SECTION_LABS,
-            self::SECTION_CLINICAL_DOCUMENTS,
-            self::SECTION_VITALS,
-            self::SECTION_NOTES,
-        ];
-    }
-
-    /** @return list<string> */
-    private static function prescribingCheckSections(): array
-    {
-        return [
-            self::SECTION_PROBLEMS,
-            self::SECTION_MEDICATIONS,
-            self::SECTION_INACTIVE_MEDICATIONS,
-            self::SECTION_ALLERGIES,
-            self::SECTION_LABS,
-            self::SECTION_VITALS,
-            self::SECTION_STALE_VITALS,
         ];
     }
 }

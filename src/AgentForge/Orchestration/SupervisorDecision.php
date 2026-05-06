@@ -13,8 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Orchestration;
 
 use InvalidArgumentException;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
-
 final readonly class SupervisorDecision
 {
     /**
@@ -22,7 +20,7 @@ final readonly class SupervisorDecision
      */
     private function __construct(
         public string $decision,
-        public ?WorkerName $targetWorker,
+        public ?NodeName $targetNode,
         public string $reason,
         public array $context,
     ) {
@@ -38,9 +36,9 @@ final readonly class SupervisorDecision
     /**
      * @param array<string, scalar|null> $context
      */
-    public static function handoff(WorkerName $targetWorker, string $reason, array $context = []): self
+    public static function handoff(NodeName $targetNode, string $reason, array $context = []): self
     {
-        return new self('handoff', $targetWorker, $reason, $context);
+        return new self('handoff', $targetNode, $reason, $context);
     }
 
     /**
@@ -53,6 +51,6 @@ final readonly class SupervisorDecision
 
     public function shouldHandoff(): bool
     {
-        return $this->targetWorker !== null;
+        return $this->targetNode !== null;
     }
 }

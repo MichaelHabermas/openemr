@@ -16,7 +16,6 @@ use DomainException;
 use GuzzleHttp\ClientInterface;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Llm\AbstractLlmProvider;
 use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
 use Psr\Http\Message\ResponseInterface;
@@ -51,7 +50,7 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
         parent::__construct($client);
     }
 
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         $response = $this->dispatch(
             'POST',
@@ -82,7 +81,7 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
     }
 
     /** @return array<string, mixed> */
-    private function payload(AgentRequest $request, EvidenceBundle $bundle): array
+    private function payload(DraftRequest $request, EvidenceBundle $bundle): array
     {
         return [
             'model' => $this->model,
@@ -123,7 +122,7 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
      *
      * @return list<array<string, mixed>>
      */
-    private function userMessageContent(AgentRequest $request, EvidenceBundle $bundle): array
+    private function userMessageContent(DraftRequest $request, EvidenceBundle $bundle): array
     {
         $parts = $this->promptComposer->userMessageParts($request, $bundle);
 

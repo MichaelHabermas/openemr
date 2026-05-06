@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\Orchestration;
 
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\JobStatus;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
 
 final readonly class Supervisor
 {
@@ -31,14 +30,14 @@ final readonly class Supervisor
         }
 
         if ($job->status !== JobStatus::Succeeded) {
-            return $this->handoffDecision(WorkerName::IntakeExtractor, 'document_extraction_required', $context);
+            return $this->handoffDecision(NodeName::IntakeExtractor, 'document_extraction_required', $context);
         }
 
         if (!$trustedForEvidence) {
             return $this->holdDecision('identity_not_trusted_for_evidence', $context);
         }
 
-        return $this->handoffDecision(WorkerName::EvidenceRetriever, 'trusted_document_ready_for_evidence', $context);
+        return $this->handoffDecision(NodeName::EvidenceRetriever, 'trusted_document_ready_for_evidence', $context);
     }
 
     /**
@@ -64,8 +63,8 @@ final readonly class Supervisor
     /**
      * @param array<string, scalar|null> $context
      */
-    private function handoffDecision(WorkerName $targetWorker, string $reason, array $context): SupervisorDecision
+    private function handoffDecision(NodeName $targetNode, string $reason, array $context): SupervisorDecision
     {
-        return SupervisorDecision::handoff($targetWorker, $reason, $context);
+        return SupervisorDecision::handoff($targetNode, $reason, $context);
     }
 }

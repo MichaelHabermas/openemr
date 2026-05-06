@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Isolated tests for trusted clinical document evidence.
+ * Isolated tests for on-demand document extraction evidence.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -21,7 +21,7 @@ use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
-use OpenEMR\AgentForge\Evidence\ClinicalDocumentEvidenceTool;
+use OpenEMR\AgentForge\Evidence\OnDemandDocumentExtractionTool;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
@@ -30,7 +30,7 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
 {
     public function testTrustedDocumentJobsBecomeCitedEvidence(): void
     {
-        $tool = new ClinicalDocumentEvidenceTool(
+        $tool = new OnDemandDocumentExtractionTool(
             new SystemMonotonicClock(),
             new ClinicalDocumentEvidenceExecutor([
                 [
@@ -71,7 +71,7 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
 
     public function testReturnsMissingWhenNoTrustedJobsExist(): void
     {
-        $tool = new ClinicalDocumentEvidenceTool(
+        $tool = new OnDemandDocumentExtractionTool(
             new SystemMonotonicClock(),
             new ClinicalDocumentEvidenceExecutor([]),
             new ClinicalDocumentEvidenceLoader(),
@@ -87,7 +87,7 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
     public function testTrustedDocumentSqlExcludesRetractedJobsAndDeletedDocuments(): void
     {
         $executor = new ClinicalDocumentEvidenceExecutor([]);
-        $tool = new ClinicalDocumentEvidenceTool(
+        $tool = new OnDemandDocumentExtractionTool(
             new SystemMonotonicClock(),
             $executor,
             new ClinicalDocumentEvidenceLoader(),
