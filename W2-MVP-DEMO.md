@@ -148,39 +148,50 @@ Prompt:
 What changed in Margaret Chen's recent documents, which evidence is notable, and what sources support it?
 ```
 
-Expected answer shape:
+Expected answer shape from the local demo run:
 
 ```text
-chief concern: follow-up for cholesterol management; Citation: intake_form,
-page 1, chief_concern [document:clinical_document_processing_jobs/...]
-
 LDL Cholesterol: 148 mg/dL; reference range: <100 mg/dL; abnormal: high;
 Citation: lab_pdf, page 1, results[0]
 [document:clinical_document_processing_jobs/...]
 
-ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up - LDL 130 Follow-Up:
-LDL cholesterol greater than or equal to 130 mg/dL is a primary-care follow-up
-signal that should be reviewed with cardiovascular risk factors and treatment
-history. [guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/...]
+chief concern: follow-up for cholesterol management; Citation: intake_form,
+page 1, chief_concern
+[document:clinical_document_processing_jobs/...]
 
 Missing or unchecked
 Recent encounter reasons not found in the chart.
 Recent labs not found in the chart.
 Recent vitals not found in the chart within 180 days.
 Recent notes and last plan not found in the chart.
+Guideline evidence was not found in the approved corpus.
 
 Warnings
-The model draft could not be verified; deterministic evidence fallback was used.
-Model drafting is disabled; deterministic fixture drafting was used.
+Some draft content was omitted because it could not be verified against the chart evidence.
 ```
 
 Say:
 
 ```text
 The answer separates evidence sources. Patient facts come from uploaded,
-identity-verified documents. Guideline claims come from the approved local
-corpus. Missing structured chart sections remain visible instead of being
-silently inferred.
+identity-verified documents. Missing structured chart sections and unavailable
+guideline evidence remain visible instead of being silently inferred.
+```
+
+If asked specifically about guideline retrieval, show the automated gate result
+or ask this separate local corpus question:
+
+```text
+What does the guideline say about LDL greater than or equal to 130?
+```
+
+Expected standalone guideline proof:
+
+```text
+ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up - LDL 130 Follow-Up:
+LDL cholesterol greater than or equal to 130 mg/dL is a primary-care follow-up
+signal that should be reviewed with cardiovascular risk factors and treatment
+history. [guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/...]
 ```
 
 8. Show sanitized worker logs.
@@ -235,8 +246,9 @@ logs separately show the intake-extractor processing upload jobs.
 
 ```text
 That is the Week 2 MVP: normal OpenEMR upload, strict cited document extraction,
-identity gating, guideline retrieval, a grounded Co-Pilot answer, sanitized
-logs, supervisor handoff proof, and a passing automated regression gate.
+identity gating, a grounded Co-Pilot answer, sanitized logs, supervisor handoff
+proof, an indexed guideline corpus with automated retrieval proof, and a passing
+automated regression gate.
 ```
 
 ## Final Automated Gate
@@ -256,7 +268,7 @@ PASS comprehensive AgentForge check.
 Latest verified local result:
 
 ```text
-542 tests, 2545 assertions, 1 skipped
+543 tests, 2552 assertions, 1 skipped
 32 deterministic evals passed
 Clinical document eval verdict: baseline_met
 ```
