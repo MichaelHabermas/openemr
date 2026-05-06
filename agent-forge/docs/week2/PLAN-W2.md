@@ -43,6 +43,12 @@ Epic progress convention:
 
 **May 5 MVP submission checkpoint (course):** On the **deployed** environment, demonstrate lab PDF and intake form ingestion, first structured extraction, and first guideline evidence retrieval. Local development remains normal for iteration; graders expect the checkpoint demo on deployment (stakeholder correction to earlier “working locally” wording). Assignment **recommended steps** (supervisor/workers, CI shape, etc.) should still be visible in draft form—polish can follow.
 
+**Time-boxed MVP checkpoint cut (updated 2026-05-06):** Because the checkpoint is about visible deployed progress, the MVP submission path is now:
+
+Existing OpenEMR upload -> eligible upload creates extraction job -> PHP worker processes required `lab_pdf` and `intake_form` fixtures -> strict cited JSON is produced -> document identity is verified or blocked from trusted use -> a small guideline corpus is indexed/retrieved with cited evidence -> `supervisor`, `intake-extractor`, and `evidence-retriever` names are visible in code/logs -> the demo can show a separated answer with patient extraction output, guideline evidence, needs-review/missing data, and inspectable handoff logs.
+
+The MVP checkpoint may use deterministic fixture-backed extraction and a minimal guideline corpus/retriever. It does not need full OpenEMR lab-row promotion, patient document fact vector search, full promotion duplicate policy, source-document retraction of promoted rows, a 50-case eval expansion, polished source overlay UX, or final submission packaging.
+
 **Full Week 2 MVP (blocking eval gate):** The vertical slice below is complete when it is proven by the blocking Week 2 eval command (typically run locally/CI), independent of demo packaging:
 
 Existing OpenEMR upload -> eligible category creates extraction job -> PHP worker processes job -> `lab_pdf` and `intake_form` fixtures produce strict cited JSON -> document identity is verified or routed to review -> verified lab facts are promoted into OpenEMR-compatible lab records with provenance -> intake findings are stored as cited document facts / needs-review findings -> retracted or identity-unresolved source content is excluded -> document facts are searchable -> guideline evidence is retrieved with sparse + MariaDB Vector + rerank -> `supervisor` handoffs are logged -> final answer separates patient findings, guideline evidence, and needs-review items -> eval gate proves schemas, citations, refusals, factual consistency, bounding boxes, no-PHI logging, duplicate prevention, and deleted-document exclusion.
@@ -56,12 +62,12 @@ MVP does not require third document types, demographic overwrites, broad documen
 3. Add worker skeleton and deterministic job processing.
 4. Add strict extraction schemas/providers for `lab_pdf` and `intake_form`.
 5. Add document identity gating so wrong-patient or unresolved documents cannot become trusted evidence.
-6. Add promotion provenance, review outcomes, and duplicate policy before any OpenEMR clinical row is written.
-7. Add fact persistence, lab promotion, embeddings, and patient document search behind those gates.
-8. Add source-document retraction across facts, embeddings, evidence eligibility, and promoted-row overlays before retrieval/final-answer epics depend on document facts.
-9. Add guideline corpus indexing, sparse+dense MariaDB Vector retrieval, and rerank.
-10. Add `supervisor` / `evidence-retriever` orchestration and separated final-answer behavior.
-11. Pass the MVP eval gate and local smoke.
+6. For the MVP checkpoint, add a thin guideline corpus and retrieval path that proves sparse/dense retrieval, rerank, citations, and out-of-corpus refusal on a small intentional set.
+7. For the MVP checkpoint, add thin `supervisor` / `evidence-retriever` orchestration and separated final-answer behavior with inspectable handoff logs.
+8. Pass the time-boxed MVP checkpoint demo/smoke.
+9. After the checkpoint, add promotion provenance, review outcomes, and duplicate policy before broad automatic OpenEMR clinical-row promotion.
+10. After the checkpoint, add fact persistence, lab promotion, embeddings, and patient document search behind identity/provenance gates.
+11. After the checkpoint, add source-document retraction across facts, embeddings, evidence eligibility, and promoted-row overlays before document facts become durable final-answer dependencies.
 12. Expand and harden for full Week 2 submission.
 13. Keep the FINAL epic last; insert any fixes or extra feature epics before FINAL.
 
@@ -303,7 +309,14 @@ Dependencies: M3.
 
 ### Epic M5A - Document Identity Verification And Wrong-Patient Safeguards
 
-Status: Not started.
+Status: Completed.
+
+Implementation note (2026-05-06): M5A added cited patient identity candidates
+to strict extraction DTOs, deterministic OpenEMR patient identity verification,
+`clinical_document_identity_checks`, SQL repositories, worker/tool identity
+gating, and focused isolated tests. The clinical document gate passed with
+`baseline_met`. M5A does not promote facts, create embeddings, expose review UI,
+or make document facts retrievable; those remain M5B/M5 contracts.
 
 Goal: Prevent extraction output from becoming trusted patient evidence when document content appears to belong to a different patient than the selected OpenEMR upload destination.
 
@@ -347,6 +360,8 @@ Dependencies: M4.
 
 Status: Not started.
 
+Checkpoint disposition: Deferred until after the MVP checkpoint. This is final-submission-critical before broad automatic OpenEMR clinical-row promotion, but it should not block the time-boxed checkpoint demo.
+
 Goal: Define the traceability, review outcome, and duplicate policy that must exist before automatic clinical promotion writes OpenEMR rows.
 
 Files/modules:
@@ -388,6 +403,8 @@ Dependencies: M5A.
 ### Epic M5 - Fact Persistence, Lab Promotion, Embeddings, And Patient Document Search
 
 Status: Not started.
+
+Checkpoint disposition: Mostly deferred until after the MVP checkpoint. For the checkpoint, preserve cited extraction output and identity-gated review state; full lab promotion, document fact embeddings, and patient document search continue after the first deployed demo.
 
 Goal: Store cited, identity-gated document facts, promote verified lab facts to OpenEMR-compatible lab records with provenance, and make eligible document facts searchable.
 
@@ -446,6 +463,8 @@ Dependencies: M5B.
 
 Status: Not started.
 
+Checkpoint disposition: Deferred until after the MVP checkpoint. Retraction/audit remains submission-critical, especially before promoted data is used as active evidence, but it is not required for the first visible deployed extraction/retrieval demo.
+
 Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed guideline retrieval or final answers.
 
 Files/modules:
@@ -483,6 +502,8 @@ Dependencies: M5.
 ### Epic M6 - Guideline Corpus, MariaDB Vector, Hybrid Retrieval, And Rerank
 
 Status: Not started.
+
+Checkpoint scope: Implement a thin MVP version first: a small intentional primary-care corpus, deterministic indexing/retrieval proof, one supported guideline retrieval path, cited top-k output, and deterministic refusal for out-of-corpus questions. Broader corpus hardening can continue after the checkpoint.
 
 Goal: Retrieve cited guideline evidence using sparse retrieval plus MariaDB Vector plus rerank.
 
@@ -529,11 +550,13 @@ Definition of done:
 - `php agent-forge/scripts/index-clinical-guidelines.php` can rebuild the corpus.
 - Retrieval evals pass with deterministic embeddings/rerank.
 
-Dependencies: M5C.
+Dependencies: M5A for the time-boxed MVP checkpoint. The full post-checkpoint version that relies on patient document facts and deleted-document exclusion depends on M5C.
 
 ### Epic M7 - Supervisor, Evidence-Retriever, Final Answer Separation, And MVP Gate
 
 Status: Not started.
+
+Checkpoint scope: Implement a thin MVP version first: deterministic supervisor routing, visible `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever` handoff logs, and a separated demo answer using extraction output plus guideline evidence. Full patient document search, promoted lab-row evidence, and exhaustive verifier hardening continue after the checkpoint.
 
 Goal: Wire the full MVP answer path through `supervisor`, `intake-extractor`, and `evidence-retriever`.
 

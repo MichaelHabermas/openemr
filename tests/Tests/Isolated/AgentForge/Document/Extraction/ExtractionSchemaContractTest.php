@@ -33,7 +33,7 @@ final class ExtractionSchemaContractTest extends TestCase
         $schema = (new JsonSchemaBuilder())->schema(DocumentType::LabPdf);
         $this->assertSchemaObjectRequiredKeys(
             $schema,
-            ['doc_type', 'lab_name', 'collected_at', 'results'],
+            ['doc_type', 'lab_name', 'collected_at', 'patient_identity', 'results'],
         );
         $items = $this->nestedSchemaItems($schema, ['properties', 'results']);
         $this->assertSchemaObjectRequiredKeys(
@@ -70,7 +70,7 @@ final class ExtractionSchemaContractTest extends TestCase
         $schema = (new JsonSchemaBuilder())->schema(DocumentType::IntakeForm);
         $this->assertSchemaObjectRequiredKeys(
             $schema,
-            ['doc_type', 'form_name', 'findings'],
+            ['doc_type', 'form_name', 'patient_identity', 'findings'],
         );
         $items = $this->nestedSchemaItems($schema, ['properties', 'findings']);
         $this->assertSchemaObjectRequiredKeys(
@@ -87,6 +87,41 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->assertNotNull($response->extraction);
     }
 
+    public function testLabJsonCanExposeCitedPatientIdentityCandidates(): void
+    {
+        $payload = $this->minimalLabPayload();
+        $payload['patient_identity'] = [[
+            'kind' => 'patient_name',
+            'value' => 'Jane Doe',
+            'field_path' => 'header.patient_name',
+            'certainty' => 'verified',
+            'confidence' => 0.98,
+            'citation' => [
+                'source_type' => 'lab_pdf',
+                'source_id' => 'doc:1',
+                'page_or_section' => '1',
+                'field_or_chunk_id' => 'patient_name',
+                'quote_or_value' => 'Jane Doe',
+            ],
+        ]];
+
+        $extraction = LabPdfExtraction::fromArray($payload);
+
+        $this->assertCount(1, $extraction->patientIdentity);
+        $this->assertSame('patient_name', $extraction->patientIdentity[0]->kind->value);
+    }
+
+    public function testLabJsonRequiresExplicitPatientIdentityList(): void
+    {
+        $payload = $this->minimalLabPayload();
+        unset($payload['patient_identity']);
+
+        $this->expectException(\OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Missing required field.');
+
+        LabPdfExtraction::fromArray($payload);
+    }
+
     /** @return array<string, mixed> */
     private function minimalLabPayload(): array
     {
@@ -94,6 +129,7 @@ final class ExtractionSchemaContractTest extends TestCase
             'doc_type' => 'lab_pdf',
             'lab_name' => 'Acme Lab',
             'collected_at' => '2026-04-01',
+            'patient_identity' => [],
             'results' => [
                 [
                     'test_name' => 'LDL',
@@ -122,6 +158,7 @@ final class ExtractionSchemaContractTest extends TestCase
         return [
             'doc_type' => 'intake_form',
             'form_name' => 'Intake',
+            'patient_identity' => [],
             'findings' => [
                 [
                     'field' => 'Allergies',

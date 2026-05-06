@@ -16,6 +16,12 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
+use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
+use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
+use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use RuntimeException;
@@ -26,6 +32,9 @@ final readonly class AttachAndExtractTool
         private SourceDocumentStorage $storage,
         private DocumentLoader $loader,
         private DocumentExtractionProvider $provider,
+        private ?PatientIdentityRepository $patientIdentities = null,
+        private ?DocumentIdentityVerifier $identityVerifier = null,
+        private ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
     ) {
     }
 
@@ -35,10 +44,13 @@ final readonly class AttachAndExtractTool
     public static function forInMemoryEvalAndTest(
         DocumentExtractionProvider $provider,
         int $firstDocumentId = 1,
+        ?PatientIdentityRepository $patientIdentities = null,
+        ?DocumentIdentityVerifier $identityVerifier = null,
+        ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
     ): self {
         $memory = new InMemorySourceDocumentStorage($firstDocumentId);
 
-        return new self($memory, $memory, $provider);
+        return new self($memory, $memory, $provider, $patientIdentities, $identityVerifier, $identityEvidenceBuilder);
     }
 
     public function forUploadedFile(
@@ -119,6 +131,47 @@ final readonly class AttachAndExtractTool
                 'Extracted document output failed strict schema validation.',
                 $documentId,
             );
+        }
+
+        if ($response->extraction instanceof LabPdfExtraction || $response->extraction instanceof IntakeFormExtraction) {
+            if (
+                $this->patientIdentities === null
+                || $this->identityVerifier === null
+                || $this->identityEvidenceBuilder === null
+            ) {
+                return AttachAndExtractResult::failed(
+                    ExtractionErrorCode::IdentityAmbiguousNeedsReview,
+                    'Document identity gate is not fully configured.',
+                    $documentId,
+                );
+            }
+
+            $patientIdentity = $this->patientIdentities->findByPatientId($patientId);
+            if ($patientIdentity === null) {
+                return AttachAndExtractResult::failed(
+                    ExtractionErrorCode::IdentityAmbiguousNeedsReview,
+                    'Patient identity could not be loaded for document verification.',
+                    $documentId,
+                );
+            }
+            $identityResult = $this->identityVerifier->verify(
+                $patientIdentity,
+                $this->identityEvidenceBuilder->build($documentId, $response->extraction, $document->name),
+            );
+            if ($identityResult->status === IdentityStatus::MismatchQuarantined) {
+                return AttachAndExtractResult::failed(
+                    ExtractionErrorCode::IdentityMismatchQuarantined,
+                    'Document identity conflicts with the selected OpenEMR patient.',
+                    $documentId,
+                );
+            }
+            if (!$identityResult->trustedForEvidence()) {
+                return AttachAndExtractResult::failed(
+                    ExtractionErrorCode::IdentityAmbiguousNeedsReview,
+                    'Document identity is ambiguous and requires review before trusted use.',
+                    $documentId,
+                );
+            }
         }
 
         return AttachAndExtractResult::succeeded($documentId, $response);

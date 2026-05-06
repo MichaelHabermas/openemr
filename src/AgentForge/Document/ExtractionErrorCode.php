@@ -19,4 +19,6 @@ enum ExtractionErrorCode: string
     case StorageFailure = 'storage_failure';
     case ExtractionFailure = 'extraction_failure';
     case SchemaValidationFailure = 'schema_validation_failure';
+    case IdentityAmbiguousNeedsReview = 'identity_ambiguous_needs_review';
+    case IdentityMismatchQuarantined = 'identity_mismatch_quarantined';
 }

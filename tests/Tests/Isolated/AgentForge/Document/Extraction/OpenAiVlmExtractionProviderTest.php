@@ -69,7 +69,7 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertTrue($this->boolPath($payload, ['response_format', 'json_schema', 'strict']));
         $this->assertSame('agentforge_document_extraction', $this->stringPath($payload, ['response_format', 'json_schema', 'name']));
         $this->assertSame(
-            ['doc_type', 'lab_name', 'collected_at', 'results'],
+            ['doc_type', 'lab_name', 'collected_at', 'patient_identity', 'results'],
             $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
         );
         $this->assertStringNotContainsString(
@@ -116,7 +116,7 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
 
         $payload = $client->lastPayload();
         $this->assertSame(
-            ['doc_type', 'form_name', 'findings'],
+            ['doc_type', 'form_name', 'patient_identity', 'findings'],
             $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
         );
         $content = $this->arrayPath($payload, ['messages', 1, 'content']);
@@ -201,6 +201,7 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
                             'doc_type' => 'lab_pdf',
                             'lab_name' => 'Acme Lab',
                             'collected_at' => '2026-04-01',
+                            'patient_identity' => [],
                             'results' => [
                                 [
                                     'test_name' => 'LDL',
@@ -239,6 +240,7 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
                         'content' => json_encode([
                             'doc_type' => 'intake_form',
                             'form_name' => 'Patient Intake',
+                            'patient_identity' => [],
                             'findings' => [
                                 [
                                     'field' => 'Chief complaint',

@@ -24,8 +24,8 @@ use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
-use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
+use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use PHPUnit\Framework\TestCase;
@@ -90,6 +90,7 @@ final class ExtractionProviderFactoryTest extends TestCase
                             'doc_type' => 'lab_pdf',
                             'lab_name' => 'Injected Client Lab',
                             'collected_at' => '2026-04-01',
+                            'patient_identity' => [],
                             'results' => [
                                 [
                                     'test_name' => 'LDL',

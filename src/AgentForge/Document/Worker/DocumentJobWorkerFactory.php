@@ -21,6 +21,10 @@ use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+use OpenEMR\AgentForge\Document\Identity\SqlDocumentIdentityCheckRepository;
+use OpenEMR\AgentForge\Document\Identity\SqlPatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
@@ -87,6 +91,10 @@ final class DocumentJobWorkerFactory
                 self::workerLogger(),
                 new SystemAgentForgeClock(),
                 PatientRefHasher::createDefault(),
+                patientIdentities: new SqlPatientIdentityRepository(),
+                identityChecks: new SqlDocumentIdentityCheckRepository(),
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
             ),
             WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
         };

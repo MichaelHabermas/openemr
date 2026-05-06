@@ -18,12 +18,14 @@ use OpenEMR\AgentForge\Document\DocumentType;
 final readonly class IntakeFormExtraction
 {
     /**
-     * @param list<IntakeFormFinding> $findings
+     * @param list<IntakeFormFinding>        $findings
+     * @param list<PatientIdentityCandidate> $patientIdentity
      */
     public function __construct(
         public DocumentType $documentType,
         public string $formName,
         public array $findings,
+        public array $patientIdentity = [],
     ) {
         if ($documentType !== DocumentType::IntakeForm) {
             throw new ExtractionSchemaException('doc_type', 'Expected document type intake_form.');
@@ -57,7 +59,7 @@ final readonly class IntakeFormExtraction
      */
     public static function fromArray(array $data): self
     {
-        SchemaReader::assertNoUnknownFields($data, ['doc_type', 'form_name', 'findings'], '$');
+        SchemaReader::assertNoUnknownFields($data, ['doc_type', 'form_name', 'patient_identity', 'findings'], '$');
         SchemaReader::assertDocumentType(SchemaReader::requiredString($data, 'doc_type', '$'), DocumentType::IntakeForm->value, '$.doc_type');
 
         $findings = [];
@@ -70,10 +72,21 @@ final readonly class IntakeFormExtraction
             $findings[] = IntakeFormFinding::fromArray($finding, SchemaReader::index('$.findings', $index));
         }
 
+        $identity = [];
+        foreach (SchemaReader::requiredList($data, 'patient_identity', '$') as $index => $candidate) {
+            if (!is_array($candidate) || array_is_list($candidate)) {
+                throw new ExtractionSchemaException(SchemaReader::index('$.patient_identity', $index), 'Expected object.');
+            }
+
+            /** @var array<string, mixed> $candidate */
+            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index));
+        }
+
         return new self(
             DocumentType::IntakeForm,
             SchemaReader::requiredString($data, 'form_name', '$'),
             $findings,
+            $identity,
         );
     }
 }

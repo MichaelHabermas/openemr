@@ -129,7 +129,7 @@ CREATE TABLE `clinical_document_type_mappings` (
 #IfNotTable clinical_document_processing_jobs
 CREATE TABLE `clinical_document_processing_jobs` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `patient_id` int(11) NOT NULL,
+  `patient_id` bigint(20) NOT NULL,
   `document_id` int(11) NOT NULL,
   `doc_type` varchar(32) NOT NULL,
   `status` varchar(16) NOT NULL DEFAULT 'pending',
@@ -145,6 +145,30 @@ CREATE TABLE `clinical_document_processing_jobs` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_clinical_document_processing_job` (`patient_id`, `document_id`, `doc_type`),
   KEY `idx_clinical_document_processing_status_created` (`status`, `created_at`)
+) ENGINE=InnoDB;
+#EndIf
+
+#IfNotTable clinical_document_identity_checks
+CREATE TABLE `clinical_document_identity_checks` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` int(11) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `identity_status` varchar(64) NOT NULL DEFAULT 'identity_unchecked',
+  `extracted_identifiers_json` longtext NULL,
+  `matched_patient_fields_json` longtext NULL,
+  `mismatch_reason` text NULL,
+  `review_required` tinyint(1) NOT NULL DEFAULT 0,
+  `review_decision` varchar(64) NULL,
+  `reviewed_by` bigint(20) NULL,
+  `reviewed_at` datetime NULL,
+  `checked_at` datetime NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_identity_check_job` (`job_id`),
+  KEY `idx_clinical_document_identity_patient_document` (`patient_id`, `document_id`),
+  KEY `idx_clinical_document_identity_status` (`identity_status`, `review_required`)
 ) ENGINE=InnoDB;
 #EndIf
 

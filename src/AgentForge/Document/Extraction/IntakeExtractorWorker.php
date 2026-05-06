@@ -15,6 +15,12 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentJob;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+use OpenEMR\AgentForge\Document\Identity\IdentityMatchResult;
+use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
+use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -35,6 +41,10 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         private AgentForgeClock $clock,
         private PatientRefHasher $patientRefHasher,
         private int $budgetMs = 60_000,
+        private ?PatientIdentityRepository $patientIdentities = null,
+        private ?DocumentIdentityCheckRepository $identityChecks = null,
+        private ?DocumentIdentityVerifier $identityVerifier = null,
+        private ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
     ) {
     }
 
@@ -60,6 +70,11 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
             return ProcessingResult::failed('schema_validation_failure', 'Extraction provider returned schema-invalid output.');
         }
 
+        $identityResult = $this->verifyIdentity($job, $document, $response->extraction);
+        if ($identityResult instanceof ProcessingResult) {
+            return $identityResult;
+        }
+
         $counts = $this->countFactBuckets($job, $response->extraction);
         $this->logger->info(
             'document.extraction.completed',
@@ -73,6 +88,62 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         );
 
         return ProcessingResult::succeeded();
+    }
+
+    private function verifyIdentity(
+        DocumentJob $job,
+        DocumentLoadResult $document,
+        LabPdfExtraction | IntakeFormExtraction $extraction,
+    ): ?ProcessingResult {
+        if (
+            $job->id === null
+            || $this->patientIdentities === null
+            || $this->identityChecks === null
+            || $this->identityVerifier === null
+            || $this->identityEvidenceBuilder === null
+        ) {
+            return ProcessingResult::failed(
+                'identity_ambiguous_needs_review',
+                'Document identity gate is not fully configured.',
+            );
+        }
+
+        $patientIdentity = $this->patientIdentities->findByPatientId($job->patientId);
+        if ($patientIdentity === null) {
+            $this->identityChecks->saveResult(
+                $job->patientId,
+                $job->documentId,
+                $job->id,
+                $job->docType,
+                new IdentityMatchResult(
+                    IdentityStatus::AmbiguousNeedsReview,
+                    [],
+                    [],
+                    'patient_identity_not_found',
+                    true,
+                ),
+            );
+
+            return ProcessingResult::failed('identity_ambiguous_needs_review', 'Patient identity could not be loaded for document verification.');
+        }
+
+        $identityResult = $this->identityVerifier->verify(
+            $patientIdentity,
+            $this->identityEvidenceBuilder->build($job->documentId, $extraction, $document->name),
+        );
+        $this->identityChecks->saveResult($job->patientId, $job->documentId, $job->id, $job->docType, $identityResult);
+
+        return match ($identityResult->status) {
+            IdentityStatus::Verified, IdentityStatus::ReviewApproved => null,
+            IdentityStatus::MismatchQuarantined => ProcessingResult::failed(
+                'identity_mismatch_quarantined',
+                'Document identity conflicts with the selected OpenEMR patient.',
+            ),
+            default => ProcessingResult::failed(
+                'identity_ambiguous_needs_review',
+                'Document identity is ambiguous and requires review before trusted use.',
+            ),
+        };
     }
 
     /**

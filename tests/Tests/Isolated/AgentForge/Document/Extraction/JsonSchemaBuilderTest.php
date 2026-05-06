@@ -23,7 +23,7 @@ final class JsonSchemaBuilderTest extends TestCase
         $schema = (new JsonSchemaBuilder())->schema(DocumentType::LabPdf);
 
         $this->assertFalse($schema['additionalProperties']);
-        $this->assertSame(['doc_type', 'lab_name', 'collected_at', 'results'], $schema['required']);
+        $this->assertSame(['doc_type', 'lab_name', 'collected_at', 'patient_identity', 'results'], $schema['required']);
         $properties = $schema['properties'];
         $this->assertIsArray($properties);
         $results = $properties['results'] ?? null;
@@ -48,7 +48,7 @@ final class JsonSchemaBuilderTest extends TestCase
         $schema = (new JsonSchemaBuilder())->schema(DocumentType::IntakeForm);
 
         $this->assertFalse($schema['additionalProperties']);
-        $this->assertSame(['doc_type', 'form_name', 'findings'], $schema['required']);
+        $this->assertSame(['doc_type', 'form_name', 'patient_identity', 'findings'], $schema['required']);
         $properties = $schema['properties'];
         $this->assertIsArray($properties);
         $docType = $properties['doc_type'] ?? null;

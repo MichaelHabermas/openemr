@@ -99,6 +99,24 @@ final class SchemaReader
 
     /**
      * @param array<string, mixed> $data
+     * @return list<mixed>
+     */
+    public static function optionalList(array $data, string $field, string $path): array
+    {
+        if (!array_key_exists($field, $data) || $data[$field] === null) {
+            return [];
+        }
+
+        $value = $data[$field];
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new ExtractionSchemaException(self::join($path, $field), 'Expected list.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
      * @param list<string> $allowedFields
      */
     public static function assertNoUnknownFields(array $data, array $allowedFields, string $path): void

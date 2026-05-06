@@ -23,6 +23,13 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
     use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
     use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
+    use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
+    use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+    use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+    use OpenEMR\AgentForge\Document\Identity\IdentityMatchResult;
+    use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
+    use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
+    use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
     use OpenEMR\AgentForge\Document\JobStatus;
     use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
     use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
@@ -43,11 +50,15 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $logger = new IntakeWorkerRecordingLogger();
             $hasher = self::testPatientRefHasher();
             $worker = new IntakeExtractorWorker(
-                new IntakeWorkerStaticProvider(self::strictLabResponse()),
+                new IntakeWorkerStaticProvider(self::strictLabResponse(withIdentity: true)),
                 new CertaintyClassifier(),
                 $logger,
                 new IntakeWorkerClock(),
                 $hasher,
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: new IntakeWorkerIdentityCheckRepository(),
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
             );
 
             $result = $worker->process(
@@ -68,6 +79,31 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey($context));
             $this->assertArrayNotHasKey('quote_or_value', $record['context']);
             $this->assertArrayNotHasKey('extracted_fields', $record['context']);
+        }
+
+        public function testVerifiedIdentityPersistsCheckAndAllowsWorkerSuccess(): void
+        {
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $worker = new IntakeExtractorWorker(
+                new IntakeWorkerStaticProvider(self::strictLabResponse(withIdentity: true)),
+                new CertaintyClassifier(),
+                new IntakeWorkerRecordingLogger(),
+                new IntakeWorkerClock(),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+            );
+
+            $result = $worker->process(
+                self::job(),
+                new DocumentLoadResult('pdf-bytes', 'application/pdf', 'lab.pdf'),
+            );
+
+            $this->assertSame(JobStatus::Succeeded, $result->terminalStatus);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
         }
 
         public function testExtractionFailureReturnsStableFailedProcessingResult(): void
@@ -118,6 +154,32 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame('Extraction provider returned schema-invalid output.', $result->errorMessage);
         }
 
+        public function testAmbiguousIdentityBlocksWorkerSuccessAndPersistsCheck(): void
+        {
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $worker = new IntakeExtractorWorker(
+                new IntakeWorkerStaticProvider(self::strictLabResponse()),
+                new CertaintyClassifier(),
+                new IntakeWorkerRecordingLogger(),
+                new IntakeWorkerClock(),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+            );
+
+            $result = $worker->process(
+                self::job(),
+                new DocumentLoadResult('pdf-bytes', 'application/pdf', 'lab.pdf'),
+            );
+
+            $this->assertSame(JobStatus::Failed, $result->terminalStatus);
+            $this->assertSame('identity_ambiguous_needs_review', $result->errorCode);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::AmbiguousNeedsReview, $identityChecks->results[0]->status);
+        }
+
         private static function testPatientRefHasher(): PatientRefHasher
         {
             return new PatientRefHasher('isolated-intake-worker-test');
@@ -143,7 +205,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
         }
 
-        private static function strictLabResponse(): ExtractionProviderResponse
+        private static function strictLabResponse(bool $withIdentity = false): ExtractionProviderResponse
         {
             return ExtractionProviderResponse::fromStrictJson(
                 DocumentType::LabPdf,
@@ -151,6 +213,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'doc_type' => 'lab_pdf',
                     'lab_name' => 'Worker Test Lab',
                     'collected_at' => '2026-05-01',
+                    'patient_identity' => $withIdentity ? self::identityCandidates() : [],
                     'results' => [
                         self::labRow('document_fact', 'Potassium', 0.91, 'Potassium 5.4 H'),
                         self::labRow('verified', 'Sodium', 0.70, 'Sodium 140'),
@@ -160,6 +223,41 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new DraftUsage('fixture-vlm', 11, 7, 0.0012),
                 'fixture-vlm',
             );
+        }
+
+        /** @return list<array<string, mixed>> */
+        private static function identityCandidates(): array
+        {
+            return [
+                [
+                    'kind' => 'patient_name',
+                    'value' => 'Jane Doe',
+                    'field_path' => 'patient_identity[0]',
+                    'certainty' => 'verified',
+                    'confidence' => 0.99,
+                    'citation' => [
+                        'source_type' => 'lab_pdf',
+                        'source_id' => 'sha256:worker-test',
+                        'page_or_section' => 'page 1',
+                        'field_or_chunk_id' => 'patient_name',
+                        'quote_or_value' => 'Jane Doe',
+                    ],
+                ],
+                [
+                    'kind' => 'date_of_birth',
+                    'value' => '1980-04-15',
+                    'field_path' => 'patient_identity[1]',
+                    'certainty' => 'verified',
+                    'confidence' => 0.99,
+                    'citation' => [
+                        'source_type' => 'lab_pdf',
+                        'source_id' => 'sha256:worker-test',
+                        'page_or_section' => 'page 1',
+                        'field_or_chunk_id' => 'date_of_birth',
+                        'quote_or_value' => '1980-04-15',
+                    ],
+                ],
+            ];
         }
 
         /** @return array<string, mixed> */
@@ -251,6 +349,39 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             }
 
             TestCase::fail("Missing log record: {$message}");
+        }
+    }
+
+    final class IntakeWorkerPatientIdentityRepository implements PatientIdentityRepository
+    {
+        public function findByPatientId(PatientId $patientId): ?PatientIdentity
+        {
+            if ($patientId->value === -1) {
+                return null;
+            }
+
+            return new PatientIdentity($patientId, 'Jane', 'Doe', '1980-04-15', 'MRN-123');
+        }
+    }
+
+    final class IntakeWorkerIdentityCheckRepository implements DocumentIdentityCheckRepository
+    {
+        /** @var list<IdentityMatchResult> */
+        public array $results = [];
+
+        public function saveResult(
+            PatientId $patientId,
+            DocumentId $documentId,
+            DocumentJobId $jobId,
+            DocumentType $docType,
+            IdentityMatchResult $result,
+        ): void {
+            $this->results[] = $result;
+        }
+
+        public function trustedForEvidence(DocumentJobId $jobId): bool
+        {
+            return false;
         }
     }
 }

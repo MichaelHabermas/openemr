@@ -33,11 +33,12 @@ final readonly class JsonSchemaBuilder
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['doc_type', 'lab_name', 'collected_at', 'results'],
+            'required' => ['doc_type', 'lab_name', 'collected_at', 'patient_identity', 'results'],
             'properties' => [
                 'doc_type' => ['type' => 'string', 'enum' => ['lab_pdf']],
                 'lab_name' => ['type' => 'string'],
                 'collected_at' => ['type' => 'string'],
+                'patient_identity' => $this->patientIdentitySchema('lab_pdf'),
                 'results' => [
                     'type' => 'array',
                     'minItems' => 1,
@@ -81,10 +82,11 @@ final readonly class JsonSchemaBuilder
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['doc_type', 'form_name', 'findings'],
+            'required' => ['doc_type', 'form_name', 'patient_identity', 'findings'],
             'properties' => [
                 'doc_type' => ['type' => 'string', 'enum' => ['intake_form']],
                 'form_name' => ['type' => 'string'],
+                'patient_identity' => $this->patientIdentitySchema('intake_form'),
                 'findings' => [
                     'type' => 'array',
                     'minItems' => 1,
@@ -128,6 +130,30 @@ final readonly class JsonSchemaBuilder
                         'width' => ['type' => 'number', 'exclusiveMinimum' => 0, 'maximum' => 1],
                         'height' => ['type' => 'number', 'exclusiveMinimum' => 0, 'maximum' => 1],
                     ],
+                ],
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function patientIdentitySchema(string $sourceType): array
+    {
+        return [
+            'type' => 'array',
+            'items' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => ['kind', 'value', 'field_path', 'certainty', 'confidence', 'citation'],
+                'properties' => [
+                    'kind' => [
+                        'type' => 'string',
+                        'enum' => ['patient_name', 'date_of_birth', 'mrn', 'account_number', 'other'],
+                    ],
+                    'value' => ['type' => 'string'],
+                    'field_path' => ['type' => 'string'],
+                    'certainty' => $this->certaintySchema(),
+                    'confidence' => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
+                    'citation' => $this->citationSchema($sourceType),
                 ],
             ],
         ];

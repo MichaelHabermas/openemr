@@ -281,3 +281,41 @@ Last verified: 2026-05-06.
 - M4 does not persist document facts, promote lab rows, verify patient identity,
   create embeddings, retrieve guideline evidence, or enforce duplicate chart-row
   policy. Those remain M5A/M5B/M5/M6/M7 contracts.
+
+## Week 2 M5A Implementation Notes
+
+Last verified: 2026-05-06.
+
+- M5A introduces `clinical_document_identity_checks` as the durable gate between
+  strict extraction and any later trusted facts, embeddings, promotions, or
+  retrieval. Identity statuses use strings, not SQL enums; only
+  `identity_verified` and future `identity_review_approved` are trusted for
+  downstream evidence.
+- Strict `lab_pdf` and `intake_form` extraction can now include an optional
+  `patient_identity` list of cited identifiers. Missing identifiers remain
+  schema-valid, but the production identity gate treats them as
+  `identity_ambiguous_needs_review`.
+- Identity verification is deterministic: normalized full name plus exact DOB
+  verifies; conflicting DOB, MRN/account number, or reliable name+DOB mismatch
+  quarantines; partial or missing identifiers require review. Do not infer
+  identity from filename, upload category, document metadata, or uncited model
+  guesses.
+- The queued production path gates inside `IntakeExtractorWorker` after strict
+  schema validation and before success. The generic `DocumentJobWorker` remains
+  a queue/heartbeat/finalization loop and should not learn extraction-specific
+  identity policy.
+- `SqlDocumentIdentityCheckRepository` persists redacted identifier summaries:
+  kind, field path, confidence, certainty, and citation source metadata. It does
+  not persist raw `quote_or_value` in identity check JSON, and M5A adds no raw
+  identity values to logs.
+- M5A local gate passed with `agent-forge/scripts/check-clinical-document.sh`
+  outside the sandbox: 499 isolated tests, 2345 assertions, 1 skipped; clinical
+  eval `baseline_met` under
+  `agent-forge/eval-results/clinical-document-20260506-020316/`. A sandboxed
+  run can still fail PHPStan with localhost bind `EPERM`; rerun outside the
+  sandbox for authoritative proof.
+- Post-implementation review tightened M5A: `patient_identity` is now required
+  in strict JSON output but may be an empty list; DTO parsing rejects omitted
+  identity lists; the worker/tool identity gate fails closed when dependencies
+  are missing; account numbers are not treated as MRNs; unknown identity status
+  values fail closed; nullable chart DOB routes to review instead of crashing.

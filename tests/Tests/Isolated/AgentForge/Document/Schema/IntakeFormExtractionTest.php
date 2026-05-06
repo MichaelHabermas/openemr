@@ -77,6 +77,7 @@ final class IntakeFormExtractionTest extends TestCase
         return [
             'doc_type' => 'intake_form',
             'form_name' => 'New Patient Intake',
+            'patient_identity' => [],
             'findings' => [
                 [
                     'field' => 'chief_complaint',
@@ -107,6 +108,7 @@ final class IntakeFormExtractionTest extends TestCase
         return [
             'doc_type' => 'intake_form',
             'form_name' => 'New Patient Intake',
+            'patient_identity' => [],
             'findings' => [[
                 'field' => 'chief_complaint',
                 'value' => 'chest discomfort',

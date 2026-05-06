@@ -85,6 +85,7 @@ final class LabPdfExtractionTest extends TestCase
             'doc_type' => 'lab_pdf',
             'lab_name' => 'Acme Reference Lab',
             'collected_at' => '2026-05-01',
+            'patient_identity' => [],
             'results' => [
                 [
                     'test_name' => 'Potassium',
@@ -120,6 +121,7 @@ final class LabPdfExtractionTest extends TestCase
             'doc_type' => 'lab_pdf',
             'lab_name' => 'Acme Reference Lab',
             'collected_at' => '2026-05-01',
+            'patient_identity' => [],
             'results' => [[
                 'test_name' => 'Potassium',
                 'value' => '5.4',

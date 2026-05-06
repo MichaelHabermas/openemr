@@ -18,13 +18,15 @@ use OpenEMR\AgentForge\Document\DocumentType;
 final readonly class LabPdfExtraction
 {
     /**
-     * @param list<LabResultRow> $results
+     * @param list<LabResultRow>             $results
+     * @param list<PatientIdentityCandidate> $patientIdentity
      */
     public function __construct(
         public DocumentType $documentType,
         public string $labName,
         public string $collectedAt,
         public array $results,
+        public array $patientIdentity = [],
     ) {
         if ($documentType !== DocumentType::LabPdf) {
             throw new ExtractionSchemaException('doc_type', 'Expected document type lab_pdf.');
@@ -61,7 +63,7 @@ final readonly class LabPdfExtraction
      */
     public static function fromArray(array $data): self
     {
-        SchemaReader::assertNoUnknownFields($data, ['doc_type', 'lab_name', 'collected_at', 'results'], '$');
+        SchemaReader::assertNoUnknownFields($data, ['doc_type', 'lab_name', 'collected_at', 'patient_identity', 'results'], '$');
         SchemaReader::assertDocumentType(SchemaReader::requiredString($data, 'doc_type', '$'), DocumentType::LabPdf->value, '$.doc_type');
 
         $rows = [];
@@ -74,11 +76,22 @@ final readonly class LabPdfExtraction
             $rows[] = LabResultRow::fromArray($row, SchemaReader::index('$.results', $index));
         }
 
+        $identity = [];
+        foreach (SchemaReader::requiredList($data, 'patient_identity', '$') as $index => $candidate) {
+            if (!is_array($candidate) || array_is_list($candidate)) {
+                throw new ExtractionSchemaException(SchemaReader::index('$.patient_identity', $index), 'Expected object.');
+            }
+
+            /** @var array<string, mixed> $candidate */
+            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index));
+        }
+
         return new self(
             DocumentType::LabPdf,
             SchemaReader::requiredString($data, 'lab_name', '$'),
             SchemaReader::requiredString($data, 'collected_at', '$'),
             $rows,
+            $identity,
         );
     }
 }

@@ -17,6 +17,10 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\AttachAndExtractTool;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+use OpenEMR\AgentForge\Document\Identity\FixedPatientIdentityRepository;
+use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
@@ -55,6 +59,15 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         $patientId = new PatientId(1);
         $tool = AttachAndExtractTool::forInMemoryEvalAndTest(
             new FixtureExtractionProvider($this->extractionFixturesDir . '/manifest.json'),
+            patientIdentities: new FixedPatientIdentityRepository(new PatientIdentity(
+                $patientId,
+                'Alex',
+                'Testpatient',
+                '1976-04-12',
+                null,
+            )),
+            identityVerifier: new DocumentIdentityVerifier(),
+            identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
         );
         $result = $tool->forUploadedFile(
             $patientId,

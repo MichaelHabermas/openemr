@@ -1,6 +1,38 @@
 {
   "doc_type": "intake_form",
   "form_name": "Golden Fixture Intake",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "Alex Testpatient",
+      "field_path": "demographics.patient_name",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:fixture",
+        "page_or_section": "demographics",
+        "field_or_chunk_id": "patient_name",
+        "quote_or_value": "Alex Testpatient",
+        "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1976-04-12",
+      "field_path": "demographics.date_of_birth",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:fixture",
+        "page_or_section": "demographics",
+        "field_or_chunk_id": "date_of_birth",
+        "quote_or_value": "1976-04-12",
+        "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
+      }
+    }
+  ],
   "findings": [
     {
       "field": "chief_concern",

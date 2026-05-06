@@ -22,6 +22,10 @@ use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
 use OpenEMR\AgentForge\Document\ExtractionErrorCode;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
+use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
+use OpenEMR\AgentForge\Document\Identity\FixedPatientIdentityRepository;
+use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
 use OpenEMR\AgentForge\Document\InMemorySourceDocumentStorage;
 use OpenEMR\AgentForge\Document\SourceDocumentStorage;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
@@ -36,7 +40,7 @@ final class AttachAndExtractToolTest extends TestCase
     public function testUploadedFileStoresLoadsAndExtracts(): void
     {
         $storage = new InMemorySourceDocumentStorage(50);
-        $tool = new AttachAndExtractTool($storage, $storage, new AttachToolStaticProvider(self::strictResponse()));
+        $tool = self::identityGatedTool($storage, $storage, new AttachToolStaticProvider(self::strictResponse()));
         $file = self::tempFile('pdf-bytes');
 
         $result = $tool->forUploadedFile(new PatientId(1), $file, DocumentType::LabPdf, self::deadline());
@@ -102,7 +106,7 @@ final class AttachAndExtractToolTest extends TestCase
     public function testExistingDocumentLoadsAndExtracts(): void
     {
         $loader = new FixedDocumentLoader(new DocumentLoadResult('pdf-bytes', 'application/pdf', 'lab.pdf'));
-        $tool = new AttachAndExtractTool(
+        $tool = self::identityGatedTool(
             new InMemorySourceDocumentStorage(),
             $loader,
             new AttachToolStaticProvider(self::strictResponse()),
@@ -152,6 +156,7 @@ final class AttachAndExtractToolTest extends TestCase
                 'doc_type' => 'lab_pdf',
                 'lab_name' => 'Acme Lab',
                 'collected_at' => '2026-05-01',
+                'patient_identity' => self::identityCandidates(),
                 'results' => [[
                     'test_name' => 'Potassium',
                     'value' => '5.4',
@@ -174,6 +179,56 @@ final class AttachAndExtractToolTest extends TestCase
             DraftUsage::fixture(),
             'fixture-vlm',
         );
+    }
+
+    private static function identityGatedTool(
+        SourceDocumentStorage $storage,
+        DocumentLoader $loader,
+        DocumentExtractionProvider $provider,
+    ): AttachAndExtractTool {
+        return new AttachAndExtractTool(
+            $storage,
+            $loader,
+            $provider,
+            new FixedPatientIdentityRepository(new PatientIdentity(new PatientId(1), 'Jane', 'Doe', '1980-04-15')),
+            new DocumentIdentityVerifier(),
+            new ExtractionIdentityEvidenceBuilder(),
+        );
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function identityCandidates(): array
+    {
+        return [
+            [
+                'kind' => 'patient_name',
+                'value' => 'Jane Doe',
+                'field_path' => 'patient_identity[0]',
+                'certainty' => 'verified',
+                'confidence' => 0.99,
+                'citation' => [
+                    'source_type' => 'lab_pdf',
+                    'source_id' => 'documents:50',
+                    'page_or_section' => 'page 1',
+                    'field_or_chunk_id' => 'patient_name',
+                    'quote_or_value' => 'Jane Doe',
+                ],
+            ],
+            [
+                'kind' => 'date_of_birth',
+                'value' => '1980-04-15',
+                'field_path' => 'patient_identity[1]',
+                'certainty' => 'verified',
+                'confidence' => 0.99,
+                'citation' => [
+                    'source_type' => 'lab_pdf',
+                    'source_id' => 'documents:50',
+                    'page_or_section' => 'page 1',
+                    'field_or_chunk_id' => 'date_of_birth',
+                    'quote_or_value' => '1980-04-15',
+                ],
+            ],
+        ];
     }
 
     private static function deadline(): Deadline

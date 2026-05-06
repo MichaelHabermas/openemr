@@ -32,6 +32,7 @@ final class FixtureExtractionProviderTest extends TestCase
                 'doc_type' => 'lab_pdf',
                 'lab_name' => 'Acme Lab',
                 'collected_at' => '2026-04-01',
+                'patient_identity' => [],
                 'results' => [
                     [
                         'test_name' => 'LDL',
@@ -97,6 +98,7 @@ final class FixtureExtractionProviderTest extends TestCase
             'doc_type' => 'lab_pdf',
             'lab_name' => 'Sidecar Lab',
             'collected_at' => '2026-04-01',
+            'patient_identity' => [],
             'results' => [
                 [
                     'test_name' => 'HDL',
