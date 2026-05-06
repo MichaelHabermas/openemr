@@ -13,19 +13,18 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker;
 
 use DateTimeImmutable;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\Worker\SqlWorkerHeartbeatRepository;
 use OpenEMR\AgentForge\Document\Worker\WorkerHeartbeat;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Document\Worker\WorkerStatus;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class SqlWorkerHeartbeatRepositoryTest extends TestCase
 {
     public function testUpsertUsesWorkerUniqueKeyAndCounterBinds(): void
     {
-        $executor = new HeartbeatSqlExecutor();
+        $executor = new FakeDatabaseExecutor();
         $heartbeat = new WorkerHeartbeat(
             workerName: WorkerName::IntakeExtractor,
             processId: 12345,
@@ -58,7 +57,7 @@ final class SqlWorkerHeartbeatRepositoryTest extends TestCase
 
     public function testFindByWorkerSelectsAndHydratesHeartbeat(): void
     {
-        $executor = new HeartbeatSqlExecutor([
+        $executor = new FakeDatabaseExecutor(records: [
             [
                 'worker' => 'intake-extractor',
                 'process_id' => 12345,
@@ -79,47 +78,7 @@ final class SqlWorkerHeartbeatRepositoryTest extends TestCase
         $this->assertSame(WorkerStatus::Stopped, $heartbeat->status);
         $this->assertSame(7, $heartbeat->iterationCount);
         $this->assertSame('2026-05-05 00:02:00', $heartbeat->stoppedAt?->format('Y-m-d H:i:s'));
-        $this->assertStringContainsString('FROM clinical_document_worker_heartbeats WHERE worker = ? LIMIT 1', $executor->queries[0]['sql']);
-        $this->assertSame(['intake-extractor'], $executor->queries[0]['binds']);
-    }
-}
-
-final class HeartbeatSqlExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $queries = [];
-
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    /** @param list<array<string, mixed>> $records */
-    public function __construct(private readonly array $records = [], private readonly int $affectedRows = 1)
-    {
-    }
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        $this->queries[] = ['sql' => $sql, 'binds' => $binds];
-
-        return $this->records;
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return $this->affectedRows;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
+        $this->assertStringContainsString('FROM clinical_document_worker_heartbeats WHERE worker = ? LIMIT 1', $executor->reads[0]['sql']);
+        $this->assertSame(['intake-extractor'], $executor->reads[0]['binds']);
     }
 }

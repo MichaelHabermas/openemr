@@ -16,7 +16,6 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
-use RuntimeException;
 
 final class InMemorySourceDocumentStorage implements SourceDocumentStorage, DocumentLoader
 {

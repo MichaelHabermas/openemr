@@ -4,9 +4,11 @@
  * Programmable in-memory DatabaseExecutor fake for isolated tests.
  *
  * Records every call. Reads return queued result sets in FIFO order;
- * writes return queued affected/insert ids. Per-test fakes remain valid
- * — this is for tests that just need deterministic playback without
- * coupling to a specific repository's row shapes.
+ * writes return queued affected/insert ids (falling back to constructor
+ * defaults when queues are empty). All write operations (executeStatement,
+ * executeAffected, insert) are recorded in $statements for unified
+ * assertion; executeAffected and insert also populate $affectedCalls
+ * and $inserts respectively.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -44,6 +46,23 @@ final class FakeDatabaseExecutor implements DatabaseExecutor
     /** @var list<int> */
     private array $insertIdsQueue = [];
 
+    /**
+     * @param list<array<string, mixed>> $records          Initial result set returned by the first fetchRecords call.
+     * @param int                        $defaultAffectedRows Default return when affectedRowsQueue is empty.
+     * @param int                        $defaultInsertId     Default return when insertIdsQueue is empty.
+     * @param ?string                    $throwOnSql          Throw RuntimeException when any write SQL contains this substring.
+     */
+    public function __construct(
+        array $records = [],
+        private readonly int $defaultAffectedRows = 0,
+        private readonly int $defaultInsertId = 1,
+        private readonly ?string $throwOnSql = null,
+    ) {
+        if ($records !== []) {
+            $this->resultSets[] = $records;
+        }
+    }
+
     /** @param list<array<string, mixed>> $rows */
     public function queueResult(array $rows): void
     {
@@ -70,27 +89,39 @@ final class FakeDatabaseExecutor implements DatabaseExecutor
     public function executeStatement(string $sql, array $binds = []): void
     {
         $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
     }
 
     public function executeAffected(string $sql, array $binds = []): int
     {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
         $this->affectedCalls[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
 
-        if ($this->affectedRowsQueue === []) {
-            return 0;
+        if ($this->affectedRowsQueue !== []) {
+            return array_shift($this->affectedRowsQueue);
         }
 
-        return array_shift($this->affectedRowsQueue);
+        return $this->defaultAffectedRows;
     }
 
     public function insert(string $sql, array $binds = []): int
     {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
         $this->inserts[] = ['sql' => $sql, 'binds' => $binds];
+        $this->throwIfRequested($sql);
 
-        if ($this->insertIdsQueue === []) {
-            throw new RuntimeException('FakeDatabaseExecutor::insert called with no queued insert id.');
+        if ($this->insertIdsQueue !== []) {
+            return array_shift($this->insertIdsQueue);
         }
 
-        return array_shift($this->insertIdsQueue);
+        return $this->defaultInsertId;
+    }
+
+    private function throwIfRequested(string $sql): void
+    {
+        if ($this->throwOnSql !== null && str_contains($sql, $this->throwOnSql)) {
+            throw new RuntimeException('synthetic SQL failure');
+        }
     }
 }

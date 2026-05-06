@@ -13,16 +13,15 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
 {
     public function testEveryEvidenceQueryIsScopedToRequestedPatient(): void
     {
-        $executor = new RecordingQueryExecutor();
+        $executor = new FakeDatabaseExecutor();
         $repository = new SqlChartEvidenceRepository($executor);
         $patientId = new PatientId(900001);
 
@@ -37,69 +36,69 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
         $repository->staleVitals($patientId, 1, 180);
         $repository->recentNotes($patientId, 5);
 
-        $this->assertCount(10, $executor->queries);
+        $this->assertCount(10, $executor->reads);
 
-        foreach ($executor->queries as $query) {
+        foreach ($executor->reads as $query) {
             $this->assertSame(900001, $query['binds'][0]);
             $this->assertStringContainsString('?', $query['sql']);
         }
 
-        $this->assertStringContainsString('patient_data WHERE pid = ?', $executor->queries[0]['sql']);
-        $this->assertStringContainsString('FROM form_encounter', $executor->queries[1]['sql']);
-        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[1]['sql']);
-        $this->assertStringContainsString('lists', $executor->queries[2]['sql']);
-        $this->assertStringContainsString('diagnosis', $executor->queries[2]['sql']);
-        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[2]['sql']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[2]['sql']));
+        $this->assertStringContainsString('patient_data WHERE pid = ?', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('FROM form_encounter', $executor->reads[1]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->reads[1]['sql']);
+        $this->assertStringContainsString('lists', $executor->reads[2]['sql']);
+        $this->assertStringContainsString('diagnosis', $executor->reads[2]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->reads[2]['sql']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[2]['sql']));
 
-        $this->assertStringContainsString('UNION ALL', $executor->queries[3]['sql']);
-        $this->assertStringContainsString('FROM prescriptions WHERE patient_id = ?', $executor->queries[3]['sql']);
-        $this->assertStringContainsString('FROM lists l', $executor->queries[3]['sql']);
-        $this->assertStringContainsString('LEFT JOIN lists_medication lm ON lm.list_id = l.id', $executor->queries[3]['sql']);
-        $this->assertStringContainsString('WHERE l.pid = ?', $executor->queries[3]['sql']);
-        $this->assertSame([900001, 1, 900001, 'medication', 1], $executor->queries[3]['binds']);
+        $this->assertStringContainsString('UNION ALL', $executor->reads[3]['sql']);
+        $this->assertStringContainsString('FROM prescriptions WHERE patient_id = ?', $executor->reads[3]['sql']);
+        $this->assertStringContainsString('FROM lists l', $executor->reads[3]['sql']);
+        $this->assertStringContainsString('LEFT JOIN lists_medication lm ON lm.list_id = l.id', $executor->reads[3]['sql']);
+        $this->assertStringContainsString('WHERE l.pid = ?', $executor->reads[3]['sql']);
+        $this->assertSame([900001, 1, 900001, 'medication', 1], $executor->reads[3]['binds']);
 
-        $this->assertStringContainsString('UNION ALL', $executor->queries[4]['sql']);
-        $this->assertStringContainsString('FROM prescriptions WHERE patient_id = ?', $executor->queries[4]['sql']);
-        $this->assertStringContainsString('FROM lists l', $executor->queries[4]['sql']);
-        $this->assertSame([900001, 0, 900001, 'medication', 0], $executor->queries[4]['binds']);
+        $this->assertStringContainsString('UNION ALL', $executor->reads[4]['sql']);
+        $this->assertStringContainsString('FROM prescriptions WHERE patient_id = ?', $executor->reads[4]['sql']);
+        $this->assertStringContainsString('FROM lists l', $executor->reads[4]['sql']);
+        $this->assertSame([900001, 0, 900001, 'medication', 0], $executor->reads[4]['binds']);
 
-        $this->assertStringContainsString('FROM lists', $executor->queries[5]['sql']);
-        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[5]['sql']);
-        $this->assertStringContainsString('activity = 1', $executor->queries[5]['sql']);
-        $this->assertSame([900001, 'allergy'], $executor->queries[5]['binds']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[5]['sql']));
+        $this->assertStringContainsString('FROM lists', $executor->reads[5]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->reads[5]['sql']);
+        $this->assertStringContainsString('activity = 1', $executor->reads[5]['sql']);
+        $this->assertSame([900001, 'allergy'], $executor->reads[5]['binds']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[5]['sql']));
 
-        $this->assertStringContainsString('WHERE po.patient_id = ?', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('pr.result_code', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('poc.procedure_code', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('LEFT JOIN documents source_doc ON source_doc.id = pr.document_id', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('source_doc.id IS NOT NULL', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('source_doc.deleted IS NULL OR source_doc.deleted = 0', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('NOT EXISTS', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('FROM clinical_document_promotions cdp', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('LEFT JOIN clinical_document_processing_jobs cdpj ON cdpj.id = cdp.job_id', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('LEFT JOIN documents cdp_source_doc ON cdp_source_doc.id = cdp.document_id', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('cdp.active <> 1', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('cdp.retracted_at IS NOT NULL', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('cdpj.retracted_at IS NOT NULL', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('cdp_source_doc.id IS NULL', $executor->queries[6]['sql']);
-        $this->assertStringContainsString('cdp_source_doc.deleted IS NOT NULL AND cdp_source_doc.deleted <> 0', $executor->queries[6]['sql']);
-        $this->assertSame([900001, 'procedure_result'], $executor->queries[6]['binds']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[6]['sql']));
+        $this->assertStringContainsString('WHERE po.patient_id = ?', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('pr.result_code', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('poc.procedure_code', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('LEFT JOIN documents source_doc ON source_doc.id = pr.document_id', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('source_doc.id IS NOT NULL', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('source_doc.deleted IS NULL OR source_doc.deleted = 0', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('NOT EXISTS', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('FROM clinical_document_promotions cdp', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('LEFT JOIN clinical_document_processing_jobs cdpj ON cdpj.id = cdp.job_id', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('LEFT JOIN documents cdp_source_doc ON cdp_source_doc.id = cdp.document_id', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('cdp.active <> 1', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('cdp.retracted_at IS NOT NULL', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('cdpj.retracted_at IS NOT NULL', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('cdp_source_doc.id IS NULL', $executor->reads[6]['sql']);
+        $this->assertStringContainsString('cdp_source_doc.deleted IS NOT NULL AND cdp_source_doc.deleted <> 0', $executor->reads[6]['sql']);
+        $this->assertSame([900001, 'procedure_result'], $executor->reads[6]['binds']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[6]['sql']));
 
-        $this->assertStringContainsString('FROM form_vitals', $executor->queries[7]['sql']);
-        $this->assertStringContainsString('WHERE pid = ?', $executor->queries[7]['sql']);
-        $this->assertStringContainsString('activity = 1', $executor->queries[7]['sql']);
-        $this->assertStringContainsString('authorized = 1', $executor->queries[7]['sql']);
-        $this->assertStringContainsString('date >= DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->queries[7]['sql']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[7]['sql']));
+        $this->assertStringContainsString('FROM form_vitals', $executor->reads[7]['sql']);
+        $this->assertStringContainsString('WHERE pid = ?', $executor->reads[7]['sql']);
+        $this->assertStringContainsString('activity = 1', $executor->reads[7]['sql']);
+        $this->assertStringContainsString('authorized = 1', $executor->reads[7]['sql']);
+        $this->assertStringContainsString('date >= DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->reads[7]['sql']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[7]['sql']));
 
-        $this->assertStringContainsString('date < DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->queries[8]['sql']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[8]['sql']));
+        $this->assertStringContainsString('date < DATE_SUB(CURRENT_DATE, INTERVAL 180 DAY)', $executor->reads[8]['sql']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[8]['sql']));
 
-        $this->assertStringContainsString('WHERE n.pid = ?', $executor->queries[9]['sql']);
-        $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[9]['sql']));
+        $this->assertStringContainsString('WHERE n.pid = ?', $executor->reads[9]['sql']);
+        $this->assertStringNotContainsString('UNION', strtoupper($executor->reads[9]['sql']));
     }
 
     public function testActiveMedicationsReturnsTotalLimitInDateOrderAcrossSources(): void
@@ -114,39 +113,9 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
     }
 }
 
-final class RecordingQueryExecutor implements DatabaseExecutor
+final class MedicationRowsQueryExecutor implements \OpenEMR\AgentForge\DatabaseExecutor
 {
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $queries = [];
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        $this->queries[] = [
-            'sql' => $sql,
-            'binds' => $binds,
-        ];
-
-        return [];
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        return 0;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        return 0;
-    }
-}
-
-final class MedicationRowsQueryExecutor implements DatabaseExecutor
-{
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
+    public function fetchRecords(string $sql, array $binds = [], ?\OpenEMR\AgentForge\Deadline $deadline = null): array
     {
         if (str_contains($sql, 'UNION ALL')) {
             return [

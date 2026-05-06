@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Evidence;
 
-use DomainException;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use OpenEMR\AgentForge\Llm\LlmCredentialGuard;

@@ -12,14 +12,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Auth;
 
-use DomainException;
+use OpenEMR\AgentForge\PositiveIntId;
 
-final readonly class PatientId
+final readonly class PatientId extends PositiveIntId
 {
-    public function __construct(public int $value)
+    public function __construct(int $value)
     {
-        if ($value <= 0) {
-            throw new DomainException('Patient id must be positive.');
-        }
+        parent::__construct($value, 'Patient id');
     }
 }

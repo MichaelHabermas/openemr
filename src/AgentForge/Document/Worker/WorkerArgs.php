@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Worker;
 
 use InvalidArgumentException;
+use OpenEMR\AgentForge\AgentForgeEnv;
 
 final readonly class WorkerArgs
 {
@@ -32,9 +33,9 @@ final readonly class WorkerArgs
     /** @param list<string> $argv */
     public static function fromArgv(array $argv): self
     {
-        $worker = getenv('AGENTFORGE_WORKER_NAME');
-        $maxIterations = self::envInt('AGENTFORGE_WORKER_MAX_ITERATIONS', 0);
-        $idleSleepSeconds = self::envInt('AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS', 5);
+        $worker = AgentForgeEnv::string('AGENTFORGE_WORKER_NAME');
+        $maxIterations = AgentForgeEnv::int('AGENTFORGE_WORKER_MAX_ITERATIONS') ?? 0;
+        $idleSleepSeconds = AgentForgeEnv::int('AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS') ?? 5;
 
         foreach (array_slice($argv, 1) as $arg) {
             if (str_starts_with($arg, '--worker=')) {
@@ -57,21 +58,11 @@ final readonly class WorkerArgs
             throw new InvalidArgumentException("Unknown worker flag: {$arg}");
         }
 
-        if (!is_string($worker) || $worker === '') {
+        if ($worker === null) {
             throw new InvalidArgumentException('Missing required --worker=NAME flag.');
         }
 
         return new self(WorkerName::fromStringOrThrow($worker), $maxIterations, $idleSleepSeconds);
-    }
-
-    private static function envInt(string $name, int $default): int
-    {
-        $value = getenv($name);
-        if (!is_string($value) || $value === '') {
-            return $default;
-        }
-
-        return self::parseInt($value, $name);
     }
 
     private static function parseInt(string $raw, string $label): int

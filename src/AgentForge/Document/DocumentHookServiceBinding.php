@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
-use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionService;
+use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionRepository;
 use OpenEMR\AgentForge\Document\Retraction\SqlDocumentRetractionRepository;
 use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 
@@ -20,7 +20,7 @@ final class DocumentHookServiceBinding
 {
     private static ?DocumentJobRepository $jobRepositoryOverride = null;
 
-    private static ?DocumentRetractionService $retractionServiceOverride = null;
+    private static ?DocumentRetractionRepository $retractionRepositoryOverride = null;
 
     private static ?DocumentUploadEnqueuer $uploadEnqueuerOverride = null;
 
@@ -34,15 +34,9 @@ final class DocumentHookServiceBinding
         return self::$uploadEnqueuerOverride ?? DocumentUploadEnqueuerFactory::createDefault();
     }
 
-    public static function retractionService(): DocumentRetractionService
+    public static function retractionRepository(): DocumentRetractionRepository
     {
-        if (self::$retractionServiceOverride !== null) {
-            return self::$retractionServiceOverride;
-        }
-
-        $executor = new SqlQueryUtilsExecutor();
-
-        return new DocumentRetractionService(new SqlDocumentRetractionRepository($executor));
+        return self::$retractionRepositoryOverride ?? new SqlDocumentRetractionRepository(new SqlQueryUtilsExecutor());
     }
 
     /**
@@ -51,7 +45,7 @@ final class DocumentHookServiceBinding
     public static function resetForTesting(): void
     {
         self::$jobRepositoryOverride = null;
-        self::$retractionServiceOverride = null;
+        self::$retractionRepositoryOverride = null;
         self::$uploadEnqueuerOverride = null;
     }
 
@@ -74,8 +68,8 @@ final class DocumentHookServiceBinding
     /**
      * @internal
      */
-    public static function setRetractionServiceForTesting(?DocumentRetractionService $service): void
+    public static function setRetractionRepositoryForTesting(?DocumentRetractionRepository $repository): void
     {
-        self::$retractionServiceOverride = $service;
+        self::$retractionRepositoryOverride = $repository;
     }
 }

@@ -17,7 +17,6 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 
 final class SerialChartEvidenceCollector implements ChartEvidenceCollector
 {

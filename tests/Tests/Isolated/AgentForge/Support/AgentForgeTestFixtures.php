@@ -15,8 +15,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge\Support;
 
-use DateTimeImmutable;
-
 final class AgentForgeTestFixtures
 {
     public static function frozenMonotonicClock(int $nowMs = 1_000): FrozenMonotonicClock
@@ -35,8 +33,4 @@ final class AgentForgeTestFixtures
         return new TickingMonotonicClock($ticks);
     }
 
-    public static function frozenWallClock(string $atomTimestamp = '2026-05-02T12:00:00+00:00'): FrozenWallClock
-    {
-        return new FrozenWallClock(new DateTimeImmutable($atomTimestamp));
-    }
 }

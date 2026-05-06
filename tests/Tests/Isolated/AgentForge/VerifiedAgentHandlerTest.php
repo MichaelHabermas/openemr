@@ -15,7 +15,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 use DomainException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
-use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
@@ -38,6 +37,7 @@ use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -401,7 +401,7 @@ final class VerifiedAgentHandlerTest extends TestCase
 
     public function testGuidelineQuestionRecordsSupervisorToEvidenceRetrieverHandoff(): void
     {
-        $executor = new VerifiedHandoffExecutor();
+        $executor = new FakeDatabaseExecutor();
         $handler = new VerifiedAgentHandler(
             [new VerifiedRecordingEvidenceTool()],
             new FixtureDraftProvider(),
@@ -593,32 +593,3 @@ final class VerifiedEmptyGuidelineRetriever implements GuidelineRetriever
     }
 }
 
-final class VerifiedHandoffExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        return [];
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
-    }
-}

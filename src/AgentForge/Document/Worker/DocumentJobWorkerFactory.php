@@ -26,7 +26,6 @@ use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
 use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\SqlDocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\SqlPatientIdentityRepository;
-use OpenEMR\AgentForge\Document\Promotion\DocumentPromotionPipeline;
 use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\SqlDocumentFactRepository;
@@ -103,12 +102,12 @@ final class DocumentJobWorkerFactory
                 identityChecks: new SqlDocumentIdentityCheckRepository($executor),
                 identityVerifier: new DocumentIdentityVerifier(),
                 identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
-                factPromotions: new DocumentPromotionPipeline(new SqlClinicalDocumentFactPromotionRepository(
+                factPromotions: new SqlClinicalDocumentFactPromotionRepository(
                     $executor,
                     new SqlDocumentFactRepository($executor),
                     new SqlDocumentFactEmbeddingRepository($executor),
                     new DeterministicEmbeddingProvider(),
-                )),
+                ),
             ),
             WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
         };

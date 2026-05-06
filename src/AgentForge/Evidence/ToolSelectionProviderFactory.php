@@ -23,6 +23,9 @@ final class ToolSelectionProviderFactory
         return self::create(DraftProviderConfig::fromEnvironment());
     }
 
+    /**
+     * Returns null for Fixture/Disabled modes — callers fall back to deterministic planning.
+     */
     public static function create(DraftProviderConfig $config): ?ToolSelectionProvider
     {
         return match (DraftProviderMode::from($config->mode)) {

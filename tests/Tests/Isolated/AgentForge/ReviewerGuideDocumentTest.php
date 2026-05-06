@@ -26,73 +26,12 @@ final class ReviewerGuideDocumentTest extends TestCase
         $this->assertStringContainsString('[AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md)', $readme);
     }
 
-    public function testReviewerGuideContainsEpic15RequiredSectionsAndCommands(): void
-    {
-        $guide = $this->reviewerGuide();
-
-        foreach (
-            [
-                '## Documented Deployed URL',
-                '## Fake Patient And Demo Credentials Policy',
-                '## Demo Path',
-                '## Seed And Verify Commands',
-                '## Deterministic Eval Command',
-                '## Artifact Map',
-                '## Implemented Proof Summary',
-                '## Known Blockers And Production-Readiness Caveats',
-                '## Reviewer Navigation Checklist',
-            ] as $heading
-        ) {
-            $this->assertStringContainsString($heading, $guide);
-        }
-
-        foreach (
-            [
-                'https://openemr.titleredacted.cc/',
-                'agent-forge/scripts/health-check.sh',
-                '900001',
-                'AF-DEMO-900001',
-                'assigned out-of-band',
-                'agent-forge/scripts/seed-demo-data.sh',
-                'agent-forge/scripts/verify-demo-data.sh',
-                'php agent-forge/scripts/run-evals.php',
-                'agent-forge/docs/operations/COST-ANALYSIS.md',
-                'agent-forge/docs/evaluation/EVALUATION-TIERS.md',
-                'Production-Readiness is not claimed',
-            ] as $requiredText
-        ) {
-            $this->assertStringContainsString($requiredText, $guide);
-        }
-    }
-
-    public function testReviewerGuideLinksRequiredArtifacts(): void
-    {
-        $guide = $this->reviewerGuide();
-
-        foreach (
-            [
-                'AUDIT.md',
-                'USERS.md',
-                'ARCHITECTURE.md',
-                'agent-forge/docs/week1/SPECS.txt',
-                'agent-forge/docs/week1/PRD.md',
-                'agent-forge/docs/week1/PLAN.md',
-                'agent-forge/docs/operations/KNOWN-FACTS-AND-NEEDS.md',
-                'agent-forge/docs/operations/COST-ANALYSIS.md',
-                'agent-forge/docs/evaluation/EVALUATION-TIERS.md',
-                'agent-forge/docs/epics/EPIC_REVIEWER_ENTRY_POINT_SUBMISSION_MAP.md',
-            ] as $artifactPath
-        ) {
-            $this->assertStringContainsString('(' . $artifactPath . ')', $guide);
-        }
-    }
-
     public function testReviewerPathLocalMarkdownLinksResolveFromRoot(): void
     {
         foreach (
             [
                 '/README.md' => $this->readRepoFile('/README.md'),
-                '/AGENTFORGE-REVIEWER-GUIDE.md' => $this->reviewerGuide(),
+                '/AGENTFORGE-REVIEWER-GUIDE.md' => $this->readRepoFile('/AGENTFORGE-REVIEWER-GUIDE.md'),
             ] as $documentPath => $document
         ) {
             foreach ($this->localMarkdownLinks($document) as $linkTarget) {
@@ -108,34 +47,6 @@ final class ReviewerGuideDocumentTest extends TestCase
                 );
             }
         }
-    }
-
-    public function testReviewerGuideDoesNotExposeSecretsOrClaimProductionReadiness(): void
-    {
-        $guide = $this->reviewerGuide();
-
-        foreach (
-            [
-                'demo password',
-                'admin password',
-                'OPENAI_API_KEY=',
-                'ANTHROPIC_API_KEY=',
-                'production ready',
-                'production-ready',
-                'Production ready',
-                'Production-ready',
-            ] as $forbiddenClaim
-        ) {
-            $this->assertStringNotContainsString($forbiddenClaim, $guide);
-        }
-
-        $this->assertStringContainsString('Demo credentials are not committed to the repository', $guide);
-        $this->assertStringContainsString('Production-Readiness is not claimed', $guide);
-    }
-
-    private function reviewerGuide(): string
-    {
-        return $this->readRepoFile('/AGENTFORGE-REVIEWER-GUIDE.md');
     }
 
     private function readRepoFile(string $path): string

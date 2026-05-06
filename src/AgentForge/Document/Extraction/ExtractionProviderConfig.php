@@ -13,16 +13,12 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Extraction;
 
 use DomainException;
+use OpenEMR\AgentForge\AgentForgeEnv;
 use OpenEMR\AgentForge\Llm\ProviderCostCatalog;
 use SensitiveParameter;
 
 final readonly class ExtractionProviderConfig
 {
-    /** @deprecated Use {@see ExtractionProviderMode::Fixture} instead. */
-    public const MODE_FIXTURE = 'fixture';
-    /** @deprecated Use {@see ExtractionProviderMode::OpenAi} instead. */
-    public const MODE_OPENAI = 'openai';
-
     public string $mode;
     public ?string $apiKey;
     public string $model;
@@ -81,20 +77,20 @@ final readonly class ExtractionProviderConfig
 
     public static function fromEnvironment(): self
     {
-        $explicitMode = self::envString('AGENTFORGE_VLM_PROVIDER');
-        $openAiKey = self::envString('AGENTFORGE_OPENAI_API_KEY') ?? self::envString('OPENAI_API_KEY');
+        $explicitMode = AgentForgeEnv::string('AGENTFORGE_VLM_PROVIDER');
+        $openAiKey = AgentForgeEnv::string('AGENTFORGE_OPENAI_API_KEY') ?? AgentForgeEnv::string('OPENAI_API_KEY');
         $mode = $explicitMode ?? ($openAiKey === null ? ExtractionProviderMode::Fixture->value : ExtractionProviderMode::OpenAi->value);
 
         return new self(
             mode: $mode,
             apiKey: $openAiKey,
-            model: self::envString('AGENTFORGE_VLM_MODEL'),
+            model: AgentForgeEnv::string('AGENTFORGE_VLM_MODEL'),
             fixtureManifestPath: self::fixtureManifestPathFromEnvironment(),
-            inputCostPerMillionTokens: self::envFloat('AGENTFORGE_VLM_INPUT_COST_PER_1M'),
-            outputCostPerMillionTokens: self::envFloat('AGENTFORGE_VLM_OUTPUT_COST_PER_1M'),
-            timeoutSeconds: self::envFloat('AGENTFORGE_VLM_TIMEOUT_SECONDS') ?? 60.0,
-            connectTimeoutSeconds: self::envFloat('AGENTFORGE_VLM_CONNECT_TIMEOUT_SECONDS') ?? 10.0,
-            maxPdfPages: self::envInt('AGENTFORGE_VLM_MAX_PAGES') ?? 5,
+            inputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_VLM_INPUT_COST_PER_1M'),
+            outputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_VLM_OUTPUT_COST_PER_1M'),
+            timeoutSeconds: AgentForgeEnv::float('AGENTFORGE_VLM_TIMEOUT_SECONDS') ?? 60.0,
+            connectTimeoutSeconds: AgentForgeEnv::float('AGENTFORGE_VLM_CONNECT_TIMEOUT_SECONDS') ?? 10.0,
+            maxPdfPages: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_PAGES') ?? 5,
         );
     }
 
@@ -108,46 +104,16 @@ final readonly class ExtractionProviderConfig
 
     private static function fixtureManifestPathFromEnvironment(): ?string
     {
-        $manifest = self::envString('AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST');
+        $manifest = AgentForgeEnv::string('AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST');
         if ($manifest !== null) {
             return $manifest;
         }
 
-        $dir = self::envString('AGENTFORGE_EXTRACTION_FIXTURES_DIR');
+        $dir = AgentForgeEnv::string('AGENTFORGE_EXTRACTION_FIXTURES_DIR');
         if ($dir === null) {
             return null;
         }
 
         return rtrim($dir, '/') . '/manifest.json';
-    }
-
-    private static function envString(string $name): ?string
-    {
-        $value = getenv($name, true);
-        if (!is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        return $value;
-    }
-
-    private static function envFloat(string $name): ?float
-    {
-        $value = self::envString($name);
-        if ($value === null || !is_numeric($value)) {
-            return null;
-        }
-
-        return (float) $value;
-    }
-
-    private static function envInt(string $name): ?int
-    {
-        $value = self::envString($name);
-        if ($value === null || !ctype_digit($value)) {
-            return null;
-        }
-
-        return (int) $value;
     }
 }

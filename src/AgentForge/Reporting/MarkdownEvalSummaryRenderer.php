@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Reporting;
 
-final class MarkdownEvalSummaryRenderer implements EvalSummaryRendererInterface
+final class MarkdownEvalSummaryRenderer
 {
     public function render(NormalizedEvalRun $run): string
     {

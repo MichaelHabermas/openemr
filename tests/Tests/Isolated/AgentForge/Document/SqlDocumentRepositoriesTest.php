@@ -13,8 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\CategoryId;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
@@ -26,6 +24,7 @@ use OpenEMR\AgentForge\Document\Retraction\SqlDocumentRetractionRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentTypeMappingRepository;
 use OpenEMR\AgentForge\Document\Worker\LockToken;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -33,7 +32,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 {
     public function testMappingRepositorySelectsActiveCategoryMapping(): void
     {
-        $executor = new DocumentRepositoryExecutor([
+        $executor = new FakeDatabaseExecutor(records:[
             [
                 'id' => 3,
                 'category_id' => 7,
@@ -46,13 +45,13 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $mapping = (new SqlDocumentTypeMappingRepository($executor))->findActiveByCategoryId(new CategoryId(7));
 
         $this->assertSame(DocumentType::LabPdf, $mapping?->docType);
-        $this->assertStringContainsString('FROM clinical_document_type_mappings', $executor->queries[0]['sql']);
-        $this->assertSame([7], $executor->queries[0]['binds']);
+        $this->assertStringContainsString('FROM clinical_document_type_mappings', $executor->reads[0]['sql']);
+        $this->assertSame([7], $executor->reads[0]['binds']);
     }
 
     public function testJobRepositoryEnqueueUsesInsertIgnoreThenSelectsUniqueJob(): void
     {
-        $executor = new DocumentRepositoryExecutor([
+        $executor = new FakeDatabaseExecutor(records:[
             [
                 'id' => 9,
                 'patient_id' => 900001,
@@ -80,12 +79,12 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertSame(9, $jobId->value);
         $this->assertStringContainsString('INSERT IGNORE INTO clinical_document_processing_jobs', $executor->statements[0]['sql']);
         $this->assertSame([900001, 123, 'lab_pdf', 'pending'], $executor->statements[0]['binds']);
-        $this->assertStringContainsString('WHERE patient_id = ? AND document_id = ? AND doc_type = ?', $executor->queries[0]['sql']);
+        $this->assertStringContainsString('WHERE patient_id = ? AND document_id = ? AND doc_type = ?', $executor->reads[0]['sql']);
     }
 
     public function testJobRepositoryFindByIdHydratesJob(): void
     {
-        $executor = new DocumentRepositoryExecutor([
+        $executor = new FakeDatabaseExecutor(records:[
             [
                 'id' => 9,
                 'patient_id' => 900001,
@@ -116,7 +115,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 
     public function testRetractionRepositoryRetractsAllJobsForDocumentAndWritesAuditRows(): void
     {
-        $executor = new DocumentRepositoryExecutor([], affectedRows: 2);
+        $executor = new FakeDatabaseExecutor(records: [], defaultAffectedRows: 2);
 
         $count = (new SqlDocumentRetractionRepository($executor))->retractByDocument(
             new DocumentId(123),
@@ -154,7 +153,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 
     public function testRetractionRepositoryCleanupRunsEvenWhenJobAlreadyRetracted(): void
     {
-        $executor = new DocumentRepositoryExecutor([], affectedRows: 0);
+        $executor = new FakeDatabaseExecutor(records: [], defaultAffectedRows: 0);
 
         $count = (new SqlDocumentRetractionRepository($executor))->retractByDocument(
             new DocumentId(123),
@@ -179,7 +178,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 
     public function testRetractionRepositoryRollsBackWhenCleanupFails(): void
     {
-        $executor = new DocumentRepositoryExecutor([], affectedRows: 0, throwOnSql: 'UPDATE clinical_document_processing_jobs');
+        $executor = new FakeDatabaseExecutor(records: [], defaultAffectedRows: 0, throwOnSql: 'UPDATE clinical_document_processing_jobs');
 
         try {
             (new SqlDocumentRetractionRepository($executor))->retractByDocument(
@@ -199,7 +198,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 
     public function testJobRepositoryDelegatesRetractionToAuditedRetractionRepository(): void
     {
-        $executor = new DocumentRepositoryExecutor([], affectedRows: 2);
+        $executor = new FakeDatabaseExecutor(records: [], defaultAffectedRows: 2);
 
         $count = (new SqlDocumentJobRepository($executor))->retractByDocument(
             new DocumentId(123),
@@ -213,7 +212,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
 
     public function testJobRepositoryMarkFinishedReleasesClaim(): void
     {
-        $executor = new DocumentRepositoryExecutor([]);
+        $executor = new FakeDatabaseExecutor(records:[]);
 
         (new SqlDocumentJobRepository($executor))->markFinished(
             new DocumentJobId(9),
@@ -246,7 +245,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
     public function testJobRepositoryFindClaimedByLockTokenHydratesRunningJob(): void
     {
         $lockToken = new LockToken(str_repeat('a', 64));
-        $executor = new DocumentRepositoryExecutor([
+        $executor = new FakeDatabaseExecutor(records:[
             [
                 'id' => 9,
                 'patient_id' => 900001,
@@ -271,60 +270,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertSame(9, $job->id?->value);
         $this->assertSame(JobStatus::Running, $job->status);
         $this->assertSame($lockToken->value, $job->lockToken);
-        $this->assertStringContainsString('WHERE lock_token = ? AND status = ?', $executor->queries[0]['sql']);
-        $this->assertSame([$lockToken->value, 'running'], $executor->queries[0]['binds']);
-    }
-}
-
-final class DocumentRepositoryExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $queries = [];
-
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    /** @param list<array<string, mixed>> $records */
-    public function __construct(
-        private readonly array $records,
-        private readonly int $affectedRows = 1,
-        private readonly ?string $throwOnSql = null,
-    ) {
-    }
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        $this->queries[] = ['sql' => $sql, 'binds' => $binds];
-
-        return $this->records;
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-        $this->throwIfRequested($sql);
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-        $this->throwIfRequested($sql);
-
-        return $this->affectedRows;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-        $this->throwIfRequested($sql);
-
-        return 1;
-    }
-
-    private function throwIfRequested(string $sql): void
-    {
-        if ($this->throwOnSql !== null && str_contains($sql, $this->throwOnSql)) {
-            throw new RuntimeException('synthetic SQL failure');
-        }
+        $this->assertStringContainsString('WHERE lock_token = ? AND status = ?', $executor->reads[0]['sql']);
+        $this->assertSame([$lockToken->value, 'running'], $executor->reads[0]['binds']);
     }
 }

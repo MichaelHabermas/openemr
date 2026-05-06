@@ -13,8 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document\Identity;
 
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
@@ -22,13 +20,14 @@ use OpenEMR\AgentForge\Document\Identity\IdentityMatchResult;
 use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
 use OpenEMR\AgentForge\Document\Identity\SqlDocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\SqlPatientIdentityRepository;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class SqlIdentityRepositoriesTest extends TestCase
 {
     public function testPatientIdentityRepositoryReadsOpenEmrDemographics(): void
     {
-        $executor = new IdentityRepositoryExecutor([[
+        $executor = new FakeDatabaseExecutor(records:[[
             'pid' => 123,
             'fname' => 'Jane',
             'lname' => 'Doe',
@@ -41,13 +40,13 @@ final class SqlIdentityRepositoriesTest extends TestCase
         $this->assertNotNull($identity);
         $this->assertSame('Jane', $identity->firstName);
         $this->assertSame('MRN-123', $identity->medicalRecordNumber);
-        $this->assertStringContainsString('SELECT pid, fname, lname, DOB, pubpid FROM patient_data', $executor->queries[0]['sql']);
-        $this->assertSame([123], $executor->queries[0]['binds']);
+        $this->assertStringContainsString('SELECT pid, fname, lname, DOB, pubpid FROM patient_data', $executor->reads[0]['sql']);
+        $this->assertSame([123], $executor->reads[0]['binds']);
     }
 
     public function testIdentityCheckRepositoryUpsertsRedactedResult(): void
     {
-        $executor = new IdentityRepositoryExecutor([]);
+        $executor = new FakeDatabaseExecutor(records:[]);
         $result = new IdentityMatchResult(
             IdentityStatus::Verified,
             [['kind' => 'patient_name', 'field_path' => 'patient_identity[0]']],
@@ -76,64 +75,24 @@ final class SqlIdentityRepositoriesTest extends TestCase
 
     public function testTrustedForEvidenceRequiresVerifiedOrReviewApprovedStatus(): void
     {
-        $executor = new IdentityRepositoryExecutor([['identity_status' => 'identity_ambiguous_needs_review', 'review_decision' => null]]);
+        $executor = new FakeDatabaseExecutor(records:[['identity_status' => 'identity_ambiguous_needs_review', 'review_decision' => null]]);
 
         $this->assertFalse((new SqlDocumentIdentityCheckRepository($executor))->trustedForEvidence(new DocumentJobId(789)));
-        $this->assertStringContainsString('FROM clinical_document_identity_checks WHERE job_id = ?', $executor->queries[0]['sql']);
-        $this->assertSame([789], $executor->queries[0]['binds']);
+        $this->assertStringContainsString('FROM clinical_document_identity_checks WHERE job_id = ?', $executor->reads[0]['sql']);
+        $this->assertSame([789], $executor->reads[0]['binds']);
     }
 
     public function testTrustedForEvidenceFailsClosedForUnknownStatus(): void
     {
-        $executor = new IdentityRepositoryExecutor([['identity_status' => 'future_status', 'review_decision' => null]]);
+        $executor = new FakeDatabaseExecutor(records:[['identity_status' => 'future_status', 'review_decision' => null]]);
 
         $this->assertFalse((new SqlDocumentIdentityCheckRepository($executor))->trustedForEvidence(new DocumentJobId(789)));
     }
 
     public function testTrustedForEvidenceAcceptsExplicitReviewApproval(): void
     {
-        $executor = new IdentityRepositoryExecutor([['identity_status' => 'identity_ambiguous_needs_review', 'review_decision' => 'approved']]);
+        $executor = new FakeDatabaseExecutor(records:[['identity_status' => 'identity_ambiguous_needs_review', 'review_decision' => 'approved']]);
 
         $this->assertTrue((new SqlDocumentIdentityCheckRepository($executor))->trustedForEvidence(new DocumentJobId(789)));
-    }
-}
-
-final class IdentityRepositoryExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $queries = [];
-
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    /** @param list<array<string, mixed>> $records */
-    public function __construct(private readonly array $records)
-    {
-    }
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        $this->queries[] = ['sql' => $sql, 'binds' => $binds];
-
-        return $this->records;
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
     }
 }

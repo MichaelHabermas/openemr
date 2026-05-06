@@ -20,7 +20,6 @@ use OpenEMR\AgentForge\Document\DocumentRetractionHook;
 use OpenEMR\AgentForge\Document\DocumentRetractionReason;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionRepository;
-use OpenEMR\AgentForge\Document\Retraction\DocumentRetractionService;
 use OpenEMR\BC\ServiceContainer;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -38,7 +37,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testNonNumericDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
         $repository = new RetractionRecordingRepository();
-        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
+        DocumentHookServiceBinding::setRetractionRepositoryForTesting($repository);
 
         DocumentRetractionHook::dispatch('not-an-id');
 
@@ -48,7 +47,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testInvalidDocumentIdReturnsWithoutRepositorySideEffects(): void
     {
         $repository = new RetractionRecordingRepository();
-        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
+        DocumentHookServiceBinding::setRetractionRepositoryForTesting($repository);
 
         DocumentRetractionHook::dispatch(0);
 
@@ -59,7 +58,7 @@ final class DocumentRetractionHookTest extends TestCase
     {
         $repository = new RetractionRecordingRepository();
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setRetractionServiceForTesting(new DocumentRetractionService($repository));
+        DocumentHookServiceBinding::setRetractionRepositoryForTesting($repository);
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);
@@ -80,9 +79,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testRepositoryExceptionIsCaughtAndLogged(): void
     {
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setRetractionServiceForTesting(
-            new DocumentRetractionService(new ThrowingRetractionRepository()),
-        );
+        DocumentHookServiceBinding::setRetractionRepositoryForTesting(new ThrowingRetractionRepository());
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);
@@ -97,9 +94,7 @@ final class DocumentRetractionHookTest extends TestCase
     public function testRepositoryThrowableIsCaughtAndSanitized(): void
     {
         $logger = new DocumentRecordingLogger();
-        DocumentHookServiceBinding::setRetractionServiceForTesting(
-            new DocumentRetractionService(new TypeErrorThrowingRetractionRepository()),
-        );
+        DocumentHookServiceBinding::setRetractionRepositoryForTesting(new TypeErrorThrowingRetractionRepository());
         ServiceContainer::override(LoggerInterface::class, $logger);
 
         DocumentRetractionHook::dispatch(123);

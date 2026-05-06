@@ -13,19 +13,11 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use DomainException;
+use OpenEMR\AgentForge\AgentForgeEnv;
 use OpenEMR\AgentForge\Llm\ProviderCostCatalog;
 
 final readonly class DraftProviderConfig
 {
-    /** @deprecated Use {@see DraftProviderMode::Fixture} instead. */
-    public const MODE_FIXTURE = 'fixture';
-    /** @deprecated Use {@see DraftProviderMode::Disabled} instead. */
-    public const MODE_DISABLED = 'disabled';
-    /** @deprecated Use {@see DraftProviderMode::OpenAi} instead. */
-    public const MODE_OPENAI = 'openai';
-    /** @deprecated Use {@see DraftProviderMode::Anthropic} instead. */
-    public const MODE_ANTHROPIC = 'anthropic';
-
     public string $mode;
     public ?string $apiKey;
     public string $model;
@@ -84,9 +76,9 @@ final readonly class DraftProviderConfig
 
     public static function fromEnvironment(): self
     {
-        $explicitMode = self::envString('AGENTFORGE_DRAFT_PROVIDER');
-        $openAiKey = self::envString('AGENTFORGE_OPENAI_API_KEY') ?? self::envString('OPENAI_API_KEY');
-        $anthropicKey = self::envString('AGENTFORGE_ANTHROPIC_API_KEY') ?? self::envString('ANTHROPIC_API_KEY');
+        $explicitMode = AgentForgeEnv::string('AGENTFORGE_DRAFT_PROVIDER');
+        $openAiKey = AgentForgeEnv::string('AGENTFORGE_OPENAI_API_KEY') ?? AgentForgeEnv::string('OPENAI_API_KEY');
+        $anthropicKey = AgentForgeEnv::string('AGENTFORGE_ANTHROPIC_API_KEY') ?? AgentForgeEnv::string('ANTHROPIC_API_KEY');
 
         $mode = $explicitMode ?? match (true) {
             $anthropicKey !== null => DraftProviderMode::Anthropic->value,
@@ -98,24 +90,24 @@ final readonly class DraftProviderConfig
             return new self(
                 mode: $mode,
                 apiKey: $anthropicKey,
-                model: self::envString('AGENTFORGE_ANTHROPIC_MODEL'),
-                inputCostPerMillionTokens: self::envFloat('AGENTFORGE_ANTHROPIC_INPUT_COST_PER_1M'),
-                outputCostPerMillionTokens: self::envFloat('AGENTFORGE_ANTHROPIC_OUTPUT_COST_PER_1M'),
-                cacheWriteCostPerMillionTokens: self::envFloat('AGENTFORGE_ANTHROPIC_CACHE_WRITE_COST_PER_1M'),
-                cacheReadCostPerMillionTokens: self::envFloat('AGENTFORGE_ANTHROPIC_CACHE_READ_COST_PER_1M'),
-                timeoutSeconds: self::envFloat('AGENTFORGE_ANTHROPIC_TIMEOUT_SECONDS') ?? 15.0,
-                connectTimeoutSeconds: self::envFloat('AGENTFORGE_ANTHROPIC_CONNECT_TIMEOUT_SECONDS') ?? 5.0,
+                model: AgentForgeEnv::string('AGENTFORGE_ANTHROPIC_MODEL'),
+                inputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_INPUT_COST_PER_1M'),
+                outputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_OUTPUT_COST_PER_1M'),
+                cacheWriteCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_CACHE_WRITE_COST_PER_1M'),
+                cacheReadCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_CACHE_READ_COST_PER_1M'),
+                timeoutSeconds: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_TIMEOUT_SECONDS') ?? 15.0,
+                connectTimeoutSeconds: AgentForgeEnv::float('AGENTFORGE_ANTHROPIC_CONNECT_TIMEOUT_SECONDS') ?? 5.0,
             );
         }
 
         return new self(
             mode: $mode,
             apiKey: $openAiKey,
-            model: self::envString('AGENTFORGE_OPENAI_MODEL'),
-            inputCostPerMillionTokens: self::envFloat('AGENTFORGE_OPENAI_INPUT_COST_PER_1M'),
-            outputCostPerMillionTokens: self::envFloat('AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M'),
-            timeoutSeconds: self::envFloat('AGENTFORGE_OPENAI_TIMEOUT_SECONDS') ?? 15.0,
-            connectTimeoutSeconds: self::envFloat('AGENTFORGE_OPENAI_CONNECT_TIMEOUT_SECONDS') ?? 5.0,
+            model: AgentForgeEnv::string('AGENTFORGE_OPENAI_MODEL'),
+            inputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_OPENAI_INPUT_COST_PER_1M'),
+            outputCostPerMillionTokens: AgentForgeEnv::float('AGENTFORGE_OPENAI_OUTPUT_COST_PER_1M'),
+            timeoutSeconds: AgentForgeEnv::float('AGENTFORGE_OPENAI_TIMEOUT_SECONDS') ?? 15.0,
+            connectTimeoutSeconds: AgentForgeEnv::float('AGENTFORGE_OPENAI_CONNECT_TIMEOUT_SECONDS') ?? 5.0,
         );
     }
 
@@ -125,25 +117,5 @@ final readonly class DraftProviderConfig
             DraftProviderMode::Anthropic->value => 'claude-haiku-4-5-20251001',
             default => 'gpt-4o-mini',
         };
-    }
-
-    private static function envString(string $name): ?string
-    {
-        $value = getenv($name, true);
-        if (!is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        return $value;
-    }
-
-    private static function envFloat(string $name): ?float
-    {
-        $value = self::envString($name);
-        if ($value === null || !is_numeric($value)) {
-            return null;
-        }
-
-        return (float) $value;
     }
 }

@@ -14,8 +14,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Orchestration;
 
 use DateTimeImmutable;
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
@@ -24,6 +22,7 @@ use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\Orchestration\SupervisorDecision;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -31,7 +30,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
 {
     public function testRecordUsesSafeInsertShape(): void
     {
-        $executor = new SupervisorHandoffExecutor();
+        $executor = new FakeDatabaseExecutor(defaultInsertId: 77);
         $decision = SupervisorDecision::handoff(
             WorkerName::EvidenceRetriever,
             'trusted_document_ready_for_evidence',
@@ -73,7 +72,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('persisted document job id');
 
-        (new SqlSupervisorHandoffRepository(new SupervisorHandoffExecutor()))->record(
+        (new SqlSupervisorHandoffRepository(new FakeDatabaseExecutor(defaultInsertId: 77)))->record(
             $this->unpersistedJob(),
             SupervisorDecision::hold('document_processing_failed'),
         );
@@ -84,7 +83,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('destination node');
 
-        (new SqlSupervisorHandoffRepository(new SupervisorHandoffExecutor()))->record(
+        (new SqlSupervisorHandoffRepository(new FakeDatabaseExecutor(defaultInsertId: 77)))->record(
             $this->persistedJob(),
             SupervisorDecision::hold('document_processing_failed'),
         );
@@ -92,7 +91,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
 
     public function testRecordRequestHandoffSupportsIntakeExtractorRoute(): void
     {
-        $executor = new SupervisorHandoffExecutor();
+        $executor = new FakeDatabaseExecutor(defaultInsertId: 77);
 
         $id = (new SqlSupervisorHandoffRepository($executor))->recordRequestHandoff(
             'request-456',
@@ -149,35 +148,5 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
             retractedAt: null,
             retractionReason: null,
         );
-    }
-}
-
-final class SupervisorHandoffExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        return [];
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 77;
     }
 }

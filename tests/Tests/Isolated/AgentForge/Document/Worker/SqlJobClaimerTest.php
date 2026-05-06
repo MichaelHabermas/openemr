@@ -13,8 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker;
 
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\DatabaseExecutor;
-use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
@@ -24,6 +22,7 @@ use OpenEMR\AgentForge\Document\Worker\DocumentJobWorkerRepository;
 use OpenEMR\AgentForge\Document\Worker\LockToken;
 use OpenEMR\AgentForge\Document\Worker\SqlJobClaimer;
 use OpenEMR\AgentForge\Document\Worker\WorkerName;
+use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
 use PHPUnit\Framework\TestCase;
 
 final class SqlJobClaimerTest extends TestCase
@@ -31,7 +30,7 @@ final class SqlJobClaimerTest extends TestCase
     public function testClaimNextAtomicallyClaimsOldestPendingNonRetractedJob(): void
     {
         $lockToken = new LockToken(str_repeat('b', 64));
-        $executor = new WorkerSqlExecutor(affectedRows: 1);
+        $executor = new FakeDatabaseExecutor(defaultAffectedRows: 1);
         $jobs = new ClaimerDocumentJobRepository($this->runningJob($lockToken));
 
         $job = (new SqlJobClaimer($jobs, $executor))->claimNext(WorkerName::IntakeExtractor, $lockToken);
@@ -54,7 +53,7 @@ final class SqlJobClaimerTest extends TestCase
     public function testClaimNextReturnsNullWithoutRefetchWhenNoRowClaimed(): void
     {
         $lockToken = new LockToken(str_repeat('c', 64));
-        $executor = new WorkerSqlExecutor(affectedRows: 0);
+        $executor = new FakeDatabaseExecutor(defaultAffectedRows: 0);
         $jobs = new ClaimerDocumentJobRepository(null);
 
         $job = (new SqlJobClaimer($jobs, $executor))->claimNext(WorkerName::IntakeExtractor, $lockToken);
@@ -82,45 +81,6 @@ final class SqlJobClaimerTest extends TestCase
             retractedAt: null,
             retractionReason: null,
         );
-    }
-}
-
-final class WorkerSqlExecutor implements DatabaseExecutor
-{
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $queries = [];
-
-    /** @var list<array{sql: string, binds: list<mixed>}> */
-    public array $statements = [];
-
-    public function __construct(private readonly int $affectedRows = 1)
-    {
-    }
-
-    public function fetchRecords(string $sql, array $binds = [], ?Deadline $deadline = null): array
-    {
-        $this->queries[] = ['sql' => $sql, 'binds' => $binds];
-
-        return [];
-    }
-
-    public function executeStatement(string $sql, array $binds = []): void
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-    }
-
-    public function executeAffected(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return $this->affectedRows;
-    }
-
-    public function insert(string $sql, array $binds = []): int
-    {
-        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
-
-        return 1;
     }
 }
 
