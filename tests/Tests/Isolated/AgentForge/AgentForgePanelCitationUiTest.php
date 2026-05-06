@@ -31,16 +31,48 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $template = $this->agentForgePanelTemplate();
 
         $this->assertStringContainsString('agent-forge-source-overlay', $template);
-        $this->assertStringContainsString("detail.source_type === 'document'", $template);
-        $this->assertStringContainsString('detail.citation.bounding_box', $template);
-        $this->assertStringContainsString('agent_document_source.php?document_id=', $template);
-        $this->assertStringContainsString("encodeURIComponent(citation.job_id || '')", $template);
+        $this->assertStringContainsString("return detail\n            && detail.source_type === 'document';", $template);
+        $this->assertStringContainsString('fetchSourceReview(detail)', $template);
+        $this->assertStringContainsString("'agent_document_source_review.php?' + params.toString()", $template);
+        $this->assertStringContainsString("params.set('document_id', documentIdFromCitation(detail, citation))", $template);
+        $this->assertStringContainsString("params.set('job_id', citation.job_id || detail.job_id || '')", $template);
+        $this->assertStringContainsString("params.set('fact_id', citation.fact_id || detail.fact_id)", $template);
+        $this->assertStringContainsString("'Accept': 'application/json'", $template);
         $this->assertStringContainsString('agent-forge-source-sheet', $template);
         $this->assertStringNotContainsString('<iframe', $template);
+        $this->assertStringNotContainsString('agent_document_source.php?document_id=', $template);
+        $this->assertStringContainsString('if (hasBoundingBox(box))', $template);
         $this->assertStringContainsString("sourceBox.style.left = (box.x * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.top = (box.y * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.width = (box.width * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.height = (box.height * 100) + '%'", $template);
+    }
+
+    public function testPanelShowsDeterministicNoBoxFallbackWithPageAndQuote(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('agent-forge-source-fallback', $template);
+        $this->assertStringContainsString('payload && payload.review ? payload.review', $template);
+        $this->assertStringContainsString('reviewed.document_url', $template);
+        $this->assertStringContainsString("sourceBox.className = 'agent-forge-source-box d-none'", $template);
+        $this->assertStringContainsString("citation.page_or_section || {{ \"Unknown page\"|xlj }}", $template);
+        $this->assertStringContainsString(
+            "citation.quote_or_value || reviewed.value || {{ \"No quoted source text was returned.\"|xlj }}",
+            $template,
+        );
+        $this->assertStringContainsString("].filter(Boolean).join(' - ')", $template);
+        $this->assertStringContainsString('showSourceOverlay(detail, detail)', $template);
+    }
+
+    public function testPanelDoesNotCreateSourceButtonsForNonDocumentCitations(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('if (canFetchSourceReview(detail))', $template);
+        $this->assertStringContainsString("detail.source_type === 'document'", $template);
+        $this->assertStringContainsString('row.textContent = citationLabel(detail)', $template);
+        $this->assertStringNotContainsString('canShowSourceOverlay', $template);
     }
 
     public function testPanelShowsMissingWarningsAndEmptySourceStateSeparately(): void

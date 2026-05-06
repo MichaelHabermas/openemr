@@ -722,7 +722,22 @@ Dependencies: M7.
 
 ### Epic H2 - Visual PDF Source Review And Retraction UX
 
-Status: Not started.
+Status: Implemented with automated proof; browser proof pending.
+
+Implementation/proof note (2026-05-06): H2 adds a shared
+`SourceDocumentAccessGate`, guarded redirect and JSON source-review endpoints,
+`DocumentCitationReviewService`, chart-panel JSON source review, normalized
+bounding-box overlay, deterministic page/quote fallback when a bounding box is
+missing, and `documents.activity=0` deactivation handling through the AgentForge
+retraction hook/evidence gates. Focused H2 tests passed with 36 tests / 238
+assertions. `agent-forge/scripts/check-clinical-document.sh` passed with eval
+artifact `agent-forge/eval-results/clinical-document-20260506-213410`.
+`agent-forge/scripts/check-agentforge.sh` passed with deterministic eval artifact
+`agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
+artifact `agent-forge/eval-results/clinical-document-20260506-213715`. Browser
+proof of the reviewer-facing deletion/source-review flow remains pending.
+See
+`agent-forge/docs/epics/EPIC_VISUAL_PDF_SOURCE_REVIEW_AND_RETRACTION_UX.md`.
 
 Goal: Complete source-review UX and harden the M5C retraction behavior with visual review, browser proof, and full submission polish.
 
@@ -757,10 +772,22 @@ Acceptance criteria:
 
 - Reviewer can locate the cited source page/box for MVP fixture citations.
 - Wrong-document deletion no longer poisons chart or retrieval.
+- Citations without bounding boxes have deterministic review fallback to the
+  exact source page and quoted value; this remains a documented gap until
+  implementation proof is captured.
+- Source-review endpoint denies deleted/deactivated source content, failed or
+  retracted jobs, untrusted identity, wrong-patient access, and missing chart
+  ACL.
+- AgentForge-promoted `lists` rows are deactivated with `activity = 0` on
+  source retraction, preserving history while excluding the row from active
+  AgentForge evidence.
 
 Definition of done:
 
 - Visual source and deletion/retraction evals pass.
+- Record proof commands and artifacts, including whether
+  `agent-forge/scripts/check-clinical-document.sh` and
+  `agent-forge/scripts/check-agentforge.sh` were run.
 
 Dependencies: H1.
 

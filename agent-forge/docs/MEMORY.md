@@ -377,6 +377,30 @@ Last verified: 2026-05-06.
   `agent-forge/eval-results/clinical-document-20260506-191013`. Manual/browser
   deletion proof was not run and can be covered by H2/submission polish.
 
+## Week 2 H2 Source Review Carry-Forward
+
+Last automated proof: 2026-05-06.
+
+- H2 source review uses one shared `SourceDocumentAccessGate` for both the
+  guarded source redirect and JSON source-review endpoint. The gate requires
+  active patient/session scope, `patients:med`, succeeded unretracted job,
+  trusted identity or approved review, non-deleted and active source document,
+  and active unretracted fact when fact-specific review is requested.
+- `documents.activity=0` is treated as inactive source content for AgentForge.
+  The Zend document deactivation path dispatches `DocumentRetractionHook`, and
+  source-review/evidence SQL excludes inactive source documents.
+- The chart panel fetches source-review JSON, renders normalized bounding boxes
+  when available, and falls back to stored page/section plus quote/value when no
+  bounding box exists. The UI must not log quote/value or raw document text.
+- H2 focused tests passed with 36 tests / 238 assertions. The clinical document
+  gate passed with eval artifact
+  `agent-forge/eval-results/clinical-document-20260506-213410`. The
+  comprehensive AgentForge gate also passed with deterministic eval artifact
+  `agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
+  artifact `agent-forge/eval-results/clinical-document-20260506-213715`.
+  Browser/manual proof of the reviewer-facing deletion/source-review flow
+  remains pending.
+
 ## Week 2 M6 Implementation Notes
 
 Last verified: 2026-05-06.
@@ -489,3 +513,27 @@ Last verified: 2026-05-06.
 - The H1 eval is deterministic fixture-backed proof. Deployed Week 2 smoke,
   visual source UX, and real cost/latency packaging remain later hardening and
   final-submission concerns.
+
+## Week 2 H2 Docs/Proof Carry-Forward
+
+Last docs/proof update: 2026-05-06.
+
+- H2 has a partial source-review implementation in the current workspace:
+  `interface/patient_file/summary/agent_document_source.php` is a guarded
+  redirect to the existing OpenEMR document retrieval controller, and the
+  AgentForge chart panel can render a lightweight source overlay when a
+  document citation includes normalized bounding-box metadata.
+- The source-review endpoint gates on active session patient, `patients:med`
+  ACL, matching `document_id`/`job_id`, `succeeded` unretracted job status,
+  trusted identity or approved identity review, and non-deleted OpenEMR source
+  document. Keep this gate aligned with the evidence source gate.
+- Current fallback gap: citations without `bounding_box` are rendered as text
+  in the panel; no deterministic exact-page quote/value highlight or selection
+  proof was found in this docs/proof pass.
+- H2 must keep the M5C retraction policy explicit: AgentForge-promoted `lists`
+  rows are deactivated with `activity = 0`, facts/promotions/embeddings are
+  inactive/retracted, and audit history is append-only in
+  `clinical_document_retractions`.
+- Do not mark H2 complete until browser or endpoint proof captures active
+  source-review success, deleted/deactivated denial, no-bounding-box fallback,
+  and the clinical document/comprehensive gates or their exact caveats.

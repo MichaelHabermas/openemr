@@ -101,6 +101,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
             . 'AND ic.document_id = j.document_id '
             . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
             . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
+            . 'AND d.activity = 1 '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ORDER BY COALESCE(j.finished_at, d.date) DESC '
             . 'LIMIT ' . max(1, min(20, $this->limit)),

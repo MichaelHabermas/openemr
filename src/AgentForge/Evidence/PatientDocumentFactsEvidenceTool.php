@@ -83,6 +83,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             . 'AND ic.job_id = f.job_id '
             . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
             . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
+            . 'AND d.activity = 1 '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ORDER BY COALESCE(j.finished_at, f.created_at, d.date) DESC, f.id DESC '
             . 'LIMIT ' . max(1, min(50, $this->limit)),

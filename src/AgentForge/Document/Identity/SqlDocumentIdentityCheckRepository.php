@@ -61,7 +61,16 @@ final readonly class SqlDocumentIdentityCheckRepository implements DocumentIdent
     public function trustedForEvidence(DocumentJobId $jobId): bool
     {
         $records = $this->executor->fetchRecords(
-            'SELECT identity_status, review_decision FROM clinical_document_identity_checks WHERE job_id = ? LIMIT 1',
+            'SELECT ic.identity_status, ic.review_decision '
+            . 'FROM clinical_document_identity_checks ic '
+            . 'INNER JOIN clinical_document_processing_jobs j ON j.id = ic.job_id '
+            . 'INNER JOIN documents d ON d.id = ic.document_id '
+            . 'WHERE ic.job_id = ? '
+            . 'AND j.document_id = ic.document_id '
+            . 'AND j.patient_id = ic.patient_id '
+            . 'AND d.activity = 1 '
+            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
+            . 'LIMIT 1',
             [$jobId->value],
         );
         if ($records === []) {

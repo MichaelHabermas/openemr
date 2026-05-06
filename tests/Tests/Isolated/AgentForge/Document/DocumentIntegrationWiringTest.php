@@ -55,6 +55,21 @@ final class DocumentIntegrationWiringTest extends TestCase
         $this->assertGreaterThan($deletePosition, $retractPosition);
     }
 
+    public function testZendDocumentsTableDeletePathRetractsAfterDocumentIsDeactivated(): void
+    {
+        $source = $this->readProjectFile('/interface/modules/zend_modules/module/Documents/src/Documents/Model/DocumentsTable.php');
+        $activityPosition = strpos($source, '`activity` = ?');
+        $updatePosition = strpos($source, 'QueryUtils::sqlStatementThrowException($sql, [0, $docid]);');
+        $retractPosition = strpos($source, 'DocumentRetractionHook::dispatch($docid);');
+
+        $this->assertStringContainsString('use OpenEMR\AgentForge\Document\DocumentRetractionHook;', $source);
+        $this->assertIsInt($activityPosition);
+        $this->assertIsInt($updatePosition);
+        $this->assertIsInt($retractPosition);
+        $this->assertGreaterThan($activityPosition, $retractPosition);
+        $this->assertGreaterThan($updatePosition, $retractPosition);
+    }
+
     public function testDocumentDeleteRelationCleanupDoesNotEchoSql(): void
     {
         $source = $this->readProjectFile('/interface/patient_file/deleter.php');
@@ -78,6 +93,21 @@ final class DocumentIntegrationWiringTest extends TestCase
             '$activePatient = filter_var($session->get(\'pid\'), FILTER_VALIDATE_INT);',
             $source,
         );
+    }
+
+    public function testTrustedDocumentEvidenceSqlExcludesInactiveDocuments(): void
+    {
+        foreach ([
+            '/src/AgentForge/Evidence/ClinicalDocumentEvidenceTool.php',
+            '/src/AgentForge/Evidence/PatientDocumentFactsEvidenceTool.php',
+            '/src/AgentForge/Document/SqlDocumentFactRepository.php',
+        ] as $path) {
+            $source = $this->readProjectFile($path);
+
+            $this->assertStringContainsString('INNER JOIN documents d ON d.id = ', $source, $path);
+            $this->assertStringContainsString('AND d.activity = 1', $source, $path);
+            $this->assertStringContainsString('AND (d.deleted IS NULL OR d.deleted = 0)', $source, $path);
+        }
     }
 
     private function readProjectFile(string $path): string

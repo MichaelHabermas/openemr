@@ -78,7 +78,14 @@ final class SqlIdentityRepositoriesTest extends TestCase
         $executor = new FakeDatabaseExecutor(records:[['identity_status' => 'identity_ambiguous_needs_review', 'review_decision' => null]]);
 
         $this->assertFalse((new SqlDocumentIdentityCheckRepository($executor))->trustedForEvidence(new DocumentJobId(789)));
-        $this->assertStringContainsString('FROM clinical_document_identity_checks WHERE job_id = ?', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('FROM clinical_document_identity_checks ic', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('INNER JOIN clinical_document_processing_jobs j ON j.id = ic.job_id', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('INNER JOIN documents d ON d.id = ic.document_id', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('ic.job_id = ?', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('j.document_id = ic.document_id', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('j.patient_id = ic.patient_id', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('d.activity = 1', $executor->reads[0]['sql']);
+        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->reads[0]['sql']);
         $this->assertSame([789], $executor->reads[0]['binds']);
     }
 

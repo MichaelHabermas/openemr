@@ -12,6 +12,7 @@
 
 namespace Documents\Model;
 
+use OpenEMR\AgentForge\Document\DocumentRetractionHook;
 use OpenEMR\Common\Database\QueryUtils;
 
 class DocumentsTable
@@ -144,6 +145,7 @@ class DocumentsTable
           `activity` = ?
           WHERE `id` = ?";
         QueryUtils::sqlStatementThrowException($sql, [0, $docid]);
+        DocumentRetractionHook::dispatch($docid);
     }
 
     /**

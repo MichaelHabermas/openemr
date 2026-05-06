@@ -25,8 +25,8 @@
         <div class="agent-forge-source-page">
             <div class="agent-forge-source-sheet" aria-hidden="true"></div>
             <div id="agent-forge-source-box" class="agent-forge-source-box"></div>
+            <div id="agent-forge-source-fallback" class="agent-forge-source-fallback"></div>
         </div>
-        <a id="agent-forge-source-link" class="btn btn-link btn-sm p-0 mt-2" target="_blank" rel="noopener noreferrer">{{ "Open source document"|xlt }}</a>
         <div id="agent-forge-source-quote" class="small mt-2"></div>
     </div>
 </div>
@@ -78,6 +78,26 @@
     background: rgba(198, 40, 40, 0.12);
     position: absolute;
 }
+.agent-forge-source-box.d-none {
+    display: none;
+}
+.agent-forge-source-fallback {
+    align-items: center;
+    bottom: 0;
+    color: #495057;
+    display: flex;
+    font-size: 0.875rem;
+    justify-content: center;
+    left: 0;
+    padding: 1rem;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    top: 0;
+}
+.agent-forge-source-fallback.d-none {
+    display: none;
+}
 </style>
 
 <script>
@@ -94,8 +114,8 @@
     const submit = form.querySelector('button[type="submit"]');
     const sourceOverlay = document.getElementById('agent-forge-source-overlay');
     const sourceMeta = document.getElementById('agent-forge-source-meta');
-    const sourceLink = document.getElementById('agent-forge-source-link');
     const sourceBox = document.getElementById('agent-forge-source-box');
+    const sourceFallback = document.getElementById('agent-forge-source-fallback');
     const sourceQuote = document.getElementById('agent-forge-source-quote');
     let conversationId = null;
 
@@ -146,32 +166,121 @@
         ].filter(Boolean).join(' | ');
     }
 
-    function canShowSourceOverlay(detail) {
-        return detail
-            && detail.source_type === 'document'
-            && detail.citation
-            && detail.citation.bounding_box;
+    function documentIdFromCitation(detail, citation) {
+        const rawId = citation.document_id || detail.document_id || detail.source_id || '';
+        const match = String(rawId).match(/\d+/);
+        return match ? match[0] : '';
     }
 
-    function showSourceOverlay(detail) {
+    function reviewUrl(detail) {
         const citation = detail.citation || {};
+        const params = new URLSearchParams();
+        params.set('document_id', documentIdFromCitation(detail, citation));
+        params.set('job_id', citation.job_id || detail.job_id || '');
+        if (citation.fact_id || detail.fact_id) {
+            params.set('fact_id', citation.fact_id || detail.fact_id);
+        }
+        return 'agent_document_source_review.php?' + params.toString();
+    }
+
+    function canFetchSourceReview(detail) {
+        return detail
+            && detail.source_type === 'document';
+    }
+
+    function hasBoundingBox(box) {
+        return box
+            && typeof box.x === 'number'
+            && typeof box.y === 'number'
+            && typeof box.width === 'number'
+            && typeof box.height === 'number';
+    }
+
+    function normalizeReviewPayload(detail, payload) {
+        const reviewed = payload && payload.review ? payload.review : (payload && typeof payload === 'object' ? payload : {});
+        const citation = reviewed.citation || {
+            source_type: reviewed.source_type || '',
+            source_id: reviewed.source_id || '',
+            page_or_section: reviewed.page_or_section || '',
+            field_or_chunk_id: reviewed.field_or_chunk_id || '',
+            quote_or_value: reviewed.quote_or_value || '',
+            bounding_box: reviewed.bounding_box || null
+        };
+        return {
+            display_label: reviewed.display_label || detail.display_label || '',
+            source_type: reviewed.source_type || detail.source_type || citation.source_type || '',
+            source_id: reviewed.source_id || detail.source_id || citation.source_id || '',
+            citation: citation,
+            value: reviewed.value || reviewed.quote_or_value || detail.value || '',
+            document_url: reviewed.document_url || ''
+        };
+    }
+
+    function showSourceOverlay(detail, payload) {
+        const reviewed = normalizeReviewPayload(detail, payload);
+        const citation = reviewed.citation || {};
         const box = citation.bounding_box || {};
         sourceMeta.textContent = [
-            detail.display_label || '',
-            citation.source_type || '',
+            reviewed.display_label || '',
+            reviewed.source_type || '',
+            reviewed.source_id || '',
             citation.page_or_section || '',
             citation.field_or_chunk_id || ''
         ].filter(Boolean).join(' | ');
-        sourceQuote.textContent = citation.quote_or_value || detail.value || '';
-        sourceLink.href = 'agent_document_source.php?document_id='
-            + encodeURIComponent(citation.document_id || '')
-            + '&job_id='
-            + encodeURIComponent(citation.job_id || '');
-        sourceBox.style.left = (box.x * 100) + '%';
-        sourceBox.style.top = (box.y * 100) + '%';
-        sourceBox.style.width = (box.width * 100) + '%';
-        sourceBox.style.height = (box.height * 100) + '%';
+        sourceQuote.textContent = citation.quote_or_value || reviewed.value || '';
+        if (reviewed.document_url) {
+            sourceLink.href = reviewed.document_url;
+            sourceLink.className = 'btn btn-link btn-sm p-0 mt-2';
+        } else {
+            sourceLink.removeAttribute('href');
+            sourceLink.className = 'btn btn-link btn-sm p-0 mt-2 d-none';
+        }
+        if (hasBoundingBox(box)) {
+            sourceBox.className = 'agent-forge-source-box';
+            sourceFallback.className = 'agent-forge-source-fallback d-none';
+            sourceFallback.textContent = '';
+            sourceBox.style.left = (box.x * 100) + '%';
+            sourceBox.style.top = (box.y * 100) + '%';
+            sourceBox.style.width = (box.width * 100) + '%';
+            sourceBox.style.height = (box.height * 100) + '%';
+        } else {
+            sourceBox.className = 'agent-forge-source-box d-none';
+            sourceBox.removeAttribute('style');
+            sourceFallback.className = 'agent-forge-source-fallback';
+            sourceFallback.textContent = [
+                citation.page_or_section || {{ "Unknown page"|xlj }},
+                citation.quote_or_value || reviewed.value || {{ "No quoted source text was returned."|xlj }}
+            ].filter(Boolean).join(' - ');
+        }
         sourceOverlay.className = 'agent-forge-source-overlay';
+    }
+
+    function fetchSourceReview(detail) {
+        sourceMeta.textContent = {{ "Loading source review..."|xlj }};
+        sourceQuote.textContent = '';
+        sourceBox.className = 'agent-forge-source-box d-none';
+        sourceBox.removeAttribute('style');
+        sourceFallback.className = 'agent-forge-source-fallback d-none';
+        sourceFallback.textContent = '';
+        sourceOverlay.className = 'agent-forge-source-overlay';
+
+        top.restoreSession();
+        fetch(reviewUrl(detail), {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json'
+            }
+        }).then(function (result) {
+            if (!result.ok) {
+                throw new Error('source review failed');
+            }
+            return result.json();
+        }).then(function (payload) {
+            showSourceOverlay(detail, payload);
+        }).catch(function () {
+            showSourceOverlay(detail, detail);
+        });
     }
 
     function appendSources(parent, payload) {
@@ -193,13 +302,13 @@
 
         details.forEach(function (detail) {
             const row = document.createElement('li');
-            if (canShowSourceOverlay(detail)) {
+            if (canFetchSourceReview(detail)) {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'btn btn-link btn-sm p-0 align-baseline';
                 button.textContent = citationLabel(detail);
                 button.addEventListener('click', function () {
-                    showSourceOverlay(detail);
+                    fetchSourceReview(detail);
                 });
                 row.appendChild(button);
             } else {

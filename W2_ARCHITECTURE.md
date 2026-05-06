@@ -375,6 +375,35 @@ field path
 
 Bounding boxes come from the extraction step. For typed PDFs, AgentForge first attempts PDF text extraction with page coordinates. For scanned PDFs or images, the model extraction prompt requires normalized bounding boxes for each cited field. If no box can be produced, the fact is not eligible for `verified` promotion; it can only be stored as `document_fact` or `needs_review` with page plus quote/value review. MVP fixture evals require a bounding box for every promoted document fact and every final-answer document citation.
 
+The implemented source-review entry points are
+`interface/patient_file/summary/agent_document_source.php` for guarded document
+redirects and `interface/patient_file/summary/agent_document_source_review.php`
+for JSON review payloads. Both use the same AgentForge source access policy:
+active chart patient, `patients:med`, matching document/job, succeeded
+unretracted job, trusted identity or approved identity review, non-deleted and
+active source document, and active unretracted fact when fact-specific review is
+requested.
+
+The chart-panel overlay fetches the JSON review payload, renders normalized
+bounding-box metadata and quote/value text when available, and links to the
+guarded OpenEMR source document. It does not serve a separate document copy or
+embed raw document content in the AgentForge response.
+
+If a citation lacks a bounding box, the fallback behavior is:
+
+```text
+show the stored page/section label and quoted value, then offer the guarded
+OpenEMR source-document link
+```
+
+OpenEMR source documents with `documents.deleted != 0` or
+`documents.activity = 0` are inactive for AgentForge source review and evidence.
+
+This fallback must be deterministic and must not trust deleted, deactivated,
+wrong-patient, failed, retracted, or identity-untrusted document jobs. As of
+the 2026-05-06 docs/proof update, the no-bounding-box exact-page fallback and
+browser proof are documented as H2 gaps, not completed acceptance.
+
 ## 11. Persistence Model
 
 AgentForge separates extraction from clinical acceptance.
@@ -515,6 +544,13 @@ retract or mark inactive OpenEMR records AgentForge promoted from that document 
 stop using those rows as AgentForge evidence
 record the retraction on the originating fact, promotion, and audit/retraction records
 ```
+
+For AgentForge-promoted rows stored in OpenEMR `lists`, deactivation uses
+`activity = 0` plus an appended source-retracted comment. This preserves
+OpenEMR clinical history while making the row inactive for AgentForge evidence.
+AgentForge must treat `activity = 0`, inactive promotion rows, inactive facts,
+inactive embeddings, and retracted jobs as exclusion signals for retrieval,
+source-review trust, and final-answer citations.
 
 Retraction is append-only from an audit perspective and inactive from an evidence perspective:
 
