@@ -41,7 +41,15 @@ final class AnswerCitationCoverageRubric implements Rubric
             return new RubricResult($this->name(), RubricStatus::Fail, 'At least one guideline claim lacks a citation.');
         }
 
-        return new RubricResult($this->name(), RubricStatus::Pass, 'Answer-level citation coverage is complete.');
+        $facts = $inputs->output->extraction['facts'] ?? [];
+        if (is_array($facts)) {
+            $mismatch = $this->firstCitationAccuracyMismatch($facts);
+            if ($mismatch !== null) {
+                return new RubricResult($this->name(), RubricStatus::Fail, $mismatch);
+            }
+        }
+
+        return new RubricResult($this->name(), RubricStatus::Pass, 'Answer-level citation coverage is complete and citations match extracted values.');
     }
 
     /** @param array<string, mixed> $coverage */
@@ -56,5 +64,43 @@ final class AnswerCitationCoverageRubric implements Rubric
         $cited = $counts['cited'] ?? null;
 
         return is_int($total) && is_int($cited) && $total > 0 && $total === $cited;
+    }
+
+    /**
+     * @param array<int|string, mixed> $facts
+     */
+    private function firstCitationAccuracyMismatch(array $facts): ?string
+    {
+        foreach ($facts as $fact) {
+            if (!is_array($fact)) {
+                continue;
+            }
+            $citation = $fact['citation'] ?? null;
+            if (!is_array($citation)) {
+                continue;
+            }
+            $value = $fact['value'] ?? null;
+            $quote = $citation['quote_or_value'] ?? null;
+
+            if (!is_string($value) || $value === '') {
+                continue;
+            }
+            if (!is_string($quote) || trim($quote) === '') {
+                $fieldPath = is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '(unnamed)';
+                return sprintf('Citation for %s has empty quote_or_value.', $fieldPath);
+            }
+
+            if (stripos($quote, $value) === false && stripos($value, $quote) === false) {
+                $fieldPath = is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '(unnamed)';
+                return sprintf(
+                    'Citation quote_or_value (%s) does not contain extracted value (%s) for %s.',
+                    $quote,
+                    $value,
+                    $fieldPath,
+                );
+            }
+        }
+
+        return null;
     }
 }

@@ -30,16 +30,51 @@ final class FactuallyConsistentRubric implements Rubric
 
         $facts = $inputs->output->extraction['facts'] ?? [];
         if (!is_array($facts)) {
-            return new RubricResult($this->name(), RubricStatus::Fail, 'Extracted facts are not available.');
+            return new RubricResult($this->name(), RubricStatus::Fail, 'Extracted facts are not available.', 0.0);
         }
 
-        foreach ($inputs->case->expectedExtraction->facts as $expectedFact) {
-            if (!$this->hasMatchingFact($facts, $expectedFact)) {
-                return new RubricResult($this->name(), RubricStatus::Fail, 'Expected fact was not found in extracted output.');
+        $expectedFacts = $inputs->case->expectedExtraction->facts;
+        $expectedCount = count($expectedFacts);
+
+        if ($expectedCount === 0) {
+            return new RubricResult($this->name(), RubricStatus::Pass, 'No facts were expected.', 1.0);
+        }
+
+        $matched = 0;
+        $missing = [];
+        foreach ($expectedFacts as $expectedFact) {
+            if ($this->hasMatchingFact($facts, $expectedFact)) {
+                $matched++;
+                continue;
             }
+            $missing[] = is_string($expectedFact['field_path'] ?? null)
+                ? $expectedFact['field_path']
+                : '(unnamed)';
         }
 
-        return new RubricResult($this->name(), RubricStatus::Pass, 'Expected facts are present in extracted output.');
+        $score = $matched / $expectedCount;
+
+        if ($matched === $expectedCount) {
+            return new RubricResult(
+                $this->name(),
+                RubricStatus::Pass,
+                sprintf('All %d expected facts present.', $expectedCount),
+                $score,
+            );
+        }
+
+        return new RubricResult(
+            $this->name(),
+            RubricStatus::Fail,
+            sprintf(
+                'Matched %d of %d expected facts (recall=%.2f). Missing: %s',
+                $matched,
+                $expectedCount,
+                $score,
+                implode(', ', $missing),
+            ),
+            $score,
+        );
     }
 
     /**
