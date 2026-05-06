@@ -213,7 +213,7 @@ needs_review
 
 `document_fact` means the item is useful and source-cited but should not silently become chart truth. It is stored and vectorized as an AgentForge document fact.
 
-`needs_review` means the item may matter clinically but is uncertain, ambiguous, incomplete, out of place, or low-confidence. It is still stored, vectorized, cited, and surfaced when relevant. It is not promoted into trusted chart tables.
+`needs_review` means the item may matter clinically but is uncertain, ambiguous, incomplete, out of place, or low-confidence. It is still stored with citation metadata for review, but it is not active evidence, not promoted into trusted chart tables, and not returned through default patient document fact retrieval.
 
 The key safety rule is:
 
@@ -701,9 +701,8 @@ It processes document extraction jobs, produces strict JSON, validates facts, at
 ### evidence-retriever
 
 The `evidence-retriever` worker handles answer-time evidence retrieval. In the
-M7 checkpoint implementation it wraps existing chart evidence plus guideline
-retrieval only; patient document fact retrieval stays deferred until the M5
-fact-persistence/search path lands. The full target retrieves:
+M5 implementation it wraps existing chart evidence, persisted patient document
+facts, and selective guideline retrieval. The full target retrieves:
 
 ```text
 existing chart evidence
@@ -1114,10 +1113,10 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | MariaDB Vector | MariaDB 11.8 stores guideline and document-fact vectors; no separate vector DB. |
 | One supervisor | PHP AgentForge supervisor routes extraction/retrieval/final-answer decisions. |
 | `intake-extractor` worker | Required worker name retained; handles both `lab_pdf` and `intake_form`. |
-| `evidence-retriever` worker | M7 retrieves chart facts and guideline chunks with citations; patient document facts remain post-MVP. |
+| `evidence-retriever` worker | Default evidence composition retrieves chart facts and persisted patient document facts with citations; guideline chunks are added only when guideline support is needed. |
 | Logged inspectable handoffs | `clinical_supervisor_handoffs` stores required source, destination, reason, task type, outcome, latency, and error. |
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
-| Surface uncertainty | `needs_review` findings are stored, vectorized, cited, and surfaced when clinically relevant. |
+| Surface uncertainty | `needs_review` findings are stored with citation metadata for review, but are excluded from active evidence and chart promotion until resolved. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
 | 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 50 synthetic/demo cases. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`. |

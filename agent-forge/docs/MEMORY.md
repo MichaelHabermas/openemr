@@ -320,6 +320,42 @@ Last verified: 2026-05-06.
   are missing; account numbers are not treated as MRNs; unknown identity status
   values fail closed; nullable chart DOB routes to review instead of crashing.
 
+## Week 2 M5 Implementation Notes
+
+Last verified: 2026-05-06.
+
+- M5 adds `clinical_document_facts` and
+  `clinical_document_fact_embeddings` as the durable patient-document fact
+  store. Guideline vectors remain isolated in
+  `clinical_guideline_chunk_embeddings`; document vectors use `VECTOR(1536)`
+  and embedding writes validate dimension count before SQL persistence.
+- `IntakeExtractorWorker` now wires `DocumentPromotionPipeline` to
+  `SqlDocumentFactRepository` and document fact embeddings after the M5A
+  identity gate. Lab facts can persist and promote to OpenEMR `procedure_*`
+  rows with promotion provenance; intake findings are forced to
+  `document_fact` or `needs_review` and are not silently treated as chart truth.
+- `PatientDocumentFactsEvidenceTool` replaces answer-time document
+  re-extraction in default evidence composition. It returns only active,
+  unretracted, not-deactivated facts from succeeded jobs, with `verified` or
+  `document_fact` certainty, trusted identity or explicit human approval, and
+  non-deleted source documents.
+- Retraction now deactivates document facts and document fact embeddings. Lab
+  evidence also independently suppresses AgentForge-promoted
+  `procedure_result` rows whose source document is deleted or whose promotion
+  or job is inactive or retracted.
+- The cited document source gate accepts explicit human review approval
+  consistently with evidence retrieval, while still requiring patient/session
+  match, succeeded unretracted job, and non-deleted source document.
+- M5 proof passed `agent-forge/scripts/check-clinical-document.sh` outside the
+  sandbox on 2026-05-06: 582 AgentForge isolated tests / 2888 assertions / 1
+  skipped, clinical document eval `baseline_met`, focused PHPStan and PHPCS
+  clean. Latest artifact noted during implementation:
+  `agent-forge/eval-results/clinical-document-20260506-183912/`.
+- Remaining caveat: the default document fact embedding provider is
+  deterministic, matching the current local guideline embedding pattern and
+  explicit model name; semantic/live document-vector provider selection remains
+  future hardening before depending on dense document-vector ranking.
+
 ## Week 2 M6 Implementation Notes
 
 Last verified: 2026-05-06.

@@ -525,7 +525,15 @@ Dependencies: M5A.
 
 ### Epic M5 - Fact Persistence, Lab Promotion, Embeddings, And Patient Document Search
 
-Status: Started.
+Status: Completed.
+
+Implementation note (2026-05-06): M5 durable fact persistence, document fact
+embeddings, identity-gated patient document retrieval, lab promotion proof,
+duplicate prevention, source approval parity, and active-evidence
+retraction/deletion suppression are implemented. Local proof passed
+`agent-forge/scripts/check-clinical-document.sh` outside the sandbox: 582
+AgentForge isolated tests / 2888 assertions / 1 skipped, clinical document eval
+`baseline_met`, focused PHPStan, and PHPCS clean.
 
 Checkpoint disposition: Mostly deferred until after the MVP checkpoint. For the checkpoint, preserve cited extraction output and identity-gated review state; full lab promotion, document fact embeddings, and patient document search continue after the first deployed demo.
 
@@ -534,14 +542,22 @@ Goal: Store cited, identity-gated document facts, promote verified lab facts to 
 Files/modules:
 
 - Add `src/AgentForge/Document/DocumentFact.php`.
+- Add `src/AgentForge/Document/DocumentFactRepository.php`.
 - Add `src/AgentForge/Document/SqlDocumentFactRepository.php`.
 - Add `src/AgentForge/Document/DocumentFactClassifier.php`.
-- Add `src/AgentForge/Document/Promotion/OpenEmrLabResultPromoter.php`.
 - Add `src/AgentForge/Document/Embedding/EmbeddingProvider.php`.
+- Add `src/AgentForge/Document/Embedding/DocumentFactEmbeddingRepository.php`.
+- Add `src/AgentForge/Document/Embedding/SqlDocumentFactEmbeddingRepository.php`.
 - Add `src/AgentForge/Document/Embedding/OpenAiEmbeddingProvider.php`.
 - Add `src/AgentForge/Document/Embedding/DeterministicEmbeddingProvider.php`.
 - Add `src/AgentForge/Evidence/PatientDocumentFactsEvidenceTool.php`.
-- Modify `src/AgentForge/Evidence/EvidenceBundleItem.php`.
+- Modify `src/AgentForge/Document/Promotion/SqlClinicalDocumentFactPromotionRepository.php`.
+- Modify `src/AgentForge/Document/SqlDocumentJobRepository.php`.
+- Modify `src/AgentForge/Document/Worker/DocumentJobWorkerFactory.php`.
+- Modify `src/AgentForge/Evidence/EvidenceToolFactory.php`.
+- Modify `src/AgentForge/Evidence/LabsEvidenceTool.php`.
+- Modify `src/AgentForge/Evidence/SqlChartEvidenceRepository.php`.
+- Modify `interface/patient_file/summary/agent_document_source.php`.
 
 Database changes:
 
@@ -556,18 +572,24 @@ Tests/evals first:
 - Test identity status other than `identity_verified` or explicit human approval blocks active facts, embeddings, promotion, and retrieval.
 - Test intake demographics are not written to `patient_data` in MVP.
 - Test intake findings are stored as `document_fact` or `needs_review`.
-- Test re-querying document facts excludes inactive/retracted facts.
+- Test re-querying document facts excludes inactive/retracted/deactivated facts and failed or retracted jobs.
+- Test retraction deactivates document facts and document fact embeddings.
+- Test deleted source documents suppress AgentForge-promoted lab evidence even if cleanup hook fails.
+- Test explicit human approval can open cited source documents.
+- Test document fact embedding writes reject non-1536-dimension vectors.
 - Test document fact retrieval returns cited evidence bundle items.
 
 Implementation tasks:
 
-- Convert validated extraction items into certainty buckets: `verified`, `document_fact`, `needs_review`.
+- Convert lab extraction items into certainty buckets: `verified`, `document_fact`, `needs_review`; force intake findings to `document_fact` or `needs_review` so they never become chart truth.
 - Promote only complete, high-confidence, cited lab facts from identity-verified or human-approved documents.
 - Store all useful cited intake findings as document facts or needs-review findings.
 - Generate stable source-scoped fact fingerprints from patient id, document id, doc type, field path, normalized value, collection date/section, and citation source.
 - Generate patient-scoped clinical-content fingerprints for duplicate prevention across repeated uploads of the same source content.
-- Embed document facts only after persistence succeeds.
-- Extend evidence bundle handling so source ids can represent chart, document, and guideline evidence without losing backward compatibility.
+- Embed document facts only after persistence succeeds; embed promotable lab facts inside the promotion lock/transaction.
+- Replace answer-time document re-extraction with `PatientDocumentFactsEvidenceTool` over persisted, identity-gated document facts.
+- Deactivate facts and embeddings when a source document retracts; independently suppress promoted lab evidence when the source document is deleted.
+- Keep source ids for chart, document, and guideline evidence backward compatible while adding `document:clinical_document_facts/{fact_id}@{date}` document citations.
 
 Acceptance criteria:
 
@@ -575,10 +597,13 @@ Acceptance criteria:
 - Intake findings are searchable and cited but not silently treated as chart truth.
 - Document fact vectors are stored only in `clinical_document_fact_embeddings`.
 - No fact, embedding, promoted row, or evidence bundle item is active/retrievable unless document identity status is `identity_verified` or explicitly human-approved.
+- Needs-review facts are persisted for review but are not active evidence.
+- Deleted/retracted source content cannot remain active in document fact retrieval, vector rows, `LabsEvidenceTool` output, or the source redirect.
+- Explicit human review approval is honored consistently by evidence retrieval and source-review redirect.
 
 Definition of done:
 
-- MVP evals prove identity gating, lab promotion, intake needs-review storage, duplicate prevention, and document fact search.
+- MVP evals prove identity gating, lab promotion, intake needs-review storage, duplicate prevention, document fact search, fact/embedding deactivation, deleted-source lab suppression, and source-gate approval parity.
 
 Dependencies: M5B.
 
@@ -587,6 +612,12 @@ Dependencies: M5B.
 Status: Not started.
 
 Checkpoint disposition: Deferred until after the MVP checkpoint. Retraction/audit remains submission-critical, especially before promoted data is used as active evidence, but it is not required for the first visible deployed extraction/retrieval demo.
+
+Implementation note (2026-05-06): M5 now deactivates document facts and
+embeddings and suppresses deleted/retracted source content from active evidence
+paths. M5C remains not started because the dedicated retraction service,
+`clinical_document_retractions` audit table, and promoted-row audit ledger are
+still unimplemented.
 
 Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed guideline retrieval or final answers.
 
