@@ -33,6 +33,8 @@ use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 
+require_once __DIR__ . '/code-version.php';
+
 function agentforge_eval_main(): int
 {
     $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
@@ -211,22 +213,7 @@ function agentforge_eval_agent_handler(string $scenario, ?DraftProvider $draftPr
 
 function agentforge_eval_code_version(string $repoRoot): string
 {
-    $headPath = $repoRoot . '/.git/HEAD';
-    if (!is_file($headPath)) {
-        return 'unknown';
-    }
-
-    $head = trim((string) file_get_contents($headPath));
-    if (str_starts_with($head, 'ref: ')) {
-        $refPath = $repoRoot . '/.git/' . substr($head, 5);
-        if (is_file($refPath)) {
-            return substr(trim((string) file_get_contents($refPath)), 0, 12);
-        }
-
-        return 'unknown';
-    }
-
-    return substr($head, 0, 12);
+    return agentforge_scripts_code_version($repoRoot);
 }
 
 /** @return list<ChartEvidenceTool> */

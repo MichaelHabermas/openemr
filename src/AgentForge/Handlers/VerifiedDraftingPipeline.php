@@ -562,7 +562,7 @@ final readonly class VerifiedDraftingPipeline
                 continue;
             }
 
-            $line = $this->evidenceLine($item);
+            $line = sprintf('%s: %s', $item->displayLabel, $item->value);
             if (str_contains($answerText, "\n" . $line . "\n") || str_contains($answerText, $item->sourceId)) {
                 continue;
             }
@@ -593,10 +593,5 @@ final readonly class VerifiedDraftingPipeline
         }
 
         return false;
-    }
-
-    private function evidenceLine(EvidenceBundleItem $item): string
-    {
-        return sprintf('%s: %s', $item->displayLabel, $item->value);
     }
 }

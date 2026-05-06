@@ -17,6 +17,8 @@ declare(strict_types=1);
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
 use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 
+require_once __DIR__ . '/code-version.php';
+
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_TIMEOUT_S = 90;
 const AGENTFORGE_DEPLOYED_SMOKE_DEFAULT_PRIMARY_PID = 900001;
 const AGENTFORGE_DEPLOYED_SMOKE_USER_AGENT = 'AgentForge-DeployedSmoke/1.0';
@@ -1022,20 +1024,5 @@ function agentforge_deployed_smoke_temp_cookie_jar(string $tag): string
 
 function agentforge_deployed_smoke_code_version(string $repoRoot): string
 {
-    $headPath = $repoRoot . '/.git/HEAD';
-    if (!is_file($headPath)) {
-        return 'unknown';
-    }
-
-    $head = trim((string) file_get_contents($headPath));
-    if (str_starts_with($head, 'ref: ')) {
-        $refPath = $repoRoot . '/.git/' . substr($head, 5);
-        if (is_file($refPath)) {
-            return substr(trim((string) file_get_contents($refPath)), 0, 12);
-        }
-
-        return 'unknown';
-    }
-
-    return substr($head, 0, 12);
+    return agentforge_scripts_code_version($repoRoot);
 }
