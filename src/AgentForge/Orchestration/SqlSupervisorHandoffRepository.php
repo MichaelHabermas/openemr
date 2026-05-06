@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\Orchestration;
 
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentJob;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use RuntimeException;
 
 final readonly class SqlSupervisorHandoffRepository
@@ -32,7 +31,7 @@ final readonly class SqlSupervisorHandoffRepository
 
     public function recordRequestHandoff(
         string $requestId,
-        WorkerName $destinationNode,
+        NodeName $destinationNode,
         string $decisionReason,
         string $taskType,
         string $outcome,
@@ -61,14 +60,14 @@ final readonly class SqlSupervisorHandoffRepository
         if ($job->id === null) {
             throw new RuntimeException('Supervisor handoffs require a persisted document job id.');
         }
-        if ($decision->targetWorker === null) {
+        if ($decision->targetNode === null) {
             throw new RuntimeException('Supervisor handoffs require a destination node.');
         }
 
         return $this->insert(
             requestId: $requestId,
             jobId: $job->id->value,
-            destinationNode: $decision->targetWorker->value,
+            destinationNode: $decision->targetNode->value,
             decisionReason: $decision->reason,
             taskType: $job->docType->value,
             outcome: $decision->decision,
@@ -94,7 +93,7 @@ final readonly class SqlSupervisorHandoffRepository
             [
                 $this->boundedNullable($requestId, self::MAX_REQUEST_ID_LENGTH, 'request id'),
                 $jobId,
-                WorkerName::Supervisor->value,
+                NodeName::Supervisor->value,
                 $this->boundedRequired($destinationNode, self::MAX_NODE_LENGTH, 'destination node'),
                 $this->boundedRequired($decisionReason, self::MAX_DECISION_LENGTH, 'decision reason'),
                 $this->boundedRequired($taskType, self::MAX_TASK_TYPE_LENGTH, 'task type'),

@@ -3,6 +3,9 @@
 /**
  * Read-only cited evidence from trusted AgentForge clinical document jobs.
  *
+ * Re-runs document extraction at query time for jobs that succeeded but
+ * whose facts have not yet been persisted to clinical_document_facts.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
@@ -20,19 +23,18 @@ use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
-use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
-use OpenEMR\AgentForge\Document\Worker\OpenEmrDocumentLoader;
+use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 
-final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
+final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
 {
     public function __construct(
         private MonotonicClock $clock,
         private DatabaseExecutor $executor,
-        private ?DocumentLoader $documentLoader = null,
-        private ?DocumentExtractionProvider $extractionProvider = null,
+        private DocumentLoader $documentLoader,
+        private DocumentExtractionProvider $extractionProvider,
         private int $limit = 6,
     ) {
     }
@@ -53,10 +55,10 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
             }
 
             try {
-                $documentId = new DocumentId($this->positiveInt($row, 'document_id'));
-                $docType = DocumentType::fromStringOrThrow($this->string($row, 'doc_type'));
-                $document = $this->loader()->load($documentId);
-                $response = $this->provider()->extract(
+                $documentId = new DocumentId(Fmt::positiveInt($row, 'document_id'));
+                $docType = DocumentType::fromStringOrThrow(Fmt::string($row, 'doc_type'));
+                $document = $this->documentLoader->load($documentId);
+                $response = $this->extractionProvider->extract(
                     $documentId,
                     $document,
                     $docType,
@@ -122,16 +124,16 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
     private function itemFromFact(array $row, array $fact): ?EvidenceItem
     {
         $citation = $this->stringKeyed($fact['citation'] ?? null);
-        $fieldPath = $this->string($fact, 'field_path');
-        $field = $this->string($citation, 'field_or_chunk_id') ?: $fieldPath;
-        $page = $this->string($citation, 'page_or_section') ?: 'unknown page';
-        $docType = $this->string($row, 'doc_type');
-        $jobId = (string) $this->positiveInt($row, 'id');
+        $fieldPath = Fmt::string($fact, 'field_path');
+        $field = Fmt::string($citation, 'field_or_chunk_id') ?: $fieldPath;
+        $page = Fmt::string($citation, 'page_or_section') ?: 'unknown page';
+        $docType = Fmt::string($row, 'doc_type');
+        $jobId = (string) Fmt::positiveInt($row, 'id');
 
         if (($fact['type'] ?? null) === 'lab_result') {
-            $label = $this->string($fact, 'test_name') ?: $this->string($fact, 'label');
-            $value = $this->string($fact, 'value');
-            $unit = $this->string($fact, 'unit');
+            $label = Fmt::string($fact, 'test_name') ?: Fmt::string($fact, 'label');
+            $value = Fmt::string($fact, 'value');
+            $unit = Fmt::string($fact, 'unit');
             $result = $unit !== '' && !str_contains($value, $unit)
                 ? trim($value . ' ' . $unit)
                 : $value;
@@ -141,18 +143,22 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
 
             $parts = [$result];
             foreach (['reference_range' => 'reference range', 'abnormal_flag' => 'abnormal'] as $key => $name) {
-                $value = $this->string($fact, $key);
+                $value = Fmt::string($fact, $key);
                 if ($value !== '') {
                     $parts[] = sprintf('%s: %s', $name, $value);
                 }
             }
-            $parts[] = $this->evidenceCitationSuffix($docType, $page, $field);
+            $parts[] = Fmt::evidenceCitationSuffix($docType, $page, $field);
 
             return new EvidenceItem(
                 'document',
                 'clinical_document_processing_jobs',
                 sprintf('%s:%s', $jobId, $field),
-                $this->sourceDate($row, $this->string($fact, 'collected_at')),
+                Fmt::sourceDate(
+                    Fmt::string($fact, 'collected_at'),
+                    Fmt::string($row, 'finished_at'),
+                    Fmt::string($row, 'document_date'),
+                ),
                 $label,
                 EvidenceText::bounded(implode('; ', $parts), 300),
                 $this->citationMetadata($row, $fact, $citation, $field, $page),
@@ -160,8 +166,8 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
         }
 
         if (($fact['type'] ?? null) === 'intake_finding') {
-            $label = $this->string($fact, 'label');
-            $value = $this->string($fact, 'value');
+            $label = Fmt::string($fact, 'label');
+            $value = Fmt::string($fact, 'value');
             if ($label === '' || $value === '') {
                 return null;
             }
@@ -170,9 +176,12 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                 'document',
                 'clinical_document_processing_jobs',
                 sprintf('%s:%s', $jobId, $field),
-                $this->sourceDate($row),
+                Fmt::sourceDate(
+                    Fmt::string($row, 'finished_at'),
+                    Fmt::string($row, 'document_date'),
+                ),
                 str_replace('_', ' ', $label),
-                EvidenceText::bounded(sprintf('%s; %s', $value, $this->evidenceCitationSuffix($docType, $page, $field)), 300),
+                EvidenceText::bounded(sprintf('%s; %s', $value, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
                 $this->citationMetadata($row, $fact, $citation, $field, $page),
             );
         }
@@ -189,16 +198,16 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
     private function citationMetadata(array $row, array $fact, array $citation, string $field, string $page): array
     {
         $metadata = [
-            'source_type' => $this->string($citation, 'source_type') ?: $this->string($row, 'doc_type'),
-            'source_id' => $this->string($citation, 'source_id') ?: $this->documentSourceId($row),
-            'document_id' => $this->positiveInt($row, 'document_id'),
-            'job_id' => $this->positiveInt($row, 'id'),
+            'source_type' => Fmt::string($citation, 'source_type') ?: Fmt::string($row, 'doc_type'),
+            'source_id' => Fmt::string($citation, 'source_id') ?: 'document:' . Fmt::string($row, 'document_id'),
+            'document_id' => Fmt::positiveInt($row, 'document_id'),
+            'job_id' => Fmt::positiveInt($row, 'id'),
             'page_or_section' => $page,
             'field_or_chunk_id' => $field,
-            'quote_or_value' => EvidenceText::bounded($this->string($citation, 'quote_or_value'), 240),
+            'quote_or_value' => EvidenceText::bounded(Fmt::string($citation, 'quote_or_value'), 240),
         ];
 
-        $box = $this->normalizedBoundingBox($citation['bounding_box'] ?? $fact['bounding_box'] ?? null);
+        $box = Fmt::normalizedBoundingBox($citation['bounding_box'] ?? $fact['bounding_box'] ?? null);
         if ($box !== null) {
             $metadata['bounding_box'] = $box;
         }
@@ -207,81 +216,6 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
             $metadata,
             static fn (mixed $value): bool => $value !== '',
         );
-    }
-
-    /** @param array<string, mixed> $row */
-    private function documentSourceId(array $row): string
-    {
-        return 'document:' . $this->string($row, 'document_id');
-    }
-
-    private function evidenceCitationSuffix(string $docType, string $page, string $field): string
-    {
-        return sprintf('Citation: %s, %s, %s', $docType, $page, $field);
-    }
-
-    /** @return array{x: float, y: float, width: float, height: float}|null */
-    private function normalizedBoundingBox(mixed $value): ?array
-    {
-        if (!is_array($value)) {
-            return null;
-        }
-
-        $numbers = [];
-        foreach (['x', 'y', 'width', 'height'] as $key) {
-            if (!isset($value[$key]) || !is_numeric($value[$key])) {
-                return null;
-            }
-            $number = (float) $value[$key];
-            if ($number < 0.0 || $number > 1.0) {
-                return null;
-            }
-            $numbers[$key] = $number;
-        }
-
-        if ($numbers['width'] <= 0.0 || $numbers['height'] <= 0.0) {
-            return null;
-        }
-
-        return [
-            'x' => $numbers['x'],
-            'y' => $numbers['y'],
-            'width' => $numbers['width'],
-            'height' => $numbers['height'],
-        ];
-    }
-
-    /** @param array<string, mixed> $row */
-    private function sourceDate(array $row, string $preferred = ''): string
-    {
-        foreach ([$preferred, $this->string($row, 'finished_at'), $this->string($row, 'document_date')] as $candidate) {
-            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $candidate, $matches) === 1) {
-                return $matches[0];
-            }
-        }
-
-        return 'unknown';
-    }
-
-    /** @param array<string, mixed> $row */
-    private function string(array $row, string $key): string
-    {
-        $value = $row[$key] ?? '';
-        return is_scalar($value) ? trim((string) $value) : '';
-    }
-
-    /** @param array<string, mixed> $row */
-    private function positiveInt(array $row, string $key): int
-    {
-        $value = $row[$key] ?? null;
-        if (is_int($value) && $value > 0) {
-            return $value;
-        }
-        if (is_string($value) && ctype_digit($value) && (int) $value > 0) {
-            return (int) $value;
-        }
-
-        throw new DomainException(sprintf('Clinical document evidence row %s must be a positive integer.', $key));
     }
 
     /** @return array<string, mixed> */
@@ -299,25 +233,5 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
         }
 
         return $out;
-    }
-
-    private function loader(): DocumentLoader
-    {
-        return $this->documentLoader ?? new OpenEmrDocumentLoader();
-    }
-
-    private function provider(): DocumentExtractionProvider
-    {
-        return $this->extractionProvider ?? new FixtureExtractionProvider($this->fixtureManifestPath());
-    }
-
-    private function fixtureManifestPath(): string
-    {
-        $configured = getenv('AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST');
-        if (is_string($configured) && trim($configured) !== '') {
-            return $configured;
-        }
-
-        return dirname(__DIR__, 3) . '/agent-forge/fixtures/clinical-document-golden/extraction/manifest.json';
     }
 }

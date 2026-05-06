@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Handlers\VerifiedDraftingPipeline;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
@@ -417,7 +418,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
 
 final readonly class PipelineProviderThatMustNotBeCalled implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('Known missing data should not call the draft provider.');
     }
@@ -425,7 +426,7 @@ final readonly class PipelineProviderThatMustNotBeCalled implements DraftProvide
 
 final readonly class PipelineUnavailableProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('cURL timeout internals');
     }
@@ -433,7 +434,7 @@ final readonly class PipelineUnavailableProvider implements DraftProvider
 
 final readonly class PipelineBriefingWithoutMedicationProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Patient name: Alex Testpatient')],
@@ -454,7 +455,7 @@ final readonly class PipelineBriefingWithoutMedicationProvider implements DraftP
 
 final readonly class PipelineBriefingWithMedicationProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [
@@ -491,7 +492,7 @@ final readonly class PipelineBriefingWithMedicationProvider implements DraftProv
 
 final readonly class PipelineFabricatingProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 11.9 %')],
@@ -505,7 +506,7 @@ final readonly class PipelineFabricatingProvider implements DraftProvider
 
 final readonly class PipelineUsageProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 7.4 %')],
@@ -519,7 +520,7 @@ final readonly class PipelineUsageProvider implements DraftProvider
 
 final readonly class PipelineFollowUpWithIntakeOnlyProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         $intakeLine = 'chief concern: follow-up for cholesterol management; Citation: intake_form, page 1, chief_concern';
 

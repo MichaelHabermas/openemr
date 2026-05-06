@@ -14,9 +14,8 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 
 interface DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse;
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse;
 }

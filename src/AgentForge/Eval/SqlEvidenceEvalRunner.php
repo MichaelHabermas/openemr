@@ -18,8 +18,6 @@ use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
-use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Clock\ClockInterface;
 
@@ -237,7 +235,7 @@ final readonly class SqlEvidenceEvalRunner
         $failures = [];
         try {
             $decision = $this->authorizationGate?->decide(
-                new AgentRequest(new PatientId($requestPatientId), new AgentQuestion('Give me a visit briefing.')),
+                new PatientId($requestPatientId),
                 $sessionPatientId,
                 $sessionUserId,
                 $hasMedicalRecordAcl,

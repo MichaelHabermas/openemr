@@ -123,7 +123,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         );
 
         $this->assertSame(2, $count);
-        $this->assertCount(18, $executor->statements);
+        $this->assertCount(20, $executor->statements);
         $this->assertSame('START TRANSACTION', $executor->statements[0]['sql']);
         $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
         $this->assertStringContainsString('JSON_OBJECT', $executor->statements[1]['sql']);
@@ -148,7 +148,10 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('deactivated_at = COALESCE(deactivated_at, NOW())', $executor->statements[14]['sql']);
         $this->assertContains('deactivate_embedding', $executor->statements[15]['binds']);
         $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[16]['sql']);
-        $this->assertSame('COMMIT', $executor->statements[17]['sql']);
+        $this->assertContains('scrub_identity_check', $executor->statements[17]['binds']);
+        $this->assertStringContainsString('UPDATE clinical_document_identity_checks', $executor->statements[18]['sql']);
+        $this->assertStringContainsString('extracted_identifiers_json = NULL', $executor->statements[18]['sql']);
+        $this->assertSame('COMMIT', $executor->statements[19]['sql']);
     }
 
     public function testRetractionRepositoryCleanupRunsEvenWhenJobAlreadyRetracted(): void
@@ -161,7 +164,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         );
 
         $this->assertSame(0, $count);
-        $this->assertCount(18, $executor->statements);
+        $this->assertCount(20, $executor->statements);
         $this->assertSame('START TRANSACTION', $executor->statements[0]['sql']);
         $this->assertStringContainsString('INSERT INTO clinical_document_retractions', $executor->statements[1]['sql']);
         $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[2]['sql']);
@@ -173,7 +176,9 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('WHERE document_id = ? AND promotion_status <> ?', $executor->statements[12]['sql']);
         $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[14]['sql']);
         $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[16]['sql']);
-        $this->assertSame('COMMIT', $executor->statements[17]['sql']);
+        $this->assertContains('scrub_identity_check', $executor->statements[17]['binds']);
+        $this->assertStringContainsString('UPDATE clinical_document_identity_checks', $executor->statements[18]['sql']);
+        $this->assertSame('COMMIT', $executor->statements[19]['sql']);
     }
 
     public function testRetractionRepositoryRollsBackWhenCleanupFails(): void

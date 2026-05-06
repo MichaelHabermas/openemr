@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Handlers;
 
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
@@ -24,6 +23,7 @@ use OpenEMR\AgentForge\Guidelines\GuidelineRetriever;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
+use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\Time\MonotonicClock;
@@ -163,7 +163,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         try {
             $this->handoffs->recordRequestHandoff(
                 $request->requestId,
-                WorkerName::EvidenceRetriever,
+                NodeName::EvidenceRetriever,
                 'guideline_evidence_required',
                 $questionType,
                 'handoff',

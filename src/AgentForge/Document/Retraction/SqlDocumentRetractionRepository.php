@@ -67,6 +67,9 @@ final readonly class SqlDocumentRetractionRepository implements DocumentRetracti
         $this->auditEmbeddings($documentId, $reason);
         $this->deactivateEmbeddings($documentId);
 
+        $this->auditIdentityChecks($documentId, $reason);
+        $this->scrubIdentityChecks($documentId);
+
         return $affected;
     }
 
@@ -377,6 +380,39 @@ final readonly class SqlDocumentRetractionRepository implements DocumentRetracti
             . 'INNER JOIN clinical_document_facts f ON f.id = e.fact_id '
             . 'SET e.active = 0 '
             . 'WHERE f.document_id = ?',
+            [$documentId->value],
+        );
+    }
+
+    private function auditIdentityChecks(DocumentId $documentId, DocumentRetractionReason $reason): void
+    {
+        $this->executor->executeStatement(
+            'INSERT INTO clinical_document_retractions '
+            . '(patient_id, document_id, job_id, prior_state, new_state, action, actor_type, reason, created_at) '
+            . 'SELECT j.patient_id, j.document_id, ic.job_id, '
+            . 'JSON_OBJECT(\'status\', ic.status, \'extracted_identifiers_json\', ic.extracted_identifiers_json, '
+            . '\'matched_patient_fields_json\', ic.matched_patient_fields_json), '
+            . 'JSON_OBJECT(\'extracted_identifiers_json\', NULL, \'matched_patient_fields_json\', NULL), '
+            . '?, ?, ?, NOW() '
+            . 'FROM clinical_document_identity_checks ic '
+            . 'INNER JOIN clinical_document_processing_jobs j ON j.id = ic.job_id '
+            . 'WHERE j.document_id = ? AND ic.extracted_identifiers_json IS NOT NULL',
+            [
+                'scrub_identity_check',
+                'system',
+                $reason->value,
+                $documentId->value,
+            ],
+        );
+    }
+
+    private function scrubIdentityChecks(DocumentId $documentId): void
+    {
+        $this->executor->executeStatement(
+            'UPDATE clinical_document_identity_checks ic '
+            . 'INNER JOIN clinical_document_processing_jobs j ON j.id = ic.job_id '
+            . 'SET ic.extracted_identifiers_json = NULL, ic.matched_patient_fields_json = NULL '
+            . 'WHERE j.document_id = ?',
             [$documentId->value],
         );
     }

@@ -17,6 +17,7 @@ use JsonException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
 
 final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTool
 {
@@ -103,28 +104,33 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
     /** @param array<string, mixed> $row */
     private function itemFromRow(array $row): ?EvidenceItem
     {
-        $factText = $this->string($row, 'fact_text');
+        $factText = Fmt::string($row, 'fact_text');
         if ($factText === '') {
             return null;
         }
 
-        $citation = $this->jsonObject($this->string($row, 'citation_json'));
-        $structured = $this->jsonObject($this->string($row, 'structured_value_json'));
-        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
+        $citation = $this->jsonObject(Fmt::string($row, 'citation_json'));
+        $structured = $this->jsonObject(Fmt::string($row, 'structured_value_json'));
+        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
         if ($field === '') {
-            $field = 'fact:' . (string) $this->positiveInt($row, 'id');
+            $field = 'fact:' . (string) Fmt::positiveInt($row, 'id');
         }
-        $page = $this->string($citation, 'page_or_section') ?: 'unknown page';
-        $docType = $this->string($row, 'doc_type');
+        $page = Fmt::string($citation, 'page_or_section') ?: 'unknown page';
+        $docType = Fmt::string($row, 'doc_type');
         $label = $this->displayLabel($row, $structured);
 
         return new EvidenceItem(
             'document',
             'clinical_document_facts',
-            (string) $this->positiveInt($row, 'id'),
-            $this->sourceDate($row, $this->string($structured, 'collected_at')),
+            (string) Fmt::positiveInt($row, 'id'),
+            Fmt::sourceDate(
+                Fmt::string($structured, 'collected_at'),
+                Fmt::string($row, 'finished_at'),
+                Fmt::string($row, 'created_at'),
+                Fmt::string($row, 'document_date'),
+            ),
             $label,
-            EvidenceText::bounded(sprintf('%s; %s', $factText, $this->evidenceCitationSuffix($docType, $page, $field)), 300),
+            EvidenceText::bounded(sprintf('%s; %s', $factText, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
             $this->citationMetadata($row, $citation, $structured, $field, $page),
         );
     }
@@ -136,13 +142,13 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
     private function displayLabel(array $row, array $structured): string
     {
         foreach (['display_label', 'test_name', 'label', 'name'] as $key) {
-            $value = $this->string($structured, $key);
+            $value = Fmt::string($structured, $key);
             if ($value !== '') {
                 return str_replace('_', ' ', $value);
             }
         }
 
-        $factType = $this->string($row, 'fact_type');
+        $factType = Fmt::string($row, 'fact_type');
         return $factType !== '' ? str_replace('_', ' ', $factType) : 'Patient document fact';
     }
 
@@ -155,23 +161,23 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
     private function citationMetadata(array $row, array $citation, array $structured, string $field, string $page): array
     {
         $metadata = [
-            'source_type' => $this->string($citation, 'source_type') ?: $this->string($row, 'doc_type'),
-            'source_id' => $this->string($citation, 'source_id') ?: 'document:' . $this->string($row, 'document_id'),
-            'document_id' => $this->positiveInt($row, 'document_id'),
-            'job_id' => $this->positiveInt($row, 'job_id'),
-            'identity_check_id' => $this->positiveInt($row, 'identity_check_id'),
-            'fact_id' => $this->positiveInt($row, 'id'),
-            'fact_type' => $this->string($row, 'fact_type'),
-            'certainty' => $this->string($row, 'certainty'),
-            'promotion_status' => $this->string($row, 'promotion_status'),
-            'fact_fingerprint' => $this->string($row, 'fact_fingerprint'),
-            'clinical_content_fingerprint' => $this->string($row, 'clinical_content_fingerprint'),
+            'source_type' => Fmt::string($citation, 'source_type') ?: Fmt::string($row, 'doc_type'),
+            'source_id' => Fmt::string($citation, 'source_id') ?: 'document:' . Fmt::string($row, 'document_id'),
+            'document_id' => Fmt::positiveInt($row, 'document_id'),
+            'job_id' => Fmt::positiveInt($row, 'job_id'),
+            'identity_check_id' => Fmt::positiveInt($row, 'identity_check_id'),
+            'fact_id' => Fmt::positiveInt($row, 'id'),
+            'fact_type' => Fmt::string($row, 'fact_type'),
+            'certainty' => Fmt::string($row, 'certainty'),
+            'promotion_status' => Fmt::string($row, 'promotion_status'),
+            'fact_fingerprint' => Fmt::string($row, 'fact_fingerprint'),
+            'clinical_content_fingerprint' => Fmt::string($row, 'clinical_content_fingerprint'),
             'page_or_section' => $page,
             'field_or_chunk_id' => $field,
-            'quote_or_value' => EvidenceText::bounded($this->string($citation, 'quote_or_value'), 240),
+            'quote_or_value' => EvidenceText::bounded(Fmt::string($citation, 'quote_or_value'), 240),
         ];
 
-        $box = $this->normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null);
+        $box = Fmt::normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null);
         if ($box !== null) {
             $metadata['bounding_box'] = $box;
         }
@@ -180,75 +186,6 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             $metadata,
             static fn (mixed $value): bool => $value !== '',
         );
-    }
-
-    private function evidenceCitationSuffix(string $docType, string $page, string $field): string
-    {
-        return sprintf('Citation: %s, %s, %s', $docType, $page, $field);
-    }
-
-    /** @return array{x: float, y: float, width: float, height: float}|null */
-    private function normalizedBoundingBox(mixed $value): ?array
-    {
-        if (!is_array($value)) {
-            return null;
-        }
-
-        $numbers = [];
-        foreach (['x', 'y', 'width', 'height'] as $key) {
-            if (!isset($value[$key]) || !is_numeric($value[$key])) {
-                return null;
-            }
-            $number = (float) $value[$key];
-            if ($number < 0.0 || $number > 1.0) {
-                return null;
-            }
-            $numbers[$key] = $number;
-        }
-
-        if ($numbers['width'] <= 0.0 || $numbers['height'] <= 0.0) {
-            return null;
-        }
-
-        return [
-            'x' => $numbers['x'],
-            'y' => $numbers['y'],
-            'width' => $numbers['width'],
-            'height' => $numbers['height'],
-        ];
-    }
-
-    /** @param array<string, mixed> $row */
-    private function sourceDate(array $row, string $preferred = ''): string
-    {
-        foreach ([$preferred, $this->string($row, 'finished_at'), $this->string($row, 'created_at'), $this->string($row, 'document_date')] as $candidate) {
-            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $candidate, $matches) === 1) {
-                return $matches[0];
-            }
-        }
-
-        return 'unknown';
-    }
-
-    /** @param array<string, mixed> $row */
-    private function string(array $row, string $key): string
-    {
-        $value = $row[$key] ?? '';
-        return is_scalar($value) ? trim((string) $value) : '';
-    }
-
-    /** @param array<string, mixed> $row */
-    private function positiveInt(array $row, string $key): int
-    {
-        $value = $row[$key] ?? null;
-        if (is_int($value) && $value > 0) {
-            return $value;
-        }
-        if (is_string($value) && ctype_digit($value) && (int) $value > 0) {
-            return (int) $value;
-        }
-
-        throw new DomainException(sprintf('Patient document fact evidence row %s must be a positive integer.', $key));
     }
 
     /**

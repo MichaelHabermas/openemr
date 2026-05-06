@@ -14,7 +14,6 @@ namespace OpenEMR\AgentForge\ResponseGeneration;
 
 use JsonException;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 
 final readonly class PromptComposer
 {
@@ -103,7 +102,7 @@ final readonly class PromptComposer
     }
 
     /** @throws JsonException */
-    public function userMessage(AgentRequest $request, EvidenceBundle $bundle): string
+    public function userMessage(DraftRequest $request, EvidenceBundle $bundle): string
     {
         $message = [
             'question' => $request->question->value,
@@ -127,7 +126,7 @@ final readonly class PromptComposer
      *
      * @throws JsonException
      */
-    public function userMessageParts(AgentRequest $request, EvidenceBundle $bundle): PromptParts
+    public function userMessageParts(DraftRequest $request, EvidenceBundle $bundle): PromptParts
     {
         $stable = json_encode(
             [

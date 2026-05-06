@@ -19,7 +19,7 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
+use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Orchestration\Supervisor;
 use PHPUnit\Framework\TestCase;
 
@@ -30,7 +30,7 @@ final class SupervisorTest extends TestCase
         $decision = (new Supervisor())->decide($this->job(JobStatus::Pending), false);
 
         $this->assertTrue($decision->shouldHandoff());
-        $this->assertSame(WorkerName::IntakeExtractor, $decision->targetWorker);
+        $this->assertSame(NodeName::IntakeExtractor, $decision->targetNode);
         $this->assertSame('document_extraction_required', $decision->reason);
         $this->assertSame('pending', $decision->context['job_status']);
         $this->assertSame(0, $decision->context['trusted_for_evidence']);
@@ -41,7 +41,7 @@ final class SupervisorTest extends TestCase
         $decision = (new Supervisor())->decide($this->job(JobStatus::Succeeded), true);
 
         $this->assertTrue($decision->shouldHandoff());
-        $this->assertSame(WorkerName::EvidenceRetriever, $decision->targetWorker);
+        $this->assertSame(NodeName::EvidenceRetriever, $decision->targetNode);
         $this->assertSame('trusted_document_ready_for_evidence', $decision->reason);
     }
 
@@ -50,7 +50,7 @@ final class SupervisorTest extends TestCase
         $decision = (new Supervisor())->decide($this->job(JobStatus::Succeeded), false);
 
         $this->assertFalse($decision->shouldHandoff());
-        $this->assertNull($decision->targetWorker);
+        $this->assertNull($decision->targetNode);
         $this->assertSame('hold', $decision->decision);
         $this->assertSame('identity_not_trusted_for_evidence', $decision->reason);
     }

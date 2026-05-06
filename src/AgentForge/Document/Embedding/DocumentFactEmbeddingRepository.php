@@ -12,9 +12,11 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document\Embedding;
 
+use OpenEMR\AgentForge\Document\DocumentId;
+
 interface DocumentFactEmbeddingRepository
 {
     public function upsert(int $factId, string $factText, EmbeddingProvider $provider): void;
 
-    public function deactivateByDocument(int $documentId): void;
+    public function deactivateByDocument(DocumentId $documentId): void;
 }

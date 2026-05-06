@@ -30,6 +30,7 @@ use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
@@ -500,7 +501,7 @@ final class RetryThenFixtureDraftProvider implements DraftProvider
 {
     public int $calls = 0;
 
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         ++$this->calls;
         if ($this->calls === 1) {
@@ -513,7 +514,7 @@ final class RetryThenFixtureDraftProvider implements DraftProvider
 
 final class AlwaysMalformedDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DomainException('malformed internals');
     }
@@ -521,7 +522,7 @@ final class AlwaysMalformedDraftProvider implements DraftProvider
 
 final class UnavailableDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         throw new DraftProviderException('cURL timeout internals');
     }
@@ -529,7 +530,7 @@ final class UnavailableDraftProvider implements DraftProvider
 
 final class FabricatingDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 8.2 %')],
@@ -550,7 +551,7 @@ final class FabricatingDraftProvider implements DraftProvider
 
 final class ModelFabricatingDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 8.2 %')],

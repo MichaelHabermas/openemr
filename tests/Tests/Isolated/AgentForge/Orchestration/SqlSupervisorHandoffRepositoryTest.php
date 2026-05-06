@@ -19,7 +19,7 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
-use OpenEMR\AgentForge\Document\Worker\WorkerName;
+use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\Orchestration\SupervisorDecision;
 use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
@@ -32,7 +32,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
     {
         $executor = new FakeDatabaseExecutor(defaultInsertId: 77);
         $decision = SupervisorDecision::handoff(
-            WorkerName::EvidenceRetriever,
+            NodeName::EvidenceRetriever,
             'trusted_document_ready_for_evidence',
             ['job_status' => 'succeeded', 'trusted_for_evidence' => 1],
         );
@@ -95,7 +95,7 @@ final class SqlSupervisorHandoffRepositoryTest extends TestCase
 
         $id = (new SqlSupervisorHandoffRepository($executor))->recordRequestHandoff(
             'request-456',
-            WorkerName::IntakeExtractor,
+            NodeName::IntakeExtractor,
             'document_extraction_required',
             'intake_pdf',
             'handoff',

@@ -12,8 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Auth;
 
-use OpenEMR\AgentForge\Handlers\AgentRequest;
-
 final readonly class PatientAuthorizationGate
 {
     private PatientAccessPolicy $policy;
@@ -24,11 +22,11 @@ final readonly class PatientAuthorizationGate
     }
 
     public function decide(
-        AgentRequest $request,
+        PatientId $patientId,
         ?int $sessionPatientId,
         ?int $sessionUserId,
         bool $hasMedicalRecordAcl,
     ): AuthorizationDecision {
-        return $this->policy->decide($request, $sessionPatientId, $sessionUserId, $hasMedicalRecordAcl);
+        return $this->policy->decide($patientId, $sessionPatientId, $sessionUserId, $hasMedicalRecordAcl);
     }
 }

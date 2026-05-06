@@ -14,8 +14,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge;
 
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\PatientId;
-use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use PHPUnit\Framework\TestCase;
 
 final class PatientAuthorizationGateTest extends TestCase
@@ -23,7 +21,7 @@ final class PatientAuthorizationGateTest extends TestCase
     public function testAllowsWhenAllTrustChecksPass(): void
     {
         $decision = $this->gate(patientExists: true, hasRelationship: true)
-            ->decide($this->request(), 900001, 7, true);
+            ->decide($this->patientId(), 900001, 7, true);
 
         $this->assertTrue($decision->allowed);
         $this->assertSame('allowed', $decision->reason);
@@ -32,7 +30,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesMissingSessionUser(): void
     {
-        $decision = $this->gate()->decide($this->request(), 900001, null, true);
+        $decision = $this->gate()->decide($this->patientId(), 900001, null, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('No active OpenEMR session user was found.', $decision->reason);
@@ -41,7 +39,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesMissingPatientContext(): void
     {
-        $decision = $this->gate()->decide($this->request(), null, 7, true);
+        $decision = $this->gate()->decide($this->patientId(), null, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('No active patient chart context was found.', $decision->reason);
@@ -50,7 +48,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesPatientMismatch(): void
     {
-        $decision = $this->gate()->decide($this->request(), 42, 7, true);
+        $decision = $this->gate()->decide($this->patientId(), 42, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The requested patient does not match the active chart.', $decision->reason);
@@ -59,7 +57,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesMissingMedicalAcl(): void
     {
-        $decision = $this->gate()->decide($this->request(), 900001, 7, false);
+        $decision = $this->gate()->decide($this->patientId(), 900001, 7, false);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The active user does not have medical-record access.', $decision->reason);
@@ -68,7 +66,7 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesUnverifiedPatient(): void
     {
-        $decision = $this->gate(patientExists: false)->decide($this->request(), 900001, 7, true);
+        $decision = $this->gate(patientExists: false)->decide($this->patientId(), 900001, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('The requested patient chart could not be verified.', $decision->reason);
@@ -78,7 +76,7 @@ final class PatientAuthorizationGateTest extends TestCase
     public function testRefusesMissingRelationship(): void
     {
         $decision = $this->gate(patientExists: true, hasRelationship: false)
-            ->decide($this->request(), 900001, 7, true);
+            ->decide($this->patientId(), 900001, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('Patient-specific access could not be verified for this user.', $decision->reason);
@@ -88,7 +86,7 @@ final class PatientAuthorizationGateTest extends TestCase
     public function testUnsupportedExpandedRelationshipShapesRemainFailClosed(): void
     {
         $decision = $this->gate(patientExists: true, hasRelationship: false)
-            ->decide($this->request(), 900001, 7, true);
+            ->decide($this->patientId(), 900001, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame(
@@ -100,16 +98,16 @@ final class PatientAuthorizationGateTest extends TestCase
 
     public function testRefusesUnclearRepositoryState(): void
     {
-        $decision = $this->gate(throws: true)->decide($this->request(), 900001, 7, true);
+        $decision = $this->gate(throws: true)->decide($this->patientId(), 900001, 7, true);
 
         $this->assertFalse($decision->allowed);
         $this->assertSame('Patient-specific access is unclear.', $decision->reason);
         $this->assertSame('patient_specific_access_is_unclear', $decision->code);
     }
 
-    private function request(): AgentRequest
+    private function patientId(): PatientId
     {
-        return new AgentRequest(new PatientId(900001), new AgentQuestion('What changed?'));
+        return new PatientId(900001);
     }
 
     private function gate(

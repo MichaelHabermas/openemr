@@ -14,16 +14,16 @@ namespace OpenEMR\AgentForge\Eval;
 
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftResponse;
 use OpenEMR\AgentForge\ResponseGeneration\DraftSentence;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 
 final readonly class EvalHallucinatingDraftProvider implements DraftProvider
 {
-    public function draft(AgentRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
+    public function draft(DraftRequest $request, EvidenceBundle $bundle, Deadline $deadline): DraftResponse
     {
         return new DraftResponse(
             [new DraftSentence('s1', 'Hemoglobin A1c: 11.9 %')],

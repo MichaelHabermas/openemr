@@ -17,8 +17,8 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
-use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
+use OpenEMR\AgentForge\ResponseGeneration\DraftRequest;
 use OpenEMR\AgentForge\ResponseGeneration\FixtureDraftProvider;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
@@ -28,7 +28,7 @@ final class FixtureDraftProviderTest extends TestCase
     public function testModelOffModeDraftsOnlyFromBoundedEvidence(): void
     {
         $draft = (new FixtureDraftProvider())->draft(
-            new AgentRequest(new PatientId(900001), new AgentQuestion('Show me recent labs.')),
+            new DraftRequest(new AgentQuestion('Show me recent labs.'), new PatientId(900001)),
             new EvidenceBundle([
                 new EvidenceBundleItem(
                     'lab',
@@ -52,7 +52,7 @@ final class FixtureDraftProviderTest extends TestCase
     public function testAdviceQuestionProducesRefusalDraft(): void
     {
         $draft = (new FixtureDraftProvider())->draft(
-            new AgentRequest(new PatientId(900001), new AgentQuestion('What dose should I prescribe?')),
+            new DraftRequest(new AgentQuestion('What dose should I prescribe?'), new PatientId(900001)),
             new EvidenceBundle([]),
             $this->deadline(),
         );
@@ -64,9 +64,9 @@ final class FixtureDraftProviderTest extends TestCase
     public function testKnownMissingMicroalbuminQuestionIsMarkedNotFound(): void
     {
         $draft = (new FixtureDraftProvider())->draft(
-            new AgentRequest(
-                new PatientId(900001),
+            new DraftRequest(
                 new AgentQuestion('Has Alex had a urine microalbumin result in the chart?'),
+                new PatientId(900001),
             ),
             new EvidenceBundle([
                 new EvidenceBundleItem(
