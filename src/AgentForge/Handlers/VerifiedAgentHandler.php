@@ -14,28 +14,35 @@ namespace OpenEMR\AgentForge\Handlers;
 
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\Worker\WorkerName;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
+use OpenEMR\AgentForge\Evidence\EvidenceRetrieverWorker;
 use OpenEMR\AgentForge\Evidence\SerialChartEvidenceCollector;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProvider;
+use OpenEMR\AgentForge\Guidelines\GuidelineRetriever;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
+use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\SystemAgentForgeClock;
 use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
 
 final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
 {
     private ?AgentTelemetry $lastTelemetry = null;
     private readonly ChartQuestionPlanner $planner;
     private readonly ChartEvidenceCollector $collector;
+    private readonly EvidenceRetrieverWorker $evidenceRetriever;
     private readonly VerifiedDraftingPipeline $pipeline;
     private readonly AgentForgeClock $clock;
+    private readonly LoggerInterface $logger;
 
     /**
      * @param list<ChartEvidenceTool> $tools
@@ -49,10 +56,14 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         private readonly int $deadlineMs = 20000,
         ?ChartEvidenceCollector $collector = null,
         ?ToolSelectionProvider $toolSelectionProvider = null,
+        ?GuidelineRetriever $guidelineRetriever = null,
+        private readonly ?SqlSupervisorHandoffRepository $handoffs = null,
     ) {
         $this->clock = $clock ?? new SystemAgentForgeClock();
+        $this->logger = $logger;
         $this->planner = new ChartQuestionPlanner($toolSelectionProvider, $logger);
         $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
+        $this->evidenceRetriever = new EvidenceRetrieverWorker($this->collector, $guidelineRetriever);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $logger);
     }
 
@@ -86,7 +97,19 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
 
         $deadline = new Deadline($this->clock, $this->deadlineMs);
         $timer = new StageTimer($this->clock);
-        $evidenceRun = $this->collector->collect($request->patientId, $plan, $timer, $deadline);
+        $includeGuidelines = $this->requiresGuidelineEvidence($request->question->value, $plan->questionType);
+        if ($includeGuidelines) {
+            $this->recordGuidelineHandoff($request, $plan->questionType);
+        }
+
+        $evidenceRun = $this->evidenceRetriever->retrieve(
+            $request->patientId,
+            $request->question,
+            $plan,
+            $includeGuidelines,
+            $timer,
+            $deadline,
+        );
         $draftingResult = $this->pipeline->run(
             $request,
             $evidenceRun->bundle,
@@ -107,5 +130,50 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     public function lastTelemetry(): ?AgentTelemetry
     {
         return $this->lastTelemetry;
+    }
+
+    private function requiresGuidelineEvidence(string $question, string $questionType): bool
+    {
+        $normalized = strtolower($question);
+        if (
+            str_contains($normalized, 'guideline')
+            || str_contains($normalized, 'evidence')
+            || str_contains($normalized, 'acc/aha')
+            || str_contains($normalized, 'acc aha')
+            || str_contains($normalized, 'ada')
+            || str_contains($normalized, 'uspstf')
+        ) {
+            return true;
+        }
+
+        if (in_array($questionType, ['follow_up_change_review', 'pre_prescribing_chart_check'], true)) {
+            return true;
+        }
+
+        return str_contains($normalized, 'what changed')
+            || str_contains($normalized, 'deserves attention')
+            || str_contains($normalized, 'pay attention');
+    }
+
+    private function recordGuidelineHandoff(AgentRequest $request, string $questionType): void
+    {
+        if ($this->handoffs === null || $request->requestId === null) {
+            return;
+        }
+
+        try {
+            $this->handoffs->recordRequestHandoff(
+                $request->requestId,
+                WorkerName::EvidenceRetriever,
+                'guideline_evidence_required',
+                $questionType,
+                'handoff',
+            );
+        } catch (RuntimeException $exception) {
+            $this->logger->error('AgentForge supervisor handoff recording failed.', [
+                'failure_class' => $exception::class,
+                'request_id' => $request->requestId,
+            ]);
+        }
     }
 }

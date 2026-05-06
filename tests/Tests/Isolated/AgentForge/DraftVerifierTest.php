@@ -508,6 +508,87 @@ final class DraftVerifierTest extends TestCase
         $this->assertStringContainsString('cannot provide diagnosis', implode(' ', $result->refusalsOrWarnings));
     }
 
+    public function testGuidelineEvidenceMustUseGuidelineSources(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Guidelines say LDL 130 mg/dL requires follow-up.')],
+                [
+                    new DraftClaim(
+                        'LDL 130 mg/dL requires follow-up',
+                        DraftClaim::TYPE_GUIDELINE_EVIDENCE,
+                        ['guideline:demo/ldl-1'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'guideline',
+                    'guideline:demo/ldl-1',
+                    'unknown',
+                    'Demo guideline - LDL',
+                    'LDL 130 mg/dL requires follow-up according to this guideline.',
+                ),
+            ]),
+        );
+
+        $this->assertTrue($result->passed);
+        $this->assertSame(['guideline:demo/ldl-1'], $result->citations);
+    }
+
+    public function testPatientFactCannotBeGroundedByGuidelineSource(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'LDL 130 mg/dL requires follow-up.')],
+                [
+                    new DraftClaim(
+                        'LDL 130 mg/dL requires follow-up',
+                        DraftClaim::TYPE_PATIENT_FACT,
+                        ['guideline:demo/ldl-1'],
+                        's1',
+                    ),
+                ],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'guideline',
+                    'guideline:demo/ldl-1',
+                    'unknown',
+                    'Demo guideline - LDL',
+                    'LDL 130 mg/dL requires follow-up according to this guideline.',
+                ),
+            ]),
+        );
+
+        $this->assertFalse($result->passed);
+    }
+
+    public function testNeedsReviewClaimIsOmittedFromVerifiedAnswer(): void
+    {
+        $result = (new DraftVerifier())->verify(
+            new DraftResponse(
+                [new DraftSentence('s1', 'Renal function appears stable.')],
+                [new DraftClaim('Renal function appears stable.', DraftClaim::TYPE_NEEDS_REVIEW, [], 's1')],
+                [],
+                [],
+                DraftUsage::fixture(),
+            ),
+            $this->bundle(),
+        );
+
+        $this->assertFalse($result->passed);
+        $this->assertSame([], $result->verifiedSentenceIds);
+        $this->assertStringContainsString('requires clinician review', implode(' ', $result->refusalsOrWarnings));
+    }
+
     public function testUnsafeSentenceTextIsRejectedEvenWhenClaimTextLooksSupported(): void
     {
         $result = (new DraftVerifier())->verify(

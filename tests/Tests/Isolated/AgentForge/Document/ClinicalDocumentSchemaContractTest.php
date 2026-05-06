@@ -94,6 +94,35 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
         $this->assertStringContainsString('#IfNotTable clinical_document_worker_heartbeats', $upgradeSql);
     }
 
+    public function testSupervisorHandoffSchemaExistsOnFreshInstallAndUpgrade(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
+
+        foreach ([$databaseSql, $upgradeSql] as $sql) {
+            $this->assertStringContainsString('CREATE TABLE `clinical_supervisor_handoffs`', $sql);
+            $this->assertStringContainsString('`request_id` varchar(64) NULL', $sql);
+            $this->assertStringContainsString('`job_id` bigint(20) NULL', $sql);
+            $this->assertStringContainsString('`source_node` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`destination_node` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`decision_reason` varchar(128) NOT NULL', $sql);
+            $this->assertStringContainsString('`task_type` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`outcome` varchar(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`latency_ms` int(11) NULL', $sql);
+            $this->assertStringContainsString('`error_reason` varchar(128) NULL', $sql);
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_supervisor_handoff_job` (`job_id`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_supervisor_handoff_destination` (`destination_node`, `created_at`)',
+                $sql,
+            );
+        }
+
+        $this->assertStringContainsString('#IfNotTable clinical_supervisor_handoffs', $upgradeSql);
+    }
+
     public function testGuidelineVectorSchemaExistsOnFreshInstallAndUpgrade(): void
     {
         $databaseSql = $this->readProjectFile('/sql/database.sql');

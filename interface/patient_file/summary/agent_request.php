@@ -18,15 +18,21 @@ use OpenEMR\AgentForge\Auth\MemoizingPatientAccessRepository;
 use OpenEMR\AgentForge\Auth\PatientAuthorizationGate;
 use OpenEMR\AgentForge\Auth\SqlPatientAccessRepository;
 use OpenEMR\AgentForge\Conversation\SessionConversationStore;
+use OpenEMR\AgentForge\DefaultDatabaseExecutor;
 use OpenEMR\AgentForge\Evidence\EvidenceToolFactory;
 use OpenEMR\AgentForge\Evidence\SqlChartEvidenceRepository;
 use OpenEMR\AgentForge\Evidence\ToolSelectionProviderFactory;
+use OpenEMR\AgentForge\Guidelines\DeterministicGuidelineEmbeddingProvider;
+use OpenEMR\AgentForge\Guidelines\GuidelineRerankerFactory;
+use OpenEMR\AgentForge\Guidelines\HybridGuidelineRetriever;
+use OpenEMR\AgentForge\Guidelines\SqlGuidelineChunkRepository;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
 use OpenEMR\AgentForge\Handlers\AgentResponse;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
 use OpenEMR\AgentForge\Observability\PsrRequestLogger;
+use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderFactory;
 use OpenEMR\AgentForge\Verification\DraftVerifier;
 use OpenEMR\BC\ServiceContainer;
@@ -68,6 +74,16 @@ $sessionUserId = filter_var($session?->get('authUserID'), FILTER_VALIDATE_INT);
 $sessionUserId = $sessionUserId === false ? null : (int) $sessionUserId;
 $csrfValid = $session !== null && CsrfUtils::verifyCsrfToken($request->request->getString('csrf_token_form'), session: $session);
 $chartEvidenceRepository = new SqlChartEvidenceRepository();
+$guidelineCorpusVersionFile = dirname(__DIR__, 3) . '/agent-forge/fixtures/clinical-guideline-corpus/corpus-version.txt';
+$guidelineCorpusVersion = is_file($guidelineCorpusVersionFile)
+    ? trim((string) file_get_contents($guidelineCorpusVersionFile))
+    : '';
+$guidelineRetriever = $guidelineCorpusVersion === '' ? null : new HybridGuidelineRetriever(
+    new SqlGuidelineChunkRepository(new DefaultDatabaseExecutor()),
+    new DeterministicGuidelineEmbeddingProvider(),
+    GuidelineRerankerFactory::createDefault(),
+    $guidelineCorpusVersion,
+);
 $handler = new AgentRequestLifecycle(
     new AgentRequestHandler(
         new AgentRequestParser(),
@@ -78,6 +94,8 @@ $handler = new AgentRequestLifecycle(
             new DraftVerifier(),
             ServiceContainer::getLogger(),
             toolSelectionProvider: ToolSelectionProviderFactory::createDefault(),
+            guidelineRetriever: $guidelineRetriever,
+            handoffs: new SqlSupervisorHandoffRepository(),
         ),
         ServiceContainer::getLogger(),
         new SessionConversationStore(),

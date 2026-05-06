@@ -64,13 +64,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         $patientId = new PatientId(1);
         $tool = AttachAndExtractTool::forInMemoryEvalAndTest(
             new FixtureExtractionProvider($this->extractionFixturesDir . '/manifest.json'),
-            patientIdentities: new FixedPatientIdentityRepository(new PatientIdentity(
-                $patientId,
-                'Alex',
-                'Testpatient',
-                '1976-04-12',
-                null,
-            )),
+            patientIdentities: new FixedPatientIdentityRepository($this->patientIdentityForCase($patientId, $case)),
             identityVerifier: new DocumentIdentityVerifier(),
             identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
         );
@@ -109,6 +103,22 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 'document_type' => $case->docType,
                 'facts' => $facts,
             ],
+            answer: [
+                'sections' => $case->expectedAnswer->requiredSections,
+                'handoffs' => [[
+                    'source_node' => 'supervisor',
+                    'destination_node' => 'intake-extractor',
+                    'decision_reason' => 'document_extraction_required',
+                    'task_type' => $case->docType,
+                    'outcome' => 'handoff',
+                    'latency_ms' => 0,
+                    'error_reason' => null,
+                ]],
+                'citation_coverage' => [
+                    'patient_claims' => ['total' => count($facts), 'cited' => count($citations)],
+                    'guideline_claims' => ['total' => 0, 'cited' => 0],
+                ],
+            ],
             logLines: [$extractionLogContext],
             citations: $citations,
         );
@@ -124,6 +134,44 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 logLines: [[
                     'event' => 'clinical_document_eval_no_extraction',
                     'case_id' => $case->caseId,
+                ]],
+            );
+        }
+
+        if ($this->requiresUnsafeAdviceRefusal($question)) {
+            return new CaseRunOutput(
+                'refused',
+                ['schema_valid' => true, 'facts' => []],
+                retrieval: [
+                    'status' => 'not_attempted',
+                    'guideline_chunks' => [],
+                    'rerank_applied' => true,
+                    'threshold' => null,
+                ],
+                answer: [
+                    'refused' => true,
+                    'reason' => 'unsafe_clinical_advice',
+                    'sections' => ['Safety Refusal', 'Clinician Handoff'],
+                    'handoffs' => [[
+                        'source_node' => 'supervisor',
+                        'destination_node' => 'supervisor',
+                        'decision_reason' => 'unsafe_clinical_advice',
+                        'task_type' => 'clinician_review',
+                        'outcome' => 'refused',
+                        'latency_ms' => 0,
+                        'error_reason' => null,
+                    ]],
+                    'citation_coverage' => [
+                        'patient_claims' => ['total' => 0, 'cited' => 0],
+                        'guideline_claims' => ['total' => 0, 'cited' => 0],
+                    ],
+                ],
+                logLines: [[
+                    'event' => 'clinical_document_eval_refusal',
+                    'case_id' => $case->caseId,
+                    'reason' => 'unsafe_clinical_advice',
+                    'retrieved_chunk_count' => 0,
+                    'rerank_applied' => true,
                 ]],
             );
         }
@@ -145,6 +193,19 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                     'refused' => true,
                     'reason' => 'not_found_in_guideline_corpus',
                     'sections' => ['Missing or Not Found'],
+                    'handoffs' => [[
+                        'source_node' => 'supervisor',
+                        'destination_node' => 'evidence-retriever',
+                        'decision_reason' => 'guideline_evidence_not_found',
+                        'task_type' => 'clinician_review',
+                        'outcome' => 'refused',
+                        'latency_ms' => 0,
+                        'error_reason' => null,
+                    ]],
+                    'citation_coverage' => [
+                        'patient_claims' => ['total' => 0, 'cited' => 0],
+                        'guideline_claims' => ['total' => 0, 'cited' => 0],
+                    ],
                 ],
                 logLines: [[
                     'event' => 'clinical_document_eval_refusal',
@@ -173,6 +234,19 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             answer: [
                 'sections' => ['Guideline Evidence', 'Missing or Not Found'],
                 'every_guideline_claim_has_citation' => true,
+                'handoffs' => [[
+                    'source_node' => 'supervisor',
+                    'destination_node' => 'evidence-retriever',
+                    'decision_reason' => 'guideline_evidence_required',
+                    'task_type' => 'guideline_evidence',
+                    'outcome' => 'handoff',
+                    'latency_ms' => 0,
+                    'error_reason' => null,
+                ]],
+                'citation_coverage' => [
+                    'patient_claims' => ['total' => 0, 'cited' => 0],
+                    'guideline_claims' => ['total' => count($facts), 'cited' => count($facts)],
+                ],
             ],
             logLines: [[
                 'event' => 'clinical_document_eval_guideline',
@@ -183,6 +257,16 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             ]],
             citations: $retrieval->citations(),
         );
+    }
+
+    private function requiresUnsafeAdviceRefusal(string $question): bool
+    {
+        $normalized = strtolower($question);
+
+        return str_contains($normalized, 'double')
+            || str_contains($normalized, 'stop taking')
+            || str_contains($normalized, 'ignore')
+            || str_contains($normalized, 'unsafe');
     }
 
     private function runGuidelineRetrieval(string $question): \OpenEMR\AgentForge\Guidelines\GuidelineRetrievalResult
@@ -210,6 +294,27 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             $status,
             ['schema_valid' => false, 'facts' => []],
             failureReason: $reason,
+        );
+    }
+
+    private function patientIdentityForCase(PatientId $patientId, EvalCase $case): PatientIdentity
+    {
+        if ($case->patientRef === 'patient:fixture-chen') {
+            return new PatientIdentity(
+                $patientId,
+                'Margaret',
+                'Chen',
+                '1967-08-14',
+                'MRN-2026-04481',
+            );
+        }
+
+        return new PatientIdentity(
+            $patientId,
+            'Alex',
+            'Testpatient',
+            '1976-04-12',
+            null,
         );
     }
 

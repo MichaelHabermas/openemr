@@ -18,12 +18,14 @@ final readonly class EvidenceBundleItem
 {
     public const MAX_VALUE_LENGTH = 500;
 
+    /** @param array<string, mixed> $citation */
     public function __construct(
         public string $sourceType,
         public string $sourceId,
         public string $sourceDate,
         public string $displayLabel,
         public string $value,
+        public array $citation = [],
     ) {
         $this->assertPresent($sourceType, 'source type');
         $this->assertPresent($sourceId, 'source id');
@@ -53,18 +55,24 @@ final readonly class EvidenceBundleItem
      *     source_id: string,
      *     source_date: string,
      *     display_label: string,
-     *     value: string
+     *     value: string,
+     *     citation?: array<string, mixed>
      * }
      */
     public function toArray(): array
     {
-        return [
+        $out = [
             'source_type' => $this->sourceType,
             'source_id' => $this->sourceId,
             'source_date' => $this->sourceDate,
             'display_label' => $this->displayLabel,
             'value' => $this->value,
         ];
+        if ($this->citation !== []) {
+            return $out + ['citation' => $this->citation];
+        }
+
+        return $out;
     }
 
     private function assertPresent(string $value, string $label): void

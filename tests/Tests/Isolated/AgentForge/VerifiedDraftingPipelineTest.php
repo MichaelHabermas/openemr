@@ -72,6 +72,19 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertSame('ok', $result->response->status);
         $this->assertStringContainsString('Hemoglobin A1c: 7.4 %', $result->response->answer);
         $this->assertSame(['lab:procedure_result/a1c@2026-04-10'], $result->response->citations);
+        $this->assertSame('Labs', $result->response->sections[0]['title']);
+        $this->assertSame(
+            [
+                [
+                    'source_type' => 'lab',
+                    'source_id' => 'lab:procedure_result/a1c@2026-04-10',
+                    'source_date' => '2026-04-10',
+                    'display_label' => 'Hemoglobin A1c',
+                    'value' => '7.4 %',
+                ],
+            ],
+            $result->response->citationDetails,
+        );
         $this->assertSame(
             ['The model draft provider could not be reached; deterministic evidence fallback was used.'],
             $result->response->refusalsOrWarnings,

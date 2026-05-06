@@ -33,6 +33,7 @@ final class EvidenceToolFactoryTest extends TestCase
                 'Inactive medication history',
                 'Allergies',
                 'Recent labs',
+                'Recent clinical documents',
                 'Recent vitals',
                 'Last-known stale vitals',
                 'Recent notes and last plan',

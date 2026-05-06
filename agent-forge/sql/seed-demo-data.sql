@@ -1,5 +1,5 @@
 -- AgentForge demo data.
--- Idempotent for fake patients pid=900001, 900002, and 900003. This script never drops tables.
+-- Idempotent for fake patients pid=900001, 900002, 900003, and 900101. This script never drops tables.
 
 SET @demo_pid := 900001;
 SET @demo_pubpid := 'AF-DEMO-900001';
@@ -7,6 +7,8 @@ SET @poly_pid := 900002;
 SET @poly_pubpid := 'AF-DEMO-900002';
 SET @sparse_pid := 900003;
 SET @sparse_pubpid := 'AF-DEMO-900003';
+SET @chen_pid := 900101;
+SET @chen_pubpid := 'MRN-2026-04481';
 SET @demo_user := 'admin';
 SET @demo_group := 'Default';
 SET @encounter_id := 900415;
@@ -29,37 +31,37 @@ DELETE pr
 FROM procedure_result pr
 INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id
 INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
 
 DELETE rep
 FROM procedure_report rep
 INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
 
 DELETE poc
 FROM procedure_order_code poc
 INNER JOIN procedure_order po ON po.procedure_order_id = poc.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
 
-DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM prescriptions WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid);
+DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM prescriptions WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
 DELETE lm
 FROM lists_medication lm
 LEFT JOIN lists l ON l.id = lm.list_id
 WHERE lm.id = 90000203
-    AND (l.pid IN (@demo_pid, @poly_pid, @sparse_pid) OR l.id IS NULL);
+    AND (l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid) OR l.id IS NULL);
 DELETE lm
 FROM lists_medication lm
 INNER JOIN lists l ON l.id = lm.list_id
-WHERE l.pid IN (@demo_pid, @poly_pid, @sparse_pid);
-DELETE FROM lists WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid);
+WHERE l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
+DELETE FROM lists WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid);
 DELETE FROM patient_data
-WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid)
-    OR pubpid IN (@demo_pubpid, @poly_pubpid, @sparse_pubpid);
+WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid)
+    OR pubpid IN (@demo_pubpid, @poly_pubpid, @sparse_pubpid, @chen_pubpid);
 
 INSERT INTO patient_data (
     id,
@@ -97,6 +99,44 @@ INSERT INTO patient_data (
     '10001',
     '555-0100',
     'alex.testpatient@example.invalid'
+);
+
+INSERT INTO patient_data (
+    id,
+    uuid,
+    fname,
+    lname,
+    DOB,
+    sex,
+    date,
+    pubpid,
+    pid,
+    providerID,
+    status,
+    street,
+    city,
+    state,
+    postal_code,
+    phone_cell,
+    email
+) VALUES (
+    @chen_pid,
+    UNHEX(REPLACE('90010100-0000-4000-8000-000000000001', '-', '')),
+    'Margaret',
+    'Chen',
+    '1967-08-14',
+    'Female',
+    '2026-05-06 08:00:00',
+    @chen_pubpid,
+    @chen_pid,
+    1,
+    'active',
+    '101 Synthetic Street',
+    'Faketown',
+    'NY',
+    '10001',
+    '555-0101',
+    'margaret.chen@example.invalid'
 );
 
 INSERT INTO users (
@@ -1214,6 +1254,20 @@ INSERT INTO procedure_result (
 
 -- Week 2 clinical document extraction mappings.
 SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'Lab Report' LIMIT 1);
+SET @intake_form_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'Intake Form');
+SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'Intake Form' LIMIT 1);
+SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
+
+INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
+SELECT 900101, 'Intake Form', '', 1, @category_root_rght, @category_root_rght + 1, 'patients|docs', ''
+WHERE @intake_form_cat_exists = 0;
+
+UPDATE categories
+SET rght = rght + 2
+WHERE id = 1
+    AND @intake_form_cat_exists = 0;
+
+SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'Intake Form' LIMIT 1);
 
 INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
 SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
@@ -1221,6 +1275,14 @@ WHERE @lab_pdf_cat_id IS NOT NULL
     AND NOT EXISTS (
         SELECT 1 FROM clinical_document_type_mappings
         WHERE category_id = @lab_pdf_cat_id
+    );
+
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
+SELECT @intake_form_cat_id, 'intake_form', 1, NOW()
+WHERE @intake_form_cat_id IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM clinical_document_type_mappings
+        WHERE category_id = @intake_form_cat_id
     );
 
 COMMIT;

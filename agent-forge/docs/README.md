@@ -7,7 +7,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 | Scope | Requirements source | Product / execution docs | Architecture |
 |--------|----------------------|---------------------------|--------------|
 | **Week 1** | [SPECS.txt](week1/SPECS.txt) | [PRD.md](week1/PRD.md), [PLAN.md](week1/PLAN.md), most of [epics/](epics/) | [../../ARCHITECTURE.md](../../ARCHITECTURE.md) (evolved from Week 1; still the live system overview) |
-| **Week 2** | [SPECS-W2.md](week2/SPECS-W2.md) | [week2/PLAN-W2.md](week2/PLAN-W2.md), [week2/CURRENT-EPIC.md](week2/CURRENT-EPIC.md), [week2/README.md](week2/README.md) | [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) (Week 2 defense artifact) |
+| **Week 2** | [SPECS-W2.md](week2/SPECS-W2.md) | [week2/PLAN-W2.md](week2/PLAN-W2.md), [week2/README.md](week2/README.md), [epics/](epics/) | [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) (Week 2 defense artifact) |
 
 **Rule of thumb:** If it cites **`week1/SPECS.txt`** and the Week 1 chart agent story, it is Week 1. If it cites **`week2/SPECS-W2.md`**, documents, RAG, or the 50-case Week 2 gate, it is Week 2. **`week1/PRD.md` and `week1/PLAN.md` are Week 1–scoped** until you add separate Week 2 planning files.
 

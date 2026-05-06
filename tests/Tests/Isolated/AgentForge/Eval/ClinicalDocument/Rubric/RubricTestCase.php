@@ -35,6 +35,7 @@ abstract class RubricTestCase extends TestCase
         array $expectedFacts = [],
         bool $refusalRequired = false,
         array $logMustNotContain = [],
+        ?ExpectedAnswer $expectedAnswer = null,
     ): RubricInputs {
         return new RubricInputs(
             new EvalCase(
@@ -48,7 +49,7 @@ abstract class RubricTestCase extends TestCase
                 [],
                 [],
                 new ExpectedRetrieval(false, 0),
-                new ExpectedAnswer(),
+                $expectedAnswer ?? new ExpectedAnswer(),
                 $refusalRequired,
                 $logMustNotContain,
                 new ExpectedRubrics($rubrics),

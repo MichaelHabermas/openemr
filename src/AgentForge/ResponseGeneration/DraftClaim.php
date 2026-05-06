@@ -20,12 +20,16 @@ final readonly class DraftClaim
     public const TYPE_MISSING_DATA = 'missing_data';
     public const TYPE_REFUSAL = 'refusal';
     public const TYPE_WARNING = 'warning';
+    public const TYPE_GUIDELINE_EVIDENCE = 'guideline_evidence';
+    public const TYPE_NEEDS_REVIEW = 'needs_review';
 
     private const ALLOWED_TYPES = [
         self::TYPE_PATIENT_FACT,
         self::TYPE_MISSING_DATA,
         self::TYPE_REFUSAL,
         self::TYPE_WARNING,
+        self::TYPE_GUIDELINE_EVIDENCE,
+        self::TYPE_NEEDS_REVIEW,
     ];
 
     /** @var list<string> */
@@ -59,6 +63,9 @@ final readonly class DraftClaim
         }
         if ($type === self::TYPE_PATIENT_FACT && $validatedSourceIds === []) {
             throw new DomainException('Patient-specific draft claims require cited source ids.');
+        }
+        if ($type === self::TYPE_GUIDELINE_EVIDENCE && $validatedSourceIds === []) {
+            throw new DomainException('Guideline draft claims require cited source ids.');
         }
 
         $this->citedSourceIds = $validatedSourceIds;

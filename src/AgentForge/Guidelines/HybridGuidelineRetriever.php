@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Guidelines;
 
-final readonly class HybridGuidelineRetriever
+final readonly class HybridGuidelineRetriever implements GuidelineRetriever
 {
     public function __construct(
         private GuidelineChunkRepository $repository,

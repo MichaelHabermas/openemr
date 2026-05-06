@@ -357,3 +357,38 @@ Last verified: 2026-05-06.
   `agent-forge/scripts/check-agentforge.sh` on 2026-05-06. Remaining scope:
   production supervisor/final-answer integration is M7, live DB proof is manual
   rather than CI-automated, and SQL sparse search is still LIKE-token based.
+
+## Week 2 M7 Implementation Notes
+
+Last verified: 2026-05-06.
+
+- M7 keeps the MVP orchestration thin. `Supervisor` routes clinical document
+  jobs by job status plus identity trust: unfinished jobs go to
+  `intake-extractor`, trusted succeeded jobs go to `evidence-retriever`, and
+  failed/retracted/untrusted jobs are held.
+- `clinical_supervisor_handoffs` uses the Week 2 node language:
+  `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`,
+  `latency_ms`, and `error_reason`. Keep node names exactly `supervisor`,
+  `intake-extractor`, and `evidence-retriever`.
+- `EvidenceRetrieverWorker` is a wrapper, not a new retriever. It reuses the
+  existing chart collector and M6 `GuidelineRetriever`; accepted guideline
+  chunks become bounded `guideline` evidence items, while out-of-corpus results
+  surface as `Missing or Not Found`.
+- Agent responses remain backward-compatible: the flat `answer` and string
+  `citations` fields stay, while `sections` and `citation_details` are additive.
+  Verifier policy now separates patient claims from guideline claims so patient
+  claims cannot be grounded by guideline chunks and guideline claims must cite
+  retrieved guideline evidence.
+- M7 evals add machine-readable handoffs, final answer sections, answer-level
+  citation coverage, and an unsafe-advice refusal case. The clinical document
+  baseline remains deterministic and reached `baseline_met`.
+- M7 proof passed `agent-forge/scripts/check-clinical-document.sh` and
+  `agent-forge/scripts/check-agentforge.sh` on 2026-05-06. In the sandbox,
+  PHPStan can fail with localhost bind `EPERM`; rerun the gates outside the
+  sandbox for authoritative proof.
+- Post-review hardening on 2026-05-06 wired request-level supervisor handoffs
+  into `VerifiedAgentHandler`/`agent_request.php`, added a safe missing-corpus
+  fallback for guideline retriever construction, fail-closed guideline retrieval
+  behavior, richer guideline citation details, and closed the deterministic
+  fixture fallback gap where guideline evidence could be mislabeled as patient
+  facts. The clinical eval handoff shape now mirrors the database contract.

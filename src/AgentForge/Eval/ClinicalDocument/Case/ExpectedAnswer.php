@@ -16,11 +16,13 @@ final readonly class ExpectedAnswer
 {
     /**
      * @param list<string> $requiredSections
+     * @param list<string> $requiredHandoffTypes
      */
     public function __construct(
         public array $requiredSections = [],
         public bool $everyPatientClaimHasCitation = false,
         public bool $everyGuidelineClaimHasCitation = false,
+        public array $requiredHandoffTypes = [],
     ) {
     }
 
@@ -31,6 +33,7 @@ final readonly class ExpectedAnswer
             self::stringList($data['required_sections'] ?? []),
             (bool) ($data['every_patient_claim_has_citation'] ?? false),
             (bool) ($data['every_guideline_claim_has_citation'] ?? false),
+            self::stringList($data['required_handoff_types'] ?? []),
         );
     }
 

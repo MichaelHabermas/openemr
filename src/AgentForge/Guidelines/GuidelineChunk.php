@@ -76,6 +76,7 @@ final readonly class GuidelineChunk
             'unknown',
             sprintf('%s - %s', $this->sourceTitle, $this->section),
             EvidenceText::bounded($this->chunkText, EvidenceBundleItem::MAX_VALUE_LENGTH),
+            $this->citationArray(),
         );
     }
 }

@@ -15457,6 +15457,25 @@ CREATE TABLE `clinical_document_worker_heartbeats` (
   KEY `idx_clinical_document_worker_heartbeats_status` (`status`)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS `clinical_supervisor_handoffs`;
+CREATE TABLE `clinical_supervisor_handoffs` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `request_id` varchar(64) NULL,
+  `job_id` bigint(20) NULL,
+  `source_node` varchar(64) NOT NULL,
+  `destination_node` varchar(64) NOT NULL,
+  `decision_reason` varchar(128) NOT NULL,
+  `task_type` varchar(64) NOT NULL,
+  `outcome` varchar(64) NOT NULL,
+  `latency_ms` int(11) NULL,
+  `error_reason` varchar(128) NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_clinical_supervisor_handoff_request` (`request_id`, `created_at`),
+  KEY `idx_clinical_supervisor_handoff_job` (`job_id`, `created_at`),
+  KEY `idx_clinical_supervisor_handoff_destination` (`destination_node`, `created_at`)
+) ENGINE=InnoDB;
+
 DROP TABLE IF EXISTS `clinical_guideline_chunks`;
 CREATE TABLE `clinical_guideline_chunks` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

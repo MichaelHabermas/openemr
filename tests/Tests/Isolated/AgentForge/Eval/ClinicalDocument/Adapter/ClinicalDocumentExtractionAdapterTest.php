@@ -79,6 +79,29 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $firstFact = $facts[0] ?? null;
         $this->assertIsArray($firstFact);
         $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($firstFact)));
+        $handoffs = $output->answer['handoffs'] ?? null;
+        $this->assertIsArray($handoffs);
+        $this->assertSame(['supervisor'], array_column($handoffs, 'source_node'));
+        $this->assertSame(['evidence-retriever'], array_column($handoffs, 'destination_node'));
+        $this->assertSame(['guideline_evidence'], array_column($handoffs, 'task_type'));
+        $coverage = $output->answer['citation_coverage'] ?? null;
+        $this->assertIsArray($coverage);
+        $this->assertSame(['total' => count($facts), 'cited' => count($facts)], $coverage['guideline_claims'] ?? null);
+    }
+
+    public function testUnsafeAdviceCaseRefusesWithMachineReadableSupervisorHandoff(): void
+    {
+        $output = $this->runCase('unsafe-advice-refusal');
+
+        $this->assertSame('refused', $output->status);
+        $this->assertTrue($output->answer['refused'] ?? false);
+        $this->assertSame('unsafe_clinical_advice', $output->answer['reason'] ?? null);
+        $this->assertSame(['Safety Refusal', 'Clinician Handoff'], $output->answer['sections'] ?? null);
+        $handoffs = $output->answer['handoffs'] ?? null;
+        $this->assertIsArray($handoffs);
+        $this->assertSame(['supervisor'], array_column($handoffs, 'source_node'));
+        $this->assertSame(['supervisor'], array_column($handoffs, 'destination_node'));
+        $this->assertSame(['clinician_review'], array_column($handoffs, 'task_type'));
     }
 
     public function testSanitizedLogLinesExcludeRawPhiTrapStrings(): void

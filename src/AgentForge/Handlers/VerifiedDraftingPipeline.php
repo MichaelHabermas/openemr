@@ -150,6 +150,9 @@ final readonly class VerifiedDraftingPipeline
                                 ['The model draft could not be verified; deterministic evidence fallback was used.'],
                                 $fallbackResult->refusalsOrWarnings,
                             ))),
+                            null,
+                            $response->sections,
+                            $response->citationDetails,
                         ),
                         $this->telemetry(
                             $questionType,
@@ -239,6 +242,9 @@ final readonly class VerifiedDraftingPipeline
                         static fn (string $warning): bool => $warning !== self::FIXTURE_DRAFT_WARNING,
                     )),
                 ))),
+                null,
+                $response->sections,
+                $response->citationDetails,
             ),
             $this->telemetry(
                 $questionType,
@@ -277,6 +283,9 @@ final readonly class VerifiedDraftingPipeline
                 [],
                 $missingOrUnchecked,
                 [],
+                null,
+                [['title' => 'Missing or unchecked', 'content' => implode("\n", $missingOrUnchecked)]],
+                [],
             ),
             $this->telemetry(
                 $questionType,
@@ -306,6 +315,9 @@ final readonly class VerifiedDraftingPipeline
             [],
             $missingOrUnchecked,
             [],
+            null,
+            [['title' => 'Missing or unchecked', 'content' => implode("\n", $lines)]],
+            [],
         );
     }
 
@@ -316,7 +328,7 @@ final readonly class VerifiedDraftingPipeline
 
         foreach ($draft->claims as $claim) {
             $verifiedSentenceIds[] = $claim->sentenceId;
-            if ($claim->type === DraftClaim::TYPE_PATIENT_FACT) {
+            if (in_array($claim->type, [DraftClaim::TYPE_PATIENT_FACT, DraftClaim::TYPE_GUIDELINE_EVIDENCE], true)) {
                 $citations = array_merge($citations, $claim->citedSourceIds);
             }
         }
@@ -435,7 +447,63 @@ final readonly class VerifiedDraftingPipeline
             array_values(array_unique($citations)),
             $result->missingOrUncheckedSections,
             $result->refusalsOrWarnings,
+            null,
+            $this->sectionsFor($questionType, $lines, $result->missingOrUncheckedSections),
+            $this->citationDetails($bundle, $citations),
         );
+    }
+
+    /**
+     * @param list<string> $lines
+     * @param list<string> $missingOrUnchecked
+     * @return list<array{title: string, content: string}>
+     */
+    private function sectionsFor(string $questionType, array $lines, array $missingOrUnchecked): array
+    {
+        $sections = [];
+        if ($lines !== []) {
+            $sections[] = [
+                'title' => $this->sectionTitle($questionType),
+                'content' => implode("\n", $lines),
+            ];
+        }
+        if ($missingOrUnchecked !== []) {
+            $sections[] = [
+                'title' => 'Missing or unchecked',
+                'content' => implode("\n", $missingOrUnchecked),
+            ];
+        }
+
+        return $sections;
+    }
+
+    private function sectionTitle(string $questionType): string
+    {
+        return match ($questionType) {
+            'visit_briefing' => 'Visit briefing',
+            'medication' => 'Medications',
+            'lab' => 'Labs',
+            'demographics' => 'Demographics',
+            default => 'Answer',
+        };
+    }
+
+    /**
+     * @param list<string> $citations
+     * @return list<array<string, mixed>>
+     */
+    private function citationDetails(EvidenceBundle $bundle, array $citations): array
+    {
+        $itemsBySourceId = $bundle->itemsBySourceId();
+        $details = [];
+        foreach (array_values(array_unique($citations)) as $sourceId) {
+            $item = $itemsBySourceId[$sourceId] ?? null;
+            if ($item !== null) {
+                $details[] = $item->toArray();
+            }
+        }
+
+        return $details;
     }
 
     /**

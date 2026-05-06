@@ -27,6 +27,7 @@ final readonly class ChartQuestionPlanner
     public const SECTION_INACTIVE_MEDICATIONS = 'Inactive medication history';
     public const SECTION_ALLERGIES = 'Allergies';
     public const SECTION_LABS = 'Recent labs';
+    public const SECTION_CLINICAL_DOCUMENTS = 'Recent clinical documents';
     public const SECTION_VITALS = 'Recent vitals';
     public const SECTION_STALE_VITALS = 'Last-known stale vitals';
     public const SECTION_NOTES = 'Recent notes and last plan';
@@ -289,7 +290,15 @@ final readonly class ChartQuestionPlanner
             'hemoglobin',
             'panel',
         ])) {
-            return $this->buildPlan('lab', [self::SECTION_LABS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
+            return $this->buildPlan(
+                'lab',
+                [self::SECTION_LABS],
+                $deadlineMs,
+                null,
+                $selectorMode,
+                $selectorResult,
+                $selectorFallbackReason,
+            );
         }
         if ($this->containsAny($normalized, ['vital', 'vitals', 'blood pressure', 'bp', 'pulse', 'temperature', 'weight', 'height', 'oxygen', 'o2'])) {
             return $this->buildPlan('vital', [self::SECTION_VITALS, self::SECTION_STALE_VITALS], $deadlineMs, null, $selectorMode, $selectorResult, $selectorFallbackReason);
@@ -343,6 +352,7 @@ final readonly class ChartQuestionPlanner
             self::SECTION_INACTIVE_MEDICATIONS => 'Inactive or stopped medication history, labeled separately.',
             self::SECTION_ALLERGIES => 'Documented active allergies and reactions.',
             self::SECTION_LABS => 'Recent lab results and trends.',
+            self::SECTION_CLINICAL_DOCUMENTS => 'Trusted extracted facts from recent clinical documents.',
             self::SECTION_VITALS => 'Recent vital signs.',
             self::SECTION_STALE_VITALS => 'Last-known older vitals when recent vitals are missing.',
             self::SECTION_NOTES => 'Recent notes and last plan context.',
@@ -557,6 +567,7 @@ final readonly class ChartQuestionPlanner
         return [
             self::SECTION_ENCOUNTERS,
             self::SECTION_LABS,
+            self::SECTION_CLINICAL_DOCUMENTS,
             self::SECTION_VITALS,
             self::SECTION_NOTES,
         ];

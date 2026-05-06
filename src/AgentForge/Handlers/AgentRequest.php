@@ -23,6 +23,7 @@ final readonly class AgentRequest
         public AgentQuestion $question,
         public ?ConversationId $conversationId = null,
         public ?ConversationTurnSummary $conversationSummary = null,
+        public ?string $requestId = null,
     ) {
     }
 
@@ -33,6 +34,18 @@ final readonly class AgentRequest
             $this->question,
             $this->conversationId,
             $summary,
+            $this->requestId,
+        );
+    }
+
+    public function withRequestId(string $requestId): self
+    {
+        return new self(
+            $this->patientId,
+            $this->question,
+            $this->conversationId,
+            $this->conversationSummary,
+            $requestId,
         );
     }
 }

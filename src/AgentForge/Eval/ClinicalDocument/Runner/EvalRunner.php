@@ -57,6 +57,9 @@ final readonly class EvalRunner
                 'category' => $case->category->value,
                 'adapter_status' => $output->status,
                 'failure_reason' => $output->failureReason,
+                'answer_sections' => $output->answer['sections'] ?? [],
+                'answer_handoffs' => $output->answer['handoffs'] ?? [],
+                'answer_citation_coverage' => $output->answer['citation_coverage'] ?? [],
                 'rubrics' => $rubricResults,
             ];
         }
@@ -64,7 +67,7 @@ final readonly class EvalRunner
         $summaries = [];
         foreach ($summaryBuckets as $name => $bucket) {
             $applicable = $bucket[RubricStatus::Pass->value] + $bucket[RubricStatus::Fail->value];
-            $passRate = $applicable === 0 ? 1.0 : $bucket[RubricStatus::Pass->value] / $applicable;
+            $passRate = $applicable === 0 ? 0.0 : $bucket[RubricStatus::Pass->value] / $applicable;
             $summaries[$name] = new RubricSummary(
                 $name,
                 $bucket[RubricStatus::Pass->value],

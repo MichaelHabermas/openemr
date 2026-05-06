@@ -26,6 +26,9 @@ final class RubricRegistryTest extends TestCase
         $this->assertNotNull($registry->get('factually_consistent'));
         $this->assertNotNull($registry->get('guideline_retrieval'));
         $this->assertNotNull($registry->get('safe_refusal'));
+        $this->assertNotNull($registry->get('final_answer_sections'));
+        $this->assertNotNull($registry->get('supervisor_handoff'));
+        $this->assertNotNull($registry->get('answer_citation_coverage'));
         $this->assertNotNull($registry->get('no_phi_in_logs'));
         $this->assertNotNull($registry->get('bounding_box_present'));
     }

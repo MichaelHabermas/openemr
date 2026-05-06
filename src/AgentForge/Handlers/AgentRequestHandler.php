@@ -69,7 +69,7 @@ final readonly class AgentRequestHandler
 
         try {
             $timer->start('request:parse');
-            $request = $this->parser->parse($post);
+            $request = $this->parser->parse($post)->withRequestId($requestId);
             $timer->stop('request:parse');
         } catch (DomainException) {
             $timer->stop('request:parse');

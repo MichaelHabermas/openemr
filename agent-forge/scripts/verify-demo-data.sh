@@ -19,6 +19,7 @@ DB_PASS="${AGENTFORGE_DB_PASS:-root}"
 DEMO_PID="${AGENTFORGE_DEMO_PID:-900001}"
 POLY_PID="${AGENTFORGE_POLY_PID:-900002}"
 SPARSE_PID="${AGENTFORGE_SPARSE_PID:-900003}"
+CHEN_PID="${AGENTFORGE_CHEN_PID:-900101}"
 FAILURES=0
 
 compose() {
@@ -111,6 +112,11 @@ main() {
         "known missing microalbumin" \
         "SELECT COUNT(*) FROM procedure_result pr INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id WHERE po.patient_id = ${DEMO_PID} AND (LOWER(pr.result_text) LIKE '%microalbumin%' OR LOWER(pr.result_code) LIKE '%microalbumin%');" \
         "0"
+
+    expect_count \
+        "chen clinical document demo patient" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${CHEN_PID} AND pubpid = 'MRN-2026-04481' AND fname = 'Margaret' AND lname = 'Chen' AND DOB = '1967-08-14' AND sex = 'Female';" \
+        "1"
 
     expect_count \
         "encounter linked into forms" \
@@ -271,6 +277,16 @@ main() {
         "sparse forbidden note source absent" \
         "SELECT COUNT(*) FROM form_clinical_notes WHERE external_id = 'af-note-900003';" \
         "0"
+
+    expect_count \
+        "lab report maps to lab_pdf" \
+        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Lab Report' AND m.doc_type = 'lab_pdf' AND m.active = 1;" \
+        "1"
+
+    expect_count \
+        "intake form maps to intake_form" \
+        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Intake Form' AND m.doc_type = 'intake_form' AND m.active = 1;" \
+        "1"
 
     if [[ "${FAILURES}" -gt 0 ]]; then
         printf 'Demo data verification failed: %s check(s) failed.\n' "${FAILURES}" >&2

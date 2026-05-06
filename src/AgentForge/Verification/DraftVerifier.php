@@ -48,6 +48,12 @@ final readonly class DraftVerifier
         }
 
         foreach ($draft->claims as $claim) {
+            if ($claim->type === DraftClaim::TYPE_NEEDS_REVIEW) {
+                $rejectedSentenceIds[] = $claim->sentenceId;
+                $warnings[] = 'Some draft content was omitted because it requires clinician review.';
+                continue;
+            }
+
             $unsafeRefusal = ClinicalAdviceRefusalPolicy::refusalFor($claim->text);
             if ($unsafeRefusal !== null && $claim->type !== DraftClaim::TYPE_REFUSAL) {
                 $rejectedSentenceIds[] = $claim->sentenceId;
@@ -105,7 +111,50 @@ final readonly class DraftVerifier
                 return false;
             }
 
-            if (!$this->matcher->matches($claim->text, $itemsBySourceId[$sourceId])) {
+            $item = $itemsBySourceId[$sourceId];
+            if (!$this->claimTypeMatchesSourceType($claim, $item)) {
+                return false;
+            }
+
+            if (!$this->sourceTextMatchesClaim($claim, $item)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function claimTypeMatchesSourceType(DraftClaim $claim, EvidenceBundleItem $item): bool
+    {
+        if ($item->sourceType === 'guideline') {
+            return $claim->type === DraftClaim::TYPE_GUIDELINE_EVIDENCE;
+        }
+
+        if ($claim->type === DraftClaim::TYPE_GUIDELINE_EVIDENCE) {
+            return $item->sourceType === 'guideline';
+        }
+
+        if ($claim->type === DraftClaim::TYPE_PATIENT_FACT) {
+            return $item->sourceType !== 'guideline';
+        }
+
+        return true;
+    }
+
+    private function sourceTextMatchesClaim(DraftClaim $claim, EvidenceBundleItem $item): bool
+    {
+        if ($claim->type !== DraftClaim::TYPE_GUIDELINE_EVIDENCE) {
+            return $this->matcher->matches($claim->text, $item);
+        }
+
+        $claimTokens = $this->significantTokenSet($claim->text);
+        $sourceTokens = $this->significantTokenSet($item->displayLabel . ' ' . $item->value);
+        if ($claimTokens === [] || $sourceTokens === []) {
+            return false;
+        }
+
+        foreach ($claimTokens as $token => $_present) {
+            if (!isset($sourceTokens[$token])) {
                 return false;
             }
         }
@@ -116,13 +165,20 @@ final readonly class DraftVerifier
     /** @param array<string, EvidenceBundleItem> $itemsBySourceId */
     private function claimRequiresGrounding(DraftClaim $claim, array $itemsBySourceId): bool
     {
-        if ($claim->type === DraftClaim::TYPE_PATIENT_FACT || $claim->citedSourceIds !== []) {
+        if (
+            in_array($claim->type, [DraftClaim::TYPE_PATIENT_FACT, DraftClaim::TYPE_GUIDELINE_EVIDENCE], true)
+            || $claim->citedSourceIds !== []
+        ) {
             return true;
         }
 
         $claimText = $this->normalize($claim->text);
         if ($this->isAllowedNonPatientBoilerplate($claimText)) {
             return false;
+        }
+
+        if (in_array($claim->type, [DraftClaim::TYPE_MISSING_DATA, DraftClaim::TYPE_WARNING], true)) {
+            return true;
         }
 
         foreach ($itemsBySourceId as $item) {
@@ -211,6 +267,7 @@ final readonly class DraftVerifier
             $text,
         ) ?? $text;
         $text = preg_replace('/\b(vital|vitals|vital\s+signs)\b/', ' ', $text) ?? $text;
+        $text = preg_replace('/\b(guideline|guidelines|evidence|states|state|says|say|notes|note)\b/', ' ', $text) ?? $text;
         $text = preg_replace('/\b(and|or|with|plus)\b/', ' ', $text) ?? $text;
         $text = preg_replace('/[[:punct:]\s]+/', '', $text) ?? $text;
 
@@ -239,5 +296,23 @@ final readonly class DraftVerifier
         $value = preg_replace('/\s+/', ' ', $value) ?? $value;
 
         return trim($value);
+    }
+
+    /** @return array<string, true> */
+    private function significantTokenSet(string $text): array
+    {
+        if (preg_match_all('/\d+(?:\.\d+)?|[a-z][a-z0-9]*/', strtolower($text), $matches) === false) {
+            return [];
+        }
+
+        $tokens = [];
+        foreach ($matches[0] as $token) {
+            if (strlen($token) < 3 || isset(['the' => true, 'and' => true, 'for' => true, 'with' => true][$token])) {
+                continue;
+            }
+            $tokens[$token] = true;
+        }
+
+        return $tokens;
     }
 }

@@ -16,15 +16,19 @@ use DomainException;
 use OpenEMR\AgentForge\AgentForgeClock;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Conversation\ConversationTurnSummary;
+use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartQuestionPlanner;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceItem;
 use OpenEMR\AgentForge\Evidence\EvidenceResult;
+use OpenEMR\AgentForge\Guidelines\GuidelineRetrievalResult;
+use OpenEMR\AgentForge\Guidelines\GuidelineRetriever;
 use OpenEMR\AgentForge\Handlers\AgentQuestion;
 use OpenEMR\AgentForge\Handlers\AgentRequest;
 use OpenEMR\AgentForge\Handlers\VerifiedAgentHandler;
+use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProviderException;
@@ -379,6 +383,41 @@ final class VerifiedAgentHandlerTest extends TestCase
         $this->assertSame('model_verification_failed_fallback_used', $telemetry->failureReason);
     }
 
+    public function testGuidelineQuestionRecordsSupervisorToEvidenceRetrieverHandoff(): void
+    {
+        $executor = new VerifiedHandoffExecutor();
+        $handler = new VerifiedAgentHandler(
+            [new VerifiedRecordingEvidenceTool()],
+            new FixtureDraftProvider(),
+            new DraftVerifier(),
+            guidelineRetriever: new VerifiedEmptyGuidelineRetriever(),
+            handoffs: new SqlSupervisorHandoffRepository($executor),
+        );
+
+        $response = $handler->handle(new AgentRequest(
+            new PatientId(900001),
+            new AgentQuestion('What ACC/AHA evidence applies here?'),
+            requestId: 'request-789',
+        ));
+
+        $this->assertSame('ok', $response->status);
+        $this->assertCount(1, $executor->statements);
+        $this->assertSame(
+            [
+                'request-789',
+                null,
+                'supervisor',
+                'evidence-retriever',
+                'guideline_evidence_required',
+                'visit_briefing',
+                'handoff',
+                null,
+                null,
+            ],
+            $executor->statements[0]['binds'],
+        );
+    }
+
     private function request(string $question): AgentRequest
     {
         return new AgentRequest(new PatientId(900001), new AgentQuestion($question));
@@ -543,5 +582,43 @@ final class VerifiedManualClock implements AgentForgeClock
         }
 
         return array_shift($this->ticks);
+    }
+}
+
+final class VerifiedEmptyGuidelineRetriever implements GuidelineRetriever
+{
+    public function retrieve(string $query): GuidelineRetrievalResult
+    {
+        return new GuidelineRetrievalResult('not_found', [], true, 0.0);
+    }
+}
+
+final class VerifiedHandoffExecutor implements DatabaseExecutor
+{
+    /** @var list<array{sql: string, binds: list<mixed>}> */
+    public array $statements = [];
+
+    public function fetchRecords(string $sql, array $binds = []): array
+    {
+        return [];
+    }
+
+    public function executeStatement(string $sql, array $binds = []): void
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+    }
+
+    public function executeAffected(string $sql, array $binds = []): int
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+
+        return 1;
+    }
+
+    public function insert(string $sql, array $binds = []): int
+    {
+        $this->statements[] = ['sql' => $sql, 'binds' => $binds];
+
+        return 1;
     }
 }

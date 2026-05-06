@@ -30,7 +30,6 @@ final class ClinicalDocumentSeedTest extends TestCase
     {
         $this->assertStringNotContainsString('AgentForge Lab PDF', $this->seedSql);
         $this->assertStringNotContainsString('AgentForge Intake Form', $this->seedSql);
-        $this->assertStringNotContainsString('INSERT INTO categories', $this->clinicalDocumentSeedSection());
     }
 
     public function testSeedMapsExistingLabReportCategoryToLabPdf(): void
@@ -43,11 +42,23 @@ final class ClinicalDocumentSeedTest extends TestCase
         $this->assertStringContainsString('WHERE category_id = @lab_pdf_cat_id', $section);
     }
 
-    public function testSeedDoesNotMapIntakeFormUntilARealCategoryIsChosen(): void
+    public function testSeedCreatesAndMapsIntakeFormCategory(): void
     {
         $section = $this->clinicalDocumentSeedSection();
 
-        $this->assertStringNotContainsString("'intake_form'", $section);
+        $this->assertStringContainsString("'Intake Form'", $section);
+        $this->assertStringContainsString('INSERT INTO categories', $section);
+        $this->assertStringContainsString("SELECT @intake_form_cat_id, 'intake_form', 1, NOW()", $section);
+        $this->assertStringContainsString('WHERE category_id = @intake_form_cat_id', $section);
+    }
+
+    public function testSeedIncludesChenClinicalDocumentDemoPatient(): void
+    {
+        $this->assertStringContainsString('SET @chen_pid := 900101;', $this->seedSql);
+        $this->assertStringContainsString("SET @chen_pubpid := 'MRN-2026-04481';", $this->seedSql);
+        $this->assertStringContainsString("'Margaret'", $this->seedSql);
+        $this->assertStringContainsString("'Chen'", $this->seedSql);
+        $this->assertStringContainsString("'1967-08-14'", $this->seedSql);
     }
 
     private function clinicalDocumentSeedSection(): string

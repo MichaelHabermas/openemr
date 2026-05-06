@@ -39,11 +39,20 @@ final class AgentResponseTest extends TestCase
 
     public function testResponseCanCarryServerBoundConversationId(): void
     {
-        $response = AgentResponse::refusal('No active OpenEMR session user was found.')
-            ->withConversationId('0123456789abcdef0123456789abcdef')
-            ->toArray();
+        $response = (new AgentResponse(
+            'ok',
+            'Hemoglobin A1c: 7.4 %',
+            ['lab-1'],
+            [],
+            [],
+            null,
+            [['title' => 'Labs', 'content' => 'Hemoglobin A1c: 7.4 %']],
+            [['source_id' => 'lab-1', 'source_type' => 'lab']],
+        ))->withConversationId('0123456789abcdef0123456789abcdef')->toArray();
 
         $this->assertSame('0123456789abcdef0123456789abcdef', $response['conversation_id']);
+        $this->assertSame([['title' => 'Labs', 'content' => 'Hemoglobin A1c: 7.4 %']], $response['sections']);
+        $this->assertSame([['source_id' => 'lab-1', 'source_type' => 'lab']], $response['citation_details']);
     }
 
     public function testUnexpectedFailureDoesNotExposeInternalMessage(): void

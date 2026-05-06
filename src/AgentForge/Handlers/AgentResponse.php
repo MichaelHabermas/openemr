@@ -20,6 +20,8 @@ final readonly class AgentResponse
      * @param list<string> $citations
      * @param list<string> $missingOrUncheckedSections
      * @param list<string> $refusalsOrWarnings
+     * @param list<array{title: string, content: string}> $sections
+     * @param list<array<string, mixed>> $citationDetails
      */
     public function __construct(
         public string $status,
@@ -28,6 +30,8 @@ final readonly class AgentResponse
         public array $missingOrUncheckedSections = [],
         public array $refusalsOrWarnings = [],
         public ?string $conversationId = null,
+        public array $sections = [],
+        public array $citationDetails = [],
     ) {
     }
 
@@ -36,6 +40,8 @@ final readonly class AgentResponse
      *     status: string,
      *     answer: string,
      *     citations: list<string>,
+     *     citation_details: list<array<string, mixed>>,
+     *     sections: list<array{title: string, content: string}>,
      *     missing_or_unchecked_sections: list<string>,
      *     refusals_or_warnings: list<string>,
      *     conversation_id: ?string
@@ -47,6 +53,8 @@ final readonly class AgentResponse
             'status' => $this->status,
             'answer' => $this->answer,
             'citations' => $this->citations,
+            'citation_details' => $this->citationDetails,
+            'sections' => $this->sections,
             'missing_or_unchecked_sections' => $this->missingOrUncheckedSections,
             'refusals_or_warnings' => $this->refusalsOrWarnings,
             'conversation_id' => $this->conversationId,
@@ -62,6 +70,8 @@ final readonly class AgentResponse
             $this->missingOrUncheckedSections,
             $this->refusalsOrWarnings,
             $conversationId,
+            $this->sections,
+            $this->citationDetails,
         );
     }
 

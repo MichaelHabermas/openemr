@@ -25,6 +25,7 @@ final class EvidenceToolFactory
             new InactiveMedicationHistoryEvidenceTool($repository),
             new AllergiesEvidenceTool($repository),
             new LabsEvidenceTool($repository),
+            new ClinicalDocumentEvidenceTool(),
             new RecentVitalsEvidenceTool($repository),
             new StaleVitalsEvidenceTool($repository),
             new EncountersNotesEvidenceTool($repository),

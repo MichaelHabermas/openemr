@@ -5,7 +5,7 @@
   "patient_identity": [
     {
       "kind": "patient_name",
-      "value": "Alex Testpatient",
+      "value": "CHEN, MARGARET",
       "field_path": "header.patient_name",
       "certainty": "verified",
       "confidence": 0.98,
@@ -14,13 +14,13 @@
         "source_id": "sha256:fixture",
         "page_or_section": "page 1",
         "field_or_chunk_id": "patient_name",
-        "quote_or_value": "Alex Testpatient",
+        "quote_or_value": "CHEN, MARGARET",
         "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
       }
     },
     {
       "kind": "date_of_birth",
-      "value": "1976-04-12",
+      "value": "1967-08-14",
       "field_path": "header.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -29,7 +29,7 @@
         "source_id": "sha256:fixture",
         "page_or_section": "page 1",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1976-04-12",
+        "quote_or_value": "1967-08-14",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }

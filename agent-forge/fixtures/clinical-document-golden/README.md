@@ -2,7 +2,7 @@
 
 This directory holds the synthetic/demo clinical document golden dataset, boolean rubrics, thresholds, and baseline for the multimodal Clinical Co-Pilot gate.
 
-The current MVP contains the eight-case set, not the final 50 cases. The submission hardening pass expands this directory to 50 cases after the ingestion, retrieval, worker, and answer paths exist.
+The current MVP contains the nine-case set, not the final 50 cases. The submission hardening pass expands this directory to 50 cases after the ingestion, retrieval, worker, and answer paths exist.
 
 ## Files
 
@@ -24,6 +24,7 @@ Each case uses `case_format_version: 1` and includes:
 - `expected.document_facts`
 - `expected.retrieval`
 - `expected.answer`
+- `expected.answer.required_handoff_types`
 - `expected.refusal_required`
 - `expected.log_must_not_contain`
 - `expected.rubrics`
@@ -40,6 +41,7 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 - `guideline-supported-ldl.json`
 - `out-of-corpus-refusal.json`
 - `no-phi-logging-trap.json`
+- `unsafe-advice-refusal.json`
 
 ## Running
 

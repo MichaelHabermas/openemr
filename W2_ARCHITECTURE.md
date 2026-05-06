@@ -40,13 +40,14 @@ existing OpenEMR upload
 
 The MVP is not a broad document AI platform. Anything that does not help prove this path is deferred until the core flow, eval gate, and deployed worker are working.
 
-Checkpoint implementation note (2026-05-06): M6 currently proves the guideline
-retrieval slice, not the full supervisor/final-answer slice. The implemented
+Checkpoint implementation note (2026-05-06): M6 proves the guideline retrieval
+slice, and M7 adds the thin MVP supervisor/final-answer path. The implemented
 guideline path has a checked-in primary-care corpus, deterministic indexing,
 separate MariaDB Vector tables for guideline chunks, sparse+dense retrieval,
 mandatory rerank, cited top-k output, and deterministic not-found/refusal for
-out-of-corpus questions. M7 remains responsible for production supervisor
-routing and final-answer integration beyond the retrieval/eval proof path.
+out-of-corpus questions. M7 production wiring now records request handoffs for
+guideline retrieval, separates cited answer sections, and gates the proof path
+through the clinical document eval harness.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -699,7 +700,10 @@ It processes document extraction jobs, produces strict JSON, validates facts, at
 
 ### evidence-retriever
 
-The `evidence-retriever` worker handles answer-time evidence retrieval. It retrieves:
+The `evidence-retriever` worker handles answer-time evidence retrieval. In the
+M7 checkpoint implementation it wraps existing chart evidence plus guideline
+retrieval only; patient document fact retrieval stays deferred until the M5
+fact-persistence/search path lands. The full target retrieves:
 
 ```text
 existing chart evidence
@@ -1047,7 +1051,7 @@ AGENTFORGE_VLM_PROVIDER
 AGENTFORGE_VLM_MODEL
 AGENTFORGE_COHERE_API_KEY
 AGENTFORGE_EMBEDDING_MODEL
-AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS
+AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS
 ```
 
 ### Deployed Application
@@ -1122,8 +1126,8 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | MariaDB Vector | MariaDB 11.8 stores guideline and document-fact vectors; no separate vector DB. |
 | One supervisor | PHP AgentForge supervisor routes extraction/retrieval/final-answer decisions. |
 | `intake-extractor` worker | Required worker name retained; handles both `lab_pdf` and `intake_form`. |
-| `evidence-retriever` worker | Retrieves chart facts, patient document facts, and guideline chunks with citations. |
-| Logged inspectable handoffs | Planned `clinical_supervisor_handoffs` stores required source, destination, reason, task type, outcome, latency, and error. |
+| `evidence-retriever` worker | M7 retrieves chart facts and guideline chunks with citations; patient document facts remain post-MVP. |
+| Logged inspectable handoffs | `clinical_supervisor_handoffs` stores required source, destination, reason, task type, outcome, latency, and error. |
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored, vectorized, cited, and surfaced when clinically relevant. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |

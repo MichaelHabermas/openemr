@@ -72,6 +72,7 @@ final class ChartQuestionPlannerTest extends TestCase
             [
                 ChartQuestionPlanner::SECTION_ENCOUNTERS,
                 ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_CLINICAL_DOCUMENTS,
                 ChartQuestionPlanner::SECTION_VITALS,
                 ChartQuestionPlanner::SECTION_NOTES,
             ],
@@ -294,6 +295,7 @@ final class ChartQuestionPlannerTest extends TestCase
             [
                 ChartQuestionPlanner::SECTION_ENCOUNTERS,
                 ChartQuestionPlanner::SECTION_LABS,
+                ChartQuestionPlanner::SECTION_CLINICAL_DOCUMENTS,
                 ChartQuestionPlanner::SECTION_VITALS,
                 ChartQuestionPlanner::SECTION_NOTES,
             ],

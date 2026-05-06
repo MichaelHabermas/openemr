@@ -22,7 +22,7 @@ final class GoldenCasesParseTest extends TestCase
         $repo = dirname(__DIR__, 7);
         $cases = (new EvalCaseLoader())->loadDirectory($repo . '/agent-forge/fixtures/clinical-document-golden/cases');
 
-        $this->assertCount(8, $cases);
+        $this->assertCount(9, $cases);
         $this->assertSame('chen-intake-typed', $cases[0]->caseId);
     }
 }
