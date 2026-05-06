@@ -1,6 +1,6 @@
 # Epic M5C - Promoted Data Retraction And Audit
 
-Status: Implemented with automated proof.
+Status: Completed.
 
 Owner note: this file tracks M5C acceptance and proof only. Manual/browser
 review proof remains optional follow-up; automated M5C gate proof is captured

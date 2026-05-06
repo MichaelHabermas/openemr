@@ -1,6 +1,6 @@
 # Epic H2 - Visual PDF Source Review And Retraction UX
 
-Status: Implemented with automated proof; browser proof pending.
+Status: Completed (automated); browser/manual proof deferred to manual validation pass.
 
 Last docs/proof update: 2026-05-06.
 

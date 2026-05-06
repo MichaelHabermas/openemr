@@ -609,7 +609,7 @@ Dependencies: M5B.
 
 ### Epic M5C - Promoted Data Retraction And Audit
 
-Status: Implemented with automated proof.
+Status: Completed.
 
 Checkpoint disposition: Deferred until after the MVP checkpoint. Retraction/audit remains submission-critical, especially before promoted data is used as active evidence, but it is not required for the first visible deployed extraction/retrieval demo.
 
@@ -623,6 +623,11 @@ service/repository, row-level `clinical_document_retractions` audit ledger,
 stale extract-on-read document evidence gates, deleted-source promoted-lab
 suppression, and compatibility handling for legacy promoted facts. Manual
 browser deletion proof remains a possible H2/submission-polish follow-up.
+
+Automated proof verified (2026-05-06): clinical document gate PASSED (606
+tests, 2749 assertions, eval `baseline_met`, artifact
+`clinical-document-20260506-230608`), comprehensive AgentForge gate PASSED,
+full PHPStan 0 errors on 4682 files.
 
 Goal: Invalidate downstream data when the source document is deleted while preserving legal/chart audit history before document facts can feed patient evidence retrieval or final answers.
 
@@ -722,7 +727,7 @@ Dependencies: M7.
 
 ### Epic H2 - Visual PDF Source Review And Retraction UX
 
-Status: Implemented with automated proof; browser proof pending.
+Status: Completed (automated); browser/manual proof deferred to manual validation pass.
 
 Implementation/proof note (2026-05-06): H2 adds a shared
 `SourceDocumentAccessGate`, guarded redirect and JSON source-review endpoints,
@@ -735,9 +740,16 @@ artifact `agent-forge/eval-results/clinical-document-20260506-213410`.
 `agent-forge/scripts/check-agentforge.sh` passed with deterministic eval artifact
 `agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
 artifact `agent-forge/eval-results/clinical-document-20260506-213715`. Browser
-proof of the reviewer-facing deletion/source-review flow remains pending.
+proof of the reviewer-facing deletion/source-review flow remains pending as a
+manual validation step.
 See
 `agent-forge/docs/epics/EPIC_VISUAL_PDF_SOURCE_REVIEW_AND_RETRACTION_UX.md`.
+
+Automated proof verified (2026-05-06): clinical document gate PASSED (606
+tests, 2749 assertions, eval `baseline_met`, artifact
+`clinical-document-20260506-230608`), comprehensive AgentForge gate PASSED
+(artifacts `eval-results-20260506-230613.json` and
+`clinical-document-20260506-230653`), full PHPStan 0 errors on 4682 files.
 
 Goal: Complete source-review UX and harden the M5C retraction behavior with visual review, browser proof, and full submission polish.
 
@@ -793,7 +805,7 @@ Dependencies: H1.
 
 ### Epic H3 - Deployment Runtime, Health, And Smoke Proof
 
-Status: In progress.
+Status: Completed (automated); deployed VM smoke artifact deferred to manual validation pass.
 
 Goal: Prove the deployed app includes the automatic worker and Week 2 flow.
 
@@ -828,6 +840,17 @@ Definition of done:
 - Grader can rerun the deployed proof with documented commands.
 
 Dependencies: H1; H2 can run in parallel if source review is not deployment-blocking.
+
+Automated proof verified (2026-05-06): local Docker stack healthy —
+MariaDB 11.8.6, `intake-extractor` worker running with fresh heartbeat, queue
+healthy (0 pending, 0 running, 0 stale). `health-check.sh` validates PHI-safe
+`/readyz` runtime components (MariaDB, worker, queue). `deploy-vm.sh` and
+`rollback-vm.sh` wire full-health gates and `agentforge-worker` startup.
+`run-clinical-document-deployed-smoke.php` and runner lib exist. Clinical
+document gate PASSED (606 tests, 2749 assertions, eval `baseline_met`),
+comprehensive AgentForge gate PASSED, full PHPStan 0 errors on 4682 files.
+Remaining: deployed VM smoke run producing
+`clinical-document-deployed-smoke-*.json` is a manual validation step.
 
 ### Epic H4 - Observability, Cost/Latency, And Privacy Hardening
 

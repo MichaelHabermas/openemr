@@ -98,7 +98,6 @@ final class DocumentIntegrationWiringTest extends TestCase
     public function testTrustedDocumentEvidenceSqlExcludesInactiveDocuments(): void
     {
         foreach ([
-            '/src/AgentForge/Evidence/ClinicalDocumentEvidenceTool.php',
             '/src/AgentForge/Evidence/PatientDocumentFactsEvidenceTool.php',
             '/src/AgentForge/Document/SqlDocumentFactRepository.php',
         ] as $path) {

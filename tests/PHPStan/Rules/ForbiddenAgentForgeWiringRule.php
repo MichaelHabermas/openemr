@@ -41,6 +41,7 @@ class ForbiddenAgentForgeWiringRule implements Rule
     private const ALLOWED_PATH_SUFFIXES = [
         '/interface/patient_file/summary/agent_request.php',
         '/interface/patient_file/summary/agent_document_source.php',
+        '/interface/patient_file/summary/agent_document_source_review.php',
         '/agent-forge/scripts/run-sql-evidence-evals.php',
         '/agent-forge/scripts/index-clinical-guidelines.php',
         '/src/AgentForge/Document/DocumentHookServiceBinding.php',
