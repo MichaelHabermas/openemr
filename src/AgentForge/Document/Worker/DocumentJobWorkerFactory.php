@@ -17,6 +17,8 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Worker;
 
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Document\Embedding\DeterministicEmbeddingProvider;
+use OpenEMR\AgentForge\Document\Embedding\SqlDocumentFactEmbeddingRepository;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
@@ -27,6 +29,7 @@ use OpenEMR\AgentForge\Document\Identity\SqlPatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Promotion\DocumentPromotionPipeline;
 use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+use OpenEMR\AgentForge\Document\SqlDocumentFactRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
@@ -100,7 +103,12 @@ final class DocumentJobWorkerFactory
                 identityChecks: new SqlDocumentIdentityCheckRepository($executor),
                 identityVerifier: new DocumentIdentityVerifier(),
                 identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
-                factPromotions: new DocumentPromotionPipeline(new SqlClinicalDocumentFactPromotionRepository($executor)),
+                factPromotions: new DocumentPromotionPipeline(new SqlClinicalDocumentFactPromotionRepository(
+                    $executor,
+                    new SqlDocumentFactRepository($executor),
+                    new SqlDocumentFactEmbeddingRepository($executor),
+                    new DeterministicEmbeddingProvider(),
+                )),
             ),
             WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
         };

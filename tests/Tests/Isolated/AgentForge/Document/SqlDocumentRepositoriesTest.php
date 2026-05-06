@@ -133,6 +133,10 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('clinical_document_promotions', $executor->statements[1]['sql']);
         $this->assertStringContainsString('clinical_document_promoted_facts', $executor->statements[3]['sql']);
         $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[7]['sql']);
+        $this->assertStringContainsString('retracted_at = COALESCE(retracted_at, NOW())', $executor->statements[7]['sql']);
+        $this->assertStringContainsString('deactivated_at = COALESCE(deactivated_at, NOW())', $executor->statements[7]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[8]['sql']);
     }
 
     public function testJobRepositoryRetractCleanupRunsEvenWhenJobAlreadyRetracted(): void
@@ -145,7 +149,7 @@ final class SqlDocumentRepositoriesTest extends TestCase
         );
 
         $this->assertSame(0, $count);
-        $this->assertCount(7, $executor->statements);
+        $this->assertCount(9, $executor->statements);
         $this->assertStringContainsString('UPDATE clinical_document_processing_jobs', $executor->statements[0]['sql']);
         $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[1]['sql']);
         $this->assertStringContainsString('INNER JOIN clinical_document_promotions', $executor->statements[2]['sql']);
@@ -153,6 +157,8 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertStringContainsString('INNER JOIN clinical_document_promoted_facts', $executor->statements[4]['sql']);
         $this->assertStringContainsString('WHERE document_id = ? AND active = 1', $executor->statements[5]['sql']);
         $this->assertStringContainsString('WHERE document_id = ? AND promotion_status <> ?', $executor->statements[6]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_facts', $executor->statements[7]['sql']);
+        $this->assertStringContainsString('UPDATE clinical_document_fact_embeddings e', $executor->statements[8]['sql']);
     }
 
     public function testJobRepositoryMarkFinishedReleasesClaim(): void

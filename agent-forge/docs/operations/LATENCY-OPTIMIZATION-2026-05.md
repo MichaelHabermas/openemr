@@ -60,10 +60,10 @@ Run from the working tree at HEAD (`4022ac7e8`):
 | --- | --- | --- |
 | Isolated PHP tests (full repo) | `composer phpunit-isolated` | 3015 tests pass |
 | AgentForge isolated tests (subset) | `composer phpunit-isolated -- --filter AgentForge` | 284 tests pass |
-| PHPStan level 10 | `composer phpstan` | 6 errors (clean HEAD `5d2022758` had 8; net improvement; remaining errors are pre-existing in files not modified by this work — `EvalLatestSummaryWriter.php`, `EvalResultNormalizer.php`, `EvidenceToolsTest.php`, `tier2-eval-runner.php`) |
+| PHPStan level 10 | `composer phpstan` | 6 errors (clean HEAD `5d2022758` had 8; net improvement; remaining errors are pre-existing in files not modified by this work — `EvalLatestSummaryWriter.php`, `EvalResultNormalizer.php`, `EvidenceToolsTest.php`, Tier 2 eval runner wiring) |
 | PHPCS | `composer phpcs` | 5 errors, all pre-existing in HEAD (verified by `git stash` test) |
-| Tier 0/1 evals | `agent-forge/scripts/tier0-eval-runner.php`, `tier1-eval-runner.php` | 28 / 28 pass |
-| Tier 2 live LLM evals (OpenAI) | `agent-forge/scripts/tier2-eval-runner.php` | 10 / 12 pass — matches baseline `5d2022758`. The 2 failures (`visit_briefing`, `hallucination_pressure_birth_weight`) pre-date this work. |
+| Tier 0/1 evals | `agent-forge/scripts/run-evals.php`, `agent-forge/scripts/run-sql-evidence-evals.php` | 28 / 28 pass |
+| Tier 2 live LLM evals (OpenAI) | `agent-forge/scripts/run-tier2-evals.php` | 10 / 12 pass — matches baseline `5d2022758`. The 2 failures (`visit_briefing`, `hallucination_pressure_birth_weight`) pre-date this work. |
 | Tier 4 deployed smoke evals | n/a | Not run; gated by the AgentForge Deployment Guardrail in `CLAUDE.md` (requires VM access + explicit deploy decision). |
 
 Tier 2 was used as the regression detector for #3. The per-case JSON output from the runner — specifically the `model` / `verifier_result` / `failure_reason` / `latency_ms` fields per case — was diffed against the baseline run to isolate the regression to a single case before bisecting the diff.
@@ -73,7 +73,7 @@ Tier 2 was used as the regression detector for #3. The per-case JSON output from
 - **Anthropic cache-hit telemetry.** The cache-breakpoint change for #3 is correct on the Anthropic path but its actual win is unverified until `cache_creation_input_tokens` vs `cache_read_input_tokens` are logged per call and a multi-turn conversation is run. The plan asks for `≥50%` read rate on turn 2+; that proof is still owed.
 - **Latency proof for #1, #5, #6, #9.** The plan asks for before/after `StageTimer` traces on a representative question. Not captured in this pass — the plan's verification step #5 remains open.
 - **Tier 4 deploy.** When ready, follow the gate-by-gate procedure in the AgentForge Deployment Guardrail — local UI checks, local automated proof, git status/diff review, explicit commit/push decision, VM deploy script, VM seed/verify, VM UI checks, then proof-file update.
-- **Live eval env wiring.** Tier 2 reads provider keys from `docker/development-easy/.env`. PHP's `getenv($name, true)` requires `export` semantics, so source via `set -a; . docker/development-easy/.env; set +a; php agent-forge/scripts/tier2-eval-runner.php` rather than relying on inline assignment. The repo's local `.env` already contains `AGENTFORGE_ANTHROPIC_API_KEY`, `AGENTFORGE_OPENAI_API_KEY`, model overrides, and `AGENTFORGE_DRAFT_PROVIDER` selection.
+- **Live eval env wiring.** Tier 2 reads provider keys from `docker/development-easy/.env`. PHP's `getenv($name, true)` requires `export` semantics, so source via `set -a; . docker/development-easy/.env; set +a; php agent-forge/scripts/run-tier2-evals.php` rather than relying on inline assignment. The repo's local `.env` already contains `AGENTFORGE_ANTHROPIC_API_KEY`, `AGENTFORGE_OPENAI_API_KEY`, model overrides, and `AGENTFORGE_DRAFT_PROVIDER` selection.
 
 ## Open Items
 

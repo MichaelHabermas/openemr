@@ -68,7 +68,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $executor->ledgerWrites);
     }
 
-    public function testDirectMappedIntakeFactCreatesTraceLedgerAndNativeListRow(): void
+    public function testVerifiedIntakeFactRecordsLedgerWithoutNativeListRow(): void
     {
         $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
         $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
@@ -76,12 +76,13 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
             $this->intakeExtraction(),
         );
 
-        $this->assertSame(1, $summary->promoted);
-        $this->assertSame(0, $summary->needsReview);
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
         $this->assertSame(0, $summary->skipped);
-        $this->assertSame(1, $executor->insertCount('lists'));
-        $this->assertSame(PromotionOutcome::Promoted->value, $executor->lastLedgerStatus);
-        $this->assertSame('lists', $executor->lastNativeTable);
+        $this->assertSame(0, $executor->insertCount('lists'));
+        $this->assertSame(PromotionOutcome::NotPromotable->value, $executor->lastLedgerStatus);
+        $this->assertSame('', $executor->lastNativeTable);
+        $this->assertSame('no_safe_native_destination', $executor->lastConflictReason);
     }
 
     public function testExistingPromotedFactSkipsDuplicateNativeWrites(): void

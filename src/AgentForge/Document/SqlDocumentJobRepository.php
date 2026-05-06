@@ -142,6 +142,22 @@ final readonly class SqlDocumentJobRepository implements DocumentJobRepository, 
                 'retracted',
             ],
         );
+        $this->executor->executeStatement(
+            'UPDATE clinical_document_facts '
+            . 'SET active = 0, retracted_at = COALESCE(retracted_at, NOW()), retraction_reason = ?, deactivated_at = COALESCE(deactivated_at, NOW()) '
+            . 'WHERE document_id = ? AND active = 1',
+            [
+                $reason->value,
+                $documentId->value,
+            ],
+        );
+        $this->executor->executeStatement(
+            'UPDATE clinical_document_fact_embeddings e '
+            . 'INNER JOIN clinical_document_facts f ON f.id = e.fact_id '
+            . 'SET e.active = 0 '
+            . 'WHERE f.document_id = ?',
+            [$documentId->value],
+        );
 
         return $affected;
     }

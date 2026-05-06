@@ -15506,6 +15506,47 @@ CREATE TABLE `clinical_document_promotions` (
   KEY `idx_clinical_document_promotion_outcome` (`outcome`, `review_status`, `active`)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS `clinical_document_facts`;
+CREATE TABLE `clinical_document_facts` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `job_id` bigint(20) NOT NULL,
+  `identity_check_id` bigint(20) NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `fact_type` varchar(32) NOT NULL,
+  `certainty` varchar(32) NOT NULL,
+  `fact_fingerprint` char(64) NOT NULL,
+  `clinical_content_fingerprint` char(64) NOT NULL,
+  `fact_text` text NOT NULL,
+  `structured_value_json` longtext NOT NULL,
+  `citation_json` longtext NOT NULL,
+  `confidence` decimal(5,4) NULL,
+  `promotion_status` varchar(32) NOT NULL DEFAULT 'not_promoted',
+  `retracted_at` datetime NULL,
+  `retraction_reason` varchar(64) NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  `deactivated_at` datetime NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_fact_source` (`patient_id`, `document_id`, `doc_type`, `fact_fingerprint`),
+  KEY `idx_clinical_document_fact_patient_active` (`patient_id`, `active`, `retracted_at`, `created_at`),
+  KEY `idx_clinical_document_fact_content` (`patient_id`, `clinical_content_fingerprint`, `active`),
+  KEY `idx_clinical_document_fact_job` (`job_id`, `active`),
+  KEY `idx_clinical_document_fact_promotion` (`promotion_status`, `active`)
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS `clinical_document_fact_embeddings`;
+CREATE TABLE `clinical_document_fact_embeddings` (
+  `fact_id` bigint(20) NOT NULL,
+  `embedding` VECTOR(1536) NOT NULL,
+  `embedding_model` varchar(128) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`fact_id`, `embedding_model`),
+  KEY `idx_clinical_document_fact_embeddings_active` (`active`, `embedding_model`)
+) ENGINE=InnoDB;
+
 DROP TABLE IF EXISTS `clinical_document_worker_heartbeats`;
 CREATE TABLE `clinical_document_worker_heartbeats` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

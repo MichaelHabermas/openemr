@@ -6,7 +6,7 @@ After each tier run, the repo also overwrites **stable** per-tier Markdown files
 
 Running `php agent-forge/scripts/run-evals.php` writes a **timestamped** JSON summary here (for example `eval-results-20260501-120000.json`). Those files are gitignored.
 
-**Committed reference:** [`canonical.json`](canonical.json) is the checked-in snapshot from a full passing Tier 0 deterministic fixture/orchestration proof run (`13` passed, `0` failed). Refresh it when `agent-forge/fixtures/eval-cases.json` or eval-runner semantics change intentionally.
+**Committed reference:** [`canonical.json`](canonical.json) is the checked-in snapshot from a full passing Tier 0 deterministic fixture/orchestration proof run (`28` passed, `0` failed). Refresh it when `agent-forge/fixtures/eval-cases.json` or eval-runner semantics change intentionally.
 
 This fixture result is valuable regression proof, but it is not full live-agent proof. It does not exercise the real LLM, live SQL evidence retrieval, browser display, deployed endpoint, or real session authorization. See [`../docs/evaluation/EVALUATION-TIERS.md`](../docs/evaluation/EVALUATION-TIERS.md) for the release rule and the gated live-path tiers.
 

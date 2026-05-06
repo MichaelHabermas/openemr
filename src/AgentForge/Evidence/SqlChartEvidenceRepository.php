@@ -110,9 +110,19 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id '
             . 'INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id '
             . 'LEFT JOIN procedure_order_code poc ON poc.procedure_order_id = po.procedure_order_id '
+            . 'LEFT JOIN documents source_doc ON source_doc.id = pr.document_id '
             . 'WHERE po.patient_id = ? '
+            . 'AND (pr.document_id IS NULL OR source_doc.id IS NULL OR source_doc.deleted IS NULL OR source_doc.deleted = 0) '
+            . 'AND NOT EXISTS ('
+            . 'SELECT 1 FROM clinical_document_promotions cdp '
+            . 'LEFT JOIN clinical_document_processing_jobs cdpj ON cdpj.id = cdp.job_id '
+            . 'WHERE cdp.patient_id = po.patient_id '
+            . 'AND cdp.promoted_table = ? '
+            . 'AND cdp.promoted_record_id = CAST(pr.procedure_result_id AS CHAR) '
+            . 'AND (cdp.active <> 1 OR cdp.retracted_at IS NOT NULL OR cdpj.retracted_at IS NOT NULL)'
+            . ') '
             . 'ORDER BY pr.date DESC LIMIT ' . $this->limit($limit),
-            [$patientId->value],
+            [$patientId->value, 'procedure_result'],
             $deadline,
         );
     }

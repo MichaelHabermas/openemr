@@ -14,7 +14,13 @@ namespace OpenEMR\AgentForge\Document\Promotion;
 
 use DateTimeImmutable;
 use OpenEMR\AgentForge\DatabaseExecutor;
+use OpenEMR\AgentForge\Document\DocumentFact;
+use OpenEMR\AgentForge\Document\DocumentFactClassifier;
+use OpenEMR\AgentForge\Document\DocumentFactRepository;
 use OpenEMR\AgentForge\Document\DocumentJob;
+use OpenEMR\AgentForge\Document\DocumentJobId;
+use OpenEMR\AgentForge\Document\Embedding\DocumentFactEmbeddingRepository;
+use OpenEMR\AgentForge\Document\Embedding\EmbeddingProvider;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
@@ -30,14 +36,19 @@ use Throwable;
 final readonly class SqlClinicalDocumentFactPromotionRepository implements ClinicalDocumentFactPromotionRepository
 {
     private CertaintyClassifier $certaintyClassifier;
+    private DocumentFactClassifier $documentFactClassifier;
     private ClinicalContentFingerprint $fingerprints;
     private ClockInterface $wallClock;
 
     public function __construct(
         private DatabaseExecutor $executor,
+        private ?DocumentFactRepository $facts = null,
+        private ?DocumentFactEmbeddingRepository $embeddings = null,
+        private ?EmbeddingProvider $embeddingProvider = null,
         ?ClockInterface $wallClock = null,
     ) {
         $this->certaintyClassifier = new CertaintyClassifier();
+        $this->documentFactClassifier = new DocumentFactClassifier($this->certaintyClassifier);
         $this->fingerprints = new ClinicalContentFingerprint();
         $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
@@ -125,12 +136,15 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $legacyFactHash = $this->legacyFactHash('lab_result', $row->testName, $stableValue);
         $factFingerprint = $this->fingerprints->sourceFactFingerprint($job, 'lab_result', $fieldPath, $stableValue);
         $collectedAt = $this->dateTimeOrNull($row->collectedAt);
+        $certainty = $this->documentFactClassifier->classify($job, $row);
         if (
-            $this->certaintyClassifier->classify($job->docType, $row) !== Certainty::Verified
+            $certainty !== Certainty::Verified
             || $row->testName === ''
             || $row->value === ''
             || $collectedAt === null
         ) {
+            $this->persistLabFact($job, $row, $fieldPath, $certainty, $factFingerprint, $clinicalContentFingerprint);
+
             return $this->upsertLedger(
                 $job,
                 'lab_result',
@@ -150,6 +164,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         }
 
         return $this->withPromotionLock($job, $clinicalContentFingerprint, function () use ($job, $row, $fieldPath, $factFingerprint, $clinicalContentFingerprint, $legacyFactHash, $collectedAt): string {
+            $this->persistLabFact($job, $row, $fieldPath, Certainty::Verified, $factFingerprint, $clinicalContentFingerprint);
             $jobId = $job->id->value;
 
             $existing = $this->existingPromotedFact($job, $clinicalContentFingerprint, $legacyFactHash);
@@ -279,82 +294,113 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             return PromotionOutcome::PromotionFailed->value;
         }
 
-        $nativeType = $this->nativeListType($finding);
         $stableValue = $this->stableFindingValueJson($finding);
         $clinicalContentFingerprint = $this->fingerprints->patientClinicalFingerprint('intake_finding', $finding->field, $stableValue);
-        $legacyFactHash = $this->legacyFactHash('intake_finding', $finding->field, $stableValue);
         $factFingerprint = $this->fingerprints->sourceFactFingerprint($job, 'intake_finding', $fieldPath, $stableValue);
-        if ($this->certaintyClassifier->classify($job->docType, $finding) !== Certainty::Verified || $nativeType === null) {
-            return $this->upsertLedger(
-                $job,
-                'intake_finding',
-                $fieldPath,
-                $finding->field,
-                $this->findingValueJson($finding),
-                $finding->citation,
-                $nativeType === null ? PromotionOutcome::NotPromotable : PromotionOutcome::NeedsReview,
-                null,
-                null,
-                null,
-                $factFingerprint,
-                $clinicalContentFingerprint,
-                $finding->confidence,
-                $nativeType === null ? 'no_safe_native_destination' : null,
-            );
+        $certainty = $this->documentFactClassifier->classify($job, $finding);
+        $this->persistIntakeFact($job, $finding, $fieldPath, $certainty, $factFingerprint, $clinicalContentFingerprint);
+        $needsReview = $certainty === Certainty::NeedsReview;
+
+        return $this->upsertLedger(
+            $job,
+            'intake_finding',
+            $fieldPath,
+            $finding->field,
+            $this->findingValueJson($finding),
+            $finding->citation,
+            $needsReview ? PromotionOutcome::NeedsReview : PromotionOutcome::NotPromotable,
+            null,
+            null,
+            null,
+            $factFingerprint,
+            $clinicalContentFingerprint,
+            $finding->confidence,
+            $needsReview ? null : 'no_safe_native_destination',
+        );
+    }
+
+    private function persistLabFact(
+        DocumentJob $job,
+        LabResultRow $row,
+        string $fieldPath,
+        Certainty $certainty,
+        string $factFingerprint,
+        string $clinicalContentFingerprint,
+    ): void {
+        if ($this->facts === null || $job->id === null) {
+            return;
         }
 
-        return $this->withPromotionLock($job, $clinicalContentFingerprint, function () use ($job, $finding, $fieldPath, $nativeType, $factFingerprint, $clinicalContentFingerprint, $legacyFactHash): string {
-            $existing = $this->existingPromotedFact($job, $clinicalContentFingerprint, $legacyFactHash);
-            $existingStatus = $this->statusForExistingFact(
-                $existing,
-                $job->id->value,
-                $job,
-                'intake_finding',
-                $fieldPath,
-                $finding->field,
-                $this->findingValueJson($finding),
-                $finding->citation,
-                $factFingerprint,
-                $clinicalContentFingerprint,
-                $finding->confidence,
-            );
-            if ($existingStatus !== null) {
-                return $existingStatus;
-            }
+        $valueJson = $this->labValueJson($row) + ['field_path' => $fieldPath];
+        $textParts = array_filter([
+            $row->testName,
+            $row->value . ($row->unit !== '' ? ' ' . $row->unit : ''),
+            $row->referenceRange !== '' ? 'reference range: ' . $row->referenceRange : '',
+            'abnormal: ' . $row->abnormalFlag->value,
+        ]);
+        $factText = implode('; ', $textParts);
+        $factId = $this->facts->upsert(new DocumentFact(
+            null,
+            $job->patientId,
+            $job->documentId,
+            new DocumentJobId($job->id->value),
+            $job->docType,
+            'lab_result',
+            $certainty->value,
+            $factFingerprint,
+            $clinicalContentFingerprint,
+            $factText,
+            $valueJson,
+            $this->citationJson($row->citation),
+            $row->confidence,
+            $this->documentFactClassifier->promotionStatus($certainty),
+        ));
+        $this->embedFact($factId, $factText, $certainty);
+    }
 
-            $listId = $this->db()->insert(
-                'INSERT INTO lists '
-                . '(date, type, title, begdate, activity, comments, pid, user, groupname, external_id) '
-                . 'VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)',
-                [
-                    $this->now(),
-                    $nativeType,
-                    $finding->value,
-                    $this->now(),
-                    sprintf('AgentForge promoted from document %d; fact:%s', $job->documentId->value, $clinicalContentFingerprint),
-                    $job->patientId->value,
-                    'AgentForge',
-                    'AgentForge',
-                    substr('agentforge-' . $clinicalContentFingerprint, 0, 20),
-                ],
-            );
+    private function persistIntakeFact(
+        DocumentJob $job,
+        IntakeFormFinding $finding,
+        string $fieldPath,
+        Certainty $certainty,
+        string $factFingerprint,
+        string $clinicalContentFingerprint,
+    ): void {
+        if ($this->facts === null || $job->id === null) {
+            return;
+        }
 
-            return $this->upsertLedger(
-                $job,
-                'intake_finding',
-                $fieldPath,
-                $finding->field,
-                $this->findingValueJson($finding),
-                $finding->citation,
-                PromotionOutcome::Promoted,
-                'lists',
-                (string) $listId,
-                $this->json(['list_id' => (string) $listId]),
-                $factFingerprint,
-                $clinicalContentFingerprint,
-                $finding->confidence,
-            );
-        });
+        $factId = $this->facts->upsert(new DocumentFact(
+            null,
+            $job->patientId,
+            $job->documentId,
+            new DocumentJobId($job->id->value),
+            $job->docType,
+            'intake_finding',
+            $certainty->value,
+            $factFingerprint,
+            $clinicalContentFingerprint,
+            $finding->value,
+            $this->findingValueJson($finding) + ['field_path' => $fieldPath],
+            $this->citationJson($finding->citation),
+            $finding->confidence,
+            $this->documentFactClassifier->promotionStatus($certainty),
+        ));
+        $this->embedFact($factId, $finding->value, $certainty);
+    }
+
+    private function embedFact(int $factId, string $factText, Certainty $certainty): void
+    {
+        if (
+            $factId <= 0
+            || $certainty === Certainty::NeedsReview
+            || $this->embeddings === null
+            || $this->embeddingProvider === null
+        ) {
+            return;
+        }
+
+        $this->embeddings->upsert($factId, $factText, $this->embeddingProvider);
     }
 
     /**
@@ -566,25 +612,6 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         );
 
         return $outcome->value;
-    }
-
-    private function nativeListType(IntakeFormFinding $finding): ?string
-    {
-        $field = strtolower($finding->field . ' ' . $finding->value);
-        if (str_contains($field, 'allerg')) {
-            return 'allergy';
-        }
-        if (str_contains($field, 'medication') || str_contains($field, 'medicine') || str_contains($field, 'current meds')) {
-            return 'medication';
-        }
-        if (str_contains($field, 'family')) {
-            return 'family_problem';
-        }
-        if (str_contains($field, 'problem') || str_contains($field, 'condition') || str_contains($field, 'concern') || str_contains($field, 'chief')) {
-            return 'medical_problem';
-        }
-
-        return null;
     }
 
     /** @return array<string, mixed> */

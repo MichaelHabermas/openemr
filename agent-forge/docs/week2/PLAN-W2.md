@@ -423,7 +423,7 @@ Dependencies: M5A for the time-boxed MVP checkpoint. The full post-checkpoint ve
 
 ### Epic M7 - Supervisor, Evidence-Retriever, Final Answer Separation, And MVP Gate
 
-Status: Not started.
+Status: Completed.
 
 Checkpoint scope: Implement a thin MVP version first: deterministic supervisor routing, visible `supervisor` -> `intake-extractor` and `supervisor` -> `evidence-retriever` handoff logs, and a separated demo answer using extraction output plus guideline evidence. Full patient document search, promoted lab-row evidence, and exhaustive verifier hardening continue after the checkpoint.
 
@@ -481,7 +481,7 @@ Dependencies: M6.
 
 ### Epic M5B - Promotion Provenance, Review Outcomes, And Duplicate Prevention
 
-Status: Not started.
+Status: Completed.
 
 Checkpoint disposition: Deferred until after the MVP checkpoint. This is final-submission-critical before broad automatic OpenEMR clinical-row promotion, but it should not block the time-boxed checkpoint demo.
 
@@ -525,7 +525,7 @@ Dependencies: M5A.
 
 ### Epic M5 - Fact Persistence, Lab Promotion, Embeddings, And Patient Document Search
 
-Status: Not started.
+Status: Started.
 
 Checkpoint disposition: Mostly deferred until after the MVP checkpoint. For the checkpoint, preserve cited extraction output and identity-gated review state; full lab promotion, document fact embeddings, and patient document search continue after the first deployed demo.
 
@@ -633,7 +633,7 @@ Files/modules:
 - Modify `agent-forge/fixtures/clinical-document-golden/cases/*.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/baseline.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/thresholds.json`.
-- Add `agent-forge/scripts/generate-clinical-document-golden-fixtures.php`.
+- Maintain `agent-forge/fixtures/clinical-document-golden/cases/*.json` as the checked-in 50-case golden set.
 - Modify `agent-forge/scripts/run-clinical-document-evals.php`.
 
 Database changes: None.
@@ -753,8 +753,7 @@ Files/modules:
 - Modify `src/AgentForge/Observability/AgentTelemetry.php`.
 - Modify `src/AgentForge/Observability/SensitiveLogPolicy.php`.
 - Modify `src/AgentForge/Observability/PsrRequestLogger.php`.
-- Add `agent-forge/scripts/render-clinical-document-cost-latency-report.php`.
-- Add `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`.
+- Maintain `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`.
 
 Database changes: None unless telemetry is persisted in a W2 table; prefer existing sanitized logs and eval artifacts.
 
@@ -831,7 +830,7 @@ Files/modules:
 - Finalize `README.md`.
 - Finalize `AGENTFORGE-REVIEWER-GUIDE.md`.
 - Finalize `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md`.
-- Finalize `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`.
+- Finalize `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`.
 - Save final eval/deployed smoke artifacts under `agent-forge/eval-results/`.
 - Add demo video link/reference in reviewer docs.
 
@@ -899,10 +898,8 @@ Supporting scripts:
 
 - `agent-forge/scripts/process-document-jobs.php` runs worker one-shot or loop mode.
 - `agent-forge/scripts/index-clinical-guidelines.php` rebuilds guideline chunks and embeddings.
-- `agent-forge/scripts/generate-clinical-document-golden-fixtures.php` deterministically regenerates/validates golden metadata.
 - `agent-forge/scripts/run-clinical-document-evals.php` runs the clinical document gate and writes artifacts.
-- `agent-forge/scripts/render-clinical-document-cost-latency-report.php` writes the cost/latency report.
-- `agent-forge/scripts/run-clinical-document-deployed-smoke.php` proves deployed Week 2 flow.
+- `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md` records the current clinical-document cost/latency report.
 
 The eval runner must fail when required rubrics fall below thresholds, regress by more than 5%, schema validation fails, a clinical claim lacks citation, raw PHI appears in logs, deleted document facts remain retrievable, duplicate upload creates duplicate facts, or the runner cannot complete.
 

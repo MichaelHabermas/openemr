@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedRetrieval;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedRubrics;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricRegistry;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Runner\EvalRunner;
+use OpenEMR\AgentForge\StringKeyedArray;
 use PHPUnit\Framework\TestCase;
 
 final class EvalRunnerTest extends TestCase
@@ -93,5 +94,60 @@ final class EvalRunnerTest extends TestCase
         $firstHandoff = $handoffs[0] ?? null;
         $this->assertIsArray($firstHandoff);
         $this->assertSame('clinician_review', $firstHandoff['type']);
+    }
+
+    public function testRunResultIncludesM5PromotionAndDocumentFactProof(): void
+    {
+        $case = new EvalCase(
+            1,
+            'case-a',
+            EvalCaseCategory::LabPdfExtraction,
+            'patient:test',
+            'lab_pdf',
+            [],
+            new ExpectedExtraction(true, []),
+            [],
+            [],
+            new ExpectedRetrieval(false, 0),
+            new ExpectedAnswer(),
+            false,
+            [],
+            new ExpectedRubrics([])
+        );
+
+        $result = (new EvalRunner(new class implements ExtractionSystemAdapter {
+            public function runCase(EvalCase $case): CaseRunOutput
+            {
+                return new CaseRunOutput(
+                    'extraction_completed',
+                    promotions: [[
+                        'table' => 'procedure_result',
+                        'outcome' => 'promoted',
+                        'fact_fingerprint' => 'sha256:abc',
+                    ]],
+                    documentFacts: [[
+                        'doc_type' => 'intake_form',
+                        'field_path' => 'chief_concern',
+                        'fact_fingerprint' => 'sha256:def',
+                    ]],
+                );
+            }
+        }, new RubricRegistry()))->run([$case]);
+
+        $this->assertSame('extraction_completed', $result->caseResults[0]['adapter_status']);
+        $this->assertStringNotContainsString('persistence_pending', $result->caseResults[0]['adapter_status']);
+        $caseResult = StringKeyedArray::filter($result->caseResults[0]);
+        $promotions = $caseResult['promotions'] ?? [];
+        $documentFacts = $caseResult['document_facts'] ?? [];
+        $this->assertIsArray($promotions);
+        $this->assertIsArray($documentFacts);
+        $firstPromotion = $promotions[0] ?? [];
+        $firstDocumentFact = $documentFacts[0] ?? [];
+        $this->assertIsArray($firstPromotion);
+        $this->assertIsArray($firstDocumentFact);
+        $promotion = StringKeyedArray::filter($firstPromotion);
+        $documentFact = StringKeyedArray::filter($firstDocumentFact);
+        $this->assertSame('procedure_result', $promotion['table'] ?? null);
+        $this->assertSame('chief_concern', $documentFact['field_path'] ?? null);
     }
 }

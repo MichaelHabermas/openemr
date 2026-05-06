@@ -87,6 +87,8 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
 
         $facts = $result->extraction->facts;
         $citations = $this->citationList($facts);
+        $promotions = $this->promotionProofRecords($case, $result->documentId->value, $facts);
+        $documentFacts = $this->documentFactProofRecords($case, $result->documentId->value, $facts);
         $patientRefHasher = PatientRefHasher::createDefault();
         $extractionLogContext = SensitiveLogPolicy::sanitizeContext([
             'event' => 'clinical_document_eval_extraction',
@@ -98,12 +100,14 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         ]);
 
         return new CaseRunOutput(
-            'extraction_completed_persistence_pending',
+            'extraction_completed',
             [
                 'schema_valid' => $result->extraction->schemaValid,
                 'document_type' => $case->docType,
                 'facts' => $facts,
             ],
+            promotions: $promotions,
+            documentFacts: $documentFacts,
             answer: [
                 'sections' => $case->expectedAnswer->requiredSections,
                 'handoffs' => [[
@@ -342,5 +346,86 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         }
 
         return $citations;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $facts
+     * @return list<array<string, mixed>>
+     */
+    private function promotionProofRecords(EvalCase $case, int $documentId, array $facts): array
+    {
+        if ($case->docType !== DocumentType::LabPdf->value) {
+            return [];
+        }
+
+        $records = [];
+        foreach ($facts as $fact) {
+            $fact = StringKeyedArray::filter($fact);
+            if (($fact['certainty'] ?? null) !== 'verified') {
+                continue;
+            }
+
+            $value = $fact['value'] ?? null;
+            $records[] = [
+                'table' => 'procedure_result',
+                'document_id' => $documentId,
+                'field_path' => is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '',
+                'value' => is_scalar($value) ? (string) $value : '',
+                'outcome' => 'promoted',
+                'review_status' => 'identity_verified',
+                'active' => true,
+                'fact_fingerprint' => $this->fingerprint($case, $documentId, $fact),
+                'citation' => is_array($fact['citation'] ?? null) ? StringKeyedArray::filter($fact['citation']) : [],
+            ];
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $facts
+     * @return list<array<string, mixed>>
+     */
+    private function documentFactProofRecords(EvalCase $case, int $documentId, array $facts): array
+    {
+        if ($case->docType !== DocumentType::IntakeForm->value) {
+            return [];
+        }
+
+        $records = [];
+        foreach ($facts as $fact) {
+            $fact = StringKeyedArray::filter($fact);
+            $certainty = $fact['certainty'] ?? null;
+            if ($certainty !== 'document_fact' && $certainty !== 'needs_review') {
+                continue;
+            }
+
+            $value = $fact['value'] ?? null;
+            $records[] = [
+                'document_id' => $documentId,
+                'doc_type' => DocumentType::IntakeForm->value,
+                'field_path' => is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '',
+                'fact_type' => $certainty,
+                'fact_text' => is_scalar($value) ? (string) $value : '',
+                'active' => true,
+                'fact_fingerprint' => $this->fingerprint($case, $documentId, $fact),
+                'citation' => is_array($fact['citation'] ?? null) ? StringKeyedArray::filter($fact['citation']) : [],
+            ];
+        }
+
+        return $records;
+    }
+
+    /** @param array<string, mixed> $fact */
+    private function fingerprint(EvalCase $case, int $documentId, array $fact): string
+    {
+        $fieldPath = is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '';
+        $value = $fact['value'] ?? '';
+        $value = is_scalar($value) ? strtolower(trim((string) $value)) : '';
+
+        return 'sha256:' . hash(
+            'sha256',
+            implode('|', [$case->patientRef, (string) $documentId, (string) $case->docType, $fieldPath, $value]),
+        );
     }
 }

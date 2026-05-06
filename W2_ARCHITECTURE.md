@@ -874,28 +874,22 @@ p95 latency
 bottleneck analysis
 ```
 
-The report is rendered by:
+The current Week 2 clinical-document cost and latency report lives at:
 
 ```text
-php agent-forge/scripts/render-clinical-document-cost-latency-report.php
+agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md
 ```
 
-The script reads W2 eval/job telemetry and writes:
-
-```text
-agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md
-```
+It summarizes the measured clinical-document cost, latency, and operational caveats from the checked-in eval/job artifacts.
 
 ## 17. Eval Gate
 
 Week 2 requires a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
 Current implementation note (2026-05-06): the checked-in clinical document
-golden set is still the eight-case checkpoint set. It now gates strict
-fixture-backed extraction, identity checks, real guideline retrieval, safe
-refusal, citation shape, bounding boxes, and no-PHI logging. H1 expands this to
-the final 50-case submission set after M7 wires the supervisor/final-answer
-path.
+golden set is the 50-case submission set. It gates strict fixture-backed
+extraction, identity checks, real guideline retrieval, safe refusal, citation
+shape, bounding boxes, supervisor/final-answer behavior, and no-PHI logging.
 
 AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `agent-forge/scripts`.
 
@@ -906,8 +900,8 @@ php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
 The existing `agent-forge/fixtures/clinical-document-golden` directory is the
-clinical document golden set location. It currently contains the eight-case
-checkpoint set and expands to 50 cases for final Week 2 submission.
+clinical document golden set location. It contains the 50-case Week 2 submission
+set.
 
 Baseline storage and comparison are checked into the repo:
 
@@ -970,7 +964,7 @@ php agent-forge/scripts/run-clinical-document-evals.php
 
 ## 18. Example Documents And Synthetic Expansion
 
-The provided examples under `agent-forge/docs/week2/example-documents` are MVP development fixtures, not the complete golden set.
+The provided examples under `agent-forge/docs/example-documents` are MVP development fixtures, not the complete golden set.
 
 Initial examples include lab results and intake forms for Chen, Whitaker, Reyes, and Kowalski. The Week 2 eval set expands from these into 50 synthetic/demo cases using templates/scripts where possible.
 
@@ -1007,13 +1001,7 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-The expansion script is:
-
-```text
-php agent-forge/scripts/generate-clinical-document-golden-fixtures.php
-```
-
-It creates deterministic synthetic case metadata and expected outputs from templates. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
+The 50-case set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
 
 ## 19. Deployment Runtime
 
@@ -1131,9 +1119,9 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored, vectorized, cited, and surfaced when clinically relevant. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
-| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` expands to 50 synthetic/demo cases. |
+| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 50 synthetic/demo cases. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`. |
 | PR-blocking CI or Git Hook | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is used by CI/hook and graders. |
 | No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |
-| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings render to `agent-forge/docs/week2/CLINICAL_DOCUMENT_COST_LATENCY_REPORT.md`. |
+| Cost and latency report | Stage timings, token usage, estimated cost, retrieval hits, and worker timings are documented in `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`. |
 | Deployed observable flow | Runtime includes `openemr`, MariaDB 11.8, automatic `agentforge-worker`, VM deploy/rollback scripts, and worker health/readiness proof. |

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-AgentForge evaluation is split into tiers so each result says exactly what it proves. The current checked-in `13/13` run is a deterministic fixture/orchestration eval. It is valuable regression proof, but fixture-only green is not full live-agent proof.
+AgentForge evaluation is split into tiers so each result says exactly what it proves. The current checked-in canonical run is a deterministic fixture/orchestration eval. It is valuable regression proof, but fixture-only green is not full live-agent proof.
 
 Release rule: a final submission cannot claim live-agent evaluation unless every required live tier below has either a captured result or an explicit documented gap. Do not create an eval result file for SQL, live model, browser, or deployed smoke tiers unless that tier was actually run.
 
@@ -19,7 +19,7 @@ This tier uses `agent-forge/fixtures/eval-cases.json`, fixture evidence tools, a
 Pass criteria:
 
 - All safety-critical fixture cases pass.
-- The runner prints `13 passed, 0 failed` for the current fixture set.
+- The runner prints all cases passing for the current fixture set.
 - The saved result includes request log context without forbidden keys such as full prompt, chart text, patient name, question, or answer.
 - The result is described as deterministic fixture/orchestration proof, not as full deployed-agent proof.
 
@@ -175,7 +175,7 @@ Pass criteria:
 
 ## Current Status
 
-Tier 0 is implemented as a repeatable checked-in eval runner. The refreshed 2026-05-02 run passed `13/13` after updating the visit-briefing expectation to match the current fixture wording: `Patient name: Alex Testpatient`.
+Tier 0 is implemented as a repeatable checked-in eval runner. Historical refreshed runs passed the fixture set after updating the visit-briefing expectation to match the current fixture wording: `Patient name: Alex Testpatient`. The current fixture set has since expanded; use `agent-forge/eval-results/README.md` and the latest `LATEST-SUMMARY-TIER0.md` for current counts.
 
 The fake seeded OpenEMR data was also re-verified on 2026-05-02 with `agent-forge/scripts/verify-demo-data.sh`; demographics, active problems, active medications, A1c labs, last plan, known missing microalbumin, and source-row evidence checks passed.
 

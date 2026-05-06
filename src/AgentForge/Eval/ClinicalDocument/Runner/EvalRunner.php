@@ -57,6 +57,8 @@ final readonly class EvalRunner
                 'category' => $case->category->value,
                 'adapter_status' => $output->status,
                 'failure_reason' => $output->failureReason,
+                'promotions' => $output->promotions,
+                'document_facts' => $output->documentFacts,
                 'answer_sections' => $output->answer['sections'] ?? [],
                 'answer_handoffs' => $output->answer['handoffs'] ?? [],
                 'answer_citation_coverage' => $output->answer['citation_coverage'] ?? [],

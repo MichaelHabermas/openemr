@@ -45,8 +45,8 @@ $rows = (new SqlQueryUtilsExecutor())->fetchRecords(
     . 'AND j.document_id = ? '
     . 'AND j.status = ? '
     . 'AND j.retracted_at IS NULL '
-    . 'AND ic.identity_status IN (?, ?) '
-    . 'AND ic.review_required = 0 '
+    . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
+    . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
     . 'AND (d.deleted IS NULL OR d.deleted = 0) '
     . 'LIMIT 1',
     [
@@ -56,6 +56,8 @@ $rows = (new SqlQueryUtilsExecutor())->fetchRecords(
         'succeeded',
         'identity_verified',
         'identity_review_approved',
+        'approved',
+        'approved',
     ],
 );
 

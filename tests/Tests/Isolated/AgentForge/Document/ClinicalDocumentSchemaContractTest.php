@@ -139,11 +139,37 @@ final class ClinicalDocumentSchemaContractTest extends TestCase
                 $sql,
             );
             $this->assertStringNotContainsString('uniq_clinical_guideline_chunk_id', $sql);
-            $this->assertStringNotContainsString('clinical_document_fact_embeddings', $sql);
         }
 
         $this->assertStringContainsString('#IfNotTable clinical_guideline_chunks', $upgradeSql);
         $this->assertStringContainsString('#IfNotTable clinical_guideline_chunk_embeddings', $upgradeSql);
+    }
+
+    public function testDocumentFactSchemaExistsOnFreshInstallAndUpgrade(): void
+    {
+        $databaseSql = $this->readProjectFile('/sql/database.sql');
+        $upgradeSql = $this->readProjectFile('/sql/8_1_0-to-8_1_1_upgrade.sql');
+
+        foreach ([$databaseSql, $upgradeSql] as $sql) {
+            $this->assertStringContainsString('CREATE TABLE `clinical_document_facts`', $sql);
+            $this->assertStringContainsString('CREATE TABLE `clinical_document_fact_embeddings`', $sql);
+            $this->assertStringContainsString('`fact_fingerprint` char(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`clinical_content_fingerprint` char(64) NOT NULL', $sql);
+            $this->assertStringContainsString('`certainty` varchar(32) NOT NULL', $sql);
+            $this->assertStringContainsString('`embedding` VECTOR(1536) NOT NULL', $sql);
+            $this->assertStringContainsString(
+                'UNIQUE KEY `uniq_clinical_document_fact_source` (`patient_id`, `document_id`, `doc_type`, `fact_fingerprint`)',
+                $sql,
+            );
+            $this->assertStringContainsString(
+                'KEY `idx_clinical_document_fact_patient_active` (`patient_id`, `active`, `retracted_at`, `created_at`)',
+                $sql,
+            );
+            $this->assertStringContainsString('PRIMARY KEY (`fact_id`, `embedding_model`)', $sql);
+        }
+
+        $this->assertStringContainsString('#IfNotTable clinical_document_facts', $upgradeSql);
+        $this->assertStringContainsString('#IfNotTable clinical_document_fact_embeddings', $upgradeSql);
     }
 
     public function testDatabaseVersionBumpedForWorkerHeartbeatSchema(): void

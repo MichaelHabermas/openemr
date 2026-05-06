@@ -73,6 +73,15 @@ final class SqlChartEvidenceRepositoryIsolationTest extends TestCase
         $this->assertStringContainsString('WHERE po.patient_id = ?', $executor->queries[6]['sql']);
         $this->assertStringContainsString('pr.result_code', $executor->queries[6]['sql']);
         $this->assertStringContainsString('poc.procedure_code', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('LEFT JOIN documents source_doc ON source_doc.id = pr.document_id', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('source_doc.deleted IS NULL OR source_doc.deleted = 0', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('NOT EXISTS', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('FROM clinical_document_promotions cdp', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('LEFT JOIN clinical_document_processing_jobs cdpj ON cdpj.id = cdp.job_id', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('cdp.active <> 1', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('cdp.retracted_at IS NOT NULL', $executor->queries[6]['sql']);
+        $this->assertStringContainsString('cdpj.retracted_at IS NOT NULL', $executor->queries[6]['sql']);
+        $this->assertSame([900001, 'procedure_result'], $executor->queries[6]['binds']);
         $this->assertStringNotContainsString('UNION', strtoupper($executor->queries[6]['sql']));
 
         $this->assertStringContainsString('FROM form_vitals', $executor->queries[7]['sql']);

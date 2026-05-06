@@ -433,6 +433,54 @@ final class EvidenceToolsTest extends TestCase
         $this->assertSame('101 mg/dL', $result->items[0]->value);
     }
 
+    public function testLabsToolDoesNotSurfaceInactiveOrRetractedAgentForgePromotions(): void
+    {
+        $result = (new LabsEvidenceTool($this->repository(labs: [
+            [
+                'procedure_result_id' => 1,
+                'comments' => 'agentforge-active',
+                'result_text' => 'Hemoglobin A1c',
+                'date' => '2026-04-10 12:00:00',
+                'units' => '%',
+                'result' => '7.4',
+                'agentforge_promotion_active' => 1,
+            ],
+            [
+                'procedure_result_id' => 2,
+                'comments' => 'agentforge-inactive',
+                'result_text' => 'LDL Cholesterol',
+                'date' => '2026-04-10 12:00:00',
+                'units' => 'mg/dL',
+                'result' => '148',
+                'agentforge_promotion_active' => 0,
+            ],
+            [
+                'procedure_result_id' => 3,
+                'comments' => 'agentforge-retracted-promotion',
+                'result_text' => 'Creatinine',
+                'date' => '2026-04-10 12:00:00',
+                'units' => 'mg/dL',
+                'result' => '1.3',
+                'agentforge_promotion_active' => 1,
+                'agentforge_promotion_retracted_at' => '2026-05-06 12:00:00',
+            ],
+            [
+                'procedure_result_id' => 4,
+                'comments' => 'agentforge-retracted-job',
+                'result_text' => 'Glucose',
+                'date' => '2026-04-10 12:00:00',
+                'units' => 'mg/dL',
+                'result' => '101',
+                'agentforge_promotion_active' => 1,
+                'agentforge_job_retracted_at' => '2026-05-06 12:00:00',
+            ],
+        ])))->collect(new PatientId(900001));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('Hemoglobin A1c', $result->items[0]->displayLabel);
+        $this->assertSame('lab:procedure_result/agentforge-active@2026-04-10', $result->items[0]->citation());
+    }
+
     public function testLabsToolReturnsMissingWhenNoLabsExist(): void
     {
         $result = (new LabsEvidenceTool($this->repository(labs: [])))->collect(new PatientId(900001));

@@ -25,7 +25,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
     {
         $output = $this->runCase('chen-lab-typed');
 
-        $this->assertSame('extraction_completed_persistence_pending', $output->status);
+        $this->assertSame('extraction_completed', $output->status);
         $this->assertTrue($output->extraction['schema_valid'] ?? false);
         $facts = $output->extraction['facts'] ?? null;
         $this->assertIsArray($facts);
@@ -38,6 +38,45 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertStringContainsString('148', (string) $value);
         $this->assertTrue((new CitationShape())->factHasValidCitation($fact));
         $this->assertTrue((new CitationShape())->factHasBoundingBox($fact));
+    }
+
+    public function testLabCaseEmitsM5PromotionProofWithoutPendingPersistenceStatus(): void
+    {
+        $output = $this->runCase('chen-lab-typed');
+
+        $this->assertStringNotContainsString('persistence_pending', $output->status);
+        $promotions = $output->promotions;
+        $this->assertCount(1, $promotions);
+        $promotion = $promotions[0];
+        $this->assertSame('procedure_result', $promotion['table'] ?? null);
+        $this->assertSame('promoted', $promotion['outcome'] ?? null);
+        $this->assertSame('identity_verified', $promotion['review_status'] ?? null);
+        $this->assertTrue($promotion['active'] ?? false);
+        $this->assertIsString($promotion['fact_fingerprint'] ?? null);
+        $this->assertStringStartsWith('sha256:', $promotion['fact_fingerprint']);
+        $this->assertIsScalar($promotion['value'] ?? null);
+        $this->assertStringContainsString('148', (string) $promotion['value']);
+        $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($promotion)));
+    }
+
+    public function testIntakeCaseEmitsM5DocumentFactProof(): void
+    {
+        $output = $this->runCase('chen-intake-typed');
+
+        $this->assertSame('extraction_completed', $output->status);
+        $this->assertSame([], $output->promotions);
+        $documentFacts = $output->documentFacts;
+        $this->assertCount(1, $documentFacts);
+        $fact = $documentFacts[0];
+        $this->assertSame('intake_form', $fact['doc_type'] ?? null);
+        $this->assertSame('chief_concern', $fact['field_path'] ?? null);
+        $this->assertSame('document_fact', $fact['fact_type'] ?? null);
+        $this->assertTrue($fact['active'] ?? false);
+        $this->assertIsScalar($fact['fact_text'] ?? null);
+        $this->assertStringContainsString('cholesterol', (string) $fact['fact_text']);
+        $this->assertIsString($fact['fact_fingerprint'] ?? null);
+        $this->assertStringStartsWith('sha256:', $fact['fact_fingerprint']);
+        $this->assertTrue((new CitationShape())->factHasValidCitation(StringKeyedArray::filter($fact)));
     }
 
     public function testDuplicateUploadSourceResolvesToSameDeterministicFixture(): void

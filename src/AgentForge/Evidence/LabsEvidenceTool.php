@@ -30,6 +30,10 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
     {
         $items = [];
         foreach ($this->repository->recentLabs($patientId, $this->limit, $deadline) as $row) {
+            if ($this->inactiveOrRetractedAgentForgePromotion($row)) {
+                continue;
+            }
+
             $label = EvidenceRowValue::string($row, 'result_text');
             $result = EvidenceRowValue::string($row, 'result');
             if ($label === '' || $result === '') {
@@ -48,6 +52,18 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
         }
 
         return EvidenceResult::found($this->section(), $items);
+    }
+
+    /** @param array<string, mixed> $row */
+    private function inactiveOrRetractedAgentForgePromotion(array $row): bool
+    {
+        $promotionActive = $row['agentforge_promotion_active'] ?? null;
+        if ($promotionActive !== null && !EvidenceRowValue::truthy($row, 'agentforge_promotion_active')) {
+            return true;
+        }
+
+        return EvidenceRowValue::string($row, 'agentforge_promotion_retracted_at') !== ''
+            || EvidenceRowValue::string($row, 'agentforge_job_retracted_at') !== '';
     }
 
     /** @param array<string, mixed> $row */
