@@ -18,6 +18,7 @@ final readonly class RubricResult
         public string $name,
         public RubricStatus $status,
         public string $reason,
+        public ?float $score = null,
     ) {
     }
 }

@@ -44,4 +44,59 @@ final class AnswerCitationCoverageRubricTest extends RubricTestCase
 
         $this->assertSame(RubricStatus::Fail, $result->status);
     }
+
+    public function testFailsWhenCitationQuoteDoesNotContainExtractedValue(): void
+    {
+        $result = (new AnswerCitationCoverageRubric())->evaluate($this->inputs(
+            ['answer_citation_coverage' => true],
+            new CaseRunOutput(
+                'ok',
+                ['facts' => [[
+                    'field_path' => 'results[0]',
+                    'value' => '148 mg/dL',
+                    'citation' => [
+                        'source_type' => 'lab_pdf',
+                        'source_id' => 'sha256:abc',
+                        'page_or_section' => 'page 1',
+                        'field_or_chunk_id' => 'results[0]',
+                        'quote_or_value' => 'Sodium 140 mmol/L',
+                    ],
+                ]]],
+                answer: ['citation_coverage' => [
+                    'patient_claims' => ['total' => 1, 'cited' => 1],
+                ]],
+            ),
+            expectedAnswer: new ExpectedAnswer(everyPatientClaimHasCitation: true),
+        ));
+
+        $this->assertSame(RubricStatus::Fail, $result->status);
+        $this->assertStringContainsString('does not contain extracted value', $result->reason);
+    }
+
+    public function testPassesWhenCitationQuoteContainsExtractedValue(): void
+    {
+        $result = (new AnswerCitationCoverageRubric())->evaluate($this->inputs(
+            ['answer_citation_coverage' => true],
+            new CaseRunOutput(
+                'ok',
+                ['facts' => [[
+                    'field_path' => 'results[0]',
+                    'value' => '148 mg/dL',
+                    'citation' => [
+                        'source_type' => 'lab_pdf',
+                        'source_id' => 'sha256:abc',
+                        'page_or_section' => 'page 1',
+                        'field_or_chunk_id' => 'results[0]',
+                        'quote_or_value' => 'LDL Cholesterol 148 mg/dL',
+                    ],
+                ]]],
+                answer: ['citation_coverage' => [
+                    'patient_claims' => ['total' => 1, 'cited' => 1],
+                ]],
+            ),
+            expectedAnswer: new ExpectedAnswer(everyPatientClaimHasCitation: true),
+        ));
+
+        $this->assertSame(RubricStatus::Pass, $result->status);
+    }
 }

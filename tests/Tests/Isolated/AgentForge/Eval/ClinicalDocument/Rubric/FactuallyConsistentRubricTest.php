@@ -65,4 +65,42 @@ final class FactuallyConsistentRubricTest extends RubricTestCase
 
         $this->assertSame(RubricStatus::Fail, $result->status);
     }
+
+    public function testReportsRecallScoreOnPartialMatch(): void
+    {
+        $result = (new FactuallyConsistentRubric())->evaluate($this->inputs(
+            ['factually_consistent' => true],
+            new CaseRunOutput('ok', ['facts' => [[
+                'field_path' => 'results[0]',
+                'test_name' => 'LDL Cholesterol',
+                'value' => '148 mg/dL',
+                'confidence' => 0.98,
+            ]]]),
+            [
+                ['field_path' => 'results[0]', 'test_name' => 'LDL Cholesterol', 'value_contains' => '148'],
+                ['field_path' => 'results[1]', 'test_name' => 'HDL Cholesterol', 'value_contains' => '52'],
+            ],
+        ));
+
+        $this->assertSame(RubricStatus::Fail, $result->status);
+        $this->assertSame(0.5, $result->score);
+        $this->assertStringContainsString('results[1]', $result->reason);
+    }
+
+    public function testReportsFullRecallScoreOnFullMatch(): void
+    {
+        $result = (new FactuallyConsistentRubric())->evaluate($this->inputs(
+            ['factually_consistent' => true],
+            new CaseRunOutput('ok', ['facts' => [[
+                'field_path' => 'results[0]',
+                'test_name' => 'LDL Cholesterol',
+                'value' => '148 mg/dL',
+                'confidence' => 0.98,
+            ]]]),
+            [['field_path' => 'results[0]', 'test_name' => 'LDL Cholesterol', 'value_contains' => '148']],
+        ));
+
+        $this->assertSame(RubricStatus::Pass, $result->status);
+        $this->assertSame(1.0, $result->score);
+    }
 }

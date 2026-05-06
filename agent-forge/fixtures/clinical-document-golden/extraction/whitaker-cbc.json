@@ -1,0 +1,108 @@
+{
+  "doc_type": "lab_pdf",
+  "lab_name": "Golden Fixture Lab",
+  "collected_at": "2026-04-05",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "Alex Testpatient",
+      "field_path": "header.patient_name",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:fixture",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "patient_name",
+        "quote_or_value": "Alex Testpatient",
+        "bounding_box": {"x": 0.05, "y": 0.05, "width": 0.25, "height": 0.04}
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1976-04-12",
+      "field_path": "header.date_of_birth",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:fixture",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "date_of_birth",
+        "quote_or_value": "1976-04-12",
+        "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
+      }
+    }
+  ],
+  "results": [
+    {
+      "test_name": "WBC",
+      "value": "11.2 K/uL",
+      "unit": "K/uL",
+      "reference_range": "4.5-11.0 K/uL",
+      "collected_at": "2026-04-05",
+      "abnormal_flag": "high",
+      "certainty": "verified",
+      "confidence": 0.97,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:22db1772808e93134df1edb24909ecbf26e8f739f871d0bef23af9aac35ed8ef",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "results[0]",
+        "quote_or_value": "WBC 11.2 K/uL",
+        "bounding_box": {
+          "x": 0.112,
+          "y": 0.280,
+          "width": 0.170,
+          "height": 0.024
+        }
+      }
+    },
+    {
+      "test_name": "Hemoglobin",
+      "value": "12.4 g/dL",
+      "unit": "g/dL",
+      "reference_range": "12.0-17.5 g/dL",
+      "collected_at": "2026-04-05",
+      "abnormal_flag": "normal",
+      "certainty": "verified",
+      "confidence": 0.96,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:22db1772808e93134df1edb24909ecbf26e8f739f871d0bef23af9aac35ed8ef",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "results[1]",
+        "quote_or_value": "Hemoglobin 12.4 g/dL",
+        "bounding_box": {
+          "x": 0.112,
+          "y": 0.312,
+          "width": 0.180,
+          "height": 0.024
+        }
+      }
+    },
+    {
+      "test_name": "Platelets",
+      "value": "245 K/uL",
+      "unit": "K/uL",
+      "reference_range": "150-400 K/uL",
+      "collected_at": "2026-04-05",
+      "abnormal_flag": "normal",
+      "certainty": "verified",
+      "confidence": 0.95,
+      "citation": {
+        "source_type": "lab_pdf",
+        "source_id": "sha256:22db1772808e93134df1edb24909ecbf26e8f739f871d0bef23af9aac35ed8ef",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "results[2]",
+        "quote_or_value": "Platelets 245 K/uL",
+        "bounding_box": {
+          "x": 0.112,
+          "y": 0.344,
+          "width": 0.170,
+          "height": 0.024
+        }
+      }
+    }
+  ]
+}
