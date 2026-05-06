@@ -10,7 +10,7 @@
 
 The target outcome is a public OpenEMR deployment that can be checked, updated, and re-seeded reliably for demo purposes.
 
-This is a fake-data demo. The deploy preserves Docker volumes and relies on the idempotent demo-data seed (`agent-forge/scripts/seed-demo-data.sh`) to restore known demo state for `pid=900001` on every deploy. Volumes are *not* wiped because the upstream MariaDB 11.8.6 image's first-init is fragile on the demo VM — see "Known VM Bootstrap Fragility" below. There is no point-in-time database rollback in this project — recovery is by re-seed, not by snapshot.
+This is a fake-data demo. The deploy preserves Docker volumes and relies on the idempotent demo-data seed (`agent-forge/scripts/seed-demo-data.sh`) to restore known demo state for fixed AgentForge demo patients (`pid` in `900001`–`900006` and `900101`, etc.—see `agent-forge/sql/seed-demo-data.sql`) on every deploy. Volumes are *not* wiped because the upstream MariaDB 11.8.6 image's first-init is fragile on the demo VM — see "Known VM Bootstrap Fragility" below. There is no point-in-time database rollback in this project — recovery is by re-seed, not by snapshot.
 
 Hard constraints:
 
@@ -84,7 +84,7 @@ What this epic does NOT do:
 ### Task 2.1.4: Code Rollback (Re-Seed Model)
 
 **Status:** [x] Complete — rollback transcript captured 2026-04-30; point-in-time database rollback intentionally not provided
-**Description:** Roll back code to a prior commit and re-seed fake demo data. Volumes are preserved across rollbacks (see "Known VM Bootstrap Fragility"); the idempotent seed restores known demo state for `pid=900001`. There is no point-in-time database rollback.
+**Description:** Roll back code to a prior commit and re-seed fake demo data. Volumes are preserved across rollbacks (see "Known VM Bootstrap Fragility"); the idempotent seed restores known demo state for the fixed AgentForge demo `pid` set (see `seed-demo-data.sql`). There is no point-in-time database rollback.
 
 **Subtasks:**
 
@@ -176,7 +176,7 @@ Rollback command sequence on the VM:
 agent-forge/scripts/rollback-vm.sh "<rollback-commit-from-deploy-output>"
 ```
 
-This will: switch to the target commit, `docker compose down`, `docker compose up -d` (volumes preserved), run health checks, and re-seed fake demo data. The seed deletes and re-inserts only `pid=900001`, restoring known demo state without dropping tables or wiping volumes. Any state created in the rolled-back deploy outside the seeded patient is left in place; this is acceptable because no real PHI is ever stored.
+This will: switch to the target commit, `docker compose down`, `docker compose up -d` (volumes preserved), run health checks, and re-seed fake demo data. The seed deletes and re-inserts only the AgentForge demo `pid` rows (see `agent-forge/sql/seed-demo-data.sql`), restoring known demo state without dropping tables or wiping volumes. Any state created in the rolled-back deploy outside the seeded patient is left in place; this is acceptable because no real PHI is ever stored.
 
 ---
 
@@ -191,7 +191,7 @@ Observed on `gauntlet-mgh` 2026-04-30. The upstream MariaDB 11.8.6 image's first
 
 Recovery from this state requires hand-fixing the database (set the root password via socket auth, create the healthcheck user) before the stack will come back up — not acceptable for an automated deploy.
 
-The mitigation is structural: the deploy and rollback scripts use `docker compose down` (no `-v`), which preserves the volume that was successfully bootstrapped on first install. Demo state is restored through the idempotent seed (`agent-forge/scripts/seed-demo-data.sh`), which deletes and re-inserts only `pid=900001` and never drops tables or volumes. This is sufficient for the demo because no real PHI is ever stored and the seed is the source of truth for known demo state.
+The mitigation is structural: the deploy and rollback scripts use `docker compose down` (no `-v`), which preserves the volume that was successfully bootstrapped on first install. Demo state is restored through the idempotent seed (`agent-forge/scripts/seed-demo-data.sh`), which deletes and re-inserts only the AgentForge demo `pid` set and never drops tables or volumes. This is sufficient for the demo because no real PHI is ever stored and the seed is the source of truth for known demo state.
 
 The volume bootstrap is required exactly once, by hand, when the VM is first provisioned. After that, deploys and rollbacks must not wipe it.
 

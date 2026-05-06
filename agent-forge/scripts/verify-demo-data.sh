@@ -20,6 +20,9 @@ DEMO_PID="${AGENTFORGE_DEMO_PID:-900001}"
 POLY_PID="${AGENTFORGE_POLY_PID:-900002}"
 SPARSE_PID="${AGENTFORGE_SPARSE_PID:-900003}"
 CHEN_PID="${AGENTFORGE_CHEN_PID:-900101}"
+EMPTY_PID="${AGENTFORGE_EMPTY_PID:-900004}"
+PARTIAL_PID="${AGENTFORGE_PARTIAL_PID:-900005}"
+LAYOUT_PID="${AGENTFORGE_LAYOUT_PID:-900006}"
 FAILURES=0
 
 compose() {
@@ -287,6 +290,81 @@ main() {
         "intake form maps to intake_form" \
         "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Intake Form' AND m.doc_type = 'intake_form' AND m.active = 1;" \
         "1"
+
+    expect_count \
+        "empty chart demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${EMPTY_PID} AND pubpid = 'AF-DEMO-900004' AND fname = 'Quinn' AND lname = 'Emptychart';" \
+        "1"
+
+    expect_count \
+        "empty chart no encounters" \
+        "SELECT COUNT(*) FROM form_encounter WHERE pid = ${EMPTY_PID};" \
+        "0"
+
+    expect_count \
+        "empty chart no prescriptions" \
+        "SELECT COUNT(*) FROM prescriptions WHERE patient_id = ${EMPTY_PID};" \
+        "0"
+
+    expect_count \
+        "empty chart no active allergies" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${EMPTY_PID} AND type = 'allergy' AND activity = 1;" \
+        "0"
+
+    expect_count \
+        "partial demographics missing DOB" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${PARTIAL_PID} AND pubpid = 'AF-DEMO-900005' AND fname = 'Taylor' AND DOB IS NULL AND sex = 'Female';" \
+        "1"
+
+    expect_count \
+        "layout inactive patient" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${LAYOUT_PID} AND pubpid = 'AF-DEMO-900006' AND status = 'inactive';" \
+        "1"
+
+    expect_count \
+        "layout long problem title" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${LAYOUT_PID} AND type = 'medical_problem' AND external_id = 'af-p900006-long-htn' AND activity = 1 AND LENGTH(title) > 200;" \
+        "1"
+
+    expect_count \
+        "alex visit history encounter count" \
+        "SELECT COUNT(*) FROM form_encounter WHERE pid = ${DEMO_PID};" \
+        "5"
+
+    expect_count \
+        "alex care team active members" \
+        "SELECT COUNT(*) FROM care_team_member ctm INNER JOIN care_teams ct ON ct.id = ctm.care_team_id WHERE ct.pid = ${DEMO_PID} AND ctm.status = 'active';" \
+        "4"
+
+    expect_count \
+        "alex primary insurance row" \
+        "SELECT COUNT(*) FROM insurance_data WHERE pid = ${DEMO_PID} AND type = 'primary' AND policy_number = 'AF-POL-900001';" \
+        "1"
+
+    expect_count \
+        "alex future demo appointment" \
+        "SELECT COUNT(*) FROM openemr_postcalendar_events WHERE pc_pid = '900001' AND pc_hometext = 'agentforge-demo-appt-alex-followup';" \
+        "1"
+
+    expect_count \
+        "alex inactive hyperlipidemia problem" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${DEMO_PID} AND type = 'medical_problem' AND activity = 0 AND external_id = 'af-prob-lipid';" \
+        "1"
+
+    expect_count \
+        "alex otc list medication row" \
+        "SELECT COUNT(*) FROM lists WHERE pid = ${DEMO_PID} AND type = 'medication' AND activity = 1 AND external_id = 'af-l1-otc-asp';" \
+        "1"
+
+    expect_count \
+        "riley multi encounter count" \
+        "SELECT COUNT(*) FROM form_encounter WHERE pid = ${POLY_PID};" \
+        "3"
+
+    expect_count \
+        "riley secondary care team members" \
+        "SELECT COUNT(*) FROM care_team_member ctm INNER JOIN care_teams ct ON ct.id = ctm.care_team_id WHERE ct.pid = ${POLY_PID};" \
+        "2"
 
     if [[ "${FAILURES}" -gt 0 ]]; then
         printf 'Demo data verification failed: %s check(s) failed.\n' "${FAILURES}" >&2
