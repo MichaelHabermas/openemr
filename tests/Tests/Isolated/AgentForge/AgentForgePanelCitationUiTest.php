@@ -20,9 +20,25 @@ final class AgentForgePanelCitationUiTest extends TestCase
     {
         $template = $this->agentForgePanelTemplate();
 
-        $this->assertStringContainsString('appendList(response, {{ "Sources"|xlj }}, payload.citations)', $template);
+        $this->assertStringContainsString('appendSources(response, payload)', $template);
+        $this->assertStringContainsString('payload.citation_details || []', $template);
         $this->assertStringContainsString('payload.citations && payload.citations.length > 0', $template);
-        $this->assertStringContainsString('row.textContent = item', $template);
+        $this->assertStringContainsString('row.textContent = citationLabel(detail)', $template);
+    }
+
+    public function testPanelCanOpenDocumentCitationOverlayWithNormalizedBoundingBox(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('agent-forge-source-overlay', $template);
+        $this->assertStringContainsString("detail.source_type === 'document'", $template);
+        $this->assertStringContainsString('detail.citation.bounding_box', $template);
+        $this->assertStringContainsString('agent_document_source.php?document_id=', $template);
+        $this->assertStringContainsString("encodeURIComponent(citation.job_id || '')", $template);
+        $this->assertStringContainsString("sourceBox.style.left = (box.x * 100) + '%'", $template);
+        $this->assertStringContainsString("sourceBox.style.top = (box.y * 100) + '%'", $template);
+        $this->assertStringContainsString("sourceBox.style.width = (box.width * 100) + '%'", $template);
+        $this->assertStringContainsString("sourceBox.style.height = (box.height * 100) + '%'", $template);
     }
 
     public function testPanelShowsMissingWarningsAndEmptySourceStateSeparately(): void

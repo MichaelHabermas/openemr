@@ -15440,6 +15440,34 @@ CREATE TABLE `clinical_document_identity_checks` (
   KEY `idx_clinical_document_identity_status` (`identity_status`, `review_required`)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS `clinical_document_promoted_facts`;
+CREATE TABLE `clinical_document_promoted_facts` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `job_id` bigint(20) NOT NULL,
+  `patient_id` bigint(20) NOT NULL,
+  `document_id` int(11) NOT NULL,
+  `doc_type` varchar(32) NOT NULL,
+  `fact_type` varchar(32) NOT NULL,
+  `field_path` varchar(255) NOT NULL,
+  `display_label` varchar(255) NOT NULL,
+  `value_json` longtext NOT NULL,
+  `citation_json` longtext NOT NULL,
+  `bounding_box_json` longtext NULL,
+  `fact_hash` char(64) NOT NULL,
+  `promotion_status` varchar(32) NOT NULL DEFAULT 'needs_review',
+  `native_table` varchar(64) NULL,
+  `native_id` varchar(64) NULL,
+  `review_status` varchar(32) NOT NULL DEFAULT 'needs_review',
+  `reviewed_by` bigint(20) NULL,
+  `reviewed_at` datetime NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_clinical_document_promoted_fact` (`job_id`, `fact_hash`),
+  KEY `idx_clinical_document_promoted_patient_document` (`patient_id`, `document_id`),
+  KEY `idx_clinical_document_promoted_status` (`promotion_status`, `review_status`)
+) ENGINE=InnoDB;
+
 DROP TABLE IF EXISTS `clinical_document_worker_heartbeats`;
 CREATE TABLE `clinical_document_worker_heartbeats` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\IdentityMatchResult;
 use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
+use OpenEMR\AgentForge\Document\Promotion\ClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -45,6 +46,7 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         private ?DocumentIdentityCheckRepository $identityChecks = null,
         private ?DocumentIdentityVerifier $identityVerifier = null,
         private ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
+        private ?ClinicalDocumentFactPromotionRepository $factPromotions = null,
     ) {
     }
 
@@ -76,6 +78,7 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
         }
 
         $counts = $this->countFactBuckets($job, $response->extraction);
+        $promotion = $this->factPromotions?->promote($job, $response->extraction);
         $this->logger->info(
             'document.extraction.completed',
             DocumentExtractionLogContext::intakeExtractionCompleted(
@@ -86,6 +89,16 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
                 $counts,
             ),
         );
+        if ($promotion !== null) {
+            $this->logger->info('document.extraction.promoted', [
+                'worker' => WorkerName::IntakeExtractor->value,
+                'job_id' => $job->id?->value,
+                'document_id' => $job->documentId->value,
+                'promoted' => $promotion->promoted,
+                'needs_review' => $promotion->needsReview,
+                'skipped' => $promotion->skipped,
+            ]);
+        }
 
         return ProcessingResult::succeeded();
     }

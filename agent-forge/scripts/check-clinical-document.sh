@@ -18,6 +18,7 @@ run_step "Check diff whitespace" git diff --check
 
 run_step "Check PHP syntax (clinical document eval surface)" bash -c \
   "php -l library/ajax/upload.php \
+   && php -l interface/patient_file/summary/agent_document_source.php \
    && find src/AgentForge tests/Tests/Isolated/AgentForge agent-forge/scripts \
         -type f -name '*.php' -print0 | xargs -0 -n 1 php -l > /dev/null"
 
@@ -40,7 +41,7 @@ run_step "Run focused PHPStan (clinical document eval surface)" \
 run_step "Run PHPCS on changed AgentForge clinical document eval PHP files" bash -c '
   files="$(
     { git diff --name-only --diff-filter=ACM; git ls-files --others --exclude-standard; } \
-    | grep -E "^(src/AgentForge|tests/Tests/Isolated/AgentForge|agent-forge/scripts|library/ajax/upload\.php)" || true
+    | grep -E "^(src/AgentForge|tests/Tests/Isolated/AgentForge|agent-forge/scripts|library/ajax/upload\.php|interface/patient_file/summary/agent_document_source\.php)" || true
   )"
   if [[ -z "${files}" ]]; then
     printf "No changed AgentForge clinical document eval PHP files to check.\n"

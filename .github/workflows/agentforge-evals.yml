@@ -48,6 +48,32 @@ jobs:
         name: agentforge-tier0-results
         path: agent-forge/eval-results/*.json
 
+  clinical-document-gate:
+    name: Clinical document golden gate
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Setup PHP and Composer
+      uses: ./.github/actions/setup-php-composer
+      with:
+        php-version: '8.2'
+
+    - name: Run clinical document golden evals
+      run: php agent-forge/scripts/run-clinical-document-evals.php
+
+    - name: Append clinical document summary to GitHub Actions
+      if: ${{ !cancelled() }}
+      run: bash agent-forge/scripts/ci/append-eval-step-summary.sh "Clinical Document Golden Gate" "agent-forge/eval-results/clinical-document-*/summary.json"
+
+    - name: Upload clinical document results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: agentforge-clinical-document-results
+        path: agent-forge/eval-results/clinical-document-*/
+
   tier1-sql-evidence:
     name: Tier 1 - Seeded SQL evidence evals
     runs-on: ubuntu-24.04

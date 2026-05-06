@@ -67,6 +67,24 @@ final class EvidenceBundleTest extends TestCase
         );
     }
 
+    public function testEvidenceBundleItemPreservesStructuredCitationMetadataFromEvidenceItem(): void
+    {
+        $item = EvidenceBundleItem::fromEvidenceItem(new EvidenceItem(
+            'document',
+            'clinical_document_processing_jobs',
+            '17:results[0]',
+            '2026-04-22',
+            'LDL Cholesterol',
+            '148 mg/dL',
+            ['page_or_section' => 'page 1'],
+        ));
+
+        $itemArray = $item->toArray();
+
+        $this->assertArrayHasKey('citation', $itemArray);
+        $this->assertSame(['page_or_section' => 'page 1'], $itemArray['citation']);
+    }
+
     public function testEvidenceBundleRejectsUnexpectedItemObjects(): void
     {
         $this->expectException(DomainException::class);

@@ -27,7 +27,7 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 
 - **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
 - **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current eight-case checkpoint gate, expanding to the 50-case Week 2 submission gate in H1.
-- **Operations / cost** — Extend [../operations/](../operations/) for Week 2 latency and cost reports when measured.
+- **Operations / cost** — [../operations/CLINICAL-DOCUMENT-COST-LATENCY.md](../operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is the current Week 2 clinical-document cost/latency report; [../operations/](../operations/) also contains shared Week 1 cost and deployed latency baselines.
 
 ## AgentForge gates
 

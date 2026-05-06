@@ -45,6 +45,32 @@ final class EvidenceItemTest extends TestCase
         $this->assertJson(json_encode($item->toArray(), JSON_THROW_ON_ERROR));
     }
 
+    public function testEvidenceItemCanCarryStructuredCitationMetadata(): void
+    {
+        $item = new EvidenceItem(
+            'document',
+            'clinical_document_processing_jobs',
+            '17:results[0]',
+            '2026-04-22',
+            'LDL Cholesterol',
+            '148 mg/dL',
+            [
+                'source_type' => 'lab_pdf',
+                'page_or_section' => 'page 1',
+                'field_or_chunk_id' => 'results[0]',
+                'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+            ],
+        );
+
+        $itemArray = $item->toArray();
+
+        $this->assertArrayHasKey('citation', $itemArray);
+        $this->assertSame(
+            ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+            $itemArray['citation']['bounding_box'],
+        );
+    }
+
     /**
      * @return array<string, array{int}>
      *

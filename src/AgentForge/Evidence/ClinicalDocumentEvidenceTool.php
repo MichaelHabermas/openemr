@@ -145,6 +145,7 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                 $this->sourceDate($row, $this->string($fact, 'collected_at')),
                 $label,
                 EvidenceText::bounded(implode('; ', $parts), 300),
+                $this->citationMetadata($row, $fact, $citation, $field, $page),
             );
         }
 
@@ -162,10 +163,71 @@ final readonly class ClinicalDocumentEvidenceTool implements ChartEvidenceTool
                 $this->sourceDate($row),
                 str_replace('_', ' ', $label),
                 EvidenceText::bounded(sprintf('%s; Citation: %s, %s, %s', $value, $docType, $page, $field), 300),
+                $this->citationMetadata($row, $fact, $citation, $field, $page),
             );
         }
 
         return null;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $fact
+     * @param array<string, mixed> $citation
+     * @return array<string, mixed>
+     */
+    private function citationMetadata(array $row, array $fact, array $citation, string $field, string $page): array
+    {
+        $metadata = [
+            'source_type' => $this->string($citation, 'source_type') ?: $this->string($row, 'doc_type'),
+            'source_id' => $this->string($citation, 'source_id') ?: 'document:' . $this->string($row, 'document_id'),
+            'document_id' => $this->positiveInt($row, 'document_id'),
+            'job_id' => $this->positiveInt($row, 'id'),
+            'page_or_section' => $page,
+            'field_or_chunk_id' => $field,
+            'quote_or_value' => EvidenceText::bounded($this->string($citation, 'quote_or_value'), 240),
+        ];
+
+        $box = $this->normalizedBoundingBox($citation['bounding_box'] ?? $fact['bounding_box'] ?? null);
+        if ($box !== null) {
+            $metadata['bounding_box'] = $box;
+        }
+
+        return array_filter(
+            $metadata,
+            static fn (mixed $value): bool => $value !== '',
+        );
+    }
+
+    /** @return array{x: float, y: float, width: float, height: float}|null */
+    private function normalizedBoundingBox(mixed $value): ?array
+    {
+        if (!is_array($value)) {
+            return null;
+        }
+
+        $numbers = [];
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            if (!isset($value[$key]) || !is_numeric($value[$key])) {
+                return null;
+            }
+            $number = (float) $value[$key];
+            if ($number < 0.0 || $number > 1.0) {
+                return null;
+            }
+            $numbers[$key] = $number;
+        }
+
+        if ($numbers['width'] <= 0.0 || $numbers['height'] <= 0.0) {
+            return null;
+        }
+
+        return [
+            'x' => $numbers['x'],
+            'y' => $numbers['y'],
+            'width' => $numbers['width'],
+            'height' => $numbers['height'],
+        ];
     }
 
     /** @param array<string, mixed> $row */

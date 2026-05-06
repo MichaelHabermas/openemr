@@ -17,6 +17,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 - [SPECS.txt](week1/SPECS.txt) - Week 1 / original project requirements.
 - [SPECS-W2.md](week2/SPECS-W2.md) - Week 2 project requirements (multimodal documents, RAG, supervisor/workers, eval gate).
 - [week2/README.md](week2/README.md) - **Week 2 index** (links to spec, PDF, eval golden set, architecture deliverable).
+- [operations/CLINICAL-DOCUMENT-COST-LATENCY.md](operations/CLINICAL-DOCUMENT-COST-LATENCY.md) - Week 2 clinical-document cost/latency report and measurement caveats.
 - [../../AUDIT.md](../../AUDIT.md) - Codebase audit and constraints.
 - [../../USERS.md](../../USERS.md) - Target user, workflow, and agent-justified use cases.
 - [../../ARCHITECTURE.md](../../ARCHITECTURE.md) - Current architecture, trust boundaries, and known limitations.
@@ -28,7 +29,7 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 
 - [epics/](epics/) - Epic narratives, proof notes, and acceptance traces.
 - [evaluation/](evaluation/) - Evaluation tier taxonomy, instructor reviews, and captured test output.
-- [operations/](operations/) - Cost analysis and operational facts/needs.
+- [operations/](operations/) - Cost analysis, Week 2 clinical-document cost/latency report, latency proof, and operational facts/needs.
 - [submission/](submission/) - Reviewer packaging pointers and demo submission script.
 - [week2/](week2/) - Week 2 navigation hub with the source spec, PDF/text assignment copies, implementation plan, fixture pointers, and root `W2_ARCHITECTURE.md` defense artifact.
 

@@ -53,6 +53,19 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
         $this->assertSame('LDL Cholesterol', $result->items[0]->displayLabel);
         $this->assertStringContainsString('148 mg/dL', $result->items[0]->value);
         $this->assertStringContainsString('Citation: lab_pdf, page 1, results[0]', $result->items[0]->value);
+        $this->assertSame(
+            [
+                'source_type' => 'lab_pdf',
+                'source_id' => 'doc:11',
+                'document_id' => 11,
+                'job_id' => 17,
+                'page_or_section' => 'page 1',
+                'field_or_chunk_id' => 'results[0]',
+                'quote_or_value' => 'LDL Cholesterol 148 mg/dL',
+                'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+            ],
+            $result->items[0]->citation,
+        );
     }
 
     public function testReturnsMissingWhenNoTrustedJobsExist(): void
@@ -136,6 +149,7 @@ final class ClinicalDocumentEvidenceProvider implements DocumentExtractionProvid
                             'page_or_section' => 'page 1',
                             'field_or_chunk_id' => 'results[0]',
                             'quote_or_value' => 'LDL Cholesterol 148 mg/dL',
+                            'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
                         ],
                     ],
                 ],

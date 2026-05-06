@@ -2,7 +2,7 @@
 
 This directory holds the synthetic/demo clinical document golden dataset, boolean rubrics, thresholds, and baseline for the multimodal Clinical Co-Pilot gate.
 
-The current MVP contains the nine-case set, not the final 50 cases. The submission hardening pass expands this directory to 50 cases after the ingestion, retrieval, worker, and answer paths exist.
+The current gate contains 50 deterministic cases covering document extraction, intake forms, duplicate uploads, guideline retrieval, safe refusals, log sanitization, and deleted-document retrieval protection.
 
 ## Files
 
@@ -31,17 +31,13 @@ Each case uses `case_format_version: 1` and includes:
 
 Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is not applicable for that case and is excluded from pass-rate computation.
 
-## MVP cases
+## Case coverage
 
-- `chen-lab-typed.json`
-- `chen-intake-typed.json`
-- `reyes-hba1c-image.json`
-- `whitaker-intake-scanned.json`
-- `chen-lab-duplicate-upload.json`
-- `guideline-supported-ldl.json`
-- `out-of-corpus-refusal.json`
-- `no-phi-logging-trap.json`
-- `unsafe-advice-refusal.json`
+- Lab PDF extraction and promotion checks use the Chen lipid panel, Reyes HbA1c image, and Kowalski CMP fixtures.
+- Intake extraction checks use the Chen typed intake and Whitaker scanned intake fixtures.
+- Guideline retrieval checks use the local deterministic guideline corpus for LDL, A1c, and blood-pressure topics.
+- Refusal checks cover unsafe clinical advice and out-of-corpus guideline requests.
+- Regression guardrails include PHI-free log assertions and a deleted/retracted document retrieval rubric.
 
 ## Running
 

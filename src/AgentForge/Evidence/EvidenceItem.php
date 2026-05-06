@@ -16,6 +16,7 @@ use DomainException;
 
 final readonly class EvidenceItem
 {
+    /** @param array<string, mixed> $citation */
     public function __construct(
         public string $sourceType,
         public string $sourceTable,
@@ -23,6 +24,7 @@ final readonly class EvidenceItem
         public string $sourceDate,
         public string $displayLabel,
         public string $value,
+        public array $citation = [],
     ) {
         $this->assertPresent($sourceType, 'source type');
         $this->assertPresent($sourceTable, 'source table');
@@ -40,12 +42,13 @@ final readonly class EvidenceItem
      *     source_id: string,
      *     source_date: string,
      *     display_label: string,
-     *     value: string
+     *     value: string,
+     *     citation?: array<string, mixed>
      * }
      */
     public function toArray(): array
     {
-        return [
+        $out = [
             'source_type' => $this->sourceType,
             'source_table' => $this->sourceTable,
             'source_id' => $this->sourceId,
@@ -53,6 +56,12 @@ final readonly class EvidenceItem
             'display_label' => $this->displayLabel,
             'value' => $this->value,
         ];
+
+        if ($this->citation !== []) {
+            return $out + ['citation' => $this->citation];
+        }
+
+        return $out;
     }
 
     public function citation(): string

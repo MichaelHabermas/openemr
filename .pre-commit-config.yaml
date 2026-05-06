@@ -149,3 +149,10 @@ repos:
     language: system
     stages:
     - commit-msg
+
+  - id: agentforge-clinical-document-gate
+    name: AgentForge Clinical Document Gate
+    entry: bash agent-forge/scripts/check-clinical-document.sh
+    language: system
+    files: ^(agent-forge/fixtures/clinical-document-golden/|agent-forge/scripts/(check-clinical-document\.sh|run-clinical-document-evals\.php)|src/AgentForge/(Document|Eval/ClinicalDocument|Guidelines|Evidence)/|tests/Tests/Isolated/AgentForge/|library/ajax/upload\.php|interface/patient_file/summary/agent_(request|document_source)\.php)
+    pass_filenames: false

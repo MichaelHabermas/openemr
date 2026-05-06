@@ -46,6 +46,7 @@ final readonly class EvidenceBundleItem
             $item->sourceDate,
             EvidenceText::bounded($item->displayLabel, 160),
             EvidenceText::bounded($item->value, self::MAX_VALUE_LENGTH),
+            $item->citation,
         );
     }
 

@@ -221,6 +221,7 @@ Canonical planning and product docs:
 Operations, cost, and evaluation:
 
 - [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
+- [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)
 - [agent-forge/docs/evaluation/EVALUATION-TIERS.md](agent-forge/docs/evaluation/EVALUATION-TIERS.md)
 - [agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md](agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md)
 - [agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md](agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md)
@@ -253,6 +254,7 @@ Primary proof references:
 
 - [agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md](agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md)
 - [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
+- [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)
 - [agent-forge/docs/evaluation/EVALUATION-TIERS.md](agent-forge/docs/evaluation/EVALUATION-TIERS.md)
 
 ## Known Blockers And Production-Readiness Caveats
