@@ -371,8 +371,8 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 $patientId,
                 'Margaret',
                 'Chen',
-                '1967-08-14',
-                'MRN-2026-04481',
+                '1968-03-12',
+                'BHS-2847163',
             );
         }
         if ($case->patientRef === 'patient:fixture-whitaker') {
@@ -380,8 +380,8 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 $patientId,
                 'James',
                 'Whitaker',
-                '1958-11-03',
-                'MRN-2026-04492',
+                '1958-11-22',
+                'NMM-9912448',
             );
         }
         if ($case->patientRef === 'patient:fixture-reyes') {
@@ -389,8 +389,8 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 $patientId,
                 'Sofia',
                 'Reyes',
-                '1983-12-19',
-                'MRN-2026-04503',
+                '1983-07-04',
+                'ATX-5503291',
             );
         }
         if ($case->patientRef === 'patient:fixture-kowalski') {
@@ -398,8 +398,8 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 $patientId,
                 'Robert',
                 'Kowalski',
-                '1971-06-08',
-                'MRN-2026-04518',
+                '1971-09-30',
+                'NWM-7724501',
             );
         }
 

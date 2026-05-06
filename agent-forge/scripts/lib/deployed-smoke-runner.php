@@ -945,7 +945,7 @@ function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array 
  *     method: 'GET'|'POST',
  *     cookie_jar: string,
  *     timeout_s: int,
- *     post_fields?: string,
+ *     post_fields?: string|array<string, mixed>,
  *     headers?: list<string>,
  * } $request
  * @return array{http_status: int, body: string, response_headers: list<string>}

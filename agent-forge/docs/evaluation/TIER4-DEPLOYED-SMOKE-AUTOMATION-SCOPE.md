@@ -168,7 +168,7 @@ Workflow refuses to start if any secret is missing.
 
 - `EvalPatientAccessRepository` ([eval-runner-functions.php:106](../../scripts/lib/eval-runner-functions.php:106)) — for verifying the smoke user has the expected relationship to patient `900001` before running cases.
 - `AgentTelemetry::toContext()` — same audit-log shape; just assert against it.
-- [health-check.sh](../../scripts/health-check.sh) — runner pre-flight calls this; if health fails, smoke skips.
+- [health-check.sh](../../scripts/health-check.sh) — deploy/rollback and H3 operator proof call this before smoke evidence is recorded. The older Tier 4 chat smoke runner does not call it itself.
 - [run-evals-vm.sh](../../scripts/run-evals-vm.sh) — Tier 0/1/2 in-container runs are a cheaper preflight; can be wired before Tier 4 if the deploy step wants belt-and-suspenders.
 
 ## Effort Estimate

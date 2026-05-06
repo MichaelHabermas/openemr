@@ -118,7 +118,37 @@ main() {
 
     expect_count \
         "chen clinical document demo patient" \
-        "SELECT COUNT(*) FROM patient_data WHERE pid = ${CHEN_PID} AND pubpid = 'MRN-2026-04481' AND fname = 'Margaret' AND lname = 'Chen' AND DOB = '1967-08-14' AND sex = 'Female';" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = ${CHEN_PID} AND pubpid = 'BHS-2847163' AND fname = 'Margaret' AND mname = 'L' AND lname = 'Chen' AND DOB = '1968-03-12' AND sex = 'Female';" \
+        "1"
+
+    expect_count \
+        "hl7 whitaker demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900102 AND pubpid = 'NMM-9912448' AND fname = 'James' AND mname = 'R' AND lname = 'Whitaker' AND DOB = '1958-11-22' AND sex = 'Male';" \
+        "1"
+
+    expect_count \
+        "hl7 reyes demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900103 AND pubpid = 'ATX-5503291' AND fname = 'Sofia' AND mname = 'I' AND lname = 'Reyes' AND DOB = '1983-07-04' AND sex = 'Female';" \
+        "1"
+
+    expect_count \
+        "hl7 kowalski demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900104 AND pubpid = 'NWM-7724501' AND fname = 'Robert' AND mname = 'J' AND lname = 'Kowalski' AND DOB = '1971-09-30' AND sex = 'Male';" \
+        "1"
+
+    expect_count \
+        "hl7 patel demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900105 AND pubpid = 'EMR-4413089' AND fname = 'Aisha' AND mname = 'K' AND lname = 'Patel' AND DOB = '1991-06-15' AND sex = 'Female';" \
+        "1"
+
+    expect_count \
+        "hl7 johnson demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900106 AND pubpid = 'HFH-8866213' AND fname = 'Marcus' AND mname = 'T' AND lname = 'Johnson' AND DOB = '1954-02-08' AND sex = 'Male';" \
+        "1"
+
+    expect_count \
+        "hl7 nguyen demographics" \
+        "SELECT COUNT(*) FROM patient_data WHERE pid = 900107 AND pubpid = 'UWM-3320175' AND fname = 'Olivia' AND mname = 'T' AND lname = 'Nguyen' AND DOB = '1997-10-19' AND sex = 'Female';" \
         "1"
 
     expect_count \

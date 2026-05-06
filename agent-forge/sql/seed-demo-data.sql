@@ -1,5 +1,5 @@
 -- AgentForge demo data.
--- Idempotent for fake patients pid=900001-900006 and 900101. This script never drops tables.
+-- Idempotent for fake patients pid=900001-900006 and 900101-900107. This script never drops tables.
 
 SET @demo_pid := 900001;
 SET @demo_pubpid := 'AF-DEMO-900001';
@@ -14,7 +14,19 @@ SET @partial_pubpid := 'AF-DEMO-900005';
 SET @layout_pid := 900006;
 SET @layout_pubpid := 'AF-DEMO-900006';
 SET @chen_pid := 900101;
-SET @chen_pubpid := 'MRN-2026-04481';
+SET @chen_pubpid := 'BHS-2847163';
+SET @h7_whitaker_pid := 900102;
+SET @h7_whitaker_pubpid := 'NMM-9912448';
+SET @h7_reyes_pid := 900103;
+SET @h7_reyes_pubpid := 'ATX-5503291';
+SET @h7_kowalski_pid := 900104;
+SET @h7_kowalski_pubpid := 'NWM-7724501';
+SET @h7_patel_pid := 900105;
+SET @h7_patel_pubpid := 'EMR-4413089';
+SET @h7_johnson_pid := 900106;
+SET @h7_johnson_pubpid := 'HFH-8866213';
+SET @h7_nguyen_pid := 900107;
+SET @h7_nguyen_pubpid := 'UWM-3320175';
 SET @demo_user := 'admin';
 SET @demo_group := 'Default';
 SET @encounter_id := 900415;
@@ -53,11 +65,11 @@ WHERE id IN (@unrelated_user_id, @ct_nurse_user_id, @ct_spec_user_id)
 DELETE ctm
 FROM care_team_member ctm
 INNER JOIN care_teams ct ON ct.id = ctm.care_team_id
-WHERE ct.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+WHERE ct.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
-DELETE FROM care_teams WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM care_teams WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
-DELETE FROM insurance_data WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM insurance_data WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
 DELETE FROM openemr_postcalendar_events
 WHERE pc_hometext LIKE 'agentforge-demo-appt-%'
@@ -67,37 +79,51 @@ DELETE pr
 FROM procedure_result pr
 INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id
 INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
 DELETE rep
 FROM procedure_report rep
 INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
 DELETE poc
 FROM procedure_order_code poc
 INNER JOIN procedure_order po ON po.procedure_order_id = poc.procedure_order_id
-WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
-DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM prescriptions WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM prescriptions WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE lm
 FROM lists_medication lm
 LEFT JOIN lists l ON l.id = lm.list_id
 WHERE lm.id = 90000203
-    AND (l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid) OR l.id IS NULL);
+    AND (l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid) OR l.id IS NULL);
 DELETE lm
 FROM lists_medication lm
 INNER JOIN lists l ON l.id = lm.list_id
-WHERE l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
-DELETE FROM lists WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid);
+WHERE l.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM lists WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE FROM patient_data
-WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @empty_pid, @partial_pid, @layout_pid)
-    OR pubpid IN (@demo_pubpid, @poly_pubpid, @sparse_pubpid, @chen_pubpid, @empty_pubpid, @partial_pubpid, @layout_pubpid);
+WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid)
+    OR pubpid IN (
+        @demo_pubpid,
+        @poly_pubpid,
+        @sparse_pubpid,
+        @chen_pubpid,
+        @h7_whitaker_pubpid,
+        @h7_reyes_pubpid,
+        @h7_kowalski_pubpid,
+        @h7_patel_pubpid,
+        @h7_johnson_pubpid,
+        @h7_nguyen_pubpid,
+        @empty_pubpid,
+        @partial_pubpid,
+        @layout_pubpid
+    );
 
 INSERT INTO patient_data (
     id,
@@ -147,6 +173,7 @@ INSERT INTO patient_data (
     id,
     uuid,
     fname,
+    mname,
     lname,
     DOB,
     sex,
@@ -165,20 +192,162 @@ INSERT INTO patient_data (
     @chen_pid,
     UNHEX(REPLACE('90010100-0000-4000-8000-000000000001', '-', '')),
     'Margaret',
+    'L',
     'Chen',
-    '1967-08-14',
+    '1968-03-12',
     'Female',
     '2026-05-06 08:00:00',
     @chen_pubpid,
     @chen_pid,
     1,
     'active',
-    '101 Synthetic Street',
-    'Faketown',
-    'NY',
-    '10001',
-    '555-0101',
+    '2418 CHANNING WAY',
+    'BERKELEY',
+    'CA',
+    '94704',
+    '510-555-0142',
     'margaret.chen@example.invalid'
+);
+
+INSERT INTO patient_data (
+    id,
+    uuid,
+    fname,
+    mname,
+    lname,
+    DOB,
+    sex,
+    date,
+    pubpid,
+    pid,
+    providerID,
+    status,
+    street,
+    city,
+    state,
+    postal_code,
+    phone_cell,
+    email
+) VALUES
+(
+    @h7_whitaker_pid,
+    UNHEX(REPLACE('90010200-0000-4000-8000-000000000001', '-', '')),
+    'James',
+    'R',
+    'Whitaker',
+    '1958-11-22',
+    'Male',
+    '2026-05-06 08:00:00',
+    @h7_whitaker_pubpid,
+    @h7_whitaker_pid,
+    1,
+    'active',
+    '4127 COMANCHE RD NE',
+    'ALBUQUERQUE',
+    'NM',
+    '87110',
+    '505-555-0188',
+    'james.whitaker@example.invalid'
+),
+(
+    @h7_reyes_pid,
+    UNHEX(REPLACE('90010300-0000-4000-8000-000000000001', '-', '')),
+    'Sofia',
+    'I',
+    'Reyes',
+    '1983-07-04',
+    'Female',
+    '2026-05-06 08:00:00',
+    @h7_reyes_pubpid,
+    @h7_reyes_pid,
+    1,
+    'active',
+    '1809 E CESAR CHAVEZ ST',
+    'AUSTIN',
+    'TX',
+    '78702',
+    '512-555-0167',
+    'sofia.reyes@example.invalid'
+),
+(
+    @h7_kowalski_pid,
+    UNHEX(REPLACE('90010400-0000-4000-8000-000000000001', '-', '')),
+    'Robert',
+    'J',
+    'Kowalski',
+    '1971-09-30',
+    'Male',
+    '2026-05-06 08:00:00',
+    @h7_kowalski_pubpid,
+    @h7_kowalski_pid,
+    1,
+    'active',
+    '3344 W BELMONT AVE',
+    'CHICAGO',
+    'IL',
+    '60618',
+    '773-555-0124',
+    'robert.kowalski@example.invalid'
+),
+(
+    @h7_patel_pid,
+    UNHEX(REPLACE('90010500-0000-4000-8000-000000000001', '-', '')),
+    'Aisha',
+    'K',
+    'Patel',
+    '1991-06-15',
+    'Female',
+    '2026-05-06 08:00:00',
+    @h7_patel_pubpid,
+    @h7_patel_pid,
+    1,
+    'active',
+    '1186 PEACHTREE ST NE',
+    'ATLANTA',
+    'GA',
+    '30309',
+    '404-555-0173',
+    'aisha.patel@example.invalid'
+),
+(
+    @h7_johnson_pid,
+    UNHEX(REPLACE('90010600-0000-4000-8000-000000000001', '-', '')),
+    'Marcus',
+    'T',
+    'Johnson',
+    '1954-02-08',
+    'Male',
+    '2026-05-06 08:00:00',
+    @h7_johnson_pubpid,
+    @h7_johnson_pid,
+    1,
+    'active',
+    '8821 WOODWARD AVE',
+    'DETROIT',
+    'MI',
+    '48202',
+    '313-555-0156',
+    'marcus.johnson@example.invalid'
+),
+(
+    @h7_nguyen_pid,
+    UNHEX(REPLACE('90010700-0000-4000-8000-000000000001', '-', '')),
+    'Olivia',
+    'T',
+    'Nguyen',
+    '1997-10-19',
+    'Female',
+    '2026-05-06 08:00:00',
+    @h7_nguyen_pubpid,
+    @h7_nguyen_pid,
+    1,
+    'active',
+    '2104 NE 65TH ST',
+    'SEATTLE',
+    'WA',
+    '98115',
+    '206-555-0149',
+    'olivia.nguyen@example.invalid'
 );
 
 INSERT INTO users (
@@ -1890,6 +2059,1119 @@ INSERT INTO procedure_result (
     '>60',
     'no',
     'agentforge-egfr-900002-2026-05',
+    'final'
+);
+
+-- HL7-aligned cohort (pid 900101-900107): invented encounters, problems, meds, vitals, and selective labs for evidence-tool QA.
+INSERT INTO form_encounter (
+    uuid,
+    date,
+    reason,
+    facility,
+    facility_id,
+    pid,
+    encounter,
+    pc_catid,
+    provider_id,
+    class_code,
+    encounter_type_description,
+    last_level_billed,
+    last_level_closed,
+    billing_note
+) VALUES
+(
+    UNHEX(REPLACE('90010101-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-10 10:00:00',
+    'Synthetic primary care follow-up for chronic disease management.',
+    'AgentForge Demo Clinic',
+    3,
+    @chen_pid,
+    901101,
+    5,
+    1,
+    'AMB',
+    'Primary care',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010201-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-11 10:00:00',
+    'Synthetic pulmonary clinic follow-up.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_whitaker_pid,
+    901102,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010301-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-12 10:00:00',
+    'Synthetic endocrine follow-up visit.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_reyes_pid,
+    901103,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010401-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-13 10:00:00',
+    'Synthetic GI follow-up visit.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_kowalski_pid,
+    901104,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010501-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-14 10:00:00',
+    'Synthetic chart review with limited structured data.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_patel_pid,
+    901105,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned sparse demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010601-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-15 10:00:00',
+    'Synthetic cardiology co-management visit.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_johnson_pid,
+    901106,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+),
+(
+    UNHEX(REPLACE('90010701-0000-4000-8000-000000000301', '-', '')),
+    '2026-05-16 10:00:00',
+    'Synthetic wellness visit with preventive counseling.',
+    'AgentForge Demo Clinic',
+    3,
+    @h7_nguyen_pid,
+    901107,
+    5,
+    1,
+    'AMB',
+    'Outpatient',
+    1,
+    0,
+    'AgentForge HL7-aligned demo encounter.'
+);
+
+INSERT INTO lists (
+    uuid,
+    date,
+    type,
+    title,
+    begdate,
+    diagnosis,
+    activity,
+    comments,
+    pid,
+    user,
+    groupname,
+    external_id
+) VALUES
+(
+    UNHEX(REPLACE('90010111-0000-4000-8000-000000000101', '-', '')),
+    '2025-08-01 09:00:00',
+    'medical_problem',
+    'Essential hypertension',
+    '2025-08-01 00:00:00',
+    'ICD10:I10',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @chen_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-101-htn'
+),
+(
+    UNHEX(REPLACE('90010111-0000-4000-8000-000000000102', '-', '')),
+    '2024-11-10 09:00:00',
+    'medical_problem',
+    'Chronic kidney disease stage 3',
+    '2024-11-10 00:00:00',
+    'ICD10:N18.3',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @chen_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-101-ckd'
+),
+(
+    UNHEX(REPLACE('90010211-0000-4000-8000-000000000101', '-', '')),
+    '2023-05-20 09:00:00',
+    'medical_problem',
+    'Chronic obstructive pulmonary disease',
+    '2023-05-20 00:00:00',
+    'ICD10:J44.9',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_whitaker_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-102-copd'
+),
+(
+    UNHEX(REPLACE('90010211-0000-4000-8000-000000000102', '-', '')),
+    '2024-01-15 09:00:00',
+    'medical_problem',
+    'Obstructive sleep apnea',
+    '2024-01-15 00:00:00',
+    'ICD10:G47.33',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_whitaker_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-102-osa'
+),
+(
+    UNHEX(REPLACE('90010311-0000-4000-8000-000000000101', '-', '')),
+    '2022-03-10 09:00:00',
+    'medical_problem',
+    'Primary hypothyroidism',
+    '2022-03-10 00:00:00',
+    'ICD10:E03.9',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_reyes_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-103-hypo'
+),
+(
+    UNHEX(REPLACE('90010311-0000-4000-8000-000000000102', '-', '')),
+    '2025-06-01 09:00:00',
+    'medical_problem',
+    'Generalized anxiety disorder',
+    '2025-06-01 00:00:00',
+    'ICD10:F41.1',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_reyes_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-103-gad'
+),
+(
+    UNHEX(REPLACE('90010411-0000-4000-8000-000000000101', '-', '')),
+    '2024-09-12 09:00:00',
+    'medical_problem',
+    'Gastroesophageal reflux disease',
+    '2024-09-12 00:00:00',
+    'ICD10:K21.9',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_kowalski_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-104-gerd'
+),
+(
+    UNHEX(REPLACE('90010411-0000-4000-8000-000000000102', '-', '')),
+    '2021-02-18 09:00:00',
+    'medical_problem',
+    'Osteoarthritis of bilateral knees',
+    '2021-02-18 00:00:00',
+    'ICD10:M17.0',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_kowalski_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-104-oa'
+),
+(
+    UNHEX(REPLACE('90010511-0000-4000-8000-000000000101', '-', '')),
+    '2025-01-05 09:00:00',
+    'medical_problem',
+    'Migraine without aura',
+    '2025-01-05 00:00:00',
+    'ICD10:G43.009',
+    1,
+    'AgentForge sparse-chart demo problem.',
+    @h7_patel_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-105-migraine'
+),
+(
+    UNHEX(REPLACE('90010511-0000-4000-8000-000000000102', '-', '')),
+    '2024-04-22 09:00:00',
+    'medical_problem',
+    'Subclinical hypothyroidism',
+    '2024-04-22 00:00:00',
+    'ICD10:E02.9',
+    1,
+    'AgentForge sparse-chart demo problem.',
+    @h7_patel_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-105-thyroid'
+),
+(
+    UNHEX(REPLACE('90010611-0000-4000-8000-000000000101', '-', '')),
+    '2023-07-01 09:00:00',
+    'medical_problem',
+    'Heart failure with preserved ejection fraction',
+    '2023-07-01 00:00:00',
+    'ICD10:I50.32',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_johnson_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-106-chf'
+),
+(
+    UNHEX(REPLACE('90010611-0000-4000-8000-000000000102', '-', '')),
+    '2022-11-11 09:00:00',
+    'medical_problem',
+    'Atrial fibrillation',
+    '2022-11-11 00:00:00',
+    'ICD10:I48.91',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_johnson_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-106-afib'
+),
+(
+    UNHEX(REPLACE('90010711-0000-4000-8000-000000000101', '-', '')),
+    '2025-03-01 09:00:00',
+    'medical_problem',
+    'Polycystic ovary syndrome',
+    '2025-03-01 00:00:00',
+    'ICD10:E28.2',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_nguyen_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-107-pcos'
+),
+(
+    UNHEX(REPLACE('90010711-0000-4000-8000-000000000102', '-', '')),
+    '2024-10-10 09:00:00',
+    'medical_problem',
+    'Vitamin D deficiency',
+    '2024-10-10 00:00:00',
+    'ICD10:E55.9',
+    1,
+    'AgentForge synthetic problem for HL7-aligned demo.',
+    @h7_nguyen_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-107-vitd'
+);
+
+INSERT INTO lists (
+    uuid,
+    date,
+    type,
+    title,
+    begdate,
+    reaction,
+    severity_al,
+    verification,
+    activity,
+    comments,
+    pid,
+    user,
+    groupname,
+    external_id
+) VALUES (
+    UNHEX(REPLACE('90010611-0000-4000-8000-000000000701', '-', '')),
+    '2026-01-10 09:00:00',
+    'allergy',
+    'Aspirin',
+    '2026-01-10 00:00:00',
+    'bronchospasm',
+    'moderate',
+    'confirmed',
+    1,
+    'Synthetic allergy row for allergy-tool coverage (not from HL7 fixtures).',
+    @h7_johnson_pid,
+    @demo_user,
+    @demo_group,
+    'af-h7-106-asa'
+);
+
+INSERT INTO prescriptions (
+    uuid,
+    patient_id,
+    filled_by_id,
+    date_added,
+    date_modified,
+    provider_id,
+    encounter,
+    start_date,
+    drug,
+    dosage,
+    quantity,
+    route,
+    refills,
+    medication,
+    note,
+    active,
+    datetime,
+    user,
+    txDate,
+    usage_category_title,
+    request_intent_title,
+    drug_dosage_instructions,
+    external_id
+) VALUES
+(
+    UNHEX(REPLACE('90010121-0000-4000-8000-000000000201', '-', '')),
+    @chen_pid,
+    1,
+    '2026-04-01 10:00:00',
+    '2026-04-01 10:00:00',
+    1,
+    901101,
+    '2026-04-01',
+    'Losartan 50 mg',
+    '50 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-04-01 10:00:00',
+    @demo_user,
+    '2026-04-01',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth daily in the morning',
+    'af7-101-rx-a'
+),
+(
+    UNHEX(REPLACE('90010121-0000-4000-8000-000000000202', '-', '')),
+    @chen_pid,
+    1,
+    '2026-04-01 10:05:00',
+    '2026-04-01 10:05:00',
+    1,
+    901101,
+    '2026-04-01',
+    'Atorvastatin 20 mg',
+    '20 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-04-01 10:05:00',
+    @demo_user,
+    '2026-04-01',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth nightly',
+    'af7-101-rx-b'
+),
+(
+    UNHEX(REPLACE('90010221-0000-4000-8000-000000000201', '-', '')),
+    @h7_whitaker_pid,
+    1,
+    '2026-03-20 10:00:00',
+    '2026-03-20 10:00:00',
+    1,
+    901102,
+    '2026-03-20',
+    'Tiotropium inhaler 18 mcg',
+    '18 mcg',
+    '30',
+    'inhalation',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-03-20 10:00:00',
+    @demo_user,
+    '2026-03-20',
+    'Community',
+    'Order',
+    'Inhale 1 capsule daily using HandiHaler device',
+    'af7-102-rx-a'
+),
+(
+    UNHEX(REPLACE('90010221-0000-4000-8000-000000000202', '-', '')),
+    @h7_whitaker_pid,
+    1,
+    '2026-03-20 10:05:00',
+    '2026-03-20 10:05:00',
+    1,
+    901102,
+    '2026-03-20',
+    'Montelukast 10 mg',
+    '10 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-03-20 10:05:00',
+    @demo_user,
+    '2026-03-20',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth every evening',
+    'af7-102-rx-b'
+),
+(
+    UNHEX(REPLACE('90010321-0000-4000-8000-000000000201', '-', '')),
+    @h7_reyes_pid,
+    1,
+    '2026-02-11 10:00:00',
+    '2026-02-11 10:00:00',
+    1,
+    901103,
+    '2026-02-11',
+    'Levothyroxine 75 mcg',
+    '75 mcg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-02-11 10:00:00',
+    @demo_user,
+    '2026-02-11',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth every morning on empty stomach',
+    'af7-103-rx-a'
+),
+(
+    UNHEX(REPLACE('90010321-0000-4000-8000-000000000202', '-', '')),
+    @h7_reyes_pid,
+    1,
+    '2026-02-11 10:05:00',
+    '2026-02-11 10:05:00',
+    1,
+    901103,
+    '2026-02-11',
+    'Sertraline 50 mg',
+    '50 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-02-11 10:05:00',
+    @demo_user,
+    '2026-02-11',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth daily',
+    'af7-103-rx-b'
+),
+(
+    UNHEX(REPLACE('90010421-0000-4000-8000-000000000201', '-', '')),
+    @h7_kowalski_pid,
+    1,
+    '2026-01-05 10:00:00',
+    '2026-01-05 10:00:00',
+    1,
+    901104,
+    '2026-01-05',
+    'Pantoprazole 40 mg',
+    '40 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-01-05 10:00:00',
+    @demo_user,
+    '2026-01-05',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth daily before breakfast',
+    'af7-104-rx-a'
+),
+(
+    UNHEX(REPLACE('90010421-0000-4000-8000-000000000202', '-', '')),
+    @h7_kowalski_pid,
+    1,
+    '2026-01-05 10:05:00',
+    '2026-01-05 10:05:00',
+    1,
+    901104,
+    '2026-01-05',
+    'Acetaminophen 500 mg',
+    '500 mg',
+    '60',
+    'oral',
+    0,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-01-05 10:05:00',
+    @demo_user,
+    '2026-01-05',
+    'Community',
+    'Order',
+    'Take up to 2 tablets every 6 hours as needed for pain',
+    'af7-104-rx-b'
+),
+(
+    UNHEX(REPLACE('90010621-0000-4000-8000-000000000201', '-', '')),
+    @h7_johnson_pid,
+    1,
+    '2026-03-01 10:00:00',
+    '2026-03-01 10:00:00',
+    1,
+    901106,
+    '2026-03-01',
+    'Metoprolol succinate 25 mg',
+    '25 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-03-01 10:00:00',
+    @demo_user,
+    '2026-03-01',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth twice daily',
+    'af7-106-rx-a'
+),
+(
+    UNHEX(REPLACE('90010621-0000-4000-8000-000000000202', '-', '')),
+    @h7_johnson_pid,
+    1,
+    '2026-03-01 10:05:00',
+    '2026-03-01 10:05:00',
+    1,
+    901106,
+    '2026-03-01',
+    'Furosemide 20 mg',
+    '20 mg',
+    '30',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-03-01 10:05:00',
+    @demo_user,
+    '2026-03-01',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth every morning',
+    'af7-106-rx-b'
+),
+(
+    UNHEX(REPLACE('90010721-0000-4000-8000-000000000201', '-', '')),
+    @h7_nguyen_pid,
+    1,
+    '2026-04-18 10:00:00',
+    '2026-04-18 10:00:00',
+    1,
+    901107,
+    '2026-04-18',
+    'Combined oral contraceptive',
+    '1 active pack',
+    '3',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-04-18 10:00:00',
+    @demo_user,
+    '2026-04-18',
+    'Community',
+    'Order',
+    'Take as directed on blister pack daily',
+    'af7-107-rx-a'
+),
+(
+    UNHEX(REPLACE('90010721-0000-4000-8000-000000000202', '-', '')),
+    @h7_nguyen_pid,
+    1,
+    '2026-04-18 10:05:00',
+    '2026-04-18 10:05:00',
+    1,
+    901107,
+    '2026-04-18',
+    'Cholecalciferol 2000 units',
+    '2000 units',
+    '90',
+    'oral',
+    2,
+    1,
+    'AgentForge synthetic medication for HL7-aligned demo.',
+    1,
+    '2026-04-18 10:05:00',
+    @demo_user,
+    '2026-04-18',
+    'Community',
+    'Order',
+    'Take 1 tablet by mouth daily with food',
+    'af7-107-rx-b'
+);
+
+INSERT INTO form_vitals (
+    uuid,
+    date,
+    pid,
+    user,
+    groupname,
+    authorized,
+    activity,
+    bps,
+    bpd,
+    weight,
+    height,
+    temperature,
+    pulse,
+    respiration,
+    BMI,
+    oxygen_saturation,
+    external_id
+) VALUES
+(
+    UNHEX(REPLACE('90010131-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-10 08:25:00',
+    @chen_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '138',
+    '86',
+    168.000000,
+    64.000000,
+    98.400000,
+    72.000000,
+    14.000000,
+    28.800000,
+    98.00,
+    'af-h7-vit-101'
+),
+(
+    UNHEX(REPLACE('90010231-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-11 08:25:00',
+    @h7_whitaker_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '128',
+    '78',
+    198.000000,
+    70.000000,
+    98.200000,
+    68.000000,
+    14.000000,
+    28.400000,
+    96.00,
+    'af-h7-vit-102'
+),
+(
+    UNHEX(REPLACE('90010331-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-12 08:25:00',
+    @h7_reyes_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '118',
+    '74',
+    152.000000,
+    63.000000,
+    98.000000,
+    76.000000,
+    15.000000,
+    27.000000,
+    99.00,
+    'af-h7-vit-103'
+),
+(
+    UNHEX(REPLACE('90010431-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-13 08:25:00',
+    @h7_kowalski_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '132',
+    '82',
+    210.000000,
+    72.000000,
+    98.500000,
+    70.000000,
+    16.000000,
+    28.500000,
+    97.00,
+    'af-h7-vit-104'
+),
+(
+    UNHEX(REPLACE('90010631-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-15 08:25:00',
+    @h7_johnson_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '146',
+    '90',
+    220.000000,
+    69.000000,
+    98.300000,
+    88.000000,
+    18.000000,
+    32.500000,
+    95.00,
+    'af-h7-vit-106'
+),
+(
+    UNHEX(REPLACE('90010731-0000-4000-8000-000000000801', '-', '')),
+    '2026-05-16 08:25:00',
+    @h7_nguyen_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    '112',
+    '70',
+    138.000000,
+    65.000000,
+    98.100000,
+    68.000000,
+    14.000000,
+    23.000000,
+    99.00,
+    'af-h7-vit-107'
+);
+
+INSERT INTO form_clinical_notes (
+    uuid,
+    form_id,
+    date,
+    pid,
+    encounter,
+    user,
+    groupname,
+    authorized,
+    activity,
+    code,
+    codetext,
+    description,
+    external_id,
+    clinical_notes_type,
+    clinical_notes_category,
+    note_related_to
+) VALUES (
+    UNHEX(REPLACE('90010141-0000-4000-8000-000000000302', '-', '')),
+    0,
+    '2026-05-10',
+    @chen_pid,
+    '901101',
+    @demo_user,
+    @demo_group,
+    1,
+    1,
+    'AGENTFORGE_SYNTH_PLAN',
+    'Synthetic plan',
+    'Continue losartan and atorvastatin. Recheck BMP and lipids in 8 weeks. Home BP log reviewed.',
+    'af-h7-note-101',
+    'Clinical Note',
+    'Plan',
+    'hypertension follow-up'
+);
+
+SET @h7_chen_note_id := LAST_INSERT_ID();
+
+INSERT INTO forms (
+    date,
+    encounter,
+    form_name,
+    form_id,
+    pid,
+    user,
+    groupname,
+    authorized,
+    deleted,
+    formdir,
+    provider_id
+) VALUES (
+    '2026-05-10 10:00:00',
+    901101,
+    'Clinical Notes',
+    @h7_chen_note_id,
+    @chen_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    0,
+    'clinical_notes',
+    1
+);
+
+UPDATE form_clinical_notes
+SET form_id = LAST_INSERT_ID()
+WHERE id = @h7_chen_note_id;
+
+INSERT INTO procedure_order (
+    procedure_order_id,
+    uuid,
+    provider_id,
+    patient_id,
+    encounter_id,
+    date_collected,
+    date_ordered,
+    order_priority,
+    order_status,
+    clinical_hx,
+    procedure_order_type,
+    order_intent
+) VALUES
+(
+    901211,
+    UNHEX(REPLACE('90010151-0000-4000-8000-000000000401', '-', '')),
+    1,
+    @chen_pid,
+    901101,
+    '2026-04-20 08:00:00',
+    '2026-04-20 08:00:00',
+    'routine',
+    'complete',
+    'AgentForge synthetic A1c for HL7-aligned demo.',
+    'laboratory_test',
+    'order'
+),
+(
+    901212,
+    UNHEX(REPLACE('90010351-0000-4000-8000-000000000401', '-', '')),
+    1,
+    @h7_reyes_pid,
+    901103,
+    '2026-04-22 08:00:00',
+    '2026-04-22 08:00:00',
+    'routine',
+    'complete',
+    'AgentForge synthetic CBC for HL7-aligned demo.',
+    'laboratory_test',
+    'order'
+),
+(
+    901213,
+    UNHEX(REPLACE('90010751-0000-4000-8000-000000000401', '-', '')),
+    1,
+    @h7_nguyen_pid,
+    901107,
+    '2026-04-25 08:00:00',
+    '2026-04-25 08:00:00',
+    'routine',
+    'complete',
+    'AgentForge synthetic TSH for HL7-aligned demo.',
+    'laboratory_test',
+    'order'
+);
+
+INSERT INTO procedure_order_code (
+    procedure_order_id,
+    procedure_order_seq,
+    procedure_code,
+    procedure_name,
+    procedure_source,
+    diagnoses,
+    do_not_send
+) VALUES
+(
+    901211,
+    1,
+    '4548-4',
+    'Hemoglobin A1c',
+    '1',
+    'ICD10:I10',
+    0
+),
+(
+    901212,
+    1,
+    '718-7',
+    'Hemoglobin',
+    '1',
+    'ICD10:E03.9',
+    0
+),
+(
+    901213,
+    1,
+    '3016-0',
+    'Thyrotropin [Units/volume] in Serum or Plasma',
+    '1',
+    'ICD10:E28.2',
+    0
+);
+
+INSERT INTO procedure_report (
+    procedure_report_id,
+    uuid,
+    procedure_order_id,
+    procedure_order_seq,
+    date_collected,
+    date_report,
+    source,
+    specimen_num,
+    report_status,
+    review_status,
+    report_notes
+) VALUES
+(
+    901211,
+    UNHEX(REPLACE('90010151-0000-4000-8000-000000000501', '-', '')),
+    901211,
+    1,
+    '2026-04-20 08:00:00',
+    '2026-04-20 12:00:00',
+    1,
+    'AF-H7-A1C-101',
+    'complete',
+    'reviewed',
+    'AgentForge HL7-aligned demo lab.'
+),
+(
+    901212,
+    UNHEX(REPLACE('90010351-0000-4000-8000-000000000501', '-', '')),
+    901212,
+    1,
+    '2026-04-22 08:00:00',
+    '2026-04-22 12:00:00',
+    1,
+    'AF-H7-CBC-103',
+    'complete',
+    'reviewed',
+    'AgentForge HL7-aligned demo lab.'
+),
+(
+    901213,
+    UNHEX(REPLACE('90010751-0000-4000-8000-000000000501', '-', '')),
+    901213,
+    1,
+    '2026-04-25 08:00:00',
+    '2026-04-25 12:00:00',
+    1,
+    'AF-H7-TSH-107',
+    'complete',
+    'reviewed',
+    'AgentForge HL7-aligned demo lab.'
+);
+
+INSERT INTO procedure_result (
+    procedure_result_id,
+    uuid,
+    procedure_report_id,
+    result_data_type,
+    result_code,
+    result_text,
+    date,
+    facility,
+    units,
+    result,
+    `range`,
+    abnormal,
+    comments,
+    result_status
+) VALUES
+(
+    901211,
+    UNHEX(REPLACE('90010151-0000-4000-8000-000000000601', '-', '')),
+    901211,
+    'N',
+    '4548-4',
+    'Hemoglobin A1c',
+    '2026-04-20 12:00:00',
+    'AgentForge Demo Lab',
+    '%',
+    '6.9',
+    '4.0-5.6',
+    'high',
+    'agentforge-h7-a1c-101',
+    'final'
+),
+(
+    901212,
+    UNHEX(REPLACE('90010351-0000-4000-8000-000000000601', '-', '')),
+    901212,
+    'N',
+    '718-7',
+    'Hemoglobin',
+    '2026-04-22 12:00:00',
+    'AgentForge Demo Lab',
+    'g/dL',
+    '13.2',
+    '12.0-15.5',
+    'no',
+    'agentforge-h7-hgb-103',
+    'final'
+),
+(
+    901213,
+    UNHEX(REPLACE('90010751-0000-4000-8000-000000000601', '-', '')),
+    901213,
+    'N',
+    '3016-0',
+    'Thyroid stimulating hormone',
+    '2026-04-25 12:00:00',
+    'AgentForge Demo Lab',
+    'mIU/L',
+    '2.1',
+    '0.4-4.0',
+    'no',
+    'agentforge-h7-tsh-107',
     'final'
 );
 

@@ -20,7 +20,7 @@
     },
     {
       "kind": "date_of_birth",
-      "value": "1983-12-19",
+      "value": "1983-07-04",
       "field_path": "header.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -29,7 +29,7 @@
         "source_id": "sha256:fixture",
         "page_or_section": "page 1",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1983-12-19",
+        "quote_or_value": "1983-07-04",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }

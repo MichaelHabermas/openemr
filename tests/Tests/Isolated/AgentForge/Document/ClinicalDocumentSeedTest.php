@@ -55,10 +55,10 @@ final class ClinicalDocumentSeedTest extends TestCase
     public function testSeedIncludesChenClinicalDocumentDemoPatient(): void
     {
         $this->assertStringContainsString('SET @chen_pid := 900101;', $this->seedSql);
-        $this->assertStringContainsString("SET @chen_pubpid := 'MRN-2026-04481';", $this->seedSql);
+        $this->assertStringContainsString("SET @chen_pubpid := 'BHS-2847163';", $this->seedSql);
         $this->assertStringContainsString("'Margaret'", $this->seedSql);
         $this->assertStringContainsString("'Chen'", $this->seedSql);
-        $this->assertStringContainsString("'1967-08-14'", $this->seedSql);
+        $this->assertStringContainsString("'1968-03-12'", $this->seedSql);
     }
 
     private function clinicalDocumentSeedSection(): string

@@ -112,8 +112,8 @@ What this epic does NOT do:
 | Git remote | Verified 2026-04-30 | `git -C ~/repos/openemr remote -v` | `git@github.com:MichaelHabermas/openemr.git` (origin) |
 | TLS termination | Verified 2026-04-30 | `docker ps` shows OpenEMR container binding :80/:443 directly; `curl -sI https://openemr.titleredacted.cc/` returns `server: cloudflare` and `cf-ray` headers | Cloudflare edge in front; OpenEMR container also serves :443 as origin |
 | Environment variables | Verified 2026-04-30 | `cat ~/repos/openemr/docker/development-easy/.env` | No `.env` file; compose defaults only |
-| Public app health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30 |
-| Public readiness health | Verified 2026-04-30 | `agent-forge/scripts/health-check.sh` | HTTP 200 (informational; deploy does not block on it) |
+| Public app health | Verified | `agent-forge/scripts/health-check.sh` | HTTP 200 on 2026-04-30; H3 now also requires runtime readiness |
+| Public readiness health | H3 contract implemented 2026-05-06 | `agent-forge/scripts/health-check.sh` | Required full-health gate: `/readyz` must report `status=ready`, MariaDB 11.8+, fresh `agentforge-worker` heartbeat, and healthy clinical-document queue |
 | Deploy branch reattach | Implemented in `deploy-vm.sh` | After `rollback-vm.sh` leaves a detached HEAD, deploy runs `git switch` to `AGENTFORGE_DEPLOY_BRANCH` (default `master`) before `git pull --ff-only` | Avoids deploying from the wrong commit |
 | OpenAI key for default provider | Implemented in `deploy-vm.sh` | When `AGENTFORGE_DRAFT_PROVIDER` is `openai` (default), `AGENTFORGE_OPENAI_API_KEY` or `OPENAI_API_KEY` must be set in the shell or in `docker/development-easy/.env` | Deploy fails fast with a clear message if missing |
 | Anthropic key when provider is anthropic | Implemented in `deploy-vm.sh` | When `AGENTFORGE_DRAFT_PROVIDER` is `anthropic`, `AGENTFORGE_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY` must be set (same locations as OpenAI) | Deploy fails fast with a clear message if missing |
@@ -142,23 +142,25 @@ export AGENTFORGE_DRAFT_PROVIDER="openai"
 
 ### `health-check.sh` vs `deploy-vm.sh`
 
-- **`health-check.sh`** requires the public app URL to return 2xx/3xx. The readiness URL is **optional** in the sense that **HTTP 404** is treated as a warning success; other non-success codes still fail the script.
-- **`deploy-vm.sh`** waits in a loop until the public app is healthy, then calls the readiness URL once with `|| true`, so **deploy does not fail** if readiness is temporarily down or returns a non-2xx code after the app is already up.
+- **`health-check.sh`** requires the public app URL to return 2xx/3xx, requires `/meta/health/readyz` to return success, and validates the readiness JSON with PHP. The required H3 runtime payload includes `components.agentforge_runtime.mariadb`, `components.agentforge_runtime.worker`, and `components.agentforge_runtime.queue`; the payload must stay PHI-safe.
+- **`deploy-vm.sh`** starts `mysql`, `openemr`, and `agentforge-worker`, waits for full `health-check.sh` success after `docker compose up -d`, runs the idempotent demo seed, then waits for full health again. Deploy now fails if the runtime readiness contract does not become healthy within the timeout.
+- **`rollback-vm.sh`** preserves volumes, recreates the runtime, conditionally starts `agentforge-worker` when the rollback target defines it, runs full health, re-seeds fake demo data, then runs full health again.
 - **Shared implementation:** both scripts source `agent-forge/scripts/lib/deploy-common.sh` so curl timeouts and HTTP success rules stay aligned.
 
 ### Automation parity (EPIC2 operator ritual vs CI Tier 4)
 
-EPIC2 is an **operator checklist** (deploy transcript, rollback transcript, health-check, seed/verify). Tier 4 (`agent-forge/scripts/run-deployed-smoke.php` via `.github/workflows/agentforge-deployed-smoke.yml`) is **scheduled / manual dispatch** and exercises the full browser-like HTTP path (session, CSRF, `agent_request.php`, optional SSH audit-log grep). They are complementary, not duplicates.
+EPIC2 is an **operator checklist** (deploy transcript, rollback transcript, health-check, seed/verify). Tier 4 (`agent-forge/scripts/run-deployed-smoke.php` via `.github/workflows/agentforge-deployed-smoke.yml`) is **scheduled / manual dispatch** and exercises the full browser-like chat HTTP path (session, CSRF, `agent_request.php`, optional SSH audit-log grep). Week 2 adds a separate clinical-document deployed smoke (`agent-forge/scripts/run-clinical-document-deployed-smoke.php`) that proves upload -> worker job -> cited clinical answer -> PHI-safe artifact. These are complementary, not duplicates.
 
 | Proof surface | EPIC2 / VM scripts | Automated (CI) |
 | --- | --- | --- |
 | Public URL returns 2xx/3xx | `health-check.sh`, deploy/rollback wait loops | Tier 4 HTTP checks against `AGENTFORGE_DEPLOYED_URL` |
-| Readiness URL | Same scripts (optional / non-blocking on deploy) | Not required for Tier 4 smoke |
+| Readiness URL and runtime components | Required by `health-check.sh`; deploy/rollback block on it after compose and after seed | Not required for the older Tier 4 chat smoke; required before recording H3 deployment proof |
 | Code + compose recycle | `deploy-vm.sh`, `rollback-vm.sh` | Not run on PRs |
 | Demo SQL contract | `seed-demo-data.sh` + `verify-demo-data.sh` | Tier 1: `seed-demo-data.sql` + `verify-demo-data.sh` with `AGENTFORGE_VERIFY_TRANSPORT=direct` before SQL evidence evals |
 | Tier 0 fixture evals | Local / optional | `agentforge-evals.yml` job `tier0-fixtures` |
 | Live LLM (Tier 2) | Documented env + `run-tier2-evals.php` | `agentforge-tier2.yml` (not PR-blocking) |
 | Cross-patient / audit correlation | Manual checklist items | Tier 4 scenarios + optional `AGENTFORGE_VM_SSH_HOST` |
+| Week 2 clinical document runtime | `run-clinical-document-deployed-smoke.php` after full health | Manual deployed proof runner; writes `clinical-document-deployed-smoke-*.json` |
 
 **Intentional drift:** PR merges can be green on Tier 0/1 + global isolated tests while Tier 4 or `agent-forge/scripts/check-agentforge.sh` has not run. Treat Tier 4 and the comprehensive local gate as **release** or **demo** proofs, not as substitutes for each other.
 

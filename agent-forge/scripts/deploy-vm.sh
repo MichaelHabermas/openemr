@@ -35,17 +35,15 @@ load_compose_env() {
 wait_for_health() {
     local elapsed=0
 
-    until agentforge_check_http "public app" "${APP_URL}" "required"; do
+    until "${SCRIPT_DIR}/health-check.sh"; do
         if [[ "${elapsed}" -ge "${HEALTH_TIMEOUT_SECONDS}" ]]; then
-            printf 'Deploy failed: app did not become healthy within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
+            printf 'Deploy failed: full AgentForge health did not pass within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
             return 1
         fi
+        printf 'Full health check not ready yet; retrying in %ss...\n' "${HEALTH_INTERVAL_SECONDS}"
         sleep "${HEALTH_INTERVAL_SECONDS}"
         elapsed=$((elapsed + HEALTH_INTERVAL_SECONDS))
     done
-
-    # Readiness endpoint is informational; do not block deploy on it.
-    agentforge_check_http "readiness endpoint" "${READYZ_URL}" "optional" || true
 }
 
 verify_agentforge_model_config() {
@@ -93,7 +91,7 @@ main() {
     # is fragile on the demo VM; the idempotent seed script below is what
     # guarantees known demo state.
     docker compose down
-    docker compose up -d
+    docker compose up -d mysql openemr agentforge-worker
 
     wait_for_health
 
@@ -105,8 +103,11 @@ main() {
         printf 'Fake demo data must be loaded manually before recording the demo.\n'
     fi
 
+    wait_for_health
+
     printf 'Deploy succeeded.\n'
     printf 'Rollback target: %s\n' "${old_commit}"
+    printf 'Clinical document deployed smoke command: php agent-forge/scripts/run-clinical-document-deployed-smoke.php\n'
 }
 
 main "$@"

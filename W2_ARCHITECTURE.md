@@ -1101,6 +1101,58 @@ document upload creates and processes a job
 eval/deployed smoke artifact saved under agent-forge/eval-results
 ```
 
+The H3 readiness contract keeps the legacy `/meta/health/readyz` fields
+compatible while adding PHI-safe runtime detail:
+
+```json
+{
+  "status": "ready",
+  "checks": {
+    "database": true,
+    "agentforge_runtime": true
+  },
+  "components": {
+    "agentforge_runtime": {
+      "mariadb": {
+        "healthy": true,
+        "required_version": "11.8",
+        "version": "11.8.6-MariaDB",
+        "vector_expected": true
+      },
+      "worker": {
+        "healthy": true,
+        "worker": "intake-extractor",
+        "status": "running",
+        "fresh": true,
+        "freshness_threshold_seconds": 120,
+        "last_heartbeat_age_seconds": 4
+      },
+      "queue": {
+        "healthy": true,
+        "pending": 0,
+        "running": 0,
+        "stale_running": 0
+      }
+    }
+  }
+}
+```
+
+`agent-forge/scripts/health-check.sh` is the required deploy/rollback health
+gate. It validates the public app, `/readyz`, MariaDB 11.8, fresh
+`agentforge-worker` heartbeat, and queue health without requiring `jq`.
+
+Week 2 clinical deployed smoke is separate from the earlier read-only Tier 4
+chat smoke:
+
+```text
+php agent-forge/scripts/run-clinical-document-deployed-smoke.php
+```
+
+It uploads the Chen lab and intake fixtures through OpenEMR, waits for
+`lab_pdf` and `intake_form` jobs to succeed, asks a cited Week 2 question, and
+writes a PHI-safe artifact under `agent-forge/eval-results`.
+
 Rollback uses the existing rollback script and must leave the previous deployed OpenEMR app and worker in a healthy state.
 
 ## 20. Non-Goals For Week 2 MVP

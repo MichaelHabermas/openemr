@@ -182,6 +182,18 @@ Do not claim full clinical-document acceptance from M2 alone unless schema edits
 - If an active epic file is refreshed, move any reusable proof gaps, architectural decisions, or safety lessons here first.
 - Durable clinical schema names and user-visible workflow labels must describe the domain, not the implementing module or product. Use names such as `clinical_document_type_mappings` and normal OpenEMR categories such as `Lab Report`; do not introduce branded `AgentForge...` table names or document categories.
 
+## Week 2 H3 Implementation Notes
+
+- H3 strengthens deployed proof but is not acceptance-complete until a real
+  `clinical-document-deployed-smoke-*.json` artifact exists from the deployed
+  environment.
+- Docker service health should use `/meta/health/livez`; the stronger
+  `/meta/health/readyz` depends on the worker heartbeat, and using it as the
+  OpenEMR container healthcheck would deadlock `agentforge-worker` startup.
+- `agent-forge/scripts/health-check.sh` is the full H3 runtime gate: public app,
+  `/readyz`, MariaDB 11.8, fresh `intake-extractor` heartbeat, and clinical
+  document queue health.
+
 ## Week 2 M3 Implementation Notes
 
 Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.

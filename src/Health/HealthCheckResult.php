@@ -14,10 +14,14 @@ namespace OpenEMR\Health;
 
 final readonly class HealthCheckResult
 {
+    /**
+     * @param array<string, mixed> $details
+     */
     public function __construct(
         public string $name,
         public bool $healthy,
-        public ?string $message = null
+        public ?string $message = null,
+        public array $details = [],
     ) {
     }
 
@@ -29,6 +33,10 @@ final readonly class HealthCheckResult
 
         if ($this->message !== null) {
             $result['message'] = $this->message;
+        }
+
+        if ($this->details !== []) {
+            $result['details'] = $this->details;
         }
 
         return $result;

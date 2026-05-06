@@ -793,7 +793,7 @@ Dependencies: H1.
 
 ### Epic H3 - Deployment Runtime, Health, And Smoke Proof
 
-Status: Not started.
+Status: In progress.
 
 Goal: Prove the deployed app includes the automatic worker and Week 2 flow.
 

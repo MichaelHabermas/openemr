@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Load AgentForge fake demo patient data into the OpenEMR development database.
-# This script is idempotent for pid=900001-900006 and pid=900101 and never drops tables or volumes.
+# This script is idempotent for pid=900001-900006 and pid=900101-900107 and never drops tables or volumes.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,7 +52,7 @@ main() {
 
     printf 'Seeding AgentForge demo data from %s\n' "${SQL_FILE}"
     mysql_exec < "${sql_path}"
-    printf 'PASS seed: fake demo patients pid=900001,900002,900003,900004,900005,900006,900101 loaded.\n'
+    printf 'PASS seed: fake demo patients pid=900001,900002,900003,900004,900005,900006,900101,900102,900103,900104,900105,900106,900107 loaded.\n'
 }
 
 main "$@"

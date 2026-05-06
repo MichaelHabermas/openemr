@@ -119,7 +119,7 @@ services:
       - --location
       - --show-error
       - --silent
-      - https://localhost/meta/health/readyz
+      - https://localhost/meta/health/livez
       start_period: 3m
       start_interval: 10s
       interval: 1m

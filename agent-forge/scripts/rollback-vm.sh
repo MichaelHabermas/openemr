@@ -18,13 +18,26 @@ wait_for_health() {
     local elapsed=0
     until "${SCRIPT_DIR}/health-check.sh"; do
         if [[ "${elapsed}" -ge "${HEALTH_TIMEOUT_SECONDS}" ]]; then
-            printf 'Rollback failed: app did not become healthy within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
+            printf 'Rollback failed: full AgentForge health did not pass within %s seconds.\n' "${HEALTH_TIMEOUT_SECONDS}" >&2
             return 1
         fi
-        printf 'Health check not ready yet; retrying in %ss...\n' "${HEALTH_INTERVAL_SECONDS}"
+        printf 'Full health check not ready yet; retrying in %ss...\n' "${HEALTH_INTERVAL_SECONDS}"
         sleep "${HEALTH_INTERVAL_SECONDS}"
         elapsed=$((elapsed + HEALTH_INTERVAL_SECONDS))
     done
+}
+
+compose_up_runtime() {
+    local services
+    services="$(docker compose config --services)"
+
+    if grep -qx 'agentforge-worker' <<< "${services}"; then
+        docker compose up -d mysql openemr agentforge-worker
+        return
+    fi
+
+    printf 'NOTE: rollback target does not define agentforge-worker; starting core services only.\n'
+    docker compose up -d mysql openemr
 }
 
 if [[ -z "${TARGET_COMMIT}" ]]; then
@@ -43,7 +56,7 @@ git switch --detach "${TARGET_COMMIT}"
 
 cd "${COMPOSE_DIR}"
 docker compose down
-docker compose up -d
+compose_up_runtime
 
 wait_for_health
 
@@ -53,5 +66,7 @@ if [[ -x "${REPO_DIR}/${SEED_SCRIPT}" ]]; then
 else
     printf 'NOTE: seed script %s not present. Re-seed manually before demo.\n' "${SEED_SCRIPT}"
 fi
+
+wait_for_health
 
 printf 'Rollback completed to %s.\n' "${TARGET_COMMIT}"

@@ -22,13 +22,15 @@ This document contains only facts we currently know and work we know we need. It
 
    `~/repos/openemr`
 
-7. The compose file defines an `openemr` service and a `mysql` service.
+7. The compose file defines `openemr`, `mysql`, and `agentforge-worker` services.
 
 8. The `openemr` service exposes HTTP and HTTPS ports through `WT_HTTP_PORT` and `WT_HTTPS_PORT`, defaulting to `80` and `443`.
 
-9. The `openemr` service has a container healthcheck that calls:
+9. The `openemr` service has a container healthcheck that calls the liveness endpoint:
 
-   `https://localhost/meta/health/readyz`
+   `https://localhost/meta/health/livez`
+
+10. The deployed operator health gate is `agent-forge/scripts/health-check.sh`, which checks the public app and `/meta/health/readyz` readiness contract. The readiness contract includes MariaDB 11.8+, a fresh `agentforge-worker` heartbeat, and clinical-document queue health.
 
 ## Known Needs
 

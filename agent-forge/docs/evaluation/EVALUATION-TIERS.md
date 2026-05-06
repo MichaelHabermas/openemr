@@ -152,6 +152,37 @@ HTTP status, `request_id`, latency, verifier result, and audit-log
 present/forbidden-key assertions. The result file does not record the question
 text, answer text, or chart content.
 
+## Tier 4W2 - Clinical Document Deployed Smoke
+
+Week 2 adds a separate deployed smoke runner for the clinical-document runtime:
+
+```sh
+php agent-forge/scripts/run-clinical-document-deployed-smoke.php
+```
+
+This runner is intentionally separate from `run-deployed-smoke.php`. The older
+Tier 4 runner proves deployed session/chat/audit behavior without mutating
+documents. The Week 2 runner proves the deployed upload and worker path by
+uploading the Chen lab PDF and intake form through OpenEMR, waiting for the
+corresponding `clinical_document_processing_jobs` rows to reach `succeeded`,
+asking a cited Week 2 question, and writing
+`clinical-document-deployed-smoke-{timestamp}.json`.
+
+Required environment matches the deployed smoke baseline:
+`AGENTFORGE_SMOKE_USER`, `AGENTFORGE_SMOKE_PASSWORD`,
+`AGENTFORGE_DEPLOYED_URL`, and `AGENTFORGE_VM_SSH_HOST` when DB/audit proof is
+remote. Optional clinical overrides include `AGENTFORGE_CLINICAL_SMOKE_PID`,
+`AGENTFORGE_CLINICAL_SMOKE_LAB_PATH`,
+`AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH`,
+`AGENTFORGE_CLINICAL_SMOKE_LAB_CATEGORY`,
+`AGENTFORGE_CLINICAL_SMOKE_INTAKE_CATEGORY`, and
+`AGENTFORGE_CLINICAL_SMOKE_JOB_TIMEOUT_S`.
+
+The artifact must stay PHI-safe: it may include operational ids, statuses,
+latencies, citation counts, code version, and runtime summaries; it must not
+include the question text, answer text, raw extracted values, source quotes,
+document bytes, names, DOBs, or credentials.
+
 Manual checklist (for the browser-rendered citation UI, which the runner does
 not exercise):
 

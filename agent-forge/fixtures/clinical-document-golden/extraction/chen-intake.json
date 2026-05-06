@@ -19,7 +19,7 @@
     },
     {
       "kind": "date_of_birth",
-      "value": "1967-08-14",
+      "value": "1968-03-12",
       "field_path": "demographics.date_of_birth",
       "certainty": "verified",
       "confidence": 0.98,
@@ -28,7 +28,7 @@
         "source_id": "sha256:fixture",
         "page_or_section": "demographics",
         "field_or_chunk_id": "date_of_birth",
-        "quote_or_value": "1967-08-14",
+        "quote_or_value": "1968-03-12",
         "bounding_box": {"x": 0.32, "y": 0.05, "width": 0.18, "height": 0.04}
       }
     }

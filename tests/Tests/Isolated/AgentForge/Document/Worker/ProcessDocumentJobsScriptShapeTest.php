@@ -52,7 +52,10 @@ final class ProcessDocumentJobsScriptShapeTest extends TestCase
         $this->assertStringContainsString('trap', $compose);
         $this->assertStringContainsString('--mark-stopped', $compose);
         $this->assertStringContainsString('AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS', $compose);
+        $this->assertStringContainsString('AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST', $compose);
         $this->assertStringContainsString('openemr:', $compose);
+        $this->assertStringContainsString('mysql:', $compose);
         $this->assertStringContainsString('condition: service_healthy', $compose);
+        $this->assertStringContainsString('https://localhost/meta/health/livez', $compose);
     }
 }

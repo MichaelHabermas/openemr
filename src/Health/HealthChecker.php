@@ -12,6 +12,7 @@
 
 namespace OpenEMR\Health;
 
+use OpenEMR\Health\Check\AgentForgeRuntimeCheck;
 use OpenEMR\Health\Check\CacheCheck;
 use OpenEMR\Health\Check\DatabaseCheck;
 use OpenEMR\Health\Check\FilesystemCheck;
@@ -37,6 +38,7 @@ class HealthChecker
         $this->addCheck(new SessionCheck());
         $this->addCheck(new OAuthKeysCheck());
         $this->addCheck(new CacheCheck());
+        $this->addCheck(new AgentForgeRuntimeCheck());
     }
 
     public function addCheck(HealthCheckInterface $check): void
@@ -61,23 +63,36 @@ class HealthChecker
     /**
      * Get results as an associative array suitable for JSON response
      *
-     * @return array{status: string, checks: array<string, bool>}
+     * @return array{status: string, checks: array<string, bool>, components?: array<string, mixed>}
      */
     public function getResultsArray(): array
     {
         $checks = [];
+        $components = [];
         $isInstalled = true;
+        $allHealthy = true;
 
         foreach ($this->runAll() as $result) {
             $checks[$result->name] = $result->healthy;
+            if (!$result->healthy) {
+                $allHealthy = false;
+            }
+            if ($result->details !== []) {
+                $components[$result->name] = $result->details;
+            }
             if ($result->name === InstallationCheck::NAME && !$result->healthy) {
                 $isInstalled = false;
             }
         }
 
-        return [
-            'status' => $isInstalled ? 'ready' : 'setup_required',
+        $payload = [
+            'status' => $isInstalled ? ($allHealthy ? 'ready' : 'error') : 'setup_required',
             'checks' => $checks,
         ];
+        if ($components !== []) {
+            $payload['components'] = $components;
+        }
+
+        return $payload;
     }
 }
