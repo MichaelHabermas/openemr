@@ -95,6 +95,9 @@ main() {
 
     wait_for_health
 
+    printf 'Applying schema upgrades...\n'
+    docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/apply-schema-upgrade.php
+
     if [[ -x "${REPO_DIR}/${SEED_SCRIPT}" ]]; then
         printf 'Seeding fake demo data: %s\n' "${SEED_SCRIPT}"
         "${REPO_DIR}/${SEED_SCRIPT}"
