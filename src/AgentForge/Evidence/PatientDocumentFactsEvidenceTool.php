@@ -74,7 +74,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             . 'AND f.active = 1 '
             . 'AND f.retracted_at IS NULL '
             . 'AND f.deactivated_at IS NULL '
-            . 'AND f.certainty IN (?, ?) '
+            . 'AND f.certainty IN (?, ?, ?) '
             . 'AND j.patient_id = f.patient_id '
             . 'AND j.document_id = f.document_id '
             . 'AND j.status = ? '
@@ -91,6 +91,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
                 $patientId->value,
                 'verified',
                 'document_fact',
+                'needs_review',
                 'succeeded',
                 'identity_verified',
                 'identity_review_approved',
@@ -118,9 +119,10 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
         $page = Fmt::string($citation, 'page_or_section') ?: 'unknown page';
         $docType = Fmt::string($row, 'doc_type');
         $label = $this->displayLabel($row, $structured);
+        $isNeedsReview = Fmt::string($row, 'certainty') === 'needs_review';
 
         return new EvidenceItem(
-            'document',
+            $isNeedsReview ? 'document_review' : 'document',
             'clinical_document_facts',
             (string) Fmt::positiveInt($row, 'id'),
             Fmt::sourceDate(
@@ -129,7 +131,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
                 Fmt::string($row, 'created_at'),
                 Fmt::string($row, 'document_date'),
             ),
-            $label,
+            $isNeedsReview ? 'Needs review: ' . $label : $label,
             EvidenceText::bounded(sprintf('%s; %s', $factText, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
             $this->citationMetadata($row, $citation, $structured, $field, $page),
         );

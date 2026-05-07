@@ -23,10 +23,13 @@
         </div>
         <div id="agent-forge-source-meta" class="small text-muted mb-2"></div>
         <div class="agent-forge-source-page">
-            <div class="agent-forge-source-sheet" aria-hidden="true"></div>
-            <div id="agent-forge-source-box" class="agent-forge-source-box"></div>
+            <div id="agent-forge-source-image-wrap" class="agent-forge-source-image-wrap d-none">
+                <img id="agent-forge-source-image" class="agent-forge-source-image" alt="{{ "Source document page preview"|xla }}">
+                <div id="agent-forge-source-box" class="agent-forge-source-box"></div>
+            </div>
             <div id="agent-forge-source-fallback" class="agent-forge-source-fallback"></div>
         </div>
+        <a id="agent-forge-source-link" class="btn btn-link btn-sm p-0 mt-2 d-none" target="_blank" rel="noopener noreferrer">{{ "Open source document"|xlt }}</a>
         <div id="agent-forge-source-quote" class="small mt-2"></div>
     </div>
 </div>
@@ -56,28 +59,38 @@
     padding: 1rem;
     width: 100%;
 }
-.agent-forge-source-page {
-    background: linear-gradient(#fff, #f8f9fa);
-    border: 1px solid #ced4da;
-    height: 24rem;
-    max-height: 48vh;
-    position: relative;
-    width: 100%;
-}
-.agent-forge-source-sheet {
-    background:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-        linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-        #fff;
-    background-size: 10% 10%;
-    height: 100%;
-    width: 100%;
-}
-.agent-forge-source-box {
-    border: 2px solid #c62828;
-    background: rgba(198, 40, 40, 0.12);
-    position: absolute;
-}
+	.agent-forge-source-page {
+	    background: #f8f9fa;
+	    border: 1px solid #ced4da;
+	    height: 24rem;
+	    max-height: 48vh;
+	    overflow: auto;
+	    position: relative;
+	    width: 100%;
+	}
+	.agent-forge-source-image-wrap.d-none {
+	    display: none;
+	}
+	.agent-forge-source-image-wrap {
+	    background: #fff;
+	    line-height: 0;
+	    margin: 0 auto;
+	    max-width: 100%;
+	    position: relative;
+	    width: max-content;
+	}
+	.agent-forge-source-image {
+	    display: block;
+	    height: auto;
+	    max-width: 100%;
+	    width: auto;
+	}
+	.agent-forge-source-box {
+	    border: 2px solid #c62828;
+	    background: rgba(198, 40, 40, 0.12);
+	    position: absolute;
+	    z-index: 2;
+	}
 .agent-forge-source-box.d-none {
     display: none;
 }
@@ -114,8 +127,11 @@
     const submit = form.querySelector('button[type="submit"]');
     const sourceOverlay = document.getElementById('agent-forge-source-overlay');
     const sourceMeta = document.getElementById('agent-forge-source-meta');
+    const sourceImageWrap = document.getElementById('agent-forge-source-image-wrap');
+    const sourceImage = document.getElementById('agent-forge-source-image');
     const sourceBox = document.getElementById('agent-forge-source-box');
     const sourceFallback = document.getElementById('agent-forge-source-fallback');
+    const sourceLink = document.getElementById('agent-forge-source-link');
     const sourceQuote = document.getElementById('agent-forge-source-quote');
     let conversationId = null;
 
@@ -185,7 +201,7 @@
 
     function canFetchSourceReview(detail) {
         return detail
-            && detail.source_type === 'document';
+            && (detail.source_type === 'document' || detail.source_type === 'document_review');
     }
 
     function hasBoundingBox(box) {
@@ -212,8 +228,18 @@
             source_id: reviewed.source_id || detail.source_id || citation.source_id || '',
             citation: citation,
             value: reviewed.value || reviewed.quote_or_value || detail.value || '',
-            document_url: reviewed.document_url || ''
+            document_url: reviewed.document_url || '',
+            page_image_url: reviewed.page_image_url || ''
         };
+    }
+
+    function showSourceBox(box) {
+        sourceBox.className = 'agent-forge-source-box';
+        sourceBox.style.left = (box.x * 100) + '%';
+        sourceBox.style.top = (box.y * 100) + '%';
+        sourceBox.style.width = (box.width * 100) + '%';
+        sourceBox.style.height = (box.height * 100) + '%';
+        sourceBox.scrollIntoView({ block: 'center', inline: 'nearest' });
     }
 
     function showSourceOverlay(detail, payload) {
@@ -235,15 +261,30 @@
             sourceLink.removeAttribute('href');
             sourceLink.className = 'btn btn-link btn-sm p-0 mt-2 d-none';
         }
-        if (hasBoundingBox(box)) {
-            sourceBox.className = 'agent-forge-source-box';
+
+        if (reviewed.page_image_url) {
+            sourceImageWrap.className = 'agent-forge-source-image-wrap';
             sourceFallback.className = 'agent-forge-source-fallback d-none';
             sourceFallback.textContent = '';
-            sourceBox.style.left = (box.x * 100) + '%';
-            sourceBox.style.top = (box.y * 100) + '%';
-            sourceBox.style.width = (box.width * 100) + '%';
-            sourceBox.style.height = (box.height * 100) + '%';
+            sourceBox.className = 'agent-forge-source-box d-none';
+            sourceBox.removeAttribute('style');
+            sourceImage.onload = function () {
+                if (hasBoundingBox(box)) {
+                    showSourceBox(box);
+                }
+            };
+            sourceImage.onerror = function () {
+                sourceImage.removeAttribute('src');
+                sourceImageWrap.className = 'agent-forge-source-image-wrap d-none';
+                sourceBox.className = 'agent-forge-source-box d-none';
+                sourceBox.removeAttribute('style');
+                sourceFallback.className = 'agent-forge-source-fallback';
+                sourceFallback.textContent = {{ "Source page preview could not be rendered. Open the source document to review the cited page."|xlj }};
+            };
+            sourceImage.src = reviewed.page_image_url;
         } else {
+            sourceImage.removeAttribute('src');
+            sourceImageWrap.className = 'agent-forge-source-image-wrap d-none';
             sourceBox.className = 'agent-forge-source-box d-none';
             sourceBox.removeAttribute('style');
             sourceFallback.className = 'agent-forge-source-fallback';
@@ -258,6 +299,8 @@
     function fetchSourceReview(detail) {
         sourceMeta.textContent = {{ "Loading source review..."|xlj }};
         sourceQuote.textContent = '';
+        sourceImage.removeAttribute('src');
+        sourceImageWrap.className = 'agent-forge-source-image-wrap d-none';
         sourceBox.className = 'agent-forge-source-box d-none';
         sourceBox.removeAttribute('style');
         sourceFallback.className = 'agent-forge-source-fallback d-none';

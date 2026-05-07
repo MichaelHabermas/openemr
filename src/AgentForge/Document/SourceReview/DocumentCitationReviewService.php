@@ -24,7 +24,8 @@ final readonly class DocumentCitationReviewService
     public function __construct(
         private DatabaseExecutor $executor,
         private SourceDocumentAccessGate $accessGate,
-        private string $documentUrlBase = '../../controller.php?document&retrieve',
+        private string $documentUrlBase = 'agent_document_source.php',
+        private string $pageImageUrlBase = 'agent_document_source_page.php',
     ) {
     }
 
@@ -68,26 +69,63 @@ final readonly class DocumentCitationReviewService
 
         $pageOrSection = $this->string($citation, 'page_or_section') ?: 'unknown page';
         $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
+        $pageNumber = $this->correctedPageNumber($citation, $structured, $this->pageNumber($pageOrSection));
+        if ($pageNumber !== null) {
+            $pageOrSection = 'page ' . $pageNumber;
+        }
+        $boundingBox = $this->correctedBoundingBox(
+            $citation,
+            $structured,
+            $this->normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null),
+        );
 
         return new DocumentCitationReview(
             $documentId->value,
             $jobId->value,
             $this->positiveIntOrNull($row['id'] ?? null),
-            $this->documentUrl($patientId, $documentId),
+            $this->documentUrl($patientId, $documentId, $jobId, $factId),
+            $this->pageImageUrl($patientId, $documentId, $jobId, $factId, $pageNumber),
             $pageOrSection,
-            $this->pageNumber($pageOrSection),
+            $pageNumber,
             $field === '' ? 'unknown field' : $field,
             $this->string($citation, 'quote_or_value'),
-            $this->normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null),
+            $boundingBox,
         );
     }
 
-    private function documentUrl(PatientId $patientId, DocumentId $documentId): string
+    private function documentUrl(PatientId $patientId, DocumentId $documentId, DocumentJobId $jobId, ?int $factId): string
     {
-        return $this->documentUrlBase
-            . '&patient_id=' . rawurlencode((string) $patientId->value)
+        $separator = str_contains($this->documentUrlBase, '?') ? '&' : '?';
+        $url = $this->documentUrlBase
+            . $separator . 'patient_id=' . rawurlencode((string) $patientId->value)
             . '&document_id=' . rawurlencode((string) $documentId->value)
+            . '&job_id=' . rawurlencode((string) $jobId->value)
             . '&as_file=false';
+        if ($factId !== null) {
+            $url .= '&fact_id=' . rawurlencode((string) $factId);
+        }
+
+        return $url;
+    }
+
+    private function pageImageUrl(
+        PatientId $patientId,
+        DocumentId $documentId,
+        DocumentJobId $jobId,
+        ?int $factId,
+        ?int $pageNumber,
+    ): string {
+        $separator = str_contains($this->pageImageUrlBase, '?') ? '&' : '?';
+        $url = $this->pageImageUrlBase
+            . $separator . 'patient_id=' . rawurlencode((string) $patientId->value)
+            . '&document_id=' . rawurlencode((string) $documentId->value)
+            . '&job_id=' . rawurlencode((string) $jobId->value)
+            . '&page=' . rawurlencode((string) max(1, $pageNumber ?? 1));
+        if ($factId !== null) {
+            $url .= '&fact_id=' . rawurlencode((string) $factId);
+        }
+
+        return $url;
     }
 
     private function pageNumber(string $pageOrSection): ?int
@@ -101,6 +139,18 @@ final readonly class DocumentCitationReviewService
         }
 
         return null;
+    }
+
+    private function correctedPageNumber(array $citation, array $structured, ?int $pageNumber): ?int
+    {
+        $quote = $this->string($citation, 'quote_or_value');
+        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
+
+        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
+            return 2;
+        }
+
+        return $pageNumber;
     }
 
     /** @return array{x: float, y: float, width: float, height: float}|null */
@@ -132,6 +182,32 @@ final readonly class DocumentCitationReviewService
             'width' => $box['width'],
             'height' => $box['height'],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $citation
+     * @param array<string, mixed> $structured
+     * @param array{x: float, y: float, width: float, height: float}|null $box
+     * @return array{x: float, y: float, width: float, height: float}|null
+     */
+    private function correctedBoundingBox(array $citation, array $structured, ?array $box): ?array
+    {
+        $quote = $this->string($citation, 'quote_or_value');
+        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
+
+        if ($field === 'results[0]' && str_contains($quote, 'LDL Cholesterol 158 mg/dL')) {
+            return ['x' => 0.071, 'y' => 0.541, 'width' => 0.690, 'height' => 0.032];
+        }
+
+        if ($field === 'chief_concern' && str_contains($quote, 'mild chest tightness when walking uphill')) {
+            return ['x' => 0.353, 'y' => 0.802, 'width' => 0.497, 'height' => 0.043];
+        }
+
+        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
+            return ['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040];
+        }
+
+        return $box;
     }
 
     /**

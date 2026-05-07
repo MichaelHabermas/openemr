@@ -31,6 +31,7 @@ final readonly class PromptComposer
             'Every patient-specific fact must cite source IDs exactly as provided.',
             'Use claim type patient_fact only for patient/chart evidence, and cite only non-guideline chart source IDs.',
             'Use claim type guideline_evidence only for clinical guideline evidence, and cite only guideline source IDs.',
+            'Evidence with source_type document_review is quarantined review evidence. Do not use it for patient_fact or guideline reasoning; cite it only with claim type needs_review.',
             'Use claim type needs_review for any draft content that cannot be safely grounded; it will not be shown as a verified answer.',
             'For every patient_fact claim, copy the cited evidence display_label and value exactly into the claim text.',
             'For every guideline_evidence claim, keep the claim narrowly tied to the cited guideline chunk and do not mix it with patient/chart facts.',

@@ -46,10 +46,10 @@
         "field_or_chunk_id": "chief_concern",
         "quote_or_value": "Tired during the day, mild chest tightness when walking uphill the past 3 weeks.",
         "bounding_box": {
-          "x": 0.104,
-          "y": 0.196,
-          "width": 0.260,
-          "height": 0.032
+          "x": 0.353,
+          "y": 0.802,
+          "width": 0.497,
+          "height": 0.043
         }
       }
     },
@@ -61,14 +61,14 @@
       "citation": {
         "source_type": "intake_form",
         "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
-        "page_or_section": "page 1",
+        "page_or_section": "page 2",
         "field_or_chunk_id": "needs_review[0]",
         "quote_or_value": "shellfish?? maybe iodine itchy?",
         "bounding_box": {
-          "x": 0.104,
-          "y": 0.506,
-          "width": 0.260,
-          "height": 0.032
+          "x": 0.115,
+          "y": 0.293,
+          "width": 0.770,
+          "height": 0.040
         }
       }
     }

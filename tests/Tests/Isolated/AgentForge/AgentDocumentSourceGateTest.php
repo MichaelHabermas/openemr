@@ -39,6 +39,20 @@ final class AgentDocumentSourceGateTest extends TestCase
         $this->assertStringContainsString("'Source citation could not be reviewed.'", $script);
     }
 
+    public function testSourcePagePreviewEndpointUsesSharedAccessGate(): void
+    {
+        $script = file_get_contents(dirname(__DIR__, 4) . '/interface/patient_file/summary/agent_document_source_page.php');
+        $this->assertIsString($script);
+
+        $this->assertStringContainsString('SourceDocumentAccessGate', $script);
+        $this->assertStringContainsString('->allows(', $script);
+        $this->assertStringContainsString('StrictPositiveInt::tryParse', $script);
+        $this->assertStringContainsString('C_Document', $script);
+        $this->assertStringContainsString('fixturePreviewPath', $script);
+        $this->assertStringContainsString('source-previews', $script);
+        $this->assertStringContainsString("header('Content-Type: ' . \$mimeType)", $script);
+    }
+
     public function testSourceGateAllowsExplicitlyApprovedIdentityReview(): void
     {
         $script = file_get_contents(dirname(__DIR__, 4) . '/src/AgentForge/Document/SourceReview/SourceDocumentAccessGate.php');

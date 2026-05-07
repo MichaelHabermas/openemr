@@ -51,7 +51,7 @@ if (!$allowed) {
 }
 
 header(
-    'Location: ../../controller.php?document&retrieve&patient_id='
+    'Location: ../../../controller.php?document&retrieve&patient_id='
     . rawurlencode((string) $sessionPatientId)
     . '&document_id='
     . rawurlencode((string) $documentId)

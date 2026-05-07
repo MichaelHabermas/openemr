@@ -231,6 +231,28 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertContains('guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/acc-aha-ldl-follow-up-01-ldl-130-follow-up', $result->response->citations);
     }
 
+    public function testQuarantinedDocumentReviewEvidenceIsShownButNotAddedToAnswerReasoning(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineFollowUpWithIntakeOnlyProvider(),
+            new DraftVerifier(),
+            new SystemMonotonicClock(),
+        ))->run(
+            new AgentRequest(
+                new PatientId(900101),
+                new AgentQuestion('What changed in recent documents, which evidence is notable, and what sources support it?'),
+            ),
+            $this->documentGuidelineBundleWithReviewEvidence(),
+            'follow_up_change_review',
+            ['Recent clinical documents', 'Guideline Evidence'],
+        );
+
+        $reviewLine = 'Needs human review; not used for reasoning: Needs review: intake finding: shellfish?? maybe iodine itchy?; Citation: intake_form, page 1, needs_review[0]';
+        $this->assertStringNotContainsString('shellfish?? maybe iodine itchy?', $result->response->answer);
+        $this->assertContains($reviewLine, $result->response->missingOrUncheckedSections);
+        $this->assertContains('document_review:clinical_document_facts/42@2026-05-06', $result->response->citations);
+    }
+
 
     public function testVisitBriefingDoesNotEchoUnsafeNoteEvidenceDuringCompletion(): void
     {
@@ -413,6 +435,33 @@ final class VerifiedDraftingPipelineTest extends TestCase
                 'LDL cholesterol greater than or equal to 130 mg/dL is a primary-care follow-up signal.',
             ),
         ]);
+    }
+
+    private function documentGuidelineBundleWithReviewEvidence(): EvidenceBundle
+    {
+        return new EvidenceBundle(array_merge(
+            $this->documentGuidelineBundle()->items,
+            [
+                new EvidenceBundleItem(
+                    'document_review',
+                    'document_review:clinical_document_facts/42@2026-05-06',
+                    '2026-05-06',
+                    'Needs review: intake finding',
+                    'shellfish?? maybe iodine itchy?; Citation: intake_form, page 1, needs_review[0]',
+                    [
+                        'source_type' => 'document',
+                        'doc_type' => 'intake_form',
+                        'document_id' => 20,
+                        'job_id' => 5,
+                        'fact_id' => 42,
+                        'certainty' => 'needs_review',
+                        'page_or_section' => 'page 1',
+                        'field_or_chunk_id' => 'needs_review[0]',
+                        'quote_or_value' => 'shellfish?? maybe iodine itchy?',
+                    ],
+                ),
+            ],
+        ));
     }
 }
 

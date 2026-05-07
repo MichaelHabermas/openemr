@@ -60,6 +60,12 @@ UNION ALL
 SELECT 'jobs_to_reset' AS item, COUNT(*) AS count
 FROM tmp_agentforge_demo_jobs
 UNION ALL
+SELECT 'facts_to_reset' AS item, COUNT(*) AS count
+FROM clinical_document_facts
+WHERE patient_id = ${DEMO_PID}
+   OR job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
+   OR document_id IN (SELECT id FROM tmp_agentforge_demo_documents)
+UNION ALL
 SELECT 'identity_checks_to_reset' AS item, COUNT(*) AS count
 FROM clinical_document_identity_checks
 WHERE job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
@@ -85,6 +91,11 @@ WHERE job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
      patient_id = ${DEMO_PID}
      AND document_id IN (SELECT id FROM tmp_agentforge_demo_documents)
    );
+
+DELETE FROM clinical_document_facts
+WHERE patient_id = ${DEMO_PID}
+   OR job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
+   OR document_id IN (SELECT id FROM tmp_agentforge_demo_documents);
 
 DELETE FROM clinical_document_processing_jobs
 WHERE id IN (SELECT id FROM tmp_agentforge_demo_jobs);

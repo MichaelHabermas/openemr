@@ -31,17 +31,18 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $template = $this->agentForgePanelTemplate();
 
         $this->assertStringContainsString('agent-forge-source-overlay', $template);
-        $this->assertStringContainsString("return detail\n            && detail.source_type === 'document';", $template);
+        $this->assertStringContainsString("detail.source_type === 'document' || detail.source_type === 'document_review'", $template);
         $this->assertStringContainsString('fetchSourceReview(detail)', $template);
         $this->assertStringContainsString("'agent_document_source_review.php?' + params.toString()", $template);
         $this->assertStringContainsString("params.set('document_id', documentIdFromCitation(detail, citation))", $template);
         $this->assertStringContainsString("params.set('job_id', citation.job_id || detail.job_id || '')", $template);
         $this->assertStringContainsString("params.set('fact_id', citation.fact_id || detail.fact_id)", $template);
         $this->assertStringContainsString("'Accept': 'application/json'", $template);
-        $this->assertStringContainsString('agent-forge-source-sheet', $template);
+        $this->assertStringContainsString('agent-forge-source-image-wrap', $template);
+        $this->assertStringContainsString('reviewed.page_image_url', $template);
         $this->assertStringNotContainsString('<iframe', $template);
         $this->assertStringNotContainsString('agent_document_source.php?document_id=', $template);
-        $this->assertStringContainsString('if (hasBoundingBox(box))', $template);
+        $this->assertStringContainsString('function showSourceBox(box)', $template);
         $this->assertStringContainsString("sourceBox.style.left = (box.x * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.top = (box.y * 100) + '%'", $template);
         $this->assertStringContainsString("sourceBox.style.width = (box.width * 100) + '%'", $template);
@@ -71,6 +72,7 @@ final class AgentForgePanelCitationUiTest extends TestCase
 
         $this->assertStringContainsString('if (canFetchSourceReview(detail))', $template);
         $this->assertStringContainsString("detail.source_type === 'document'", $template);
+        $this->assertStringContainsString("detail.source_type === 'document_review'", $template);
         $this->assertStringContainsString('row.textContent = citationLabel(detail)', $template);
         $this->assertStringNotContainsString('canShowSourceOverlay', $template);
     }

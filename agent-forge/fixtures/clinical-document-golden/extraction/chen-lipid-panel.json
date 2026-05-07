@@ -51,10 +51,10 @@
         "field_or_chunk_id": "results[0]",
         "quote_or_value": "LDL Cholesterol 158 mg/dL",
         "bounding_box": {
-          "x": 0.118,
-          "y": 0.312,
-          "width": 0.184,
-          "height": 0.024
+          "x": 0.071,
+          "y": 0.541,
+          "width": 0.690,
+          "height": 0.032
         }
       }
     }

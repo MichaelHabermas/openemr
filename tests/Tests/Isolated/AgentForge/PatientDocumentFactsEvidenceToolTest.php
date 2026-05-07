@@ -76,14 +76,40 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
         $this->assertStringContainsString('f.active = 1', $executor->sql);
         $this->assertStringContainsString('f.retracted_at IS NULL', $executor->sql);
         $this->assertStringContainsString('f.deactivated_at IS NULL', $executor->sql);
-        $this->assertStringContainsString('f.certainty IN (?, ?)', $executor->sql);
+        $this->assertStringContainsString('f.certainty IN (?, ?, ?)', $executor->sql);
         $this->assertStringContainsString('j.status = ?', $executor->sql);
         $this->assertStringContainsString('j.retracted_at IS NULL', $executor->sql);
         $this->assertStringContainsString('ic.id = f.identity_check_id', $executor->sql);
         $this->assertStringContainsString('ic.identity_status IN (?, ?)', $executor->sql);
         $this->assertStringContainsString('ic.review_required = 0 OR ic.review_decision = ?', $executor->sql);
         $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->sql);
-        $this->assertSame([900101, 'verified', 'document_fact', 'succeeded', 'identity_verified', 'identity_review_approved', 'approved', 'approved'], $executor->binds);
+        $this->assertSame([900101, 'verified', 'document_fact', 'needs_review', 'succeeded', 'identity_verified', 'identity_review_approved', 'approved', 'approved'], $executor->binds);
+    }
+
+    public function testNeedsReviewDocumentFactsBecomeQuarantinedReviewEvidence(): void
+    {
+        $row = $this->factRow();
+        $row['id'] = 42;
+        $row['certainty'] = 'needs_review';
+        $row['fact_type'] = 'intake_finding';
+        $row['fact_text'] = 'shellfish?? maybe iodine itchy?';
+        $row['structured_value_json'] = json_encode([], JSON_THROW_ON_ERROR);
+        $row['citation_json'] = json_encode([
+            'source_type' => 'intake_form',
+            'source_id' => 'doc:12',
+            'page_or_section' => 'page 1',
+            'field_or_chunk_id' => 'needs_review[0]',
+            'quote_or_value' => 'shellfish?? maybe iodine itchy?',
+            'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+        ], JSON_THROW_ON_ERROR);
+        $tool = new PatientDocumentFactsEvidenceTool(new PatientDocumentFactsEvidenceExecutor([$row]));
+
+        $result = $tool->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
+
+        $this->assertCount(1, $result->items);
+        $this->assertSame('document_review', $result->items[0]->sourceType);
+        $this->assertSame('Needs review: intake finding', $result->items[0]->displayLabel);
+        $this->assertStringContainsString('shellfish?? maybe iodine itchy?', $result->items[0]->value);
     }
 
     /** @return array<string, mixed> */

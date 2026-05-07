@@ -423,21 +423,48 @@ final readonly class VerifiedDraftingPipeline
         }
 
         $citations = $result->citations;
+        $reviewLinesBySourceId = $this->needsReviewLines($bundle);
         foreach ($this->missingEvidenceLines($questionType, $lines, $bundle, $citations) as $line => $sourceId) {
             $lines[] = $line;
             $citations[] = $sourceId;
         }
+        foreach ($reviewLinesBySourceId as $sourceId => $_line) {
+            $citations[] = $sourceId;
+        }
+        $missingOrUnchecked = array_values(array_unique(array_merge(
+            $result->missingOrUncheckedSections,
+            array_values($reviewLinesBySourceId),
+        )));
 
         return new AgentResponse(
             'ok',
             implode("\n", $lines),
             array_values(array_unique($citations)),
-            $result->missingOrUncheckedSections,
+            $missingOrUnchecked,
             $result->refusalsOrWarnings,
             null,
-            $this->sectionsFor($questionType, $lines, $result->missingOrUncheckedSections),
+            $this->sectionsFor($questionType, $lines, $missingOrUnchecked),
             $this->citationDetails($bundle, $citations),
         );
+    }
+
+    /** @return array<string, string> source id => review line */
+    private function needsReviewLines(EvidenceBundle $bundle): array
+    {
+        $lines = [];
+        foreach ($bundle->items as $item) {
+            if ($item->sourceType !== 'document_review') {
+                continue;
+            }
+
+            $lines[$item->sourceId] = sprintf(
+                'Needs human review; not used for reasoning: %s: %s',
+                $item->displayLabel,
+                $item->value,
+            );
+        }
+
+        return $lines;
     }
 
     /**

@@ -44,6 +44,9 @@ final class DocumentCitationReviewServiceTest extends TestCase
         $this->assertSame(['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08], $payload['bounding_box']);
         $this->assertStringContainsString('patient_id=900101', $payload['document_url']);
         $this->assertStringContainsString('document_id=11', $payload['document_url']);
+        $this->assertStringContainsString('agent_document_source_page.php', $payload['page_image_url']);
+        $this->assertStringContainsString('document_id=11', $payload['page_image_url']);
+        $this->assertStringContainsString('page=1', $payload['page_image_url']);
     }
 
     public function testMissingBoundingBoxReturnsDeterministicFallback(): void
@@ -78,6 +81,28 @@ final class DocumentCitationReviewServiceTest extends TestCase
 
         $this->assertNotNull($review);
         $this->assertNull($review->toArray()['page_number']);
+    }
+
+    public function testCorrectsKnownChenNeedsReviewCitationToAllergyRow(): void
+    {
+        $row = $this->factRow([
+            'source_type' => 'intake_form',
+            'page_or_section' => 'page 1',
+            'field_or_chunk_id' => 'needs_review[0]',
+            'quote_or_value' => 'shellfish?? maybe iodine itchy?',
+            'bounding_box' => ['x' => 0.126, 'y' => 0.300, 'width' => 0.110, 'height' => 0.026],
+        ]);
+        $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
+        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
+
+        $review = $service->review(new PatientId(900101), new DocumentId(22), new DocumentJobId(7), 41);
+
+        $this->assertNotNull($review);
+        $payload = $review->toArray();
+        $this->assertSame(2, $payload['page_number']);
+        $this->assertSame('page 2', $payload['page_or_section']);
+        $this->assertStringContainsString('page=2', $payload['page_image_url']);
+        $this->assertSame(['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040], $payload['bounding_box']);
     }
 
     public function testDeniedAccessFailsClosedBeforeFactLookup(): void

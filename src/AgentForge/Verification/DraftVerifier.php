@@ -126,6 +126,10 @@ final readonly class DraftVerifier
 
     private function claimTypeMatchesSourceType(DraftClaim $claim, EvidenceBundleItem $item): bool
     {
+        if ($item->sourceType === 'document_review') {
+            return $claim->type === DraftClaim::TYPE_NEEDS_REVIEW;
+        }
+
         if ($item->sourceType === 'guideline') {
             return $claim->type === DraftClaim::TYPE_GUIDELINE_EVIDENCE;
         }
