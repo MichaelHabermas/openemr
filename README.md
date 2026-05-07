@@ -23,6 +23,15 @@
 ### AgentForge Reviewer Entry Point
 
 AgentForge is the Clinical Co-Pilot submission built inside this OpenEMR fork.
+There are two reviewer paths:
+
+- **Week 1 baseline:** chart-grounded orientation inside OpenEMR, including
+  seeded labs, medications, visit briefing, refusals, citations, and
+  server-side evidence verification.
+- **Week 2 multimodal flow:** clinical document upload/extraction for
+  `lab_pdf` and `intake_form`, an automatic `intake-extractor` worker,
+  guideline retrieval through `evidence-retriever`, source review, and the
+  59-case clinical-document eval gate.
 
 Deployed reviewer URL: [https://openemr.titleredacted.cc/](https://openemr.titleredacted.cc/)
 
@@ -32,14 +41,15 @@ Final submission links:
 - Demo video: [Loom demo](https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32)
 - Social post: [X post](https://x.com/habermoose/status/2050766281515700369)
 
-Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patient, demo path, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
+Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patients, Week 1 and Week 2 demo paths, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
 
 Required root submission artifacts are readable on their own here:
 
 - [AUDIT.md](AUDIT.md)
 - [USERS.md](USERS.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
-- [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) — Week 2 (documents, RAG, supervisor/workers, eval gate); index under [agent-forge/docs/week2/README.md](agent-forge/docs/week2/README.md).
+- [W2_ARCHITECTURE.md](W2_ARCHITECTURE.md) — Week 2 documents, RAG, supervisor/workers, eval gate, privacy, and deployment shape.
+- [agent-forge/docs/week2/README.md](agent-forge/docs/week2/README.md) — Week 2 document index, commands, proof links, and acceptance matrix.
 
 ### Contributing
 

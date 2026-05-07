@@ -37,4 +37,13 @@ Each clinical document run directory contains:
 - `run.json` — one entry per golden case, including adapter status and per-rubric result.
 - `summary.json` — per-rubric pass rates and the comparator verdict.
 
-The scaffold uses `NotImplementedAdapter`, so the expected verdict is `threshold_violation` and the command exits with code `2` until later clinical document epics connect real ingestion, extraction, retrieval, and answer behavior.
+The current Week 2 H1/H5 gate uses the implemented clinical-document adapter
+and the checked-in 59-case golden set. A passing run reports
+`"verdict": "baseline_met"` in `summary.json`; a schema, citation, refusal,
+no-PHI, deleted-document, promotion, document-fact, guideline, or bounding-box
+regression fails the command.
+
+Current reviewer-facing proof:
+
+- `clinical-document-20260507-202311/summary.json`
+- `clinical-document-20260507-202311/run.json`

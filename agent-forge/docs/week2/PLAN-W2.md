@@ -890,7 +890,15 @@ Dependencies: M7.
 
 ### Epic H5 - Demo Readiness And Documentation Alignment
 
-Status: Not started.
+Status: Completed.
+
+Implementation note (2026-05-07): H5 aligned the root reviewer entry point,
+reviewer guide, Week 2 docs hub, acceptance matrix, eval-results README,
+clinical-document cost/latency report, and `.env.sample` around the current
+Week 2 proof surface. New isolated docs tests cover Week 1 vs Week 2
+separation, Week 2 commands, env vars, local links, acceptance artifacts, and
+secret hygiene. Focused H5 proof passed: 38 tests / 247 assertions, PHP syntax
+checks for new docs tests, and PHPCS on the new test files.
 
 Goal: Make the Week 2 flow understandable and rerunnable for graders.
 

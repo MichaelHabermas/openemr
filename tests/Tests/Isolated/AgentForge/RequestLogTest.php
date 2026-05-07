@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
+use ReflectionClass;
 
 final class RequestLogTest extends TestCase
 {
@@ -133,19 +134,7 @@ final class RequestLogTest extends TestCase
             decision: 'allowed',
             latencyMs: 42,
             timestamp: new DateTimeImmutable('2026-04-30T12:00:00+00:00'),
-            telemetry: new AgentTelemetry(
-                questionType: 'lab',
-                toolsCalled: [['name' => 'Recent labs', 'document_text' => 'raw document']],
-                skippedChartSections: [],
-                sourceIds: [['patient_name' => 'Alice Chen', 'source_id' => 'doc:1']],
-                model: 'fixture-draft-provider',
-                inputTokens: 0,
-                outputTokens: 0,
-                estimatedCost: null,
-                failureReason: null,
-                verifierResult: 'passed',
-                stageTimingsMs: ['draft' => 20, 'raw_value' => 'LDL 158'],
-            ),
+            telemetry: $this->malformedTelemetryForSanitizationProof(),
         );
 
         (new PsrRequestLogger($logger))->record($entry);
@@ -156,6 +145,37 @@ final class RequestLogTest extends TestCase
         $this->assertStringNotContainsString('Alice Chen', $encoded);
         $this->assertStringNotContainsString('raw document', $encoded);
         $this->assertStringNotContainsString('LDL 158', $encoded);
+    }
+
+    private function malformedTelemetryForSanitizationProof(): AgentTelemetry
+    {
+        $reflection = new ReflectionClass(AgentTelemetry::class);
+        /** @var AgentTelemetry $telemetry */
+        $telemetry = $reflection->newInstanceWithoutConstructor();
+
+        foreach (
+            [
+                'questionType' => 'lab',
+                'toolsCalled' => [['name' => 'Recent labs', 'document_text' => 'raw document']],
+                'skippedChartSections' => [],
+                'sourceIds' => [['patient_name' => 'Alice Chen', 'source_id' => 'doc:1']],
+                'model' => 'fixture-draft-provider',
+                'inputTokens' => 0,
+                'outputTokens' => 0,
+                'estimatedCost' => null,
+                'failureReason' => null,
+                'verifierResult' => 'passed',
+                'stageTimingsMs' => ['draft' => 20, 'raw_value' => 'LDL 158'],
+                'selectorMode' => 'deterministic',
+                'selectorResult' => 'fallback_not_needed',
+                'selectorFallbackReason' => null,
+                'modelCalls' => [],
+            ] as $property => $value
+        ) {
+            $reflection->getProperty($property)->setValue($telemetry, $value);
+        }
+
+        return $telemetry;
     }
 }
 

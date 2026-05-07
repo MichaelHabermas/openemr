@@ -28,6 +28,8 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 - **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
 - **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current 50-case Week 2 submission gate.
 - **Operations / cost** — [../operations/CLINICAL-DOCUMENT-COST-LATENCY.md](../operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is the current Week 2 clinical-document cost/latency report; [../operations/](../operations/) also contains shared Week 1 cost and deployed latency baselines.
+- **Acceptance matrix** — [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md) maps Week 2 requirements to current proof artifacts and explicit remaining gaps.
+- **Reviewer guide** — [../../../AGENTFORGE-REVIEWER-GUIDE.md](../../../AGENTFORGE-REVIEWER-GUIDE.md) is the root entry point for graders.
 
 ## AgentForge gates
 
@@ -47,12 +49,22 @@ Use this command as the single local/CI clinical document gate:
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-The gate now passes for the accepted H1 checkpoint path: 59 fixture-backed
+The gate now passes for the accepted H1/H5 path: 59 fixture-backed
 clinical-document cases, identity gating, real guideline retrieval for
-guideline cases, runner-enforced structural H1 coverage, boolean rubric
-thresholds, regression comparison, and artifact writing. Deployed smoke,
-visual source-review UX, and production-measured cost/latency remain later
-Week 2 proof work.
+guideline cases, runner-enforced structural coverage, boolean rubric
+thresholds, regression comparison, source-review/bounding-box coverage,
+deleted-document exclusion, no-PHI telemetry checks, and artifact writing.
+
+Current local proof artifacts:
+
+- `agent-forge/eval-results/clinical-document-20260507-202311/summary.json`
+- `agent-forge/eval-results/clinical-document-20260507-202311/run.json`
+- `agent-forge/eval-results/eval-results-20260507-202234.json`
+
+The checked-in repository does not currently include a
+`clinical-document-deployed-smoke-*.json` artifact. H3 deployment/runtime proof
+is documented in [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md) and the
+deployed clinical smoke command is documented for rerun.
 
 ## Week 2 stages (from spec)
 
@@ -60,10 +72,31 @@ Week 2 proof work.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
 4. Eval-driven CI: current checkpoint gate under `check-clinical-document.sh`, expanding to 50 cases and PR-blocking CI/Git Hook in H1. — §6.
-5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report. — §7, §9.
+5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report, and reviewer acceptance matrix. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).
 
 ## README and env
 
-The **repository root** `README.md` should clearly separate **Week 1 baseline** vs **Week 2** behavior, branches if any, and environment variables. Update [../../.env.sample](../../.env.sample) alongside new Week 2 settings.
+The **repository root** [../../../README.md](../../../README.md) separates
+**Week 1 baseline** vs **Week 2** behavior. The reviewer-facing environment
+variables are documented in [../../.env.sample](../../.env.sample),
+[../../../AGENTFORGE-REVIEWER-GUIDE.md](../../../AGENTFORGE-REVIEWER-GUIDE.md),
+and [../../../W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md).
+
+Week 2 reviewer variables include:
+
+```text
+AGENTFORGE_DRAFT_PROVIDER
+AGENTFORGE_OPENAI_API_KEY
+AGENTFORGE_OPENAI_MODEL
+AGENTFORGE_VLM_PROVIDER
+AGENTFORGE_VLM_MODEL
+AGENTFORGE_COHERE_API_KEY
+AGENTFORGE_EMBEDDING_MODEL
+AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS
+AGENTFORGE_CLINICAL_DOCUMENT_ENABLED
+AGENTFORGE_SMOKE_USER
+AGENTFORGE_SMOKE_PASSWORD
+AGENTFORGE_DEPLOYED_URL
+```
