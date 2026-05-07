@@ -346,6 +346,48 @@ This closes the PLAN Task 3.1.2 requirement that the seed work in both local and
 
 ---
 
+## H2/H3 Deployed Verification — 2026-05-07
+
+Captured on the demo VM (`gauntlet-mgh`) after deploying the clinical-document smoke fix (citation parser), guideline corpus indexing in `deploy-vm.sh`, and DeterministicReranker score-dilution fix.
+
+### Deploy pipeline
+
+Deploy now includes guideline corpus indexing between schema upgrade and seed:
+
+```text
+Applying schema upgrades...
+  8_1_0-to-8_1_1_upgrade.sql: 137 directives processed, 131 already present
+Indexing clinical guideline corpus...
+Indexed 25 guideline chunks with embeddings.
+Seeding fake demo data...
+PASS seed: fake demo patient pid=900001 loaded.
+```
+
+### Automated checks (`verify-deployed.sh`)
+
+```text
+agent-forge/scripts/health-check.sh      — PASS (runtime readiness: MariaDB, worker, queue)
+agent-forge/scripts/verify-demo-data.sh  — PASS (65 demo data checks)
+clinical-document-deployed-smoke          — 1/1 passed (document + guideline citations)
+```
+
+The smoke previously failed with `guideline: 0` due to three bugs fixed in this deploy:
+1. Citation parser read `citations` (opaque `list<string>`) instead of `citation_details` (arrays with `source_type`).
+2. Guideline corpus was never indexed on VM — `index-clinical-guidelines.php` not called from `deploy-vm.sh`.
+3. `DeterministicReranker` score dilution below 0.4 threshold for long queries — denominator changed to `min(queryTokens, chunkTokens)`.
+
+### Manual UI verification
+
+Patient: Margaret Chen (pid 900101, BHS-2847163).
+
+| Check | Result |
+| --- | --- |
+| Co-Pilot cited answer | Response included 12 `clinical_document_facts` citations (IDs 17, 16, 14, 13, 11, 10, 8, 7, 5, 4, 2, 1), vitals, intake findings, clinical notes, and 3 guideline citations (ACC/AHA cholesterol, USPSTF colorectal, hypertension follow-up) |
+| Source review overlay | Clicked `document:clinical_document_facts/10` and `/16` → modal rendered citation metadata and quoted fact text ("LDL Cholesterol 158 mg/dL"). PDF page-image area is a CSS-grid placeholder; actual PDF embed is future work |
+| Document deletion + retraction | Deleted 4 documents via Documents tab. Re-asked same question: response dropped from 12 to 2 document-fact citations, confirming `PatientDocumentFactsEvidenceTool.php:87` filter on `d.deleted = 0` plus `f.retracted_at IS NULL` and `j.retracted_at IS NULL` gates |
+
+---
+
 ## Review Checkpoint
 
 - [x] One command exists for public app and readiness health checks.

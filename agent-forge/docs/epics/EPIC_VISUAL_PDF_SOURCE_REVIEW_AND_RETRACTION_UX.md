@@ -2,7 +2,7 @@
 
 Status: Completed.
 
-Last docs/proof update: 2026-05-06.
+Last docs/proof update: 2026-05-07.
 
 ## Scope
 
@@ -91,7 +91,7 @@ Eval artifacts:
 | Deterministic no-bounding-box fallback to exact page and quote/value | Implemented in the JSON service and chart-panel fallback; covered by focused tests |
 | Deleted/deactivated document facts excluded from evidence | Implemented in source-review gate and evidence SQL; clinical document gate passed |
 | Promoted list rows deactivated with `activity = 0` | Implemented in retraction repository; H2 docs now record the policy |
-| Browser proof of visual source review and deletion/retraction UX | Proven on 2026-05-07. Source review endpoint returns valid bounding-box JSON for active document (document 16). Document deletion triggers full retraction cascade (fact deactivated, audit rows written, promoted rows retracted, identity PII scrubbed). Source review returns 404 for deleted document (document 17). Co-Pilot re-query excludes deleted document evidence. |
+| Browser proof of visual source review and deletion/retraction UX | Proven on 2026-05-07 (local browser + deployed VM). Local: source review returns valid JSON for document 16; deletion triggers full retraction cascade (fact deactivated, audit rows, promoted rows retracted, identity PII scrubbed); source review returns 404 for deleted document 17; Co-Pilot re-query excludes deleted evidence. Deployed VM: 12 document-fact citations before deletion → 2 after deleting 4 documents; source review modal renders citation metadata and quoted text for facts 10 and 16. |
 
 ## Remaining Work
 
