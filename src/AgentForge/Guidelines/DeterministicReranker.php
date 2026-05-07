@@ -23,7 +23,7 @@ final class DeterministicReranker implements GuidelineReranker
                 $candidate->chunk->section . ' ' . $candidate->chunk->chunkText,
             );
             $overlap = count(array_intersect($queryTokens, $chunkTokens));
-            $denominator = max(1, count($queryTokens));
+            $denominator = max(1, min(count($queryTokens), count($chunkTokens)));
             $score = ($overlap / $denominator) + ($candidate->sparseScore * 0.2) + ($candidate->denseScore * 0.2);
             $ranked[] = $candidate->withRerankScore(round($score, 6));
         }
