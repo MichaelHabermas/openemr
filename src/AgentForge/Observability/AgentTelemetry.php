@@ -19,6 +19,7 @@ final readonly class AgentTelemetry
      * @param list<string> $skippedChartSections
      * @param list<string> $sourceIds
      * @param array<string, int> $stageTimingsMs
+     * @param list<ModelUsageTelemetry> $modelCalls
      */
     public function __construct(
         public string $questionType,
@@ -35,6 +36,7 @@ final readonly class AgentTelemetry
         public string $selectorMode = 'deterministic',
         public string $selectorResult = 'fallback_not_needed',
         public ?string $selectorFallbackReason = null,
+        public array $modelCalls = [],
     ) {
     }
 
@@ -53,7 +55,8 @@ final readonly class AgentTelemetry
      *     stage_timings_ms: array<string, int>,
      *     selector_mode: string,
      *     selector_result: string,
-     *     selector_fallback_reason: ?string
+     *     selector_fallback_reason: ?string,
+     *     model_calls: list<array<string, mixed>>
      * }
      */
     public function toContext(): array
@@ -73,6 +76,10 @@ final readonly class AgentTelemetry
             'selector_mode' => $this->selectorMode,
             'selector_result' => $this->selectorResult,
             'selector_fallback_reason' => $this->selectorFallbackReason,
+            'model_calls' => array_map(
+                static fn (ModelUsageTelemetry $call): array => $call->toContext(),
+                $this->modelCalls,
+            ),
         ];
     }
 
@@ -94,6 +101,7 @@ final readonly class AgentTelemetry
             $this->selectorMode,
             $this->selectorResult,
             $this->selectorFallbackReason,
+            $this->modelCalls,
         );
     }
 
@@ -114,6 +122,7 @@ final readonly class AgentTelemetry
             $selectorMode,
             $selectorResult,
             $selectorFallbackReason,
+            $this->modelCalls,
         );
     }
 

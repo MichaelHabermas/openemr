@@ -228,15 +228,8 @@ Operations, cost, and evaluation:
 
 Key implementation and proof records:
 
-- [agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md](agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md)
-- [agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md](agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md)
-- [agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md](agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md)
-- [agent-forge/docs/epics/EPIC_COST_ANALYSIS_SCALE_TIERS.md](agent-forge/docs/epics/EPIC_COST_ANALYSIS_SCALE_TIERS.md)
-- [agent-forge/docs/epics/EPIC_EVALUATION_HONESTY.md](agent-forge/docs/epics/EPIC_EVALUATION_HONESTY.md)
-- [agent-forge/docs/epics/EPIC_CONVERSATION_SCOPE_AND_CITATION_SURFACING.md](agent-forge/docs/epics/EPIC_CONVERSATION_SCOPE_AND_CITATION_SURFACING.md)
-- [agent-forge/docs/epics/EPIC_MEDICATION_AUTH_INDEX_REMEDIATION.md](agent-forge/docs/epics/EPIC_MEDICATION_AUTH_INDEX_REMEDIATION.md)
-- [agent-forge/docs/epics/EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md](agent-forge/docs/epics/EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md)
-- [agent-forge/docs/epics/EPIC_REVIEWER_ENTRY_POINT_SUBMISSION_MAP.md](agent-forge/docs/epics/EPIC_REVIEWER_ENTRY_POINT_SUBMISSION_MAP.md)
+- [agent-forge/docs/epics/COMPLETED_EPICS_LOG.md](agent-forge/docs/epics/COMPLETED_EPICS_LOG.md)
+- [agent-forge/docs/epics/DECISIONS.md](agent-forge/docs/epics/DECISIONS.md)
 
 ## Implemented Proof Summary
 
@@ -252,7 +245,8 @@ Current implemented proof is demo-grade and deterministic-regression-grade, not 
 
 Primary proof references:
 
-- [agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md](agent-forge/docs/epics/EPIC_OBSERVABILITY_COST_EVAL.md)
+- [agent-forge/docs/epics/COMPLETED_EPICS_LOG.md](agent-forge/docs/epics/COMPLETED_EPICS_LOG.md)
+- [agent-forge/docs/epics/DECISIONS.md](agent-forge/docs/epics/DECISIONS.md)
 - [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
 - [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)
 - [agent-forge/docs/evaluation/EVALUATION-TIERS.md](agent-forge/docs/evaluation/EVALUATION-TIERS.md)

@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Llm\AbstractLlmProvider;
 use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
+use OpenEMR\AgentForge\Llm\TokenCostEstimator;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 
@@ -246,7 +247,12 @@ final readonly class OpenAiDraftProvider extends AbstractLlmProvider implements 
             $this->model,
             $inputTokens,
             $outputTokens,
-            $this->estimatedCost($inputTokens, $outputTokens),
+            TokenCostEstimator::estimate(
+                $inputTokens,
+                $outputTokens,
+                $this->inputCostPerMillionTokens,
+                $this->outputCostPerMillionTokens,
+            ),
         );
     }
 
@@ -259,13 +265,4 @@ final readonly class OpenAiDraftProvider extends AbstractLlmProvider implements 
         return $usage[$key];
     }
 
-    private function estimatedCost(int $inputTokens, int $outputTokens): ?float
-    {
-        if ($this->inputCostPerMillionTokens === null || $this->outputCostPerMillionTokens === null) {
-            return null;
-        }
-
-        return (($inputTokens / 1_000_000) * $this->inputCostPerMillionTokens)
-            + (($outputTokens / 1_000_000) * $this->outputCostPerMillionTokens);
-    }
 }

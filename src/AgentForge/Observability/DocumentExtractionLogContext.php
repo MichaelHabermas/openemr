@@ -20,6 +20,7 @@ final class DocumentExtractionLogContext
 {
     /**
      * @param array{verified: int, document_fact: int, needs_review: int} $factCounts
+     * @param array<string, int> $stageTimingsMs
      *
      * @return array<string, mixed>
      */
@@ -29,6 +30,7 @@ final class DocumentExtractionLogContext
         ExtractionProviderResponse $response,
         PatientRefHasher $patientRefHasher,
         array $factCounts,
+        array $stageTimingsMs = [],
     ): array {
         return SensitiveLogPolicy::sanitizeContext([
             'worker' => $nodeName->value,
@@ -44,7 +46,11 @@ final class DocumentExtractionLogContext
             'fact_count_verified' => $factCounts['verified'],
             'fact_count_document_fact' => $factCounts['document_fact'],
             'fact_count_needs_review' => $factCounts['needs_review'],
+            'facts_extracted_count' => array_sum($factCounts),
+            'facts_promoted_count' => $factCounts['verified'],
+            'facts_needing_review_count' => $factCounts['needs_review'],
             'schema_valid' => $response->schemaValid,
+            'stage_timings_ms' => $stageTimingsMs,
             'status' => 'succeeded',
         ]);
     }

@@ -273,7 +273,7 @@ Single demo patient, `pid=900001`. The eval suite tests safety with fixtures, bu
 
 ### 3.4 Deployment
 
-[../epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md](../epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md), [../../scripts/deploy-vm.sh](../../scripts/deploy-vm.sh), [../../scripts/rollback-vm.sh](../../scripts/rollback-vm.sh).
+[../../scripts/deploy-vm.sh](../../scripts/deploy-vm.sh), [../../scripts/rollback-vm.sh](../../scripts/rollback-vm.sh), and the deployed smoke artifacts under `agent-forge/eval-results/`.
 
 **Strength:** Real deploy + real rollback, with captured transcripts and a 200 health check. Cloudflare TLS termination. Honest documentation of MariaDB first-init fragility. This is *the* part of the submission where the team most clearly went past the minimum bar.
 

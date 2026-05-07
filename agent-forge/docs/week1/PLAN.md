@@ -40,7 +40,7 @@ Track B - deployment proof:
 
 - Verify public app URL and readiness endpoint.
 - Verify VM branch, remote, compose command, Docker permissions, TLS termination, environment variables, and volume safety.
-- Record a **git rollback target** before taking the stack offline (e.g. pre-deploy commit printed by `deploy-vm.sh`, or explicit commit for `rollback-vm.sh`). This is **not** a database or Docker volume snapshot — recovery of demo DB state is by re-seed; see `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`.
+- Record a **git rollback target** before taking the stack offline (e.g. pre-deploy commit printed by `deploy-vm.sh`, or explicit commit for `rollback-vm.sh`). This is **not** a database or Docker volume snapshot — recovery of demo DB state is by re-seed.
 
 Track C - agent skeleton:
 
@@ -164,7 +164,7 @@ Verified facts (no longer unknown):
 - Deploy user runs `docker compose` without sudo.
 - Repo path on the VM: `~/repos/openemr`.
 - Compose directory: `docker/development-easy/`.
-- Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script. See `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md` → "Known VM Bootstrap Fragility".
+- Volume behavior: preserved across deploys (`docker compose down`, no `-v`) due to MariaDB first-init fragility on the demo VM; fake data is re-seeded by the idempotent seed script.
 - LLM provider/model for the current AgentForge path: OpenAI `gpt-4o-mini` via server-side `AGENTFORGE_DRAFT_PROVIDER=openai` and `AGENTFORGE_OPENAI_API_KEY`.
 - Structured-output support: `gpt-4o-mini` supports structured outputs and is called from the server-side OpenAI draft provider.
 - Pricing source for `gpt-4o-mini`: OpenAI model documentation records $0.15 input and $0.60 output per 1M text tokens. See `operations/COST-ANALYSIS.md`.
@@ -298,7 +298,7 @@ Human verification:
 
 ## Epic 2 - Deployment And Runtime Proof
 
-Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`; code rollback is implemented as code reset plus fake-data re-seed, while point-in-time database rollback is intentionally not provided.
+Status: Complete. Code rollback is implemented as code reset plus fake-data re-seed, while point-in-time database rollback is intentionally not provided.
 
 Goal: prove the app is reachable and the deployment process is repeatable without destructive unverified premises.
 
@@ -356,7 +356,7 @@ Human verification:
 
 Status: Complete. Deploy transcript was captured on 2026-04-30.
 
-Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM (see "Known VM Bootstrap Fragility" in `epics/EPIC2-DEPLOYMENT-RUNTIME-PROOF.md`).
+Why: repeated submissions need a reliable way to update the public deployment. This is a fake-data demo, so demo state is restored on every deploy via an idempotent seed. Volumes are preserved because the upstream MariaDB image's first-init is fragile on the demo VM.
 
 Start with eval/test:
 
@@ -408,7 +408,7 @@ Human verification:
 
 ## Epic 3 - Demo Data And Eval Ground Truth
 
-Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_DEMO_DATA.md` and `agent-forge/docs/epics/EPIC3-DEMO-DATA-AND-EVAL-GROUND-TRUTH.md`.
+Status: Complete. Demo data and eval ground truth are recorded in the fixtures, eval artifacts, and surviving epic index docs.
 
 Goal: create fake patient facts that support demos and evals without using real PHI.
 
@@ -895,7 +895,7 @@ Goal: make behavior measurable from the beginning.
 
 #### Task 7.1.1 - Define Log Contract Tests
 
-Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in the surviving epic index docs and operations/eval artifacts.
 
 Why: `SPECS.txt` requires real observability: request order, step latency, tool failures, tokens, and cost.
 
@@ -920,7 +920,7 @@ Human verification:
 
 #### Task 7.1.2 - Add Token And Cost Tracking
 
-Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md` and `operations/COST-ANALYSIS.md`.
+Status: complete locally. Detailed proof is in `operations/COST-ANALYSIS.md` and eval artifacts.
 
 Why: `SPECS.txt` requires cost analysis and observability.
 
@@ -948,7 +948,7 @@ Human verification:
 
 #### Task 7.2.1 - Create Eval Cases Before Final Agent Behavior
 
-Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in the surviving epic index docs and eval artifacts.
 
 Why: evals must drive implementation, not describe it afterward.
 
@@ -978,7 +978,7 @@ Human verification:
 
 #### Task 7.2.2 - Run Evals And Save Results
 
-Status: complete locally. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete locally. Detailed proof is in the surviving epic index docs and eval artifacts.
 
 Why: final submission requires eval dataset with results.
 
@@ -1004,7 +1004,7 @@ Human verification:
 
 #### Task 7.2.3 - Add End-To-End Smoke Test
 
-Status: complete for local and VM browser. Detailed proof is in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+Status: complete for local and VM browser. Detailed proof is in deployed smoke and eval artifacts.
 
 Why: isolated tests do not prove the full clinical path works.
 
@@ -1025,7 +1025,7 @@ Definition of done:
 Human verification:
 
 - A reviewer can run or follow one smoke path and see the whole chain work.
-- Local proof recorded: admin opened fake patient `900001` and verified A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, visit briefing medication completeness, cross-patient refusal, and sensitive structured log payload inspection. Detailed request IDs, latencies, and telemetry are recorded in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+- Local proof recorded: admin opened fake patient `900001` and verified A1c trend, known missing microalbumin, clinical-advice refusal, active medications, last plan, visit briefing medication completeness, cross-patient refusal, and sensitive structured log payload inspection. Request IDs, latencies, and telemetry are recorded in eval and deployed-smoke artifacts.
 - VM proof recorded: admin opened fake patient `900001` on the public VM, asked `Show me the recent A1c trend.`, received a scoped A1c answer, and inspected the sanitized `agent_forge_request` log with `verifier_result=passed`.
 
 ## Instructor Review Remediation Backlog
@@ -1127,7 +1127,7 @@ Human verification:
 
 ## Epic 9 - Cost Analysis Rewrite And Scale-Tier Architecture
 
-Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_COST_ANALYSIS_SCALE_TIERS.md` and `agent-forge/docs/operations/COST-ANALYSIS.md`.
+Status: Complete. Evidence is recorded in `agent-forge/docs/operations/COST-ANALYSIS.md`.
 
 Goal: replace request-scale token math with a reviewer-grade cost analysis for 100, 1K, 10K, and 100K users, including architecture changes and non-token assumptions.
 
@@ -1381,7 +1381,7 @@ Human verification:
 
 #### Task 11.2.1 - Surface Citation Payloads In The Chart Panel
 
-Status: Complete. Local and deployed browser verification are recorded in `agent-forge/docs/epics/EPIC_CONVERSATION_SCOPE_AND_CITATION_SURFACING.md`.
+Status: Complete. Local and deployed browser verification are recorded in eval and deployed-smoke artifacts.
 
 Why: `SPECS.txt` requires source attribution, and reviews note that `payload.citations` exists but is not reliably rendered in the UI.
 
@@ -1492,11 +1492,11 @@ Human verification:
 - Local proof recorded: `ChartQuestionPlannerTest`, `ChartEvidenceCollectorTest`, `VerifiedAgentHandlerTest`, and `RequestLogTest` cover medication, prescription, lab, last-plan, visit-briefing, unsafe-refusal, current-chart scope refusal, and `skipped_chart_sections` telemetry. `agent-forge/scripts/check-local.sh` passed after the routing change, including isolated PHPUnit, deterministic evals, focused PHPStan, and PHPCS.
 - Local browser/log proof recorded: A1c question logged `question_type=lab`, `tools_called=["Recent labs"]`, skipped unrelated sections, A1c source IDs, token/cost telemetry, and `verifier_result=passed`. Medication question returned active medication names and prescription source IDs, then logged `question_type=medication`, `tools_called=["Active medications"]`, skipped unrelated chart sections, medication source IDs, and `verifier_result=passed`. Clinical-advice and cross-patient questions refused before tools with `model=not_run`.
 - Previous deployed browser/log proof recorded after OpenEMR container recreation cleared stale runtime code: A1c log `request_id=37667cff-a97b-4fef-8259-492a2391c64e` used only `Recent labs`; medication log `request_id=1a758ecd-4612-42ff-b11f-1a5696a85d99` used only the then-current active-prescription path; missing microalbumin log `request_id=50fa82b6-559b-4ce5-8c6c-ebd4bada7a9e` used bounded `Recent labs`; clinical-advice refusal log `request_id=fadf7901-64d5-4068-ab92-052ad9c06cf3` and the then-current ambiguous-refusal case log `request_id=635cc0b7-29bb-4057-a5ac-ff864adff400` used no tools and no model.
-- Current deployed browser/log proof recorded: visit briefing returned direct active-medication lines and medication citations with `request_id=a3a9b3d1-8658-41d1-961c-06f18eacc0a0`; cross-patient request refused before tools/model with `request_id=de266feb-50ec-44a5-a36a-77d60e03bc28`; A1c, missing microalbumin, clinical-advice refusal, active-medication, and last-plan VM checks passed with request IDs recorded in `epics/EPIC_OBSERVABILITY_COST_EVAL.md`.
+- Current deployed browser/log proof recorded: visit briefing returned direct active-medication lines and medication citations with `request_id=a3a9b3d1-8658-41d1-961c-06f18eacc0a0`; cross-patient request refused before tools/model with `request_id=de266feb-50ec-44a5-a36a-77d60e03bc28`; A1c, missing microalbumin, clinical-advice refusal, active-medication, and last-plan VM checks passed with request IDs recorded in deployed-smoke artifacts.
 
 ## Epic 13 - Medication, Authorization, And Data/Index Remediation
 
-Status: Complete. Evidence is recorded in `agent-forge/docs/epics/EPIC_MEDICATION_AUTH_INDEX_REMEDIATION.md`; broader production authorization and actual index migrations remain explicitly deferred.
+Status: Complete. Broader production authorization and actual index migrations remain explicitly deferred.
 
 Goal: close known data-model and access-control gaps identified by the audit and reviews before expanding beyond the demo path.
 
@@ -1637,7 +1637,7 @@ Human verification:
 Implementation status:
 
 - Docs now describe AgentForge logs as PHI-minimized sensitive audit logs, not de-identified logs.
-- `ARCHITECTURE.md`, `PRD.md`, `AUDIT.md`, `COST-ANALYSIS.md`, and `EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md` document allowed fields, forbidden raw content, and retention/access expectations.
+- `ARCHITECTURE.md`, `PRD.md`, `AUDIT.md`, and `COST-ANALYSIS.md` document allowed fields, forbidden raw content, and retention/access expectations.
 - `ObservabilityLatencyAuditLogDocumentTest` guards against broad PHI-free or de-identified logging claims.
 
 ### Feature 14.2 - Per-Step Timing And Observability Maturity
@@ -1705,7 +1705,7 @@ Implementation status:
 
 ## Epic 15 - Reviewer Entry Point And Submission Map
 
-Status: Complete. The root README points to the existing `AGENTFORGE-REVIEWER-GUIDE.md`, and reviewer navigation proof is captured in `agent-forge/docs/epics/EPIC_REVIEWER_ENTRY_POINT_SUBMISSION_MAP.md`.
+Status: Complete. The root README points to the existing `AGENTFORGE-REVIEWER-GUIDE.md`, and reviewer navigation proof is captured by link-resolution tests.
 
 Goal: give reviewers one working repository-root entry point for the deployed URL, demo path, seed/eval commands, artifact map, implemented proof, and known blockers.
 

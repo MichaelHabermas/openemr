@@ -16,6 +16,7 @@ use DateTimeImmutable;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\PsrRequestLogger;
 use OpenEMR\AgentForge\Observability\RequestLog;
+use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 
@@ -120,6 +121,41 @@ final class RequestLogTest extends TestCase
         $this->assertSame('agent_forge_request', $logger->records[0]['message']);
         $this->assertSame('refused_bad_csrf', $logger->records[0]['context']['decision']);
         $this->assertArrayNotHasKey('question', $logger->records[0]['context']);
+    }
+
+    public function testPsrRequestLoggerDoesNotEmitNestedForbiddenTelemetryKeys(): void
+    {
+        $logger = new RecordingLogger();
+        $entry = new RequestLog(
+            requestId: '7aa9ef18-3227-4c43-9e5e-b8ae3fb8bbcc',
+            userId: 7,
+            patientId: 900001,
+            decision: 'allowed',
+            latencyMs: 42,
+            timestamp: new DateTimeImmutable('2026-04-30T12:00:00+00:00'),
+            telemetry: new AgentTelemetry(
+                questionType: 'lab',
+                toolsCalled: [['name' => 'Recent labs', 'document_text' => 'raw document']],
+                skippedChartSections: [],
+                sourceIds: [['patient_name' => 'Alice Chen', 'source_id' => 'doc:1']],
+                model: 'fixture-draft-provider',
+                inputTokens: 0,
+                outputTokens: 0,
+                estimatedCost: null,
+                failureReason: null,
+                verifierResult: 'passed',
+                stageTimingsMs: ['draft' => 20, 'raw_value' => 'LDL 158'],
+            ),
+        );
+
+        (new PsrRequestLogger($logger))->record($entry);
+
+        $context = $logger->records[0]['context'];
+        $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey($context));
+        $encoded = json_encode($context, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('Alice Chen', $encoded);
+        $this->assertStringNotContainsString('raw document', $encoded);
+        $this->assertStringNotContainsString('LDL 158', $encoded);
     }
 }
 

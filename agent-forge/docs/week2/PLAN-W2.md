@@ -844,7 +844,7 @@ Remaining: deployed VM smoke run producing
 
 ### Epic H4 - Observability, Cost/Latency, And Privacy Hardening
 
-Status: Not started.
+Status: Completed.
 
 Goal: Complete Week 2 cost, latency, and no-PHI proof.
 
@@ -853,7 +853,15 @@ Files/modules:
 - Modify `src/AgentForge/Observability/AgentTelemetry.php`.
 - Modify `src/AgentForge/Observability/SensitiveLogPolicy.php`.
 - Modify `src/AgentForge/Observability/PsrRequestLogger.php`.
+- Add `agent-forge/scripts/render-clinical-document-cost-latency.php`.
 - Maintain `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`.
+
+Implementation note (2026-05-07): H4 hardens recursive telemetry
+sanitization, keeps model cost arithmetic centralized, adds document extraction
+stage timings to sanitized intake-extractor logs, and makes the clinical
+document cost/latency report reproducible from AgentForge proof artifacts. The
+deterministic gate remains local and credential-free; live provider/deployed
+latency proof stays reviewer evidence rather than a required local gate.
 
 Database changes: None unless telemetry is persisted in a W2 table; prefer existing sanitized logs and eval artifacts.
 

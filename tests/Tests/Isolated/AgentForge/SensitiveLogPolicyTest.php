@@ -88,6 +88,32 @@ final class SensitiveLogPolicyTest extends TestCase
         $this->assertArrayNotHasKey('exception', $context);
     }
 
+    public function testSanitizeContextRecursivelyDropsForbiddenNestedKeys(): void
+    {
+        $context = SensitiveLogPolicy::sanitizeContext([
+            'source_ids' => [
+                'document:1',
+                ['patient_name' => 'Alice Chen', 'source_id' => 'document:2'],
+            ],
+            'stage_timings_ms' => [
+                'draft' => 25,
+                'raw_value' => 'LDL 158',
+                'nested' => ['document_text' => 'raw clinical document text', 'verify' => 3],
+            ],
+            'tools_called' => [
+                ['name' => 'Evidence', 'prompt' => 'full prompt must not leak'],
+            ],
+        ]);
+
+        $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey($context));
+        $encoded = json_encode($context, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('Alice Chen', $encoded);
+        $this->assertStringNotContainsString('LDL 158', $encoded);
+        $this->assertStringNotContainsString('raw clinical document text', $encoded);
+        $this->assertStringNotContainsString('full prompt must not leak', $encoded);
+        $this->assertStringContainsString('document:2', $encoded);
+    }
+
     public function testDetectsForbiddenKeysRecursively(): void
     {
         $this->assertTrue(SensitiveLogPolicy::containsForbiddenKey([

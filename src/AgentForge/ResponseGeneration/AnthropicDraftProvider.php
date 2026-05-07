@@ -18,6 +18,7 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Llm\AbstractLlmProvider;
 use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
+use OpenEMR\AgentForge\Llm\TokenCostEstimator;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
 
@@ -26,8 +27,6 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
     private const ANTHROPIC_VERSION = '2023-06-01';
     private const TOOL_NAME = PromptComposer::SCHEMA_NAME;
     private const DEFAULT_MAX_TOKENS = 2048;
-    private const ANTHROPIC_CACHE_WRITE_MULTIPLIER = 1.25;
-    private const ANTHROPIC_CACHE_READ_MULTIPLIER = 0.10;
 
     public function __construct(
         ClientInterface $client,
@@ -337,7 +336,16 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
             $this->model,
             $inputTokens + $cacheCreationTokens + $cacheReadTokens,
             $outputTokens,
-            $this->estimatedCost($inputTokens, $outputTokens, $cacheCreationTokens, $cacheReadTokens),
+            TokenCostEstimator::estimateWithCache(
+                $inputTokens,
+                $outputTokens,
+                $cacheCreationTokens,
+                $cacheReadTokens,
+                $this->inputCostPerMillionTokens,
+                $this->outputCostPerMillionTokens,
+                $this->cacheWriteCostPerMillionTokens,
+                $this->cacheReadCostPerMillionTokens,
+            ),
         );
     }
 
@@ -350,25 +358,4 @@ final readonly class AnthropicDraftProvider extends AbstractLlmProvider implemen
         return $usage[$key];
     }
 
-    private function estimatedCost(
-        int $inputTokens,
-        int $outputTokens,
-        int $cacheCreationTokens,
-        int $cacheReadTokens,
-    ): ?float {
-        if ($this->inputCostPerMillionTokens === null || $this->outputCostPerMillionTokens === null) {
-            return null;
-        }
-
-        $inputRate = $this->inputCostPerMillionTokens;
-        $cacheWriteRate = $this->cacheWriteCostPerMillionTokens
-            ?? ($inputRate * self::ANTHROPIC_CACHE_WRITE_MULTIPLIER);
-        $cacheReadRate = $this->cacheReadCostPerMillionTokens
-            ?? ($inputRate * self::ANTHROPIC_CACHE_READ_MULTIPLIER);
-
-        return (($inputTokens / 1_000_000) * $inputRate)
-            + (($cacheCreationTokens / 1_000_000) * $cacheWriteRate)
-            + (($cacheReadTokens / 1_000_000) * $cacheReadRate)
-            + (($outputTokens / 1_000_000) * $this->outputCostPerMillionTokens);
-    }
 }

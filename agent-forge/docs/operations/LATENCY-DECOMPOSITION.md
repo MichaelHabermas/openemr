@@ -96,7 +96,7 @@ If `verify` is meaningfully larger than expected (unlikely given the bundle size
 
 ## Production-Readiness Caveats
 
-The decomposition above does not satisfy production-readiness on its own. Outstanding obligations restated from [COST-ANALYSIS.md](COST-ANALYSIS.md) and the parent epic `EPIC_OBSERVABILITY_LATENCY_AUDIT_LOGS.md`:
+The decomposition above does not satisfy production-readiness on its own. Outstanding obligations restated from [COST-ANALYSIS.md](COST-ANALYSIS.md):
 
 - p95 latency under the accepted budget across the briefing, lab, medication, missing-data, and refusal request shapes.
 - Stage-timing aggregation, dashboards, SLOs, and alerting backed by a managed log-aggregation system.

@@ -12,8 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Observability;
 
-use OpenEMR\AgentForge\StringKeyedArray;
-
 final class SensitiveLogPolicy
 {
     /** @var array<string, true> */
@@ -69,6 +67,13 @@ final class SensitiveLogPolicy
         'case_id' => true,
         'fact_count' => true,
         'citation_count' => true,
+        'model_calls' => true,
+        'facts_extracted_count' => true,
+        'facts_promoted_count' => true,
+        'facts_needing_review_count' => true,
+        'promoted' => true,
+        'needs_review' => true,
+        'skipped' => true,
     ];
 
     /** @var array<string, true> */
@@ -101,7 +106,24 @@ final class SensitiveLogPolicy
             if (isset(self::FORBIDDEN_KEYS[$key]) || !isset(self::ALLOWED_KEYS[$key])) {
                 continue;
             }
-            $sanitized[$key] = $value;
+            $sanitized[$key] = self::sanitizeValue($value);
+        }
+
+        return $sanitized;
+    }
+
+    private static function sanitizeValue(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $sanitized = [];
+        foreach ($value as $key => $nestedValue) {
+            if (is_string($key) && isset(self::FORBIDDEN_KEYS[$key])) {
+                continue;
+            }
+            $sanitized[$key] = self::sanitizeValue($nestedValue);
         }
 
         return $sanitized;
@@ -118,14 +140,14 @@ final class SensitiveLogPolicy
         return self::sanitizeContext(array_merge($extra, ['error_code' => $e::class]));
     }
 
-    /** @param array<string, mixed> $context */
+    /** @param array<mixed> $context */
     public static function containsForbiddenKey(array $context): bool
     {
         foreach ($context as $key => $value) {
             if (isset(self::FORBIDDEN_KEYS[$key])) {
                 return true;
             }
-            if (is_array($value) && self::containsForbiddenKey(StringKeyedArray::filter($value))) {
+            if (is_array($value) && self::containsForbiddenKey($value)) {
                 return true;
             }
         }

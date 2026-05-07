@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Document\ExtractionErrorCode;
 use OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\Llm\LlmCredentialGuard;
+use OpenEMR\AgentForge\Llm\TokenCostEstimator;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use Psr\Http\Message\ResponseInterface;
 use SensitiveParameter;
@@ -254,7 +255,12 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
             $this->model,
             $inputTokens,
             $outputTokens,
-            $this->estimatedCost($inputTokens, $outputTokens),
+            TokenCostEstimator::estimate(
+                $inputTokens,
+                $outputTokens,
+                $this->inputCostPerMillionTokens,
+                $this->outputCostPerMillionTokens,
+            ),
         );
     }
 
@@ -267,13 +273,4 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         return $usage[$key];
     }
 
-    private function estimatedCost(int $inputTokens, int $outputTokens): ?float
-    {
-        if ($this->inputCostPerMillionTokens === null || $this->outputCostPerMillionTokens === null) {
-            return null;
-        }
-
-        return (($inputTokens / 1_000_000) * $this->inputCostPerMillionTokens)
-            + (($outputTokens / 1_000_000) * $this->outputCostPerMillionTokens);
-    }
 }

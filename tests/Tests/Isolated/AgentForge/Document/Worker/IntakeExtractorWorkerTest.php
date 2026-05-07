@@ -39,6 +39,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
     use OpenEMR\AgentForge\StringKeyedArray;
     use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
+    use OpenEMR\Tests\Isolated\AgentForge\Support\TickingMonotonicClock;
     use PHPUnit\Framework\TestCase;
     use Psr\Log\AbstractLogger;
     use Stringable;
@@ -53,7 +54,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new IntakeWorkerStaticProvider(self::strictLabResponse(withIdentity: true)),
                 new CertaintyClassifier(),
                 $logger,
-                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                new TickingMonotonicClock([1_000, 1_007, 1_010, 1_012, 1_020, 1_025, 1_030, 1_034, 1_040, 1_041, 1_050, 1_051]),
                 $hasher,
                 patientIdentities: new IntakeWorkerPatientIdentityRepository(),
                 identityChecks: new IntakeWorkerIdentityCheckRepository(),
@@ -74,6 +75,14 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame(1, $record['context']['fact_count_document_fact']);
             $this->assertSame(1, $record['context']['fact_count_needs_review']);
             $this->assertTrue($record['context']['schema_valid']);
+            $this->assertSame([
+                'extraction:model_request' => 10,
+                'extraction:parse_response' => 8,
+                'identity:verify' => 5,
+                'facts:classify' => 6,
+                'facts:promote' => 9,
+                'worker:finish' => 0,
+            ], $record['context']['stage_timings_ms']);
             $context = StringKeyedArray::filter($record['context']);
             $this->assertSame($context, SensitiveLogPolicy::sanitizeContext($context));
             $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey($context));
