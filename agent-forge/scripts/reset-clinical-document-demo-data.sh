@@ -54,6 +54,33 @@ FROM clinical_document_processing_jobs j
 WHERE j.patient_id = ${DEMO_PID}
    OR j.document_id IN (SELECT id FROM tmp_agentforge_demo_documents);
 
+CREATE TEMPORARY TABLE tmp_agentforge_demo_promoted_results AS
+SELECT DISTINCT CAST(p.promoted_record_id AS UNSIGNED) AS procedure_result_id
+FROM clinical_document_promotions p
+WHERE p.patient_id = ${DEMO_PID}
+  AND p.promoted_table = 'procedure_result'
+  AND p.promoted_record_id REGEXP '^[0-9]+$'
+UNION
+SELECT DISTINCT pr.procedure_result_id
+FROM procedure_result pr
+INNER JOIN procedure_report rep ON rep.procedure_report_id = pr.procedure_report_id
+INNER JOIN procedure_order po ON po.procedure_order_id = rep.procedure_order_id
+WHERE po.patient_id = ${DEMO_PID}
+  AND (
+    pr.document_id IN (SELECT id FROM tmp_agentforge_demo_documents)
+    OR pr.comments LIKE 'agentforge-fact:%'
+  );
+
+CREATE TEMPORARY TABLE tmp_agentforge_demo_reports AS
+SELECT DISTINCT pr.procedure_report_id
+FROM procedure_result pr
+WHERE pr.procedure_result_id IN (SELECT procedure_result_id FROM tmp_agentforge_demo_promoted_results);
+
+CREATE TEMPORARY TABLE tmp_agentforge_demo_orders AS
+SELECT DISTINCT rep.procedure_order_id
+FROM procedure_report rep
+WHERE rep.procedure_report_id IN (SELECT procedure_report_id FROM tmp_agentforge_demo_reports);
+
 SELECT 'documents_to_reset' AS item, COUNT(*) AS count
 FROM tmp_agentforge_demo_documents
 UNION ALL
@@ -73,6 +100,15 @@ WHERE job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
      patient_id = ${DEMO_PID}
      AND document_id IN (SELECT id FROM tmp_agentforge_demo_documents)
    )
+UNION ALL
+SELECT 'promotions_to_reset' AS item, COUNT(*) AS count
+FROM clinical_document_promotions
+WHERE patient_id = ${DEMO_PID}
+   OR job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
+   OR document_id IN (SELECT id FROM tmp_agentforge_demo_documents)
+UNION ALL
+SELECT 'promoted_lab_results_to_reset' AS item, COUNT(*) AS count
+FROM tmp_agentforge_demo_promoted_results
 UNION ALL
 SELECT 'handoffs_to_reset' AS item, COUNT(*) AS count
 FROM clinical_supervisor_handoffs
@@ -96,6 +132,33 @@ DELETE FROM clinical_document_facts
 WHERE patient_id = ${DEMO_PID}
    OR job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
    OR document_id IN (SELECT id FROM tmp_agentforge_demo_documents);
+
+DELETE FROM clinical_document_promotions
+WHERE patient_id = ${DEMO_PID}
+   OR job_id IN (SELECT id FROM tmp_agentforge_demo_jobs)
+   OR document_id IN (SELECT id FROM tmp_agentforge_demo_documents);
+
+DELETE FROM procedure_result
+WHERE procedure_result_id IN (SELECT procedure_result_id FROM tmp_agentforge_demo_promoted_results);
+
+DELETE FROM procedure_report
+WHERE procedure_report_id IN (SELECT procedure_report_id FROM tmp_agentforge_demo_reports)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM procedure_result pr
+    WHERE pr.procedure_report_id = procedure_report.procedure_report_id
+  );
+
+DELETE FROM procedure_order_code
+WHERE procedure_order_id IN (SELECT procedure_order_id FROM tmp_agentforge_demo_orders);
+
+DELETE FROM procedure_order
+WHERE procedure_order_id IN (SELECT procedure_order_id FROM tmp_agentforge_demo_orders)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM procedure_report rep
+    WHERE rep.procedure_order_id = procedure_order.procedure_order_id
+  );
 
 DELETE FROM clinical_document_processing_jobs
 WHERE id IN (SELECT id FROM tmp_agentforge_demo_jobs);

@@ -37,7 +37,7 @@
   "results": [
     {
       "test_name": "LDL Cholesterol",
-      "value": "158 mg/dL",
+      "value": "158",
       "unit": "mg/dL",
       "reference_range": "<100 mg/dL",
       "collected_at": "2026-04-22",

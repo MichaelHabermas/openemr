@@ -53,10 +53,16 @@ final readonly class LabResultRow
             throw new ExtractionSchemaException(SchemaReader::join($path, 'certainty'), 'Expected supported certainty.');
         }
 
+        $value = SchemaReader::requiredString($data, 'value', $path);
+        $unit = SchemaReader::requiredString($data, 'unit', $path);
+        if ($unit !== '' && preg_match('/^(.+?)\s+' . preg_quote($unit, '/') . '$/i', $value, $matches) === 1) {
+            $value = trim($matches[1]);
+        }
+
         return new self(
             SchemaReader::requiredString($data, 'test_name', $path),
-            SchemaReader::requiredString($data, 'value', $path),
-            SchemaReader::requiredString($data, 'unit', $path),
+            $value,
+            $unit,
             SchemaReader::requiredString($data, 'reference_range', $path),
             SchemaReader::requiredString($data, 'collected_at', $path),
             $abnormalFlag,

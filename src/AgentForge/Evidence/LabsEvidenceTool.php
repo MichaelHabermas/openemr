@@ -47,6 +47,10 @@ final readonly class LabsEvidenceTool implements ChartEvidenceTool
             );
         }
 
+        if ($items === []) {
+            return EvidenceResult::missing($this->section(), 'Structured chart labs not found in the chart.');
+        }
+
         return EvidenceResult::found($this->section(), $items);
     }
 

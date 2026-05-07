@@ -35,6 +35,25 @@
   ],
   "findings": [
     {
+      "field": "demographics",
+      "value": "Sex assigned at birth: Female; gender identity: Female; race: Asian; ethnicity: Not Hispanic or Latino; preferred language: English.",
+      "certainty": "document_fact",
+      "confidence": 0.95,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 1",
+        "field_or_chunk_id": "demographics",
+        "quote_or_value": "SEX ASSIGNED AT BIRTH Female; GENDER IDENTITY Female; RACE Asian; ETHNICITY Not Hispanic or Latino; PREFERRED LANGUAGE English",
+        "bounding_box": {
+          "x": 0.070,
+          "y": 0.230,
+          "width": 0.800,
+          "height": 0.170
+        }
+      }
+    },
+    {
       "field": "chief_concern",
       "value": "Tired during the day, mild chest tightness when walking uphill the past 3 weeks.",
       "certainty": "document_fact",
@@ -50,6 +69,63 @@
           "y": 0.802,
           "width": 0.497,
           "height": 0.043
+        }
+      }
+    },
+    {
+      "field": "current_medications",
+      "value": "Lisinopril 10 mg PO daily; Metformin 500 mg PO twice daily; Atorvastatin 20 mg PO at bedtime; Aspirin 81 mg PO daily with food.",
+      "certainty": "document_fact",
+      "confidence": 0.95,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 2",
+        "field_or_chunk_id": "current_medications",
+        "quote_or_value": "Lisinopril 10 mg PO daily; Metformin 500 mg PO twice daily; Atorvastatin 20 mg PO at bedtime; Aspirin (baby) 81 mg PO daily, with food",
+        "bounding_box": {
+          "x": 0.080,
+          "y": 0.070,
+          "width": 0.820,
+          "height": 0.200
+        }
+      }
+    },
+    {
+      "field": "allergies",
+      "value": "Penicillin: hives all over body, moderate; Sulfa drugs: rash, mild.",
+      "certainty": "document_fact",
+      "confidence": 0.93,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 2",
+        "field_or_chunk_id": "allergies",
+        "quote_or_value": "Penicillin Hives all over body Moderate; Sulfa drugs Rash Mild",
+        "bounding_box": {
+          "x": 0.080,
+          "y": 0.270,
+          "width": 0.820,
+          "height": 0.110
+        }
+      }
+    },
+    {
+      "field": "family_history",
+      "value": "Father: myocardial infarction at 61; Mother: type 2 diabetes at 55; Brother: essential hypertension at 50.",
+      "certainty": "document_fact",
+      "confidence": 0.94,
+      "citation": {
+        "source_type": "intake_form",
+        "source_id": "sha256:43062e2c49b0beaa3efcba0d247f9a4916d968cd23289a1dd336cc20d8c134e4",
+        "page_or_section": "page 2",
+        "field_or_chunk_id": "family_history",
+        "quote_or_value": "Father Myocardial infarction 61; Mother Type 2 diabetes mellitus 55; Brother Essential hypertension 50",
+        "bounding_box": {
+          "x": 0.080,
+          "y": 0.410,
+          "width": 0.820,
+          "height": 0.150
         }
       }
     },

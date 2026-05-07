@@ -31,12 +31,26 @@ final class LabPdfExtractionTest extends TestCase
         $this->assertSame('Acme Reference Lab', $extraction->labName);
         $this->assertCount(1, $extraction->results);
         $this->assertSame('Potassium', $extraction->results[0]->testName);
+        $this->assertSame('5.4', $extraction->results[0]->value);
+        $this->assertSame('mmol/L', $extraction->results[0]->unit);
         $this->assertSame(AbnormalFlag::High, $extraction->results[0]->abnormalFlag);
         $this->assertSame('2026-05-01', $extraction->results[0]->collectedAt);
         $this->assertSame(Certainty::Verified, $extraction->results[0]->certainty);
         $this->assertSame(DocumentSourceType::LabPdf, $extraction->results[0]->citation->sourceType);
         $this->assertNotNull($extraction->results[0]->citation->boundingBox);
         $this->assertSame(0.10, $extraction->results[0]->citation->boundingBox->x);
+    }
+
+    public function testValueUnitPairIsNormalizedWhenModelIncludesUnitInValue(): void
+    {
+        $payload = $this->validPayload();
+        $payload['results'][0]['value'] = '5.4 mmol/L';
+        $payload['results'][0]['unit'] = 'mmol/L';
+
+        $extraction = LabPdfExtraction::fromArray($payload);
+
+        $this->assertSame('5.4', $extraction->results[0]->value);
+        $this->assertSame('mmol/L', $extraction->results[0]->unit);
     }
 
     /**

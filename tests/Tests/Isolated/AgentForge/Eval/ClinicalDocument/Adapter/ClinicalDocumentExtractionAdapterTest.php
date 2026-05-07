@@ -66,7 +66,16 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertSame('extraction_completed', $output->status);
         $this->assertSame([], $output->promotions);
         $documentFacts = $output->documentFacts;
-        $this->assertCount(2, $documentFacts);
+        $this->assertCount(6, $documentFacts);
+        $fields = array_values(array_unique(array_map(
+            static fn (array $fact): string => (string) ($fact['field_path'] ?? ''),
+            $documentFacts,
+        )));
+        sort($fields);
+        $this->assertSame(
+            ['allergies', 'chief_concern', 'current_medications', 'demographics', 'family_history', 'needs_review[0]'],
+            $fields,
+        );
         $fact = null;
         foreach ($documentFacts as $candidate) {
             if (($candidate['field_path'] ?? null) === 'chief_concern') {

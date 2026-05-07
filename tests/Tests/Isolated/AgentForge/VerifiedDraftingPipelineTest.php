@@ -226,6 +226,8 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertStringContainsString('chief concern: follow-up for cholesterol management', $result->response->answer);
         $this->assertStringContainsString('LDL Cholesterol: 148 mg/dL', $result->response->answer);
         $this->assertStringContainsString('LDL 130 Follow-Up', $result->response->answer);
+        $this->assertSame('Patient Findings', $result->response->sections[0]['title']);
+        $this->assertSame('Guideline Evidence', $result->response->sections[1]['title']);
         $this->assertContains('document:clinical_document_processing_jobs/22:chief_concern@2026-05-06', $result->response->citations);
         $this->assertContains('document:clinical_document_processing_jobs/21:results[0]@2026-04-01', $result->response->citations);
         $this->assertContains('guideline:ACC/AHA Cholesterol Demo Excerpt - LDL Follow-Up/acc-aha-ldl-follow-up-01-ldl-130-follow-up', $result->response->citations);
@@ -250,6 +252,10 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $reviewLine = 'Needs human review; not used for reasoning: Needs review: intake finding: shellfish?? maybe iodine itchy?; Citation: intake_form, page 2, needs_review[0]';
         $this->assertStringNotContainsString('shellfish?? maybe iodine itchy?', $result->response->answer);
         $this->assertContains($reviewLine, $result->response->missingOrUncheckedSections);
+        $this->assertSame('Patient Findings', $result->response->sections[0]['title']);
+        $this->assertSame('Needs Human Review', $result->response->sections[1]['title']);
+        $this->assertSame('Guideline Evidence', $result->response->sections[2]['title']);
+        $this->assertStringContainsString($reviewLine, $result->response->sections[1]['content']);
         $this->assertContains('document_review:clinical_document_facts/42@2026-05-06', $result->response->citations);
     }
 

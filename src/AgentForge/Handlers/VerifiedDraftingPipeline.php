@@ -443,7 +443,7 @@ final readonly class VerifiedDraftingPipeline
             $missingOrUnchecked,
             $result->refusalsOrWarnings,
             null,
-            $this->sectionsFor($questionType, $lines, $missingOrUnchecked),
+            $this->sectionsFor($questionType, $lines, $missingOrUnchecked, $bundle),
             $this->citationDetails($bundle, $citations),
         );
     }
@@ -472,9 +472,13 @@ final readonly class VerifiedDraftingPipeline
      * @param list<string> $missingOrUnchecked
      * @return list<array{title: string, content: string}>
      */
-    private function sectionsFor(string $questionType, array $lines, array $missingOrUnchecked): array
+    private function sectionsFor(string $questionType, array $lines, array $missingOrUnchecked, EvidenceBundle $bundle): array
     {
         $sections = [];
+        if ($questionType === 'follow_up_change_review') {
+            return $this->followUpSections($lines, $missingOrUnchecked, $bundle);
+        }
+
         if ($lines !== []) {
             $sections[] = [
                 'title' => $this->sectionTitle($questionType),
@@ -483,12 +487,75 @@ final readonly class VerifiedDraftingPipeline
         }
         if ($missingOrUnchecked !== []) {
             $sections[] = [
-                'title' => 'Missing or unchecked',
+                'title' => 'Missing or Not Found',
                 'content' => implode("\n", $missingOrUnchecked),
             ];
         }
 
         return $sections;
+    }
+
+    /**
+     * @param list<string> $lines
+     * @param list<string> $missingOrUnchecked
+     * @return list<array{title: string, content: string}>
+     */
+    private function followUpSections(array $lines, array $missingOrUnchecked, EvidenceBundle $bundle): array
+    {
+        $guidelineLabels = [];
+        foreach ($bundle->items as $item) {
+            if ($item->sourceType === 'guideline') {
+                $guidelineLabels[] = $item->displayLabel . ':';
+            }
+        }
+
+        $patientLines = [];
+        $guidelineLines = [];
+        foreach ($lines as $line) {
+            if (str_contains($line, 'guideline:') || $this->startsWithAny($line, $guidelineLabels)) {
+                $guidelineLines[] = $line;
+                continue;
+            }
+            $patientLines[] = $line;
+        }
+
+        $reviewLines = [];
+        $missingLines = [];
+        foreach ($missingOrUnchecked as $line) {
+            if (str_starts_with($line, 'Needs human review;')) {
+                $reviewLines[] = $line;
+                continue;
+            }
+            $missingLines[] = $line;
+        }
+
+        $sections = [];
+        foreach (
+            [
+                'Patient Findings' => $patientLines,
+                'Needs Human Review' => $reviewLines,
+                'Guideline Evidence' => $guidelineLines,
+                'Missing or Not Found' => $missingLines,
+            ] as $title => $contentLines
+        ) {
+            if ($contentLines !== []) {
+                $sections[] = ['title' => $title, 'content' => implode("\n", $contentLines)];
+            }
+        }
+
+        return $sections;
+    }
+
+    /** @param list<string> $prefixes */
+    private function startsWithAny(string $value, array $prefixes): bool
+    {
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($value, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function sectionTitle(string $questionType): string

@@ -48,6 +48,9 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(PromotionOutcome::Promoted->value, $executor->lastLedgerStatus);
         $this->assertSame('procedure_result', $executor->lastNativeTable);
         $this->assertSame('auto_accepted', $executor->lastReviewStatus);
+        $this->assertSame('2026-04-22 00:00:00', $executor->lastProcedureResultBinds[3] ?? null);
+        $this->assertSame('mg/dL', $executor->lastProcedureResultBinds[5] ?? null);
+        $this->assertSame('148', $executor->lastProcedureResultBinds[6] ?? null);
         $this->assertSame(64, strlen($executor->lastFactFingerprint ?? ''));
         $this->assertSame(64, strlen($executor->lastClinicalContentFingerprint ?? ''));
         $this->assertStringContainsString('clinical_document_promotions', $executor->lastLedgerSql ?? '');
@@ -313,6 +316,8 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
     public array $ledgerRows = [];
     /** @var list<mixed> */
     public array $lastPromotionLookupBinds = [];
+    /** @var list<mixed> */
+    public array $lastProcedureResultBinds = [];
 
     /** @var array<string, int> */
     private array $inserts = [];
@@ -412,6 +417,9 @@ final class ClinicalDocumentFactPromotionExecutor implements DatabaseExecutor
         foreach (['procedure_order', 'procedure_report', 'procedure_result', 'lists'] as $table) {
             if (str_contains($sql, 'INSERT INTO ' . $table)) {
                 $this->inserts[$table] = ($this->inserts[$table] ?? 0) + 1;
+                if ($table === 'procedure_result') {
+                    $this->lastProcedureResultBinds = $binds;
+                }
                 break;
             }
         }

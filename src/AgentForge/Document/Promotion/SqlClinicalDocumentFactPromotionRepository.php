@@ -497,7 +497,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $valueJson = $this->labValueJson($row) + ['field_path' => $fieldPath];
         $textParts = array_filter([
             $row->testName,
-            $row->value . ($row->unit !== '' ? ' ' . $row->unit : ''),
+            $this->displayLabValue($row),
             $row->referenceRange !== '' ? 'reference range: ' . $row->referenceRange : '',
             'abnormal: ' . $row->abnormalFlag->value,
         ]);
@@ -581,6 +581,15 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             'certainty' => $row->certainty->value,
             'confidence' => $row->confidence,
         ];
+    }
+
+    private function displayLabValue(LabResultRow $row): string
+    {
+        if ($row->unit === '' || str_ends_with(strtolower($row->value), strtolower(' ' . $row->unit))) {
+            return $row->value;
+        }
+
+        return $row->value . ' ' . $row->unit;
     }
 
     /** @return array<string, mixed> */

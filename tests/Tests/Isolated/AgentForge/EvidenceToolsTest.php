@@ -468,7 +468,7 @@ final class EvidenceToolsTest extends TestCase
     {
         $result = (new LabsEvidenceTool($this->repository(labs: [])))->collect(new PatientId(900001));
 
-        $this->assertSame(['Recent labs not found in the chart.'], $result->missingSections);
+        $this->assertSame(['Structured chart labs not found in the chart.'], $result->missingSections);
     }
 
     public function testRecentVitalsToolReturnsBoundedRecentVitalEvidence(): void
