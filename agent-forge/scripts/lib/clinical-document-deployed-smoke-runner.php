@@ -312,12 +312,15 @@ function agentforge_clinical_smoke_evaluate_question(array $payload): array
 function agentforge_clinical_smoke_citation_counts(array $payload): array
 {
     $counts = ['clinical_document' => 0, 'guideline' => 0, 'other' => 0];
-    $citations = is_array($payload['citations'] ?? null) ? $payload['citations'] : [];
-    foreach ($citations as $citation) {
-        if (!is_array($citation)) {
+
+    // citation_details contains the rich metadata arrays with source_type;
+    // citations is a list<string> of opaque IDs (not useful for type counting).
+    $details = is_array($payload['citation_details'] ?? null) ? $payload['citation_details'] : [];
+    foreach ($details as $detail) {
+        if (!is_array($detail)) {
             continue;
         }
-        $sourceType = (string) ($citation['source_type'] ?? $citation['type'] ?? '');
+        $sourceType = (string) ($detail['source_type'] ?? $detail['type'] ?? '');
         if (str_contains($sourceType, 'guideline')) {
             $counts['guideline']++;
         } elseif (str_contains($sourceType, 'document') || str_contains($sourceType, 'lab_pdf') || str_contains($sourceType, 'intake')) {

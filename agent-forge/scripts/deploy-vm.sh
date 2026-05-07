@@ -98,6 +98,9 @@ main() {
     printf 'Applying schema upgrades...\n'
     docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/apply-schema-upgrade.php
 
+    printf 'Indexing clinical guideline corpus...\n'
+    docker compose exec -T openemr php /var/www/localhost/htdocs/openemr/agent-forge/scripts/index-clinical-guidelines.php
+
     if [[ -x "${REPO_DIR}/${SEED_SCRIPT}" ]]; then
         printf 'Seeding fake demo data: %s\n' "${SEED_SCRIPT}"
         "${REPO_DIR}/${SEED_SCRIPT}"

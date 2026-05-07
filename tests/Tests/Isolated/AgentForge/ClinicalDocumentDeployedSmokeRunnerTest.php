@@ -91,14 +91,14 @@ final class ClinicalDocumentDeployedSmokeRunnerTest extends TestCase
     {
         $this->assertSame([], \agentforge_clinical_smoke_evaluate_question([
             'status' => 'ok',
-            'citations' => [
+            'citation_details' => [
                 ['source_type' => 'clinical_document_fact'],
                 ['source_type' => 'guideline'],
             ],
         ]));
         $this->assertNotSame([], \agentforge_clinical_smoke_evaluate_question([
             'status' => 'ok',
-            'citations' => [
+            'citation_details' => [
                 ['source_type' => 'guideline'],
             ],
         ]));
