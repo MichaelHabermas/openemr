@@ -180,18 +180,6 @@ Do not claim full clinical-document acceptance from M2 alone unless schema edits
 - If an active epic file is refreshed, move any reusable proof gaps, architectural decisions, or safety lessons here first.
 - Durable clinical schema names and user-visible workflow labels must describe the domain, not the implementing module or product. Use names such as `clinical_document_type_mappings` and normal OpenEMR categories such as `Lab Report`; do not introduce branded `AgentForge...` table names or document categories.
 
-## Week 2 H3 Implementation Notes
-
-- H3 strengthens deployed proof but is not acceptance-complete until a real
-`clinical-document-deployed-smoke-*.json` artifact exists from the deployed
-environment.
-- Docker service health should use `/meta/health/livez`; the stronger
-`/meta/health/readyz` depends on the worker heartbeat, and using it as the
-OpenEMR container healthcheck would deadlock `agentforge-worker` startup.
-- `agent-forge/scripts/health-check.sh` is the full H3 runtime gate: public app,
-`/readyz`, MariaDB 11.8, fresh `intake-extractor` heartbeat, and clinical
-document queue health.
-
 ## Week 2 M3 Implementation Notes
 
 Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.
@@ -368,7 +356,7 @@ future hardening before depending on dense document-vector ranking.
 
 ## Week 2 M5C Retraction/Audit Carry-Forward
 
-Last verified: 2026-05-06.
+Last verified: 2026-05-07.
 
 - M5C acceptance maps every deletion/retraction action to source document,
 job, prior state, new state, action, actor/system, reason, and timestamp;
@@ -385,31 +373,35 @@ transaction.
 - Automated M5C proof passed on 2026-05-06 via focused isolated tests and
 `agent-forge/scripts/check-clinical-document.sh`; eval artifact:
 `agent-forge/eval-results/clinical-document-20260506-191013`. Manual/browser
-deletion proof was not run and can be covered by H2/submission polish.
+deletion proof completed 2026-05-07 (see H2 epic and M5C epic docs).
 
 ## Week 2 H2 Source Review Carry-Forward
 
-Last automated proof: 2026-05-06.
+Last verified: 2026-05-07.
 
 - H2 source review uses one shared `SourceDocumentAccessGate` for both the
 guarded source redirect and JSON source-review endpoint. The gate requires
 active patient/session scope, `patients:med`, succeeded unretracted job,
-trusted identity or approved review, non-deleted and active source document,
-and active unretracted fact when fact-specific review is requested.
-- `documents.activity=0` is treated as inactive source content for AgentForge.
-The Zend document deactivation path dispatches `DocumentRetractionHook`, and
-source-review/evidence SQL excludes inactive source documents.
+trusted identity or approved review, non-deleted source document, and active
+unretracted fact when fact-specific review is requested.
+- The `documents` table uses a `deleted` column, not `activity`. Source-review
+and evidence SQL filter on `d.deleted IS NULL OR d.deleted = 0`. The `lists`
+table uses `activity`; do not confuse the two schemas.
 - The chart panel fetches source-review JSON, renders normalized bounding boxes
 when available, and falls back to stored page/section plus quote/value when no
 bounding box exists. The UI must not log quote/value or raw document text.
 - H2 focused tests passed with 36 tests / 238 assertions. The clinical document
 gate passed with eval artifact
-`agent-forge/eval-results/clinical-document-20260506-213410`. The
+`agent-forge/eval-results/clinical-document-20260506-230608`. The
 comprehensive AgentForge gate also passed with deterministic eval artifact
-`agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
-artifact `agent-forge/eval-results/clinical-document-20260506-213715`.
-Browser/manual proof of the reviewer-facing deletion/source-review flow
-remains pending.
+`agent-forge/eval-results/eval-results-20260506-230613.json` and clinical
+artifact `agent-forge/eval-results/clinical-document-20260506-230653`.
+- Browser/manual proof completed 2026-05-07: source review returns valid
+bounding-box JSON for active document (document 16), document deletion
+triggers full retraction cascade (fact deactivated, audit rows written,
+promoted rows retracted, identity PII scrubbed), source review returns 404
+for deleted document (document 17), Co-Pilot re-query excludes deleted
+document evidence.
 
 ## Week 2 M6 Implementation Notes
 
@@ -525,25 +517,71 @@ final-submission concerns.
 
 ## Week 2 H2 Docs/Proof Carry-Forward
 
-Last docs/proof update: 2026-05-06.
+Last docs/proof update: 2026-05-07.
 
-- H2 has a partial source-review implementation in the current workspace:
+- H2 source-review is complete:
 `interface/patient_file/summary/agent_document_source.php` is a guarded
 redirect to the existing OpenEMR document retrieval controller, and the
-AgentForge chart panel can render a lightweight source overlay when a
-document citation includes normalized bounding-box metadata.
+AgentForge chart panel renders a source overlay when a document citation
+includes normalized bounding-box metadata.
 - The source-review endpoint gates on active session patient, `patients:med`
 ACL, matching `document_id`/`job_id`, `succeeded` unretracted job status,
 trusted identity or approved identity review, and non-deleted OpenEMR source
-document. Keep this gate aligned with the evidence source gate.
-- Current fallback gap: citations without `bounding_box` are rendered as text
-in the panel; no deterministic exact-page quote/value highlight or selection
-proof was found in this docs/proof pass.
-- H2 must keep the M5C retraction policy explicit: AgentForge-promoted `lists`
-rows are deactivated with `activity = 0`, facts/promotions/embeddings are
-inactive/retracted, and audit history is append-only in
+document.
+- Citations without `bounding_box` are rendered with stored page/section plus
+quote/value text; covered by automated tests and endpoint-level proof.
+- H2 retraction policy uses the M5C retraction service: AgentForge-promoted
+`lists` rows are deactivated with `activity = 0`, facts/promotions/embeddings
+are inactive/retracted, and audit history is append-only in
 `clinical_document_retractions`.
-- Do not mark H2 complete until browser or endpoint proof captures active
-source-review success, deleted/deactivated denial, no-bounding-box fallback,
-and the clinical document/comprehensive gates or their exact caveats.
+- All acceptance requirements proven by automated gates and manual
+browser/endpoint validation on 2026-05-07.
+
+## Week 2 Bugs Found During Manual Testing (2026-05-07)
+
+These bugs were discovered during H2/M5C manual browser testing and fixed in
+the same session. Recording them here so they do not recur.
+
+- **`d.activity` column does not exist on `documents` table.** Five source files
+and five test files referenced `d.activity = 1` for the documents table, which
+uses `deleted` (not `activity`). The `lists` table uses `activity`; these were
+a mistaken analogy. Fix: replaced all `d.activity` references with
+`d.deleted IS NULL OR d.deleted = 0`. Affected files:
+`PatientDocumentFactsEvidenceTool`, `OnDemandDocumentExtractionTool`,
+`SourceDocumentAccessGate`, `SqlDocumentFactRepository`,
+`SqlDocumentIdentityCheckRepository`, plus their tests.
+- **`ic.status` column does not exist (should be `identity_status`).** Line 393
+of `SqlDocumentRetractionRepository::auditIdentityChecks()` referenced
+`ic.status` instead of `ic.identity_status`. The SQL error caused the entire
+retraction transaction to silently `ROLLBACK`, so document deletion appeared
+to succeed but no retraction cascade actually ran — fact stayed `active=1`, no
+audit rows were written. Fix: changed to `ic.identity_status`.
+- **`source_type` evidence metadata mismatch.** Evidence tools set `source_type`
+to the `doc_type` value (e.g. `'lab_pdf'`) but the Twig template's
+`canFetchSourceReview()` checks `source_type === 'document'`. Fix: hardcoded
+`source_type` to `'document'` in both evidence tools and preserved `doc_type`
+as a separate field.
+
+## Week 2 H3 Deployment Notes
+
+Last updated: 2026-05-07.
+
+- H3 strengthens deployed proof but is not acceptance-complete until a real
+`clinical-document-deployed-smoke-*.json` artifact exists from the deployed
+environment.
+- Docker service health should use `/meta/health/livez`; the stronger
+`/meta/health/readyz` depends on the worker heartbeat, and using it as the
+OpenEMR container healthcheck would deadlock `agentforge-worker` startup.
+- `agent-forge/scripts/health-check.sh` is the full H3 runtime gate: public app,
+`/readyz`, MariaDB 11.8, fresh `intake-extractor` heartbeat, and clinical
+document queue health.
+- **`InstallationCheck` `$config` global collision (fixed 2026-05-07):**
+`library/sql.inc.php` line 59 overwrites the global `$config` (set to `1` by
+`sites/default/sqlconf.php`) with a `DatabaseConnectionOptions` object during
+OpenEMR bootstrap. `InstallationCheck::check()` then reads the object instead
+of the integer and reports `installed: false`, causing readyz to return
+`status: setup_required`. Fix: `InstallationCheck` now reads `$config` from
+the site sqlconf.php file as text via regex, avoiding the global entirely.
+This is an OpenEMR core fix (outside AgentForge), not an AgentForge-specific
+change.
 
