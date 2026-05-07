@@ -84,11 +84,12 @@ validate_readyz_payload() {
     ' "${payload_file}"
 }
 
+READYZ_PAYLOAD=""
+
 main() {
     local failures=0
-    local readyz_payload
-    readyz_payload="$(mktemp "${TMPDIR:-/tmp}/agentforge-readyz.XXXXXX.json")"
-    trap 'rm -f "${readyz_payload}"' EXIT
+    READYZ_PAYLOAD="$(mktemp "${TMPDIR:-/tmp}/agentforge-readyz.XXXXXX.json")"
+    trap 'rm -f "${READYZ_PAYLOAD}"' EXIT
 
     health_check_url "public app" "${APP_URL}" "required" || failures=$((failures + 1))
     health_check_url "readiness endpoint" "${READYZ_URL}" "required" || failures=$((failures + 1))
@@ -97,11 +98,11 @@ main() {
         --silent \
         --show-error \
         --location \
-        --output "${readyz_payload}" \
+        --output "${READYZ_PAYLOAD}" \
         --connect-timeout "${AGENTFORGE_CONNECT_TIMEOUT_SECONDS:-10}" \
         --max-time "${AGENTFORGE_MAX_TIME_SECONDS:-20}" \
         "${READYZ_URL}"; then
-        validate_readyz_payload "${readyz_payload}" || failures=$((failures + 1))
+        validate_readyz_payload "${READYZ_PAYLOAD}" || failures=$((failures + 1))
     else
         printf 'FAIL readiness payload: unable to fetch %s\n' "${READYZ_URL}" >&2
         failures=$((failures + 1))
