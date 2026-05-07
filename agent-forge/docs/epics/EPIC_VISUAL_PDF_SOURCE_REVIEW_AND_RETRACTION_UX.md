@@ -1,6 +1,6 @@
 # Epic H2 - Visual PDF Source Review And Retraction UX
 
-Status: Completed (automated); browser/manual proof deferred to manual validation pass.
+Status: Completed.
 
 Last docs/proof update: 2026-05-06.
 
@@ -91,10 +91,8 @@ Eval artifacts:
 | Deterministic no-bounding-box fallback to exact page and quote/value | Implemented in the JSON service and chart-panel fallback; covered by focused tests |
 | Deleted/deactivated document facts excluded from evidence | Implemented in source-review gate and evidence SQL; clinical document gate passed |
 | Promoted list rows deactivated with `activity = 0` | Implemented in retraction repository; H2 docs now record the policy |
-| Browser proof of visual source review and deletion/retraction UX | Pending |
+| Browser proof of visual source review and deletion/retraction UX | Proven on 2026-05-07. Source review endpoint returns valid bounding-box JSON for active document (document 16). Document deletion triggers full retraction cascade (fact deactivated, audit rows written, promoted rows retracted, identity PII scrubbed). Source review returns 404 for deleted document (document 17). Co-Pilot re-query excludes deleted document evidence. |
 
 ## Remaining Work
 
-- Add endpoint/browser proof that source-review links reject deleted/deactivated source content and allow trusted active content.
-- Capture a browser artifact or HTTP proof for the source-review flow.
-- Run and record the comprehensive AgentForge gate after H2 code changes if needed.
+None. All acceptance requirements proven by automated gates and manual browser/endpoint validation.

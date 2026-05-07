@@ -45,8 +45,12 @@ promoted OpenEMR rows.
   assertions.
 - Clinical document eval artifact: `clinical-document-20260506-191013`,
   verdict `baseline_met`.
-- Manual/browser deletion proof: not run; remaining optional H2/submission-polish
-  proof should capture screenshots or SQL before/after rows if needed.
+- Manual/browser deletion proof: completed 2026-05-07. Document 17 deleted for
+  patient 900101; fact 2 retracted (active=0, retracted_at set,
+  reason=source_document_deleted); 4 audit rows in clinical_document_retractions
+  (retract_job, retract_promotion, retract_fact, scrub_identity_check);
+  Co-Pilot re-query returned "Recent labs not found in the chart"; source review
+  endpoint returned 404 for deleted document.
 - Reviewer note: M5C now has the audit table, dedicated service/repository,
   stale evidence gates, and full clinical-document gate proof.
 
