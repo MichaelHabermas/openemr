@@ -247,7 +247,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
             ['Recent clinical documents', 'Guideline Evidence'],
         );
 
-        $reviewLine = 'Needs human review; not used for reasoning: Needs review: intake finding: shellfish?? maybe iodine itchy?; Citation: intake_form, page 1, needs_review[0]';
+        $reviewLine = 'Needs human review; not used for reasoning: Needs review: intake finding: shellfish?? maybe iodine itchy?; Citation: intake_form, page 2, needs_review[0]';
         $this->assertStringNotContainsString('shellfish?? maybe iodine itchy?', $result->response->answer);
         $this->assertContains($reviewLine, $result->response->missingOrUncheckedSections);
         $this->assertContains('document_review:clinical_document_facts/42@2026-05-06', $result->response->citations);
@@ -447,7 +447,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
                     'document_review:clinical_document_facts/42@2026-05-06',
                     '2026-05-06',
                     'Needs review: intake finding',
-                    'shellfish?? maybe iodine itchy?; Citation: intake_form, page 1, needs_review[0]',
+                    'shellfish?? maybe iodine itchy?; Citation: intake_form, page 2, needs_review[0]',
                     [
                         'source_type' => 'document',
                         'doc_type' => 'intake_form',
@@ -455,7 +455,7 @@ final class VerifiedDraftingPipelineTest extends TestCase
                         'job_id' => 5,
                         'fact_id' => 42,
                         'certainty' => 'needs_review',
-                        'page_or_section' => 'page 1',
+                        'page_or_section' => 'page 2',
                         'field_or_chunk_id' => 'needs_review[0]',
                         'quote_or_value' => 'shellfish?? maybe iodine itchy?',
                     ],

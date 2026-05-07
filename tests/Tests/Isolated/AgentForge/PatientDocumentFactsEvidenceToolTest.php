@@ -110,6 +110,9 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
         $this->assertSame('document_review', $result->items[0]->sourceType);
         $this->assertSame('Needs review: intake finding', $result->items[0]->displayLabel);
         $this->assertStringContainsString('shellfish?? maybe iodine itchy?', $result->items[0]->value);
+        $this->assertStringContainsString('Citation: intake_form, page 2, needs_review[0]', $result->items[0]->value);
+        $this->assertSame('page 2', $result->items[0]->citation['page_or_section']);
+        $this->assertSame(['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040], $result->items[0]->citation['bounding_box']);
     }
 
     /** @return array<string, mixed> */

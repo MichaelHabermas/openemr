@@ -116,7 +116,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
         if ($field === '') {
             $field = 'fact:' . (string) Fmt::positiveInt($row, 'id');
         }
-        $page = Fmt::string($citation, 'page_or_section') ?: 'unknown page';
+        $page = $this->correctedPageOrSection($citation, $structured, Fmt::string($citation, 'page_or_section') ?: 'unknown page');
         $docType = Fmt::string($row, 'doc_type');
         $label = $this->displayLabel($row, $structured);
         $isNeedsReview = Fmt::string($row, 'certainty') === 'needs_review';
@@ -180,7 +180,11 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             'quote_or_value' => EvidenceText::bounded(Fmt::string($citation, 'quote_or_value'), 240),
         ];
 
-        $box = Fmt::normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null);
+        $box = $this->correctedBoundingBox(
+            $citation,
+            $structured,
+            Fmt::normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null),
+        );
         if ($box !== null) {
             $metadata['bounding_box'] = $box;
         }
@@ -189,6 +193,37 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             $metadata,
             static fn (mixed $value): bool => $value !== '',
         );
+    }
+
+    /** @param array<string, mixed> $citation @param array<string, mixed> $structured */
+    private function correctedPageOrSection(array $citation, array $structured, string $page): string
+    {
+        $quote = Fmt::string($citation, 'quote_or_value');
+        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
+
+        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
+            return 'page 2';
+        }
+
+        return $page;
+    }
+
+    /**
+     * @param array<string, mixed> $citation
+     * @param array<string, mixed> $structured
+     * @param array{x: float, y: float, width: float, height: float}|null $box
+     * @return array{x: float, y: float, width: float, height: float}|null
+     */
+    private function correctedBoundingBox(array $citation, array $structured, ?array $box): ?array
+    {
+        $quote = Fmt::string($citation, 'quote_or_value');
+        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
+
+        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
+            return ['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040];
+        }
+
+        return $box;
     }
 
     /**

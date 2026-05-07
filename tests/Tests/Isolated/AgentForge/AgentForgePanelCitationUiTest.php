@@ -82,7 +82,7 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $template = $this->agentForgePanelTemplate();
 
         $this->assertStringContainsString(
-            'appendList(response, {{ "Missing or unchecked"|xlj }}, payload.missing_or_unchecked_sections || [])',
+            'appendMissingOrUnchecked(response, payload)',
             $template,
         );
         $this->assertStringContainsString(
@@ -90,6 +90,18 @@ final class AgentForgePanelCitationUiTest extends TestCase
             $template,
         );
         $this->assertStringContainsString('No chart sources were returned.', $template);
+    }
+
+    public function testPanelLinksOnlyMissingUncheckedDocumentCitationTail(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('function appendMissingOrUnchecked(parent, payload)', $template);
+        $this->assertStringContainsString('const suffix = evidenceCitationSuffix(detail)', $template);
+        $this->assertStringContainsString('row.appendChild(document.createTextNode(item.slice(0, index)))', $template);
+        $this->assertStringContainsString('button.textContent = suffix', $template);
+        $this->assertStringContainsString('fetchSourceReview(detail)', $template);
+        $this->assertStringContainsString('row.appendChild(document.createTextNode(item.slice(index + suffix.length)))', $template);
     }
 
     public function testPanelKeepsConversationIdOnlyInMemoryForFollowUps(): void

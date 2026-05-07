@@ -182,6 +182,33 @@
         ].filter(Boolean).join(' | ');
     }
 
+    function evidenceCitationSuffix(detail) {
+        const citation = detail.citation || {};
+        if (!citation.doc_type || !citation.page_or_section || !citation.field_or_chunk_id) {
+            return '';
+        }
+
+        return 'Citation: ' + citation.doc_type + ', ' + citation.page_or_section + ', ' + citation.field_or_chunk_id;
+    }
+
+    function matchingDocumentDetailForLine(line, details) {
+        if (!details || details.length === 0) {
+            return null;
+        }
+
+        for (const detail of details) {
+            if (!canFetchSourceReview(detail)) {
+                continue;
+            }
+            const suffix = evidenceCitationSuffix(detail);
+            if (suffix && line.indexOf(suffix) !== -1) {
+                return detail;
+            }
+        }
+
+        return null;
+    }
+
     function documentIdFromCitation(detail, citation) {
         const rawId = citation.document_id || detail.document_id || detail.source_id || '';
         const match = String(rawId).match(/\d+/);
@@ -364,6 +391,51 @@
         parent.appendChild(wrapper);
     }
 
+    function appendMissingOrUnchecked(parent, payload) {
+        const items = payload.missing_or_unchecked_sections || [];
+        if (items.length === 0) {
+            return;
+        }
+
+        const details = payload.citation_details || [];
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mt-2';
+
+        const heading = document.createElement('strong');
+        heading.textContent = {{ "Missing or unchecked"|xlj }};
+        wrapper.appendChild(heading);
+
+        const list = document.createElement('ul');
+        list.className = 'mb-0 pl-3';
+
+        items.forEach(function (item) {
+            const row = document.createElement('li');
+            const detail = matchingDocumentDetailForLine(item, details);
+            const suffix = detail ? evidenceCitationSuffix(detail) : '';
+            const index = suffix ? item.indexOf(suffix) : -1;
+
+            if (detail && index >= 0) {
+                row.appendChild(document.createTextNode(item.slice(0, index)));
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-link btn-sm p-0 align-baseline';
+                button.textContent = suffix;
+                button.addEventListener('click', function () {
+                    fetchSourceReview(detail);
+                });
+                row.appendChild(button);
+                row.appendChild(document.createTextNode(item.slice(index + suffix.length)));
+            } else {
+                row.textContent = item;
+            }
+
+            list.appendChild(row);
+        });
+
+        wrapper.appendChild(list);
+        parent.appendChild(wrapper);
+    }
+
     function showMessage(message, level, payload) {
         response.textContent = '';
         response.style.whiteSpace = 'pre-wrap';
@@ -375,7 +447,7 @@
             return;
         }
 
-        appendList(response, {{ "Missing or unchecked"|xlj }}, payload.missing_or_unchecked_sections || []);
+        appendMissingOrUnchecked(response, payload);
         appendList(response, {{ "Warnings"|xlj }}, payload.refusals_or_warnings || []);
 
         if (payload.status === 'ok' && payload.citations && payload.citations.length > 0) {
