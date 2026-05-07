@@ -24,6 +24,7 @@ const AGENTFORGE_CLINICAL_SMOKE_DEFAULT_PID = 900101;
 function agentforge_clinical_smoke_config(): array
 {
     $repoRoot = AgentForgeRepoPaths::fromScriptsLibDirectory(__DIR__);
+    agentforge_scripts_load_compose_dotenv($repoRoot);
     $baseUrl = agentforge_scripts_env_string('AGENTFORGE_DEPLOYED_URL', 'https://openemr.titleredacted.cc/');
     if (!str_ends_with($baseUrl, '/')) {
         $baseUrl .= '/';

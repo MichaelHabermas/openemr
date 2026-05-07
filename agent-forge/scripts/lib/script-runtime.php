@@ -12,6 +12,52 @@ declare(strict_types=1);
 
 use OpenEMR\AgentForge\Reporting\EvalLatestSummaryWriter;
 
+function agentforge_scripts_load_compose_dotenv(string $repoRoot): void
+{
+    $composeDir = getenv('AGENTFORGE_COMPOSE_DIR');
+    $composeDir = is_string($composeDir) && $composeDir !== ''
+        ? $composeDir
+        : 'docker/development-easy';
+
+    $envPath = str_starts_with($composeDir, '/')
+        ? rtrim($composeDir, '/') . '/.env'
+        : $repoRoot . '/' . trim($composeDir, '/') . '/.env';
+
+    if (!is_file($envPath)) {
+        return;
+    }
+
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines)) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') {
+            continue;
+        }
+        $eqPos = strpos($line, '=');
+        if ($eqPos === false) {
+            continue;
+        }
+        $key = trim(substr($line, 0, $eqPos));
+        $value = trim(substr($line, $eqPos + 1));
+        if ($key === '') {
+            continue;
+        }
+        // Strip optional surrounding quotes.
+        if (strlen($value) >= 2 && ($value[0] === '"' || $value[0] === "'") && $value[0] === $value[strlen($value) - 1]) {
+            $value = substr($value, 1, -1);
+        }
+        // Only set if not already present — explicit exports win.
+        $existing = getenv($key);
+        if (!is_string($existing) || $existing === '') {
+            putenv("{$key}={$value}");
+        }
+    }
+}
+
 function agentforge_scripts_env_string(string $name, string $default = ''): string
 {
     $value = getenv($name);

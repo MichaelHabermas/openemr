@@ -29,7 +29,8 @@ These are active constraints across all milestones.
 - LLM keys are server env only; never committed. `deploy-vm.sh` fails fast when the chosen provider's key is missing.
 - Document upload must succeed even if all AgentForge code fails.
 - Category mappings determine document-ingestion eligibility — not filenames, MIME types, or heuristics.
-- Do not promote extracted values into OpenEMR clinical tables without full provenance: `document_id`, `job_id`, fact id, citation, confidence, promotion status.
+- Do not promote extracted values into OpenEMR clinical tables without full provenance: `document_id`, `job_id`, extracted fact id, source citation, confidence, promotion status. Duplicate prevention must exist at both the extracted-fact layer and the promotion layer.
+- Wrong-patient detection is extraction/verification scope. `clinical_document_identity_checks` must prevent fact promotion while identity is unresolved.
 - Source document deletion triggers retraction of all derived AgentForge content. Retracted content must not appear as active evidence.
 - Durable schema names describe the clinical domain, not the product (`clinical_document_*`, not `agentforge_*`).
 
