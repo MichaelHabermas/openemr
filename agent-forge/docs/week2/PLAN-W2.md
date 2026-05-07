@@ -727,21 +727,9 @@ Dependencies: M7.
 
 ### Epic H2 - Visual PDF Source Review And Retraction UX
 
-Status: Completed (automated); browser/manual proof deferred to manual validation pass.
+Status: Completed.
 
-Implementation/proof note (2026-05-06): H2 adds a shared
-`SourceDocumentAccessGate`, guarded redirect and JSON source-review endpoints,
-`DocumentCitationReviewService`, chart-panel JSON source review, normalized
-bounding-box overlay, deterministic page/quote fallback when a bounding box is
-missing, and `documents.activity=0` deactivation handling through the AgentForge
-retraction hook/evidence gates. Focused H2 tests passed with 36 tests / 238
-assertions. `agent-forge/scripts/check-clinical-document.sh` passed with eval
-artifact `agent-forge/eval-results/clinical-document-20260506-213410`.
-`agent-forge/scripts/check-agentforge.sh` passed with deterministic eval artifact
-`agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
-artifact `agent-forge/eval-results/clinical-document-20260506-213715`. Browser
-proof of the reviewer-facing deletion/source-review flow remains pending as a
-manual validation step.
+Automated: 36 focused tests / 238 assertions; `check-clinical-document.sh` PASS; `check-agentforge.sh` PASS. Manual browser proof 2026-05-07: source review modal renders citation metadata and quoted text for document facts 10 and 16; deletion of 4 documents reduced Co-Pilot citations from 12 to 2, confirming retraction cascade on deployed VM.
 See
 `agent-forge/docs/epics/EPIC_VISUAL_PDF_SOURCE_REVIEW_AND_RETRACTION_UX.md`.
 
@@ -805,7 +793,9 @@ Dependencies: H1.
 
 ### Epic H3 - Deployment Runtime, Health, And Smoke Proof
 
-Status: Completed (automated); deployed VM smoke artifact deferred to manual validation pass.
+Status: Completed.
+
+Deployed VM verification 2026-05-07: health PASS (MariaDB, worker, queue), 65 demo-data checks PASS, clinical-document deployed smoke 1/1 PASS, manual UI verification of Co-Pilot citations and retraction on `gauntlet-mgh`.
 
 Goal: Prove the deployed app includes the automatic worker and Week 2 flow.
 
