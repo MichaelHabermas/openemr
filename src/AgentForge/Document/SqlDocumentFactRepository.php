@@ -88,7 +88,6 @@ final readonly class SqlDocumentFactRepository implements DocumentFactRepository
             . 'AND j.retracted_at IS NULL '
             . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
             . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND d.activity = 1 '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ORDER BY f.created_at DESC LIMIT ' . $this->limit($limit),
             [

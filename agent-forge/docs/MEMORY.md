@@ -2,8 +2,6 @@
 
 ## What This File Is For
 
-`CURRENT-EPIC.md` files are active workbenches. They can be erased, rewritten, or narrowed for each epic. This file is the durable AgentForge memory that should survive those rewrites across all weeks and milestones.
-
 Use this file for notes that future AgentForge work should not forget:
 
 - Architecture decisions that should remain stable.
@@ -85,9 +83,9 @@ Course Slack alignment (treat as normative for assignment interpretation; see `S
 - `doc_type` and job status are represented as PHP backed enums and stored as strings in SQL, rather than database-specific enum types.
 - Job enqueue is idempotent for `(patient_id, document_id, doc_type)`.
 - Upload enqueue dispatch happens once in `C_Document::upload_action_process()`
-  after `Document::createDocument(...)` succeeds. `addNewDocument(...)` already
-  uses that controller path, so outer callers such as `library/ajax/upload.php`
-  must not dispatch again.
+after `Document::createDocument(...)` succeeds. `addNewDocument(...)` already
+uses that controller path, so outer callers such as `library/ajax/upload.php`
+must not dispatch again.
 - SQL repositories should go through a small AgentForge database executor boundary instead of duplicating raw helper calls.
 - Value objects should reject non-positive IDs at the boundary.
 - `DocumentRetractionReason` stores modeled source-document lifecycle reasons as strings; M2 has exactly `source_document_deleted`.
@@ -103,20 +101,20 @@ Course Slack alignment (treat as normative for assignment interpretation; see `S
 - Follow-up for static-analysis hygiene: the current forbidden-catch allowlist exempts whole files, which is acceptable for tiny M2 hook files but should become more precise if those files grow. Add dedicated tests for `ForbiddenCatchTypeRule` path allowlisting, including Windows-style paths and malicious suffix lookalikes. Also reconcile the broader policy tension between Rector rules that prefer `Throwable` catches and PHPStan rules that forbid suppressing `Error`.
 - Some isolated suites assume a local server is running. A full `composer phpunit-isolated` can fail for routing tests if `127.0.0.1:8765` is unavailable; record that as environment setup, not as a document-ingestion regression.
 - The standard Documents screen has more than one upload entry point, but
-  `C_Document::upload_action_process()` is the shared storage boundary used by
-  `addNewDocument(...)`. Put document-ingestion dispatch there so core,
-  Dropzone, and portal uploads enqueue at most once.
+`C_Document::upload_action_process()` is the shared storage boundary used by
+`addNewDocument(...)`. Put document-ingestion dispatch there so core,
+Dropzone, and portal uploads enqueue at most once.
 - Wrong-patient document handling is not a delete workflow problem. M2 treats the OpenEMR upload destination as authoritative, creates a job for the uploaded source document if the category is mapped, and retracts that job if the source document is deleted. Content-level patient mismatch detection, rejection, or review belongs to extraction/verification later.
 - Wrong-patient detection is extraction/verification scope, not M2 upload scope. Future work must compare document-content identifiers to the selected OpenEMR patient and prevent fact promotion while identity is unresolved.
 - Retraction must cover already-finished jobs too. Until downstream fact/promotion tables exist, M2 can overwrite a `succeeded` job to `retracted`; later epics must preserve downstream audit metadata while preventing deleted-source content from being used.
 - During the unclosed M2 branch, local databases that saw the old branded
-  document tables/categories should be reset or explicitly cleaned before final
-  validation. Do not over-engineer production-style migration support for
-  unreleased partial table names; fresh install and upgrade SQL should describe
-  the durable clinical-document contract.
+document tables/categories should be reset or explicitly cleaned before final
+validation. Do not over-engineer production-style migration support for
+unreleased partial table names; fresh install and upgrade SQL should describe
+the durable clinical-document contract.
 - A document category maps to exactly one clinical document type in M2. Allowing
-  multiple active doc types for the same category makes enqueue behavior depend
-  on insertion order, which is not acceptable for a clinical workflow switch.
+multiple active doc types for the same category makes enqueue behavior depend
+on insertion order, which is not acceptable for a clinical workflow switch.
 
 ## Week 2 M2 Proof Notes
 
@@ -129,42 +127,42 @@ The focused M2 verification used during implementation included:
 - PHPStan passing on touched AgentForge document and observability files.
 - SQL smoke proof for idempotent demo category seed behavior.
 - In-container OpenEMR `addNewDocument(...)` smoke proof for mapped enqueue,
-  duplicate dispatch idempotency, and unmapped-category no-op.
+duplicate dispatch idempotency, and unmapped-category no-op.
 - Manual browser upload proof through the standard Documents screen passed
-  after the `C_Document::upload_action_process()` hook was added.
+after the `C_Document::upload_action_process()` hook was added.
 - Source-document retraction focused tests pass for the reason enum, in-memory repository idempotency, SQL repository update shape, and safe hook dispatch/failure behavior.
 - Local DB proof on 2026-05-05 simulated a `succeeded` job for `document_id=75`, invoked `DocumentRetractionHook::dispatch(75)`, and verified `status=retracted`, `lock_token=NULL`, `retracted_at` set, `retraction_reason=source_document_deleted`, with a repeated dispatch leaving the row unchanged.
-- M2 naming correction on 2026-05-05 removed branded persistent document-ingestion contracts: tables are `clinical_document_type_mappings` and `clinical_document_processing_jobs`, log events use `clinical_document.*`, and the seed maps existing `Lab Report -> lab_pdf` without creating visible `AgentForge...` document categories.
+- M2 naming correction on 2026-05-05 removed branded persistent document-ingestion contracts: tables are `clinical_document_type_mappings` and `clinical_document_processing_jobs`, log events use `clinical_document.`*, and the seed maps existing `Lab Report -> lab_pdf` without creating visible `AgentForge...` document categories.
 - Corrected local DB proof on 2026-05-05 verified no `AgentForge%` categories, no old `agentforge_document_*` tables, exactly one `Lab Report -> lab_pdf` mapping, successful upload to `Lab Report` creating document `79` / job `6`, and retraction of job `6` after source-document deletion state transition.
 - Full `composer phpunit-isolated` passed outside the sandbox when the
-  routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
-  those routing tests with connection errors.
+routing-test server could bind to `127.0.0.1:8765`; sandboxed runs can fail
+those routing tests with connection errors.
 - Clinical document gate reaching the eval threshold step, with the known threshold violation still expected until downstream extraction/workflow implementation is connected.
 - Review hardening on 2026-05-05 added source-level integration wiring tests
-  proving `C_Document::upload_action_process()` is the single enqueue point,
-  `library/ajax/upload.php` does not duplicate dispatch, and
-  `interface/patient_file/deleter.php` retracts after `documents.deleted=1`.
+proving `C_Document::upload_action_process()` is the single enqueue point,
+`library/ajax/upload.php` does not duplicate dispatch, and
+`interface/patient_file/deleter.php` retracts after `documents.deleted=1`.
 - Review hardening on 2026-05-05 changed
-  `clinical_document_type_mappings` to unique `category_id` so a category
-  cannot map to multiple clinical document types.
+`clinical_document_type_mappings` to unique `category_id` so a category
+cannot map to multiple clinical document types.
 - Review hardening on 2026-05-05 added a direct document-delete patient guard:
-  non-super users with `patients:docs_rm` can delete only documents whose
-  `documents.foreign_id` matches the active session patient.
+non-super users with `patients:docs_rm` can delete only documents whose
+`documents.foreign_id` matches the active session patient.
 - The direct document-delete guard applies to the request branch that receives
-  `deleter.php?document=<id>`. Users do not see the field as `document_id`,
-  but OpenEMR document delete links submit the document id in the request. The
-  broader patient-delete cleanup path loops through `delete_document()` only
-  after admin/super patient-delete authorization, so it is not blocked by the
-  active-patient direct-delete guard.
+`deleter.php?document=<id>`. Users do not see the field as `document_id`,
+but OpenEMR document delete links submit the document id in the request. The
+broader patient-delete cleanup path loops through `delete_document()` only
+after admin/super patient-delete authorization, so it is not blocked by the
+active-patient direct-delete guard.
 - Clean reset/reseed M2 proof on 2026-05-05 verified the durable baseline:
-  no old `agentforge_document_*` tables, no visible `AgentForge%` categories,
-  one active `Lab Report -> lab_pdf` mapping, successful upload creates one
-  pending `lab_pdf` job, UI delete retracts the pending job, and UI delete also
-  retracts an already-`succeeded` job while preserving its prior `finished_at`.
+no old `agentforge_document_*` tables, no visible `AgentForge%` categories,
+one active `Lab Report -> lab_pdf` mapping, successful upload creates one
+pending `lab_pdf` job, UI delete retracts the pending job, and UI delete also
+retracts an already-`succeeded` job while preserving its prior `finished_at`.
 - The OpenEMR deleter helper can echo raw SQL when
-  `sql_string_no_show_screen` is false. M2 document deletion suppresses that
-  SQL echo for document relation cleanup so users do not see
-  `DELETE FROM categories_to_documents ...` during normal document deletion.
+`sql_string_no_show_screen` is false. M2 document deletion suppresses that
+SQL echo for document relation cleanup so users do not see
+`DELETE FROM categories_to_documents ...` during normal document deletion.
 
 Do not claim full clinical-document acceptance from M2 alone unless schema edits, upload hook behavior, idempotency, sanitized logging, and required tests are all proven, and any eval threshold gaps are explicitly accepted.
 
@@ -185,367 +183,367 @@ Do not claim full clinical-document acceptance from M2 alone unless schema edits
 ## Week 2 H3 Implementation Notes
 
 - H3 strengthens deployed proof but is not acceptance-complete until a real
-  `clinical-document-deployed-smoke-*.json` artifact exists from the deployed
-  environment.
+`clinical-document-deployed-smoke-*.json` artifact exists from the deployed
+environment.
 - Docker service health should use `/meta/health/livez`; the stronger
-  `/meta/health/readyz` depends on the worker heartbeat, and using it as the
-  OpenEMR container healthcheck would deadlock `agentforge-worker` startup.
+`/meta/health/readyz` depends on the worker heartbeat, and using it as the
+OpenEMR container healthcheck would deadlock `agentforge-worker` startup.
 - `agent-forge/scripts/health-check.sh` is the full H3 runtime gate: public app,
-  `/readyz`, MariaDB 11.8, fresh `intake-extractor` heartbeat, and clinical
-  document queue health.
+`/readyz`, MariaDB 11.8, fresh `intake-extractor` heartbeat, and clinical
+document queue health.
 
 ## Week 2 M3 Implementation Notes
 
 Last automated proof: 2026-05-05. Last local Docker/manual proof: 2026-05-05.
 
 - M3 worker skeleton uses the existing `clinical_document_processing_jobs`
-  columns `lock_token`, `started_at`, and `attempts`; do not add a separate
-  `locked_at` column for this milestone.
+columns `lock_token`, `started_at`, and `attempts`; do not add a separate
+`locked_at` column for this milestone.
 - `clinical_document_worker_heartbeats` is the M3 liveness table keyed by `worker`,
-  with process id, status, iteration count, processed/failed counters,
-  started/heartbeat timestamps, and `stopped_at`.
+with process id, status, iteration count, processed/failed counters,
+started/heartbeat timestamps, and `stopped_at`.
 - The canonical worker idle interval env var is
-  `AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS`; older
-  `AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS` wording was replaced in Week 2
-  planning docs for M3.
+`AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS`; older
+`AGENTFORGE_DOCUMENT_WORKER_POLL_SECONDS` wording was replaced in Week 2
+planning docs for M3.
 - M3 intentionally wires `NoopDocumentJobProcessor`, which marks claimed jobs
-  failed with `error_code=extraction_not_implemented`. M4 must replace this
-  processor with real extraction rather than treating M3 failures as extraction
-  regressions.
+failed with `error_code=extraction_not_implemented`. M4 must replace this
+processor with real extraction rather than treating M3 failures as extraction
+regressions.
 - The worker must keep logging only sanitized operational metadata. New M3 logs
-  use `patient_ref`, never raw `patient_id`, and never include document text,
-  bytes, quotes, extracted fields, full lock tokens, or exception messages.
+use `patient_ref`, never raw `patient_id`, and never include document text,
+bytes, quotes, extracted fields, full lock tokens, or exception messages.
 - Unexpected worker processor/load failures that are not modeled runtime
-  exceptions must not strand claimed jobs in `running`. M3 uses a rethrowing
-  `Throwable` cleanup boundary: first finalize the claimed job as
-  `failed(processor_failed)` and write a stopped heartbeat, then rethrow so the
-  global failure path still sees the real fatal.
+exceptions must not strand claimed jobs in `running`. M3 uses a rethrowing
+`Throwable` cleanup boundary: first finalize the claimed job as
+`failed(processor_failed)` and write a stopped heartbeat, then rethrow so the
+global failure path still sees the real fatal.
 - OpenEMR's PHP configuration used by `docker/development-easy` disables
-  `pcntl_signal*`; graceful worker shutdown in Docker relies on the Compose
-  shell trap invoking `process-document-jobs.php --mark-stopped`, not PHP
-  signal handlers.
+`pcntl_signal`*; graceful worker shutdown in Docker relies on the Compose
+shell trap invoking `process-document-jobs.php --mark-stopped`, not PHP
+signal handlers.
 - Legacy OpenEMR `Document` APIs can emit PHP notices for invalid source
-  document IDs. The M3 worker must keep these notices out of container logs by
-  using scoped error handling in `OpenEmrDocumentLoader` and CLI error-display
-  suppression after OpenEMR bootstrap.
+document IDs. The M3 worker must keep these notices out of container logs by
+using scoped error handling in `OpenEmrDocumentLoader` and CLI error-display
+suppression after OpenEMR bootstrap.
 - Automated M3 proof covers schema/repository/claimer/heartbeat/worker loop,
-  loader errors, CLI parsing/script shape, Docker Compose service shape,
-  PHPCS, PHPStan on touched files, syntax checks, and focused document tests.
-  Local Docker/manual proof covered a pre-upgrade local volume at
-  `v_database=539`; the shipped upgrade SQL contains the standard
-  `#IfNotTable clinical_document_worker_heartbeats` path, but that local
-  volume needed manual table creation before testing. Proof also covered upload
-  enqueue to `pending`, no-op processing to
-  `failed(extraction_not_implemented)`, stopped heartbeat on Docker stop,
-  retracted-row skip behavior, two-worker/five-job no-double-processing, and
-  sanitized container logs without PHP notices.
+loader errors, CLI parsing/script shape, Docker Compose service shape,
+PHPCS, PHPStan on touched files, syntax checks, and focused document tests.
+Local Docker/manual proof covered a pre-upgrade local volume at
+`v_database=539`; the shipped upgrade SQL contains the standard
+`#IfNotTable clinical_document_worker_heartbeats` path, but that local
+volume needed manual table creation before testing. Proof also covered upload
+enqueue to `pending`, no-op processing to
+`failed(extraction_not_implemented)`, stopped heartbeat on Docker stop,
+retracted-row skip behavior, two-worker/five-job no-double-processing, and
+sanitized container logs without PHP notices.
 
 ## Week 2 M4 Implementation Notes
 
 Last verified: 2026-05-06.
 
 - M4 replaces the M3 no-op processor for `WorkerName::IntakeExtractor` with
-  `IntakeExtractorWorker`. The spec-required `intake-extractor` name remains
-  broader than intake forms and handles both `lab_pdf` and `intake_form`.
+`IntakeExtractorWorker`. The spec-required `intake-extractor` name remains
+broader than intake forms and handles both `lab_pdf` and `intake_form`.
 - The extraction provider boundary is `DocumentExtractionProvider::extract()`
-  with `DocumentId`, `DocumentLoadResult`, `DocumentType`, and `Deadline`.
-  M4 supports fixture and OpenAI VLM providers only; disabled/provider-disabled
-  mode remains intentionally absent from extraction.
+with `DocumentId`, `DocumentLoadResult`, `DocumentType`, and `Deadline`.
+M4 supports fixture and OpenAI VLM providers only; disabled/provider-disabled
+mode remains intentionally absent from extraction.
 - The eval path uses `AttachAndExtractTool` with `InMemorySourceDocumentStorage`
-  and its paired in-memory loader, plus fixture extraction by source-byte
-  SHA-256 manifest. Source fixture paths now point at
-  `agent-forge/docs/example-documents/...`.
+and its paired in-memory loader, plus fixture extraction by source-byte
+SHA-256 manifest. Source fixture paths now point at
+`agent-forge/docs/example-documents/...`.
 - The M4 cleanup pass added deterministic `CertaintyClassifier` telemetry
-  bucketing, `AttachAndExtractTool::forExistingDocument()`, storage-only
-  `SourceDocumentStorage`, and `OpenEmrSourceDocumentStorage`. The queued
-  production worker path remains independent:
-  `DocumentJobWorker` -> `OpenEmrDocumentLoader` -> `IntakeExtractorWorker`.
+bucketing, `AttachAndExtractTool::forExistingDocument()`, storage-only
+`SourceDocumentStorage`, and `OpenEmrSourceDocumentStorage`. The queued
+production worker path remains independent:
+`DocumentJobWorker` -> `OpenEmrDocumentLoader` -> `IntakeExtractorWorker`.
 - Bounding boxes for M4 fixtures and evals use the established
-  `{x, y, width, height}` object shape expected by `CitationShape`, not the
-  earlier architecture sketch's `[x0, y0, x1, y1]` array.
+`{x, y, width, height}` object shape expected by `CitationShape`, not the
+earlier architecture sketch's `[x0, y0, x1, y1]` array.
 - Cleanup eval artifact `agent-forge/eval-results/clinical-document-20260506-011856/`
-  returned `baseline_met`; it proves fixture/memory strict extraction, not
-  OpenEMR fact persistence.
+returned `baseline_met`; it proves fixture/memory strict extraction, not
+OpenEMR fact persistence.
 - Final M4 local gate passed via `agent-forge/scripts/check-clinical-document.sh`
-  outside the sandbox on 2026-05-05. The sandboxed run can fail PHPStan with
-  `Failed to listen on "tcp://127.0.0.1:0": Operation not permitted (EPERM)`;
-  this is an execution-environment limitation, not an M4 regression.
+outside the sandbox on 2026-05-05. The sandboxed run can fail PHPStan with
+`Failed to listen on "tcp://127.0.0.1:0": Operation not permitted (EPERM)`;
+this is an execution-environment limitation, not an M4 regression.
 - 2026-05-06 host: same script passed again after PHPStan fixes on the clinical
-  document gate paths (481 isolated tests, 2297 assertions, 1 skipped; eval
-  `baseline_met` under
-  `agent-forge/eval-results/clinical-document-20260506-012908/`).
+document gate paths (481 isolated tests, 2297 assertions, 1 skipped; eval
+`baseline_met` under
+`agent-forge/eval-results/clinical-document-20260506-012908/`).
 - Same day: clinical eval also run with `AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR`
-  pointing at `/var/folders/vq/4drfx8g53yx1wpb4_vyfk_f80000gn/T/tmp.K8urMZPvSS/`
-  — `baseline_met`, exit `0`, artifact `clinical-document-20260506-011913`
-  (isolated from repo `eval-results/` tree).
+pointing at `/var/folders/vq/4drfx8g53yx1wpb4_vyfk_f80000gn/T/tmp.K8urMZPvSS/`
+— `baseline_met`, exit `0`, artifact `clinical-document-20260506-011913`
+(isolated from repo `eval-results/` tree).
 - Docker `development-easy`: `agentforge-worker` must set
-  `AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST` (or `AGENTFORGE_EXTRACTION_FIXTURES_DIR`) when
-  `AGENTFORGE_VLM_PROVIDER=fixture`; otherwise `FixtureExtractionProvider` loads an empty
-  manifest and every job fails `missing_file` regardless of document bytes. Compose now
-  defaults the manifest path to
-  `/var/www/localhost/htdocs/openemr/agent-forge/fixtures/clinical-document-golden/extraction/manifest.json`.
+`AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST` (or `AGENTFORGE_EXTRACTION_FIXTURES_DIR`) when
+`AGENTFORGE_VLM_PROVIDER=fixture`; otherwise `FixtureExtractionProvider` loads an empty
+manifest and every job fails `missing_file` regardless of document bytes. Compose now
+defaults the manifest path to
+`/var/www/localhost/htdocs/openemr/agent-forge/fixtures/clinical-document-golden/extraction/manifest.json`.
 - Manual proof same day: core Documents re-upload for patient `900001` stayed HTTP 200
-  (upload safety). After recreating `agentforge-worker`, a fresh golden PDF upload
-  produced job `16` with `status=succeeded`, `error_code=NULL`, and visible sanitized
-  `document.extraction.completed` / `clinical_document.worker.job_completed` logs
-  containing `patient_ref` but no raw document bytes or extracted values. Portal path
-  was not re-run in that transcript.
+(upload safety). After recreating `agentforge-worker`, a fresh golden PDF upload
+produced job `16` with `status=succeeded`, `error_code=NULL`, and visible sanitized
+`document.extraction.completed` / `clinical_document.worker.job_completed` logs
+containing `patient_ref` but no raw document bytes or extracted values. Portal path
+was not re-run in that transcript.
 - M4 does not persist document facts, promote lab rows, verify patient identity,
-  create embeddings, retrieve guideline evidence, or enforce duplicate chart-row
-  policy. Those remain M5A/M5B/M5/M6/M7 contracts.
+create embeddings, retrieve guideline evidence, or enforce duplicate chart-row
+policy. Those remain M5A/M5B/M5/M6/M7 contracts.
 
 ## Week 2 M5A Implementation Notes
 
 Last verified: 2026-05-06.
 
 - M5A introduces `clinical_document_identity_checks` as the durable gate between
-  strict extraction and any later trusted facts, embeddings, promotions, or
-  retrieval. Identity statuses use strings, not SQL enums; only
-  `identity_verified` and future `identity_review_approved` are trusted for
-  downstream evidence.
+strict extraction and any later trusted facts, embeddings, promotions, or
+retrieval. Identity statuses use strings, not SQL enums; only
+`identity_verified` and future `identity_review_approved` are trusted for
+downstream evidence.
 - Strict `lab_pdf` and `intake_form` extraction can now include an optional
-  `patient_identity` list of cited identifiers. Missing identifiers remain
-  schema-valid, but the production identity gate treats them as
-  `identity_ambiguous_needs_review`.
+`patient_identity` list of cited identifiers. Missing identifiers remain
+schema-valid, but the production identity gate treats them as
+`identity_ambiguous_needs_review`.
 - Identity verification is deterministic: normalized full name plus exact DOB
-  verifies; conflicting DOB, MRN/account number, or reliable name+DOB mismatch
-  quarantines; partial or missing identifiers require review. Do not infer
-  identity from filename, upload category, document metadata, or uncited model
-  guesses.
+verifies; conflicting DOB, MRN/account number, or reliable name+DOB mismatch
+quarantines; partial or missing identifiers require review. Do not infer
+identity from filename, upload category, document metadata, or uncited model
+guesses.
 - The queued production path gates inside `IntakeExtractorWorker` after strict
-  schema validation and before success. The generic `DocumentJobWorker` remains
-  a queue/heartbeat/finalization loop and should not learn extraction-specific
-  identity policy.
+schema validation and before success. The generic `DocumentJobWorker` remains
+a queue/heartbeat/finalization loop and should not learn extraction-specific
+identity policy.
 - `SqlDocumentIdentityCheckRepository` persists redacted identifier summaries:
-  kind, field path, confidence, certainty, and citation source metadata. It does
-  not persist raw `quote_or_value` in identity check JSON, and M5A adds no raw
-  identity values to logs.
+kind, field path, confidence, certainty, and citation source metadata. It does
+not persist raw `quote_or_value` in identity check JSON, and M5A adds no raw
+identity values to logs.
 - M5A local gate passed with `agent-forge/scripts/check-clinical-document.sh`
-  outside the sandbox: 499 isolated tests, 2345 assertions, 1 skipped; clinical
-  eval `baseline_met` under
-  `agent-forge/eval-results/clinical-document-20260506-020316/`. A sandboxed
-  run can still fail PHPStan with localhost bind `EPERM`; rerun outside the
-  sandbox for authoritative proof.
+outside the sandbox: 499 isolated tests, 2345 assertions, 1 skipped; clinical
+eval `baseline_met` under
+`agent-forge/eval-results/clinical-document-20260506-020316/`. A sandboxed
+run can still fail PHPStan with localhost bind `EPERM`; rerun outside the
+sandbox for authoritative proof.
 - Post-implementation review tightened M5A: `patient_identity` is now required
-  in strict JSON output but may be an empty list; DTO parsing rejects omitted
-  identity lists; the worker/tool identity gate fails closed when dependencies
-  are missing; account numbers are not treated as MRNs; unknown identity status
-  values fail closed; nullable chart DOB routes to review instead of crashing.
+in strict JSON output but may be an empty list; DTO parsing rejects omitted
+identity lists; the worker/tool identity gate fails closed when dependencies
+are missing; account numbers are not treated as MRNs; unknown identity status
+values fail closed; nullable chart DOB routes to review instead of crashing.
 
 ## Week 2 M5 Implementation Notes
 
 Last verified: 2026-05-06.
 
 - M5 adds `clinical_document_facts` and
-  `clinical_document_fact_embeddings` as the durable patient-document fact
-  store. Guideline vectors remain isolated in
-  `clinical_guideline_chunk_embeddings`; document vectors use `VECTOR(1536)`
-  and embedding writes validate dimension count before SQL persistence.
+`clinical_document_fact_embeddings` as the durable patient-document fact
+store. Guideline vectors remain isolated in
+`clinical_guideline_chunk_embeddings`; document vectors use `VECTOR(1536)`
+and embedding writes validate dimension count before SQL persistence.
 - `IntakeExtractorWorker` now wires `DocumentPromotionPipeline` to
-  `SqlDocumentFactRepository` and document fact embeddings after the M5A
-  identity gate. Lab facts can persist and promote to OpenEMR `procedure_*`
-  rows with promotion provenance; intake findings are forced to
-  `document_fact` or `needs_review` and are not silently treated as chart truth.
+`SqlDocumentFactRepository` and document fact embeddings after the M5A
+identity gate. Lab facts can persist and promote to OpenEMR `procedure_*`
+rows with promotion provenance; intake findings are forced to
+`document_fact` or `needs_review` and are not silently treated as chart truth.
 - `PatientDocumentFactsEvidenceTool` replaces answer-time document
-  re-extraction in default evidence composition. It returns only active,
-  unretracted, not-deactivated facts from succeeded jobs, with `verified` or
-  `document_fact` certainty, trusted identity or explicit human approval, and
-  non-deleted source documents.
+re-extraction in default evidence composition. It returns only active,
+unretracted, not-deactivated facts from succeeded jobs, with `verified` or
+`document_fact` certainty, trusted identity or explicit human approval, and
+non-deleted source documents.
 - Retraction now deactivates document facts and document fact embeddings. Lab
-  evidence also independently suppresses AgentForge-promoted
-  `procedure_result` rows whose source document is deleted or whose promotion
-  or job is inactive or retracted.
+evidence also independently suppresses AgentForge-promoted
+`procedure_result` rows whose source document is deleted or whose promotion
+or job is inactive or retracted.
 - The cited document source gate accepts explicit human review approval
-  consistently with evidence retrieval, while still requiring patient/session
-  match, succeeded unretracted job, and non-deleted source document.
+consistently with evidence retrieval, while still requiring patient/session
+match, succeeded unretracted job, and non-deleted source document.
 - M5 proof passed `agent-forge/scripts/check-clinical-document.sh` outside the
-  sandbox on 2026-05-06: 582 AgentForge isolated tests / 2888 assertions / 1
-  skipped, clinical document eval `baseline_met`, focused PHPStan and PHPCS
-  clean. Latest artifact noted during implementation:
-  `agent-forge/eval-results/clinical-document-20260506-183912/`.
+sandbox on 2026-05-06: 582 AgentForge isolated tests / 2888 assertions / 1
+skipped, clinical document eval `baseline_met`, focused PHPStan and PHPCS
+clean. Latest artifact noted during implementation:
+`agent-forge/eval-results/clinical-document-20260506-183912/`.
 - Remaining caveat: the default document fact embedding provider is
-  deterministic, matching the current local guideline embedding pattern and
-  explicit model name; semantic/live document-vector provider selection remains
-  future hardening before depending on dense document-vector ranking.
+deterministic, matching the current local guideline embedding pattern and
+explicit model name; semantic/live document-vector provider selection remains
+future hardening before depending on dense document-vector ranking.
 
 ## Week 2 M5C Retraction/Audit Carry-Forward
 
 Last verified: 2026-05-06.
 
 - M5C acceptance maps every deletion/retraction action to source document,
-  job, prior state, new state, action, actor/system, reason, and timestamp;
-  fact, promotion, and promoted-row fields are populated where applicable and
-  remain nullable for job/fact/embedding-only actions.
+job, prior state, new state, action, actor/system, reason, and timestamp;
+fact, promotion, and promoted-row fields are populated where applicable and
+remain nullable for job/fact/embedding-only actions.
 - Per-table promoted-row policy is intentionally narrow: `procedure_result`
-  rows are marked corrected/excluded for AgentForge use, `lists` rows are made
-  inactive, promotions/facts/embeddings are marked inactive/retracted, and no
-  clinical history is hard-deleted.
+rows are marked corrected/excluded for AgentForge use, `lists` rows are made
+inactive, promotions/facts/embeddings are marked inactive/retracted, and no
+clinical history is hard-deleted.
 - `clinical_document_retractions` is row-level and append-only from an audit
-  perspective. Retraction service writes prior/new state JSON before mutating
-  jobs, facts, embeddings, promotions, and supported native rows inside one
-  transaction.
+perspective. Retraction service writes prior/new state JSON before mutating
+jobs, facts, embeddings, promotions, and supported native rows inside one
+transaction.
 - Automated M5C proof passed on 2026-05-06 via focused isolated tests and
-  `agent-forge/scripts/check-clinical-document.sh`; eval artifact:
-  `agent-forge/eval-results/clinical-document-20260506-191013`. Manual/browser
-  deletion proof was not run and can be covered by H2/submission polish.
+`agent-forge/scripts/check-clinical-document.sh`; eval artifact:
+`agent-forge/eval-results/clinical-document-20260506-191013`. Manual/browser
+deletion proof was not run and can be covered by H2/submission polish.
 
 ## Week 2 H2 Source Review Carry-Forward
 
 Last automated proof: 2026-05-06.
 
 - H2 source review uses one shared `SourceDocumentAccessGate` for both the
-  guarded source redirect and JSON source-review endpoint. The gate requires
-  active patient/session scope, `patients:med`, succeeded unretracted job,
-  trusted identity or approved review, non-deleted and active source document,
-  and active unretracted fact when fact-specific review is requested.
+guarded source redirect and JSON source-review endpoint. The gate requires
+active patient/session scope, `patients:med`, succeeded unretracted job,
+trusted identity or approved review, non-deleted and active source document,
+and active unretracted fact when fact-specific review is requested.
 - `documents.activity=0` is treated as inactive source content for AgentForge.
-  The Zend document deactivation path dispatches `DocumentRetractionHook`, and
-  source-review/evidence SQL excludes inactive source documents.
+The Zend document deactivation path dispatches `DocumentRetractionHook`, and
+source-review/evidence SQL excludes inactive source documents.
 - The chart panel fetches source-review JSON, renders normalized bounding boxes
-  when available, and falls back to stored page/section plus quote/value when no
-  bounding box exists. The UI must not log quote/value or raw document text.
+when available, and falls back to stored page/section plus quote/value when no
+bounding box exists. The UI must not log quote/value or raw document text.
 - H2 focused tests passed with 36 tests / 238 assertions. The clinical document
-  gate passed with eval artifact
-  `agent-forge/eval-results/clinical-document-20260506-213410`. The
-  comprehensive AgentForge gate also passed with deterministic eval artifact
-  `agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
-  artifact `agent-forge/eval-results/clinical-document-20260506-213715`.
-  Browser/manual proof of the reviewer-facing deletion/source-review flow
-  remains pending.
+gate passed with eval artifact
+`agent-forge/eval-results/clinical-document-20260506-213410`. The
+comprehensive AgentForge gate also passed with deterministic eval artifact
+`agent-forge/eval-results/eval-results-20260506-213643.json` and clinical
+artifact `agent-forge/eval-results/clinical-document-20260506-213715`.
+Browser/manual proof of the reviewer-facing deletion/source-review flow
+remains pending.
 
 ## Week 2 M6 Implementation Notes
 
 Last verified: 2026-05-06.
 
 - M6 added a guideline-only corpus under
-  `agent-forge/fixtures/clinical-guideline-corpus/` with corpus version
-  `clinical-guideline-demo-2026-05-06` and five checked-in primary-care source
-  files: ADA A1c, ACC/AHA LDL, USPSTF screening, hypertension, and
-  OpenEMR-local refusal calibration.
+`agent-forge/fixtures/clinical-guideline-corpus/` with corpus version
+`clinical-guideline-demo-2026-05-06` and five checked-in primary-care source
+files: ADA A1c, ACC/AHA LDL, USPSTF screening, hypertension, and
+OpenEMR-local refusal calibration.
 - Guideline vectors are stored only in `clinical_guideline_chunk_embeddings`;
-  patient document facts must not be mixed into this table. The embedding table
-  includes `corpus_version` and is keyed by `(corpus_version, chunk_id)` so
-  corpus rebuilds remain versioned.
+patient document facts must not be mixed into this table. The embedding table
+includes `corpus_version` and is keyed by `(corpus_version, chunk_id)` so
+corpus rebuilds remain versioned.
 - `GuidelineCorpusIndexer` produced 25 stable chunks for the current corpus.
-  The Docker/OpenEMR runtime command
-  `php agent-forge/scripts/index-clinical-guidelines.php` indexed 25 active
-  chunks and 25 active embeddings in MariaDB 11.8. Direct host execution still
-  depends on a working OpenEMR site database bootstrap and may fail when
-  `$GLOBALS['adodb']['db']` is unavailable.
+The Docker/OpenEMR runtime command
+`php agent-forge/scripts/index-clinical-guidelines.php` indexed 25 active
+chunks and 25 active embeddings in MariaDB 11.8. Direct host execution still
+depends on a working OpenEMR site database bootstrap and may fail when
+`$GLOBALS['adodb']['db']` is unavailable.
 - `HybridGuidelineRetriever` applies sparse retrieval, dense MariaDB Vector
-  retrieval, merge/dedupe, mandatory rerank, thresholding, and cited result
-  shaping. `DeterministicReranker` is the CI/default path; `CohereReranker` is
-  selected by `GuidelineRerankerFactory` only when `AGENTFORGE_COHERE_API_KEY`
-  is configured.
+retrieval, merge/dedupe, mandatory rerank, thresholding, and cited result
+shaping. `DeterministicReranker` is the CI/default path; `CohereReranker` is
+selected by `GuidelineRerankerFactory` only when `AGENTFORGE_COHERE_API_KEY`
+is configured.
 - Out-of-corpus guideline questions must return `not_found`/refusal. Generic
-  terms such as "guideline" are treated as low-value retrieval terms so
-  appendicitis, migraine, and rheumatoid arthritis requests do not accidentally
-  retrieve unrelated primary-care chunks.
+terms such as "guideline" are treated as low-value retrieval terms so
+appendicitis, migraine, and rheumatoid arthritis requests do not accidentally
+retrieve unrelated primary-care chunks.
 - The clinical document eval adapter now uses the real in-memory guideline
-  retriever for guideline cases instead of hardcoded fake guideline facts.
-  `GuidelineRetrievalRubric` is part of the boolean eval gate and the accepted
-  baseline requires `guideline_retrieval` pass rate `1.0`.
+retriever for guideline cases instead of hardcoded fake guideline facts.
+`GuidelineRetrievalRubric` is part of the boolean eval gate and the accepted
+baseline requires `guideline_retrieval` pass rate `1.0`.
 - M6 proof passed the focused guideline/schema/eval tests, clinical document
-  evals, `agent-forge/scripts/check-clinical-document.sh`, and
-  `agent-forge/scripts/check-agentforge.sh` on 2026-05-06. Remaining scope:
-  production supervisor/final-answer integration is M7, live DB proof is manual
-  rather than CI-automated, and SQL sparse search is still LIKE-token based.
+evals, `agent-forge/scripts/check-clinical-document.sh`, and
+`agent-forge/scripts/check-agentforge.sh` on 2026-05-06. Remaining scope:
+production supervisor/final-answer integration is M7, live DB proof is manual
+rather than CI-automated, and SQL sparse search is still LIKE-token based.
 
 ## Week 2 M7 Implementation Notes
 
 Last verified: 2026-05-06.
 
 - M7 keeps the MVP orchestration thin. `Supervisor` routes clinical document
-  jobs by job status plus identity trust: unfinished jobs go to
-  `intake-extractor`, trusted succeeded jobs go to `evidence-retriever`, and
-  failed/retracted/untrusted jobs are held.
+jobs by job status plus identity trust: unfinished jobs go to
+`intake-extractor`, trusted succeeded jobs go to `evidence-retriever`, and
+failed/retracted/untrusted jobs are held.
 - `clinical_supervisor_handoffs` uses the Week 2 node language:
-  `source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`,
-  `latency_ms`, and `error_reason`. Keep node names exactly `supervisor`,
-  `intake-extractor`, and `evidence-retriever`.
+`source_node`, `destination_node`, `decision_reason`, `task_type`, `outcome`,
+`latency_ms`, and `error_reason`. Keep node names exactly `supervisor`,
+`intake-extractor`, and `evidence-retriever`.
 - `EvidenceRetrieverWorker` is a wrapper, not a new retriever. It reuses the
-  existing chart collector and M6 `GuidelineRetriever`; accepted guideline
-  chunks become bounded `guideline` evidence items, while out-of-corpus results
-  surface as `Missing or Not Found`.
+existing chart collector and M6 `GuidelineRetriever`; accepted guideline
+chunks become bounded `guideline` evidence items, while out-of-corpus results
+surface as `Missing or Not Found`.
 - Agent responses remain backward-compatible: the flat `answer` and string
-  `citations` fields stay, while `sections` and `citation_details` are additive.
-  Verifier policy now separates patient claims from guideline claims so patient
-  claims cannot be grounded by guideline chunks and guideline claims must cite
-  retrieved guideline evidence.
+`citations` fields stay, while `sections` and `citation_details` are additive.
+Verifier policy now separates patient claims from guideline claims so patient
+claims cannot be grounded by guideline chunks and guideline claims must cite
+retrieved guideline evidence.
 - M7 evals add machine-readable handoffs, final answer sections, answer-level
-  citation coverage, and an unsafe-advice refusal case. The clinical document
-  baseline remains deterministic and reached `baseline_met`.
+citation coverage, and an unsafe-advice refusal case. The clinical document
+baseline remains deterministic and reached `baseline_met`.
 - M7 proof passed `agent-forge/scripts/check-clinical-document.sh` and
-  `agent-forge/scripts/check-agentforge.sh` on 2026-05-06. In the sandbox,
-  PHPStan can fail with localhost bind `EPERM`; rerun the gates outside the
-  sandbox for authoritative proof.
+`agent-forge/scripts/check-agentforge.sh` on 2026-05-06. In the sandbox,
+PHPStan can fail with localhost bind `EPERM`; rerun the gates outside the
+sandbox for authoritative proof.
 - Post-review hardening on 2026-05-06 wired request-level supervisor handoffs
-  into `VerifiedAgentHandler`/`agent_request.php`, added a safe missing-corpus
-  fallback for guideline retriever construction, fail-closed guideline retrieval
-  behavior, richer guideline citation details, and closed the deterministic
-  fixture fallback gap where guideline evidence could be mislabeled as patient
-  facts. The clinical eval handoff shape now mirrors the database contract.
+into `VerifiedAgentHandler`/`agent_request.php`, added a safe missing-corpus
+fallback for guideline retriever construction, fail-closed guideline retrieval
+behavior, richer guideline citation details, and closed the deterministic
+fixture fallback gap where guideline evidence could be mislabeled as patient
+facts. The clinical eval handoff shape now mirrors the database contract.
 
 ## Week 2 H1 Implementation Notes
 
 Last verified: 2026-05-06.
 
 - H1 is implemented with 59 checked-in clinical-document golden cases under
-  `agent-forge/fixtures/clinical-document-golden/cases/`, staying inside the
-  temporary 50-60 case policy.
+`agent-forge/fixtures/clinical-document-golden/cases/`, staying inside the
+temporary 50-60 case policy.
 - The H1 suite now includes structural coverage tags for clean typed lab,
-  scanned lab, image-only lab, typed intake, scanned intake, unexpected
-  location, uncertain allergy, incomplete collection date, irrelevant
-  preference, duplicate upload, wrong-document retraction, missing data,
-  out-of-corpus guideline, no-PHI logging trap, follow-up grounding, citation
-  regression, and combined document-plus-guideline grounding.
+scanned lab, image-only lab, typed intake, scanned intake, unexpected
+location, uncertain allergy, incomplete collection date, irrelevant
+preference, duplicate upload, wrong-document retraction, missing data,
+out-of-corpus guideline, no-PHI logging trap, follow-up grounding, citation
+regression, and combined document-plus-guideline grounding.
 - `StructuralCoveragePolicy` runs inside
-  `RunClinicalDocumentEvalsCommand` before the adapter executes. It fails the
-  gate if case count leaves 50-60, required category minimums are lost,
-  required H1 coverage tags are absent, or a registered rubric is never
-  declared by an applicable case.
+`RunClinicalDocumentEvalsCommand` before the adapter executes. It fails the
+gate if case count leaves 50-60, required category minimums are lost,
+required H1 coverage tags are absent, or a registered rubric is never
+declared by an applicable case.
 - `baseline.json` now records `case_count: 59`; `thresholds.json` keeps all
-  configured rubric thresholds at `1.0`, includes
-  `deleted_document_not_retrieved`, `promotion_expectations`, and
-  `document_fact_expectations`, and preserves
-  `regression_max_drop_pct: 5`.
+configured rubric thresholds at `1.0`, includes
+`deleted_document_not_retrieved`, `promotion_expectations`, and
+`document_fact_expectations`, and preserves
+`regression_max_drop_pct: 5`.
 - H1 hardening reconciled extraction sidecars to the checked-in source
-  documents, added real fixture patient identities for Whitaker, Reyes, and
-  Kowalski, and made deleted-document proof require an explicit retraction
-  exclusion check.
+documents, added real fixture patient identities for Whitaker, Reyes, and
+Kowalski, and made deleted-document proof require an explicit retraction
+exclusion check.
 - Regression policy proof covers threshold violations, case-count drops, drops
-  greater than 5%, and the exact-5% boundary. `BaselineComparator` uses a small
-  epsilon so floating-point precision does not turn exactly 5% into a false
-  `regression_exceeded` verdict.
-- Latest focused proof: `composer phpunit-isolated -- --filter
-  'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed
-  `59 tests, 224 assertions`. Latest eval proof:
-  `agent-forge/eval-results/clinical-document-20260506-204755` with verdict
-  `baseline_met`.
+greater than 5%, and the exact-5% boundary. `BaselineComparator` uses a small
+epsilon so floating-point precision does not turn exactly 5% into a false
+`regression_exceeded` verdict.
+- Latest focused proof: `composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'` passed
+`59 tests, 224 assertions`. Latest eval proof:
+`agent-forge/eval-results/clinical-document-20260506-204755` with verdict
+`baseline_met`.
 - The H1 eval is deterministic fixture-backed proof. Deployed Week 2 smoke,
-  visual source UX, and real cost/latency packaging remain later hardening and
-  final-submission concerns.
+visual source UX, and real cost/latency packaging remain later hardening and
+final-submission concerns.
 
 ## Week 2 H2 Docs/Proof Carry-Forward
 
 Last docs/proof update: 2026-05-06.
 
 - H2 has a partial source-review implementation in the current workspace:
-  `interface/patient_file/summary/agent_document_source.php` is a guarded
-  redirect to the existing OpenEMR document retrieval controller, and the
-  AgentForge chart panel can render a lightweight source overlay when a
-  document citation includes normalized bounding-box metadata.
+`interface/patient_file/summary/agent_document_source.php` is a guarded
+redirect to the existing OpenEMR document retrieval controller, and the
+AgentForge chart panel can render a lightweight source overlay when a
+document citation includes normalized bounding-box metadata.
 - The source-review endpoint gates on active session patient, `patients:med`
-  ACL, matching `document_id`/`job_id`, `succeeded` unretracted job status,
-  trusted identity or approved identity review, and non-deleted OpenEMR source
-  document. Keep this gate aligned with the evidence source gate.
+ACL, matching `document_id`/`job_id`, `succeeded` unretracted job status,
+trusted identity or approved identity review, and non-deleted OpenEMR source
+document. Keep this gate aligned with the evidence source gate.
 - Current fallback gap: citations without `bounding_box` are rendered as text
-  in the panel; no deterministic exact-page quote/value highlight or selection
-  proof was found in this docs/proof pass.
+in the panel; no deterministic exact-page quote/value highlight or selection
+proof was found in this docs/proof pass.
 - H2 must keep the M5C retraction policy explicit: AgentForge-promoted `lists`
-  rows are deactivated with `activity = 0`, facts/promotions/embeddings are
-  inactive/retracted, and audit history is append-only in
-  `clinical_document_retractions`.
+rows are deactivated with `activity = 0`, facts/promotions/embeddings are
+inactive/retracted, and audit history is append-only in
+`clinical_document_retractions`.
 - Do not mark H2 complete until browser or endpoint proof captures active
-  source-review success, deleted/deactivated denial, no-bounding-box fallback,
-  and the clinical document/comprehensive gates or their exact caveats.
+source-review success, deleted/deactivated denial, no-bounding-box fallback,
+and the clinical document/comprehensive gates or their exact caveats.
+

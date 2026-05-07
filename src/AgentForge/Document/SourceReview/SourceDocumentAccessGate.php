@@ -57,8 +57,7 @@ final readonly class SourceDocumentAccessGate
             . 'AND j.retracted_at IS NULL '
             . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
             . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
-            . 'AND (d.activity IS NULL OR d.activity = 1) ';
+            . 'AND (d.deleted IS NULL OR d.deleted = 0) ';
 
         if ($requireFact) {
             $sql .= 'AND f.id = ? '

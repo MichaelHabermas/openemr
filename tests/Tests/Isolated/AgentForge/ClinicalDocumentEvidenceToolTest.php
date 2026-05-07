@@ -56,7 +56,8 @@ final class ClinicalDocumentEvidenceToolTest extends TestCase
         $this->assertStringContainsString('Citation: lab_pdf, page 1, results[0]', $result->items[0]->value);
         $this->assertSame(
             [
-                'source_type' => 'lab_pdf',
+                'source_type' => 'document',
+                'doc_type' => 'lab_pdf',
                 'source_id' => 'doc:11',
                 'document_id' => 11,
                 'job_id' => 17,

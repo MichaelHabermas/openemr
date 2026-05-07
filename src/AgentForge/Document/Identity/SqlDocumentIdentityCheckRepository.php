@@ -68,7 +68,6 @@ final readonly class SqlDocumentIdentityCheckRepository implements DocumentIdent
             . 'WHERE ic.job_id = ? '
             . 'AND j.document_id = ic.document_id '
             . 'AND j.patient_id = ic.patient_id '
-            . 'AND d.activity = 1 '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'LIMIT 1',
             [$jobId->value],

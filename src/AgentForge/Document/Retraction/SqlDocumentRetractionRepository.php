@@ -390,7 +390,7 @@ final readonly class SqlDocumentRetractionRepository implements DocumentRetracti
             'INSERT INTO clinical_document_retractions '
             . '(patient_id, document_id, job_id, prior_state, new_state, action, actor_type, reason, created_at) '
             . 'SELECT j.patient_id, j.document_id, ic.job_id, '
-            . 'JSON_OBJECT(\'status\', ic.status, \'extracted_identifiers_json\', ic.extracted_identifiers_json, '
+            . 'JSON_OBJECT(\'identity_status\', ic.identity_status, \'extracted_identifiers_json\', ic.extracted_identifiers_json, '
             . '\'matched_patient_fields_json\', ic.matched_patient_fields_json), '
             . 'JSON_OBJECT(\'extracted_identifiers_json\', NULL, \'matched_patient_fields_json\', NULL), '
             . '?, ?, ?, NOW() '

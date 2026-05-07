@@ -123,7 +123,7 @@ final class DocumentCitationReviewServiceTest extends TestCase
         $this->assertStringContainsString('f.active = 1', $executor->queries[0]['sql']);
         $this->assertStringContainsString('f.retracted_at IS NULL', $executor->queries[0]['sql']);
         $this->assertStringContainsString('f.deactivated_at IS NULL', $executor->queries[0]['sql']);
-        $this->assertStringContainsString('d.activity', $executor->queries[0]['sql']);
+        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->queries[0]['sql']);
         $this->assertSame([7, 900101, 11, 'succeeded', 'identity_verified', 'identity_review_approved', 'approved', 'approved', 41], $executor->queries[0]['binds']);
     }
 

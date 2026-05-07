@@ -47,6 +47,6 @@ final class AgentDocumentSourceGateTest extends TestCase
         $this->assertStringContainsString('ic.review_decision = ?', $script);
         $this->assertStringContainsString('ic.review_required = 0 OR ic.review_decision = ?', $script);
         $this->assertStringContainsString("'approved'", $script);
-        $this->assertStringContainsString('d.activity', $script);
+        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $script);
     }
 }

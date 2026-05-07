@@ -64,7 +64,6 @@ final class SqlDocumentFactRepositoryTest extends TestCase
         $this->assertStringContainsString('f.deactivated_at IS NULL', $executor->reads[0]['sql']);
         $this->assertStringContainsString('j.status = ?', $executor->reads[0]['sql']);
         $this->assertStringContainsString('ic.identity_status IN (?, ?)', $executor->reads[0]['sql']);
-        $this->assertStringContainsString('d.activity = 1', $executor->reads[0]['sql']);
         $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->reads[0]['sql']);
         $this->assertSame([900101, 'verified', 'document_fact', 'succeeded', 'identity_verified', 'identity_review_approved', 'approved', 'approved'], $executor->reads[0]['binds']);
     }

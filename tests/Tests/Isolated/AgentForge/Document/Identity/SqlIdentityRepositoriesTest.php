@@ -84,7 +84,6 @@ final class SqlIdentityRepositoriesTest extends TestCase
         $this->assertStringContainsString('ic.job_id = ?', $executor->reads[0]['sql']);
         $this->assertStringContainsString('j.document_id = ic.document_id', $executor->reads[0]['sql']);
         $this->assertStringContainsString('j.patient_id = ic.patient_id', $executor->reads[0]['sql']);
-        $this->assertStringContainsString('d.activity = 1', $executor->reads[0]['sql']);
         $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $executor->reads[0]['sql']);
         $this->assertSame([789], $executor->reads[0]['binds']);
     }

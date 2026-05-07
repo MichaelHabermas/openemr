@@ -103,7 +103,6 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
             . 'AND ic.document_id = j.document_id '
             . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
             . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND d.activity = 1 '
             . 'AND (d.deleted IS NULL OR d.deleted = 0) '
             . 'ORDER BY COALESCE(j.finished_at, d.date) DESC '
             . 'LIMIT ' . max(1, min(20, $this->limit)),
@@ -199,7 +198,8 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
     private function citationMetadata(array $row, array $fact, array $citation, string $field, string $page): array
     {
         $metadata = [
-            'source_type' => Fmt::string($citation, 'source_type') ?: Fmt::string($row, 'doc_type'),
+            'source_type' => 'document',
+            'doc_type' => Fmt::string($row, 'doc_type'),
             'source_id' => Fmt::string($citation, 'source_id') ?: 'document:' . Fmt::string($row, 'document_id'),
             'document_id' => Fmt::positiveInt($row, 'document_id'),
             'job_id' => Fmt::positiveInt($row, 'id'),
