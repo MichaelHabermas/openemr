@@ -12,6 +12,7 @@
 
 namespace OpenEMR\Health\Check;
 
+use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Health\HealthCheckInterface;
 use OpenEMR\Health\HealthCheckResult;
 
@@ -27,11 +28,8 @@ class InstallationCheck implements HealthCheckInterface
     public function check(): HealthCheckResult
     {
         try {
-            // The $config variable is set in sqlconf.php
-            // $config = 0 means not installed, $config = 1 means installed
-            global $config;
-
-            if (!isset($config)) {
+            $siteDir = OEGlobalsBag::getInstance()->getString('OE_SITE_DIR');
+            if ($siteDir === '') {
                 return new HealthCheckResult(
                     $this->getName(),
                     false,
@@ -39,7 +37,35 @@ class InstallationCheck implements HealthCheckInterface
                 );
             }
 
-            if ($config !== 1) {
+            $sqlconfPath = $siteDir . '/sqlconf.php';
+            if (!file_exists($sqlconfPath)) {
+                return new HealthCheckResult(
+                    $this->getName(),
+                    false,
+                    'Configuration not loaded'
+                );
+            }
+
+            // Parse $config from the file text instead of using global $config,
+            // which sql.inc.php overwrites with a DatabaseConnectionOptions object.
+            $contents = file_get_contents($sqlconfPath);
+            if (!is_string($contents)) {
+                return new HealthCheckResult(
+                    $this->getName(),
+                    false,
+                    'Configuration not readable'
+                );
+            }
+
+            if (preg_match('/\$config\s*=\s*(\d+)\s*;/', $contents, $matches) !== 1) {
+                return new HealthCheckResult(
+                    $this->getName(),
+                    false,
+                    'OpenEMR setup required'
+                );
+            }
+
+            if ((int) $matches[1] !== 1) {
                 return new HealthCheckResult(
                     $this->getName(),
                     false,
