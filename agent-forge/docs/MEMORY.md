@@ -80,7 +80,7 @@ Evidence tools must set `source_type` to `'document'` (not `doc_type` like `'lab
 ## Open Caveats
 
 - Default document fact embedding provider is deterministic/fixture-backed. Semantic/live provider selection is future hardening before depending on dense document-vector ranking.
-- Deployed VM smoke artifact (`clinical-document-deployed-smoke-*.json`) pending after `InstallationCheck` fix is pushed and deployed.
+- Deployed VM smoke artifact verified 2026-05-07 (1/1 passed after deploy with guideline indexing).
 - CI vs release proof: PR green on Tier 0/1 does not imply Tier 4 deployed smoke or full `check-agentforge.sh`.
 
 ## Week 1 Foundation (Summary)
