@@ -28,10 +28,12 @@ These are active constraints across all milestones.
 - Logs and telemetry must avoid raw PHI. Forbidden keys: `quote`, `quote_or_value`, `raw_value`, `document_text`, `document_image`, `extracted_fields`.
 - LLM keys are server env only; never committed. `deploy-vm.sh` fails fast when the chosen provider's key is missing.
 - Document upload must succeed even if all AgentForge code fails.
+- Week 2 PDF is canonical. `SPECS-W2.md` is an implementation translation and must not weaken or bypass `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf`.
 - Category mappings determine document-ingestion eligibility — not filenames, MIME types, or heuristics.
 - Do not promote extracted values into OpenEMR clinical tables without full provenance: `document_id`, `job_id`, extracted fact id, source citation, confidence, promotion status. Duplicate prevention must exist at both the extracted-fact layer and the promotion layer.
 - Wrong-patient detection is extraction/verification scope. `clinical_document_identity_checks` must prevent fact promotion while identity is unresolved.
 - Source document deletion triggers retraction of all derived AgentForge content. Retracted content must not appear as active evidence.
+- `document_review` evidence is quarantined review evidence: surface it for clinicians when relevant, but do not reason over it as a verified patient fact or guideline support.
 - Durable schema names describe the clinical domain, not the product (`clinical_document_*`, not `agentforge_*`).
 
 ## Architecture Decisions
@@ -40,12 +42,14 @@ Contracts that downstream code depends on.
 
 - `clinical_document_type_mappings` maps OpenEMR document categories to clinical document types. One category → one doc type.
 - `clinical_document_processing_jobs` is the durable queue. Job enqueue is idempotent for `(patient_id, document_id, doc_type)`. `retracted` is terminal.
+- Only `intake-extractor` may claim `clinical_document_processing_jobs`. `supervisor` records routing/handoffs, and `evidence-retriever` is answer-time evidence retrieval, not a document-job processor.
 - `clinical_document_retractions` is append-only audit. Prior/new state JSON, action, actor, reason, timestamp.
 - `clinical_document_facts` + `clinical_document_fact_embeddings` are the patient-document fact store. Guideline vectors are separate in `clinical_guideline_chunk_embeddings`.
 - `clinical_document_identity_checks` gates between extraction and trusted facts. Only `identity_verified` and `identity_review_approved` are trusted.
 - SQL repositories go through the AgentForge `DatabaseExecutor` boundary.
 - Value objects reject non-positive IDs at the boundary.
-- Bounding boxes use `{x, y, width, height}` (not `[x0, y0, x1, y1]`).
+- Bounding boxes use `{x, y, width, height}` (not `[x0, y0, x1, y1]`), must be normalized, and are invalid when dimensions are non-positive or `x + width > 1` / `y + height > 1`.
+- Document citation handling must use shared normalization; do not add fixture-specific runtime citation corrections.
 - Upload enqueue dispatches once in `C_Document::upload_action_process()`.
 - Multi-turn state stored via `SessionUtil::setSensitiveSession` under `agent_forge_conversations`.
 

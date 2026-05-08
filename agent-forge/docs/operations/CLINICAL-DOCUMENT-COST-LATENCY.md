@@ -14,8 +14,8 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Artifact | Role |
 | --- | --- |
-| `agent-forge/eval-results/clinical-document-20260508-001019/run.json` | Source input for this rendered report. |
-| `agent-forge/eval-results/clinical-document-20260508-001019/summary.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-153134/run.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-153134/summary.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/tier2-live-20260503-202550.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/deployed-smoke-20260503-201547.json` | Source input for this rendered report. |
 
@@ -23,7 +23,7 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Metric | Value | Interpretation |
 | --- | ---: | --- |
-| Clinical run executed at | `2026-05-08T00:10:19+00:00` | Source clinical-document summary timestamp. |
+| Clinical run executed at | `2026-05-08T15:31:34+00:00` | Source clinical-document summary timestamp. |
 | Clinical cases | `59` | Deterministic Week 2 gate cases. |
 | Clinical verdict | `baseline_met` | Baseline/threshold result from the gate. |
 | Clinical handoff p50 | `placeholder 0 ms` | Instrumentation placeholder, not runtime proof. |

@@ -40,14 +40,17 @@ existing OpenEMR upload
 
 The MVP is not a broad document AI platform. Anything that does not help prove this path is deferred until the core flow, eval gate, and deployed worker are working.
 
-Checkpoint implementation note (2026-05-06): M6 proves the guideline retrieval
-slice, and M7 adds the thin MVP supervisor/final-answer path. The implemented
-guideline path has a checked-in primary-care corpus, deterministic indexing,
-separate MariaDB Vector tables for guideline chunks, sparse+dense retrieval,
-mandatory rerank, cited top-k output, and deterministic not-found/refusal for
-out-of-corpus questions. M7 production wiring now records request handoffs for
-guideline retrieval, separates cited answer sections, and gates the proof path
-through the clinical document eval harness.
+Current implementation note (2026-05-08): the graph is intentionally small and
+real. `intake-extractor` is the only worker that can claim
+`clinical_document_processing_jobs`; `supervisor` records inspectable routing
+decisions through `SupervisorRuntime` and `clinical_supervisor_handoffs`; and
+`evidence-retriever` is an answer-time evidence component, not a fake document
+job worker. The implemented guideline path has a checked-in primary-care
+corpus, deterministic indexing, separate MariaDB Vector tables for guideline
+chunks, sparse+dense retrieval, mandatory rerank, cited top-k output, and
+deterministic not-found/refusal for out-of-corpus questions. Current local
+proof is `baseline_met` across 59 clinical-document cases plus a passing
+comprehensive AgentForge gate.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -63,7 +66,7 @@ library/ajax/upload.php
   -> OpenEMR stores file and creates documents.id
   -> AgentForge enqueueIfEligible(patient_id, document_id, category_id)
   -> clinical_document_processing_jobs row created
-  -> agentforge-worker processes the job
+  -> agentforge-worker processes the job as intake-extractor
 ```
 
 The user-facing behavior stays simple:
@@ -143,14 +146,21 @@ A continuously running PHP worker processes jobs:
 php agent-forge/scripts/process-document-jobs.php
 ```
 
+Only `WorkerName::IntakeExtractor` can claim extraction jobs. The supervisor
+and evidence-retriever names are still real runtime nodes, but they fail fast
+if invoked as clinical-document job processors. This prevents a no-op worker
+loop from making the graph look broader than it is.
+
 The worker:
 
 ```text
 finds a pending job
 marks it running
 loads the OpenEMR document
+calls ClinicalDocumentIngestionWorkflow::ingest(...)
 extracts facts
 validates facts
+applies the identity gate
 persists/chart-promotes safe facts
 stores and vectorizes cited document facts
 records handoffs, cost, latency, counts, and errors
@@ -355,6 +365,12 @@ Coordinates are normalized:
 1.0 = right/bottom
 ```
 
+The shared `DocumentCitationNormalizer` is the runtime citation boundary for
+source review, document evidence, and clinical-document rubrics. Bounding boxes
+must be finite normalized numbers with positive `width` and `height`, and
+`x + width <= 1` plus `y + height <= 1`. Out-of-bounds boxes are rejected
+instead of being corrected by fixture-specific runtime code.
+
 The original OpenEMR document remains the source of truth. Vector records and extracted facts point back to the OpenEMR `documents.id`, page/section, field path, quote/value, and bounding box where available.
 
 `citation_json` may store raw `quote_or_value` because it is clinical application storage used by authorized UI flows. General telemetry logs must not include raw quote/value text.
@@ -401,8 +417,11 @@ OpenEMR source documents with `documents.deleted != 0` or
 
 This fallback must be deterministic and must not trust deleted, deactivated,
 wrong-patient, failed, retracted, or identity-untrusted document jobs. As of
-the 2026-05-06 docs/proof update, the no-bounding-box exact-page fallback and
-browser proof are documented as H2 gaps, not completed acceptance.
+the 2026-05-08 docs/proof update, source review, fallback display, and
+bounding-box validation are core runtime behavior rather than extension-only
+proof. General-purpose PDF rendering remains an operational hardening item for
+non-fixture documents when the local PHP image lacks a PDF rasterization
+delegate.
 
 ## 11. Persistence Model
 
@@ -736,17 +755,23 @@ It processes document extraction jobs, produces strict JSON, validates facts, at
 
 ### evidence-retriever
 
-The `evidence-retriever` worker handles answer-time evidence retrieval. In the
-M5 implementation it wraps existing chart evidence, persisted patient document
-facts, and selective guideline retrieval. The full target retrieves:
+The `evidence-retriever` worker handles answer-time evidence retrieval. It
+wraps chart evidence, persisted patient document facts, review-only document
+findings, missing/not-found signals, and selective guideline retrieval behind
+one evidence boundary. It retrieves:
 
 ```text
 existing chart evidence
 patient document facts for the active patient
+review-only document findings for clinician visibility
 guideline chunks through hybrid MariaDB Vector RAG plus rerank
 ```
 
-Guideline retrieval runs only when the question asks for interpretation, attention, recommendation support, or guideline evidence. It does not run for every simple factual lookup.
+Guideline retrieval runs only when the question asks for interpretation,
+attention, recommendation support, or guideline evidence. It does not run for
+every simple factual lookup. Review-only document evidence can be shown to
+clinicians, but it remains quarantined from verified patient-fact and guideline
+reasoning.
 
 ### Handoff Logs
 
@@ -778,6 +803,11 @@ outcome
 latency
 error reason if any
 ```
+
+`SupervisorRuntime` combines the deterministic `Supervisor` decision with the
+handoff repository write, so routing and audit cannot drift into separate
+paths. `VerifiedAgentHandler` uses the same runtime path before invoking
+answer-time guideline retrieval.
 
 ## 15. Final Answer Behavior
 
@@ -919,7 +949,7 @@ It summarizes the measured clinical-document cost, latency, and operational cave
 
 ## 17. Eval Gate
 
-Week 2 requires a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
+Week 2 requires at least a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
 Current implementation note (2026-05-06): the checked-in clinical document
 golden set is the 59-case H1 submission set. It gates strict fixture-backed
@@ -985,26 +1015,43 @@ the eval runner cannot complete
 
 Eval artifacts are saved under `agent-forge/eval-results`.
 
-The PR-blocking mechanism is a checked-in Git hook/CI command wrapper:
+The PR-blocking/local mechanism is a checked-in gate command:
 
 ```text
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-That script runs the smallest useful bundle for Week 2:
+That script runs the Week 2 clinical-document bundle:
 
 ```text
-schema tests
-document job/fact unit tests
-retrieval tests
-php agent-forge/scripts/run-clinical-document-evals.php
+diff whitespace check
+syntax checks
+AgentForge isolated PHPUnit
+clinical document eval runner
+focused PHPStan
+PHPCS on changed AgentForge clinical-document eval PHP files
+```
+
+The broader local command is:
+
+```text
+agent-forge/scripts/check-agentforge.sh
+```
+
+The latest local manual verification on 2026-05-08 passed:
+
+```text
+AgentForge isolated PHPUnit: 672 tests, 3145 assertions, 1 skipped
+AgentForge deterministic evals: 32 passed, 0 failed
+clinical document evals: 59 cases, verdict baseline_met
+focused PHPStan and PHPCS: clean
 ```
 
 ## 18. Example Documents And Synthetic Expansion
 
 The provided examples under `agent-forge/docs/example-documents` are MVP development fixtures, not the complete golden set.
 
-Initial examples include lab results and intake forms for Chen, Whitaker, Reyes, and Kowalski. The Week 2 eval set expands from these into 50 synthetic/demo cases using templates/scripts where possible.
+Initial examples include lab results and intake forms for Chen, Whitaker, Reyes, and Kowalski. The Week 2 eval set expands from these into 59 synthetic/demo cases using templates/scripts where possible.
 
 The generated set should cover:
 
@@ -1209,7 +1256,7 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored with citation metadata for review, but are excluded from active evidence and chart promotion until resolved. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
-| 50-case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 59 synthetic/demo H1 cases. |
+| 50+ case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 59 synthetic/demo H1 cases under the 50-60 case policy. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`; Week 2 gated rubrics also protect guideline retrieval, bounding boxes, deleted-document exclusion, promotion expectations, and document-fact expectations. |
 | Blocking gate command | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is intended for CI/hook and grader reruns. |
 | No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |

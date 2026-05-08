@@ -10,8 +10,8 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 
 ## Requirements (source of truth)
 
-- [Week 2 project requirements (text)](SPECS-W2.md) — maintained Week 2 spec (editable source of truth; may diverge from PDF when clarified).
-- [Week 2 requirements (PDF)](Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document.
+- [Week 2 requirements (PDF)](Week-2-AgentForge-Clinical-Co-Pilot.pdf) — original Gauntlet document and canonical requirement source.
+- [Week 2 project requirements (text)](SPECS-W2.md) — maintained implementation translation. Keep it aligned with the PDF; do not use it to weaken or bypass PDF requirements.
 
 **Not Week 2:** [../week1/PRD.md](../week1/PRD.md) and [../week1/PLAN.md](../week1/PLAN.md) are **Week 1** documents (grounded in [../week1/SPECS.txt](../week1/SPECS.txt)). Do not assume they describe multimodal/RAG/worker-graph work unless you fork or extend them explicitly (e.g. `PRD-W2.md`).
 
@@ -26,7 +26,7 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 ## Where work accumulates
 
 - **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
-- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current 50-case Week 2 submission gate.
+- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current 59-case Week 2 submission gate under the 50-60 case policy.
 - **Operations / cost** — [../operations/CLINICAL-DOCUMENT-COST-LATENCY.md](../operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is the current Week 2 clinical-document cost/latency report; [../operations/](../operations/) also contains shared Week 1 cost and deployed latency baselines.
 - **Acceptance matrix** — [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md) maps Week 2 requirements to current proof artifacts and explicit remaining gaps.
 - **Reviewer guide** — [../../../AGENTFORGE-REVIEWER-GUIDE.md](../../../AGENTFORGE-REVIEWER-GUIDE.md) is the root entry point for graders.
@@ -49,7 +49,7 @@ Use this command as the single local/CI clinical document gate:
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-The gate now passes for the accepted H1/H5 path: 59 fixture-backed
+The gate now passes for the accepted Week 2 path: 59 fixture-backed
 clinical-document cases, identity gating, real guideline retrieval for
 guideline cases, runner-enforced structural coverage, boolean rubric
 thresholds, regression comparison, source-review/bounding-box coverage,
@@ -57,9 +57,9 @@ deleted-document exclusion, no-PHI telemetry checks, and artifact writing.
 
 Current local proof artifacts:
 
-- `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`
-- `agent-forge/eval-results/clinical-document-20260508-001019/run.json`
-- `agent-forge/eval-results/eval-results-20260507-202234.json`
+- `agent-forge/eval-results/clinical-document-20260508-153134/summary.json`
+- `agent-forge/eval-results/clinical-document-20260508-153134/run.json`
+- `agent-forge/eval-results/eval-results-20260508-153104.json`
 
 The checked-in repository does not currently include a
 `clinical-document-deployed-smoke-*.json` artifact. H3 deployment/runtime proof
@@ -71,7 +71,7 @@ deployed clinical smoke command is documented for rerun.
 1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `PLAN-W2.md` for implementation order and `W2_ARCHITECTURE.md` §1–2 for defense architecture.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
-4. Eval-driven CI: current checkpoint gate under `check-clinical-document.sh`, expanding to 50 cases and PR-blocking CI/Git Hook in H1. — §6.
+4. Eval-driven CI: current gate under `check-clinical-document.sh` with 59 cases, boolean rubrics, structural coverage, and regression comparison. — §6.
 5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report, and reviewer acceptance matrix. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).

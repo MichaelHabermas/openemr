@@ -7,21 +7,22 @@ AgentForge docs are organized for reviewer-first navigation. The canonical gate 
 | Scope | Requirements source | Product / execution docs | Architecture |
 |--------|----------------------|---------------------------|--------------|
 | **Week 1** | [SPECS.txt](week1/SPECS.txt) | [PRD.md](week1/PRD.md), [PLAN.md](week1/PLAN.md), most of [epics/](epics/) | [../../ARCHITECTURE.md](../../ARCHITECTURE.md) (evolved from Week 1; still the live system overview) |
-| **Week 2** | [SPECS-W2.md](week2/SPECS-W2.md) | [week2/PLAN-W2.md](week2/PLAN-W2.md), [week2/README.md](week2/README.md), [epics/](epics/) | [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) (Week 2 defense artifact) |
+| **Week 2** | [Week 2 PDF](week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf) is canon; [SPECS-W2.md](week2/SPECS-W2.md) is the maintained implementation translation | [week2/PLAN-W2.md](week2/PLAN-W2.md), [week2/README.md](week2/README.md), [epics/](epics/) | [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) (Week 2 defense artifact) |
 
-**Rule of thumb:** If it cites **`week1/SPECS.txt`** and the Week 1 chart agent story, it is Week 1. If it cites **`week2/SPECS-W2.md`**, documents, RAG, or the 50-case Week 2 gate, it is Week 2. **`week1/PRD.md` and `week1/PLAN.md` are Week 1–scoped** until you add separate Week 2 planning files.
+**Rule of thumb:** If it cites **`week1/SPECS.txt`** and the Week 1 chart agent story, it is Week 1. If it cites the Week 2 PDF, **`week2/SPECS-W2.md`**, documents, RAG, or the 59-case Week 2 gate, it is Week 2. **`week1/PRD.md` and `week1/PLAN.md` are Week 1–scoped** until you add separate Week 2 planning files.
 
 ## Start Here
 
 - [MEMORY.md](MEMORY.md) - Durable AgentForge memory: cross-epic lessons, guardrails, proof caveats, and carry-forward notes that survive active epic rewrites.
 - [SPECS.txt](week1/SPECS.txt) - Week 1 / original project requirements.
-- [SPECS-W2.md](week2/SPECS-W2.md) - Week 2 project requirements (multimodal documents, RAG, supervisor/workers, eval gate).
+- [Week 2 PDF](week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf) - Canonical Week 2 requirements.
+- [SPECS-W2.md](week2/SPECS-W2.md) - Week 2 implementation translation (multimodal documents, RAG, supervisor/workers, eval gate).
 - [week2/README.md](week2/README.md) - **Week 2 index** (links to spec, PDF, eval golden set, architecture deliverable).
 - [operations/CLINICAL-DOCUMENT-COST-LATENCY.md](operations/CLINICAL-DOCUMENT-COST-LATENCY.md) - Week 2 clinical-document cost/latency report and measurement caveats.
 - [../../AUDIT.md](../../AUDIT.md) - Codebase audit and constraints.
 - [../../USERS.md](../../USERS.md) - Target user, workflow, and agent-justified use cases.
 - [../../ARCHITECTURE.md](../../ARCHITECTURE.md) - Current architecture, trust boundaries, and known limitations.
-- [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) - Week 2 architecture defense document (ingestion, graph, RAG, eval, risks); required course deliverable; fill in as Week 2 ships.
+- [../../W2_ARCHITECTURE.md](../../W2_ARCHITECTURE.md) - Week 2 architecture defense document (ingestion, graph, RAG, eval, risks); required course deliverable.
 - [PRD.md](week1/PRD.md) - **Week 1** product requirements (`week1/SPECS.txt`).
 - [PLAN.md](week1/PLAN.md) - **Week 1** execution plan and epic map (`week1/SPECS.txt`).
 

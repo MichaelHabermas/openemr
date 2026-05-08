@@ -131,10 +131,10 @@ identity-gating, structural H1 coverage policy, and real guideline-retrieval pat
 Current artifacts are written under
 `agent-forge/eval-results/clinical-document-<timestamp>/`.
 
-Latest accepted H1 artifact:
+Latest local accepted artifact:
 
 ```text
-agent-forge/eval-results/clinical-document-20260506-204755
+agent-forge/eval-results/clinical-document-20260508-153134
 ```
 
 This is deterministic fixture-backed gate proof. Deployed smoke, visual source
