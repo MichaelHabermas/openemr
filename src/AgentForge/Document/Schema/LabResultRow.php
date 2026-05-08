@@ -68,7 +68,7 @@ final readonly class LabResultRow
             $abnormalFlag,
             $certainty,
             SchemaReader::requiredConfidence($data, 'confidence', $path),
-            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation')),
+            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation'), DocumentSourceType::LabPdf),
         );
     }
 }

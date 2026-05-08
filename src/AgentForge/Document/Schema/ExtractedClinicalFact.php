@@ -1,7 +1,7 @@
 <?php
 
 /**
- * One structured finding extracted from an intake form.
+ * Shared cited fact contract for multi-format clinical document fixture coverage.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -12,14 +12,12 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document\Schema;
 
-final readonly class IntakeFormFinding
+final readonly class ExtractedClinicalFact
 {
-    /**
-     * @param Certainty $certainty Model-reported certainty from extraction JSON. Policy uses {@see CertaintyClassifier}
-     *                             unless the model sets {@see Certainty::NeedsReview}.
-     */
     public function __construct(
-        public string $field,
+        public string $type,
+        public string $fieldPath,
+        public string $label,
         public string $value,
         public Certainty $certainty,
         public float $confidence,
@@ -30,11 +28,11 @@ final readonly class IntakeFormFinding
     /**
      * @param array<string, mixed> $data
      */
-    public static function fromArray(array $data, string $path = 'findings[0]'): self
+    public static function fromArray(array $data, string $path = 'facts[0]', ?DocumentSourceType $expectedSourceType = null): self
     {
         SchemaReader::assertNoUnknownFields(
             $data,
-            ['field', 'value', 'certainty', 'confidence', 'citation'],
+            ['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'],
             $path,
         );
 
@@ -44,11 +42,13 @@ final readonly class IntakeFormFinding
         }
 
         return new self(
-            SchemaReader::requiredString($data, 'field', $path),
+            SchemaReader::requiredString($data, 'type', $path),
+            SchemaReader::requiredString($data, 'field_path', $path),
+            SchemaReader::requiredString($data, 'label', $path),
             SchemaReader::requiredString($data, 'value', $path),
             $certainty,
             SchemaReader::requiredConfidence($data, 'confidence', $path),
-            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation'), DocumentSourceType::IntakeForm),
+            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation'), $expectedSourceType),
         );
     }
 }

@@ -26,7 +26,7 @@ Update [../MEMORY.md](../MEMORY.md) when Week 2 work discovers durable informati
 ## Where work accumulates
 
 - **Epics** — Add Week 2 slices under [../epics/](../epics/) with an obvious prefix (e.g. `EPIC_W2_*`) or a dedicated epic file per stage; link them from this README as you create them.
-- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current 59-case Week 2 submission gate under the 50-60 case policy.
+- **Eval golden set** — [../../fixtures/clinical-document-golden/README.md](../../fixtures/clinical-document-golden/README.md) — current 65-case Week 2 submission gate under the 50-80 case policy.
 - **Operations / cost** — [../operations/CLINICAL-DOCUMENT-COST-LATENCY.md](../operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is the current Week 2 clinical-document cost/latency report; [../operations/](../operations/) also contains shared Week 1 cost and deployed latency baselines.
 - **Acceptance matrix** — [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md) maps Week 2 requirements to current proof artifacts and explicit remaining gaps.
 - **Reviewer guide** — [../../../AGENTFORGE-REVIEWER-GUIDE.md](../../../AGENTFORGE-REVIEWER-GUIDE.md) is the root entry point for graders.

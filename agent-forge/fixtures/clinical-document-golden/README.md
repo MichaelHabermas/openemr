@@ -2,11 +2,12 @@
 
 This directory holds the synthetic/demo clinical document golden dataset, boolean rubrics, thresholds, and baseline for the multimodal Clinical Co-Pilot gate.
 
-The current H1 gate contains 59 deterministic cases across 6 machine categories and the required Week 2/H1 behavior tags: lab PDF extraction, intake form extraction, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, deleted-document retrieval protection, combined document-plus-guideline grounding, missing-data handling, uncertain allergy review, incomplete collection date review, irrelevant preference filtering, follow-up grounding, and citation-regression protection. The suite uses checked-in source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski).
+The current H1/Epic 1 gate contains 65 deterministic cases across 10 machine categories and the required Week 2/H1 behavior tags: lab PDF extraction, intake form extraction, DOCX referral contract coverage, XLSX workbook contract coverage, TIFF fax packet contract coverage, HL7 v2 ADT/ORU contract coverage, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, deleted-document retrieval protection, combined document-plus-guideline grounding, missing-data handling, uncertain allergy review, incomplete collection date review, irrelevant preference filtering, follow-up grounding, preview-only exclusion, and citation-regression protection. The scored lab/intake suite uses checked-in source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski); Epic 1 adds contract cases against Chen multi-format fixtures.
 
 ## Files
 
 - `cases/*.json` — versioned golden cases.
+- `source-fixture-manifest.json` — source fixture inventory with path, role, MIME type, SHA-256, doc type, and linked extraction sidecar when one is part of the deterministic gate.
 - `thresholds.json` — pass-rate thresholds and the maximum allowed regression drop.
 - `baseline.json` — current accepted deterministic baseline for the implemented checkpoint path. Current runs must meet it, meet `thresholds.json`, and avoid rubric pass-rate regression.
 
@@ -36,10 +37,18 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 
 - **Lab PDF extraction** (10 cases): Chen lipid panel, Whitaker CBC, Reyes HbA1c image, Kowalski CMP, missing-data handling, follow-up grounding, and citation-regression protection.
 - **Intake form extraction** (11 cases): Chen typed intake, Whitaker scanned intake, Reyes intake, Kowalski intake, uncertain allergy review, unexpected-location review, and irrelevant-preference filtering.
+- **DOCX referral extraction contract** (1 case): Chen referral facts, identity evidence, paragraph citations, and document-fact proof records.
+- **XLSX workbook extraction contract** (1 case): Chen workbook lab trend and care-gap facts with sheet/cell-range citations.
+- **TIFF fax packet extraction contract** (1 case): Chen multipage fax packet facts with page citations and bounding boxes.
+- **HL7 v2 message extraction contract** (2 cases): Chen ADT A08 visit update and ORU R01 observation/note facts with segment/field citations.
 - **Duplicate upload** (2 cases): Chen lab duplicate and Whitaker CBC duplicate.
-- **Log sanitization** (3 cases): lab and intake log-audit traps that check raw patient strings are absent from telemetry.
+- **Log sanitization** (4 cases): lab and intake log-audit traps plus preview-only exclusion coverage that check raw patient strings and preview artifacts are absent from telemetry.
 - **Guideline retrieval** (13 cases): supported primary-care guideline retrieval, combined document-plus-guideline grounding, and wrong-document retraction protection.
 - **Refusal** (20 cases): out-of-corpus guideline refusals and unsafe advice refusals.
+
+## Epic 1 multi-format contract coverage
+
+Epic 1 is a fail-first contract layer, not runtime ingestion for every format. The source fixture manifest covers every real file under `agent-forge/docs/example-documents/`, marks `source-previews/*.png` as `preview_only`, and links deterministic extraction sidecars only for formats that participate in the golden gate. DOCX, XLSX, TIFF, and HL7 v2 cases validate strict schemas, identity evidence, citations, document-fact proof records, and no-PHI logging without adding normalizers or live extraction providers yet.
 
 ## 2026-05-06 audit follow-ups
 
@@ -47,13 +56,14 @@ A 2026-05-06 H1 audit identified duplication, scoring, coverage, threshold, and 
 
 ### H1 expansion and structural policy (done)
 
-The accepted H1 suite contains 59 cases, which satisfies the temporary 50-60
+The accepted H1/Epic 1 suite contains 65 cases, which satisfies the 50-80
 case policy. `StructuralCoveragePolicy` now blocks the eval runner when the
-golden set drops below required category minimums, exceeds 60 cases, omits a
+golden set drops below required category minimums, exceeds 80 cases, omits a
 registered rubric, or loses required H1 coverage tags such as
 `combined_document_guideline`, `missing_data`, `uncertain_allergy`,
 `incomplete_collection_date`, `irrelevant_preference`, `follow_up_grounding`,
-and `citation_regression`.
+`citation_regression`, `referral_docx`, `clinical_workbook`, `fax_packet`,
+`hl7v2_adt`, `hl7v2_oru`, and `preview_only_excluded`.
 
 ### Threshold tightening (done)
 
@@ -101,6 +111,8 @@ They are kept here to inform future work.
 
 ### Coverage gaps still open
 
+- No runtime normalizers or live extraction providers for DOCX, XLSX, TIFF,
+  or HL7 v2 yet; Epic 1 proves strict fixture-backed contracts only.
 - No multi-section clinical notes (discharge summaries, progress notes,
   H&Ps, op notes, consult notes, ED triage).
 - No medical coding (LOINC, SNOMED, ICD-10, RxNorm, CPT) in inputs or
@@ -134,7 +146,7 @@ Current artifacts are written under
 Latest local accepted artifact:
 
 ```text
-agent-forge/eval-results/clinical-document-20260508-153134
+agent-forge/eval-results/clinical-document-20260508-184118
 ```
 
 This is deterministic fixture-backed gate proof. Deployed smoke, visual source

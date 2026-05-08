@@ -1,0 +1,52 @@
+{
+  "doc_type": "hl7v2_message",
+  "message_type": "ADT^A08",
+  "message_control_id": "MSG-p01-20260506143215-ADT",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "CHEN^MARGARET^L",
+      "field_path": "PID[1].5",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:ac6114bffe752b3ef7c1bcc8e4c19828673b5bbfa0fd5618bb7f1aa0c7396ba8",
+        "page_or_section": "message:MSG-p01-20260506143215-ADT",
+        "field_or_chunk_id": "PID[1].5",
+        "quote_or_value": "CHEN^MARGARET^L"
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1968-03-12",
+      "field_path": "PID[1].7",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:ac6114bffe752b3ef7c1bcc8e4c19828673b5bbfa0fd5618bb7f1aa0c7396ba8",
+        "page_or_section": "message:MSG-p01-20260506143215-ADT",
+        "field_or_chunk_id": "PID[1].7",
+        "quote_or_value": "19680312"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "type": "visit_update",
+      "field_path": "EVN[1].7",
+      "label": "Event note",
+      "value": "Medication change recorded; atorvastatin titration and ezetimibe added.",
+      "certainty": "document_fact",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:ac6114bffe752b3ef7c1bcc8e4c19828673b5bbfa0fd5618bb7f1aa0c7396ba8",
+        "page_or_section": "message:MSG-p01-20260506143215-ADT",
+        "field_or_chunk_id": "EVN[1].7",
+        "quote_or_value": "Medication change recorded; atorvastatin titration and ezetimibe added."
+      }
+    }
+  ]
+}

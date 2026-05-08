@@ -78,24 +78,40 @@ final class RunClinicalDocumentEvalsCommand
     {
         $categoryCounts = [];
         $coverageTagCounts = [];
+        $docTypeCounts = [];
+        $sourceFormatCounts = [];
         foreach ($cases as $case) {
             $category = $case->category->value;
             $categoryCounts[$category] = ($categoryCounts[$category] ?? 0) + 1;
+            if ($case->docType !== null) {
+                $docTypeCounts[$case->docType] = ($docTypeCounts[$case->docType] ?? 0) + 1;
+            }
+            $sourcePath = $case->input['source_document_path'] ?? null;
+            if (is_string($sourcePath) && trim($sourcePath) !== '') {
+                $extension = strtolower((string) pathinfo($sourcePath, PATHINFO_EXTENSION));
+                if ($extension !== '') {
+                    $sourceFormatCounts[$extension] = ($sourceFormatCounts[$extension] ?? 0) + 1;
+                }
+            }
             foreach ($case->coverageTags as $tag) {
                 $coverageTagCounts[$tag] = ($coverageTagCounts[$tag] ?? 0) + 1;
             }
         }
         ksort($categoryCounts);
         ksort($coverageTagCounts);
+        ksort($docTypeCounts);
+        ksort($sourceFormatCounts);
 
         $rubricThresholds = is_array($thresholds['rubric_thresholds'] ?? null) ? $thresholds['rubric_thresholds'] : [];
 
         return [
-            'case_count_policy' => '50-60',
+            'case_count_policy' => '50-80',
             'case_count' => count($cases),
             'baseline_case_count' => is_numeric($baseline['case_count'] ?? null) ? (int) $baseline['case_count'] : null,
             'threshold_rubrics' => array_keys($rubricThresholds),
             'category_counts' => $categoryCounts,
+            'doc_type_counts' => $docTypeCounts,
+            'source_format_counts' => $sourceFormatCounts,
             'coverage_tag_counts' => $coverageTagCounts,
             'structural_coverage_policy' => 'passed',
         ];

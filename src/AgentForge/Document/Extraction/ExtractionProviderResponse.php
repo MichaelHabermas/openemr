@@ -15,11 +15,16 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 use DomainException;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\DocumentCitation;
+use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\StringKeyedArray;
 
@@ -42,7 +47,7 @@ final readonly class ExtractionProviderResponse
         public DraftUsage $usage,
         public ?string $model = null,
         public ?string $rawText = null,
-        public LabPdfExtraction | IntakeFormExtraction | null $extraction = null,
+        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction | null $extraction = null,
     ) {
         if ($schemaValid && $extraction === null) {
             throw new DomainException('Schema-valid extraction responses must include a parsed extraction value object.');
@@ -81,6 +86,10 @@ final readonly class ExtractionProviderResponse
         $extraction = match ($documentType) {
             DocumentType::LabPdf => LabPdfExtraction::fromJson($json),
             DocumentType::IntakeForm => IntakeFormExtraction::fromJson($json),
+            DocumentType::ReferralDocx => ReferralDocxExtraction::fromJson($json),
+            DocumentType::ClinicalWorkbook => ClinicalWorkbookExtraction::fromJson($json),
+            DocumentType::FaxPacket => FaxPacketExtraction::fromJson($json),
+            DocumentType::Hl7v2Message => Hl7v2MessageExtraction::fromJson($json),
         };
 
         return new self(
@@ -108,8 +117,9 @@ final readonly class ExtractionProviderResponse
     /**
      * @return list<array<string, mixed>>
      */
-    private static function factsFromExtraction(LabPdfExtraction | IntakeFormExtraction $extraction): array
-    {
+    private static function factsFromExtraction(
+        LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction,
+    ): array {
         if ($extraction instanceof LabPdfExtraction) {
             $facts = [];
             foreach ($extraction->results as $index => $row) {
@@ -119,12 +129,16 @@ final readonly class ExtractionProviderResponse
             return $facts;
         }
 
-        $facts = [];
-        foreach ($extraction->findings as $finding) {
-            $facts[] = self::factFromIntakeFinding($finding);
+        if ($extraction instanceof IntakeFormExtraction) {
+            $facts = [];
+            foreach ($extraction->findings as $finding) {
+                $facts[] = self::factFromIntakeFinding($finding);
+            }
+
+            return $facts;
         }
 
-        return $facts;
+        return array_map(self::factFromGenericClinicalFact(...), $extraction->facts);
     }
 
     /**
@@ -163,6 +177,23 @@ final readonly class ExtractionProviderResponse
             'confidence' => $finding->confidence,
             'citation' => self::citationToArray($finding->citation),
             'bounding_box' => self::boundingBoxToArray($finding->citation->boundingBox),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function factFromGenericClinicalFact(ExtractedClinicalFact $fact): array
+    {
+        return [
+            'type' => $fact->type,
+            'field_path' => $fact->fieldPath,
+            'label' => $fact->label,
+            'value' => $fact->value,
+            'certainty' => $fact->certainty->value,
+            'confidence' => $fact->confidence,
+            'citation' => self::citationToArray($fact->citation),
+            'bounding_box' => self::boundingBoxToArray($fact->citation->boundingBox),
         ];
     }
 

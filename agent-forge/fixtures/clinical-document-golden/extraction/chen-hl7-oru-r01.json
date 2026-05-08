@@ -1,0 +1,67 @@
+{
+  "doc_type": "hl7v2_message",
+  "message_type": "ORU^R01",
+  "message_control_id": "MSG-p01-20260506143215-ORU",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "CHEN^MARGARET^L",
+      "field_path": "PID[1].5",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:199839dac4e31f7af08ca978c59461c3607a35c32542fae1e66a9e424e2c6bb6",
+        "page_or_section": "message:MSG-p01-20260506143215-ORU",
+        "field_or_chunk_id": "PID[1].5",
+        "quote_or_value": "CHEN^MARGARET^L"
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1968-03-12",
+      "field_path": "PID[1].7",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:199839dac4e31f7af08ca978c59461c3607a35c32542fae1e66a9e424e2c6bb6",
+        "page_or_section": "message:MSG-p01-20260506143215-ORU",
+        "field_or_chunk_id": "PID[1].7",
+        "quote_or_value": "19680312"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "type": "lab_result",
+      "field_path": "OBX[2]",
+      "label": "Cholesterol in LDL",
+      "value": "142 mg/dL; abnormal high; collected 20260412093000",
+      "certainty": "document_fact",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:199839dac4e31f7af08ca978c59461c3607a35c32542fae1e66a9e424e2c6bb6",
+        "page_or_section": "message:MSG-p01-20260506143215-ORU",
+        "field_or_chunk_id": "OBX[2]",
+        "quote_or_value": "Cholesterol in LDL 142 mg/dL; abnormal high; collected 20260412093000"
+      }
+    },
+    {
+      "type": "note",
+      "field_path": "NTE[1]",
+      "label": "Result note",
+      "value": "Repeat lipid panel in 6 weeks after intensification of therapy.",
+      "certainty": "document_fact",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "hl7v2_message",
+        "source_id": "sha256:199839dac4e31f7af08ca978c59461c3607a35c32542fae1e66a9e424e2c6bb6",
+        "page_or_section": "message:MSG-p01-20260506143215-ORU",
+        "field_or_chunk_id": "NTE[1].3",
+        "quote_or_value": "Repeat lipid panel in 6 weeks after intensification of therapy."
+      }
+    }
+  ]
+}

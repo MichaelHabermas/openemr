@@ -66,4 +66,42 @@ final class JsonSchemaBuilderTest extends TestCase
             $itemRequired,
         );
     }
+
+    public function testBuildsStrictExtractionSchemaForContractOnlyFormats(): void
+    {
+        $builder = new JsonSchemaBuilder();
+
+        foreach ([
+            [DocumentType::ReferralDocx, 'referral_docx', 'referral_name'],
+            [DocumentType::ClinicalWorkbook, 'clinical_workbook', 'workbook_name'],
+            [DocumentType::FaxPacket, 'fax_packet', 'packet_name'],
+        ] as [$type, $docType, $nameField]) {
+            $schema = $builder->schema($type);
+            $this->assertFalse($schema['additionalProperties']);
+            $this->assertSame(['doc_type', $nameField, 'patient_identity', 'facts'], $schema['required']);
+            $properties = $schema['properties'];
+            $this->assertIsArray($properties);
+            $docTypeProperty = $properties['doc_type'] ?? null;
+            $this->assertIsArray($docTypeProperty);
+            $this->assertSame([$docType], $docTypeProperty['enum'] ?? null);
+            $facts = $properties['facts'] ?? null;
+            $this->assertIsArray($facts);
+            $items = $facts['items'] ?? null;
+            $this->assertIsArray($items);
+            $this->assertSame(['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'], $items['required'] ?? null);
+        }
+    }
+
+    public function testBuildsStrictExtractionSchemaForHl7v2Message(): void
+    {
+        $schema = (new JsonSchemaBuilder())->schema(DocumentType::Hl7v2Message);
+
+        $this->assertFalse($schema['additionalProperties']);
+        $this->assertSame(['doc_type', 'message_type', 'message_control_id', 'patient_identity', 'facts'], $schema['required']);
+        $properties = $schema['properties'];
+        $this->assertIsArray($properties);
+        $docTypeProperty = $properties['doc_type'] ?? null;
+        $this->assertIsArray($docTypeProperty);
+        $this->assertSame(['hl7v2_message'], $docTypeProperty['enum'] ?? null);
+    }
 }

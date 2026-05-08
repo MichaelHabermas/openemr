@@ -37,7 +37,7 @@ final readonly class DocumentCitation
     /**
      * @param array<string, mixed> $data
      */
-    public static function fromArray(array $data, string $path = 'citation'): self
+    public static function fromArray(array $data, string $path = 'citation', ?DocumentSourceType $expectedSourceType = null): self
     {
         SchemaReader::assertNoUnknownFields(
             $data,
@@ -48,6 +48,12 @@ final readonly class DocumentCitation
         $sourceType = DocumentSourceType::tryFrom(SchemaReader::requiredString($data, 'source_type', $path));
         if ($sourceType === null) {
             throw new ExtractionSchemaException(SchemaReader::join($path, 'source_type'), 'Expected supported source type.');
+        }
+        if ($expectedSourceType !== null && $sourceType !== $expectedSourceType) {
+            throw new ExtractionSchemaException(
+                SchemaReader::join($path, 'source_type'),
+                sprintf('Expected source type %s.', $expectedSourceType->value),
+            );
         }
 
         return new self(

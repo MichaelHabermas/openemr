@@ -27,7 +27,7 @@ final readonly class PatientIdentityCandidate
     }
 
     /** @param array<string, mixed> $data */
-    public static function fromArray(array $data, string $path = 'patient_identity[0]'): self
+    public static function fromArray(array $data, string $path = 'patient_identity[0]', ?DocumentSourceType $expectedSourceType = null): self
     {
         SchemaReader::assertNoUnknownFields(
             $data,
@@ -51,7 +51,7 @@ final readonly class PatientIdentityCandidate
             SchemaReader::requiredString($data, 'field_path', $path),
             $certainty,
             SchemaReader::requiredConfidence($data, 'confidence', $path),
-            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation')),
+            DocumentCitation::fromArray(SchemaReader::requiredObject($data, 'citation', $path), SchemaReader::join($path, 'citation'), $expectedSourceType),
         );
     }
 }

@@ -20,8 +20,12 @@ use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
 use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use RuntimeException;
@@ -35,6 +39,7 @@ final readonly class AttachAndExtractTool
         private ?PatientIdentityRepository $patientIdentities = null,
         private ?DocumentIdentityVerifier $identityVerifier = null,
         private ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
+        private bool $allowContractOnlyExtractions = false,
     ) {
     }
 
@@ -50,7 +55,7 @@ final readonly class AttachAndExtractTool
     ): self {
         $memory = new InMemorySourceDocumentStorage($firstDocumentId);
 
-        return new self($memory, $memory, $provider, $patientIdentities, $identityVerifier, $identityEvidenceBuilder);
+        return new self($memory, $memory, $provider, $patientIdentities, $identityVerifier, $identityEvidenceBuilder, true);
     }
 
     public function forUploadedFile(
@@ -104,6 +109,13 @@ final readonly class AttachAndExtractTool
                 $documentId,
             );
         }
+        if (!$docType->runtimeIngestionSupported() && !$this->allowContractOnlyExtractions) {
+            return AttachAndExtractResult::failed(
+                ExtractionErrorCode::UnsupportedDocType,
+                'Document type is contract-only until runtime ingestion support is implemented.',
+                $documentId,
+            );
+        }
 
         try {
             $document = $this->loader->load($documentId);
@@ -133,7 +145,14 @@ final readonly class AttachAndExtractTool
             );
         }
 
-        if ($response->extraction instanceof LabPdfExtraction || $response->extraction instanceof IntakeFormExtraction) {
+        if (
+            $response->extraction instanceof LabPdfExtraction
+            || $response->extraction instanceof IntakeFormExtraction
+            || $response->extraction instanceof ReferralDocxExtraction
+            || $response->extraction instanceof ClinicalWorkbookExtraction
+            || $response->extraction instanceof FaxPacketExtraction
+            || $response->extraction instanceof Hl7v2MessageExtraction
+        ) {
             if (
                 $this->patientIdentities === null
                 || $this->identityVerifier === null

@@ -24,6 +24,10 @@ final readonly class JsonSchemaBuilder
         return match ($documentType) {
             DocumentType::LabPdf => $this->labPdfSchema(),
             DocumentType::IntakeForm => $this->intakeFormSchema(),
+            DocumentType::ReferralDocx => $this->multiFormatFactSchema('referral_docx', 'referral_name'),
+            DocumentType::ClinicalWorkbook => $this->multiFormatFactSchema('clinical_workbook', 'workbook_name'),
+            DocumentType::FaxPacket => $this->multiFormatFactSchema('fax_packet', 'packet_name'),
+            DocumentType::Hl7v2Message => $this->hl7v2MessageSchema(),
         };
     }
 
@@ -130,6 +134,62 @@ final readonly class JsonSchemaBuilder
                         'width' => ['type' => 'number', 'exclusiveMinimum' => 0, 'maximum' => 1],
                         'height' => ['type' => 'number', 'exclusiveMinimum' => 0, 'maximum' => 1],
                     ],
+                ],
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function multiFormatFactSchema(string $docType, string $nameField): array
+    {
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => ['doc_type', $nameField, 'patient_identity', 'facts'],
+            'properties' => [
+                'doc_type' => ['type' => 'string', 'enum' => [$docType]],
+                $nameField => ['type' => 'string'],
+                'patient_identity' => $this->patientIdentitySchema($docType),
+                'facts' => $this->factsSchema($docType),
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function hl7v2MessageSchema(): array
+    {
+        return [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'required' => ['doc_type', 'message_type', 'message_control_id', 'patient_identity', 'facts'],
+            'properties' => [
+                'doc_type' => ['type' => 'string', 'enum' => ['hl7v2_message']],
+                'message_type' => ['type' => 'string'],
+                'message_control_id' => ['type' => 'string'],
+                'patient_identity' => $this->patientIdentitySchema('hl7v2_message'),
+                'facts' => $this->factsSchema('hl7v2_message'),
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function factsSchema(string $sourceType): array
+    {
+        return [
+            'type' => 'array',
+            'minItems' => 1,
+            'items' => [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => ['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'],
+                'properties' => [
+                    'type' => ['type' => 'string'],
+                    'field_path' => ['type' => 'string'],
+                    'label' => ['type' => 'string'],
+                    'value' => ['type' => 'string'],
+                    'certainty' => $this->certaintySchema(),
+                    'confidence' => ['type' => 'number', 'minimum' => 0, 'maximum' => 1],
+                    'citation' => $this->citationSchema($sourceType),
                 ],
             ],
         ];

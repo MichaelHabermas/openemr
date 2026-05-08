@@ -245,7 +245,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'abnormal_flag' => 'high',
                     'certainty' => 'verified',
                     'confidence' => $confidence,
-                    'citation' => $this->citation(),
+                    'citation' => $this->citation('lab_pdf'),
                 ],
             ],
         ]);
@@ -263,7 +263,7 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'value' => 'Metformin 500 mg twice daily',
                     'certainty' => 'verified',
                     'confidence' => 0.95,
-                    'citation' => $this->citation(),
+                    'citation' => $this->citation('intake_form'),
                 ],
             ],
         ]);
@@ -281,17 +281,17 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'value' => 'Blue',
                     'certainty' => 'verified',
                     'confidence' => 0.95,
-                    'citation' => $this->citation(),
+                    'citation' => $this->citation('intake_form'),
                 ],
             ],
         ]);
     }
 
     /** @return array<string, mixed> */
-    private function citation(): array
+    private function citation(string $sourceType): array
     {
         return [
-            'source_type' => 'lab_pdf',
+            'source_type' => $sourceType,
             'source_id' => 'doc:44',
             'page_or_section' => 'page 1',
             'field_or_chunk_id' => 'results[0]',

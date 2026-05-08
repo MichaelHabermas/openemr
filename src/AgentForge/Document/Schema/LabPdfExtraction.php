@@ -83,7 +83,7 @@ final readonly class LabPdfExtraction
             }
 
             /** @var array<string, mixed> $candidate */
-            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index));
+            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index), DocumentSourceType::LabPdf);
         }
 
         return new self(

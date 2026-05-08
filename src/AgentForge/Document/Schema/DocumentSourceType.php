@@ -16,6 +16,10 @@ enum DocumentSourceType: string
 {
     case LabPdf = 'lab_pdf';
     case IntakeForm = 'intake_form';
+    case ReferralDocx = 'referral_docx';
+    case ClinicalWorkbook = 'clinical_workbook';
+    case FaxPacket = 'fax_packet';
+    case Hl7v2Message = 'hl7v2_message';
     case Guideline = 'guideline';
     case Chart = 'chart';
 }

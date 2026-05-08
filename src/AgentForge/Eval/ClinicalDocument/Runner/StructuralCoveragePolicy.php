@@ -19,12 +19,16 @@ use OpenEMR\AgentForge\Eval\ClinicalDocument\Rubric\RubricRegistry;
 final class StructuralCoveragePolicy
 {
     private const MIN_CASES = 50;
-    private const MAX_CASES = 60;
+    private const MAX_CASES = 80;
 
     /** @var array<string, int> */
     private const CATEGORY_MINIMUMS = [
         'lab_pdf_extraction' => 6,
         'intake_form_extraction' => 8,
+        'referral_docx_extraction' => 1,
+        'clinical_workbook_extraction' => 1,
+        'fax_packet_extraction' => 1,
+        'hl7v2_message_extraction' => 2,
         'guideline_retrieval' => 8,
         'refusal' => 10,
         'duplicate_upload' => 2,
@@ -50,6 +54,12 @@ final class StructuralCoveragePolicy
         'follow_up_grounding',
         'citation_regression',
         'combined_document_guideline',
+        'referral_docx',
+        'clinical_workbook',
+        'fax_packet',
+        'hl7v2_adt',
+        'hl7v2_oru',
+        'preview_only_excluded',
     ];
 
     /**

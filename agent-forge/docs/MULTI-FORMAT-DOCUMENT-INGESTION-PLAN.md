@@ -21,7 +21,7 @@ The support is intentionally narrow and appears in these main seams:
 - `src/AgentForge/Document/Extraction/FixtureExtractionProvider.php` maps known fixture SHA-256 hashes to strict JSON extraction output.
 - `src/AgentForge/Document/Extraction/IntakeExtractorWorker.php` runs extraction, identity verification, fact classification, and promotion.
 - `agent-forge/sql/seed-demo-data.sql` maps OpenEMR document categories to AgentForge document types.
-- `agent-forge/fixtures/clinical-document-golden/` contains deterministic golden cases for the current lab and intake slice.
+- `agent-forge/fixtures/clinical-document-golden/` contains deterministic golden cases for the current lab/intake slice plus Epic 1 contract-only coverage for DOCX, XLSX, TIFF, and HL7 v2.
 
 The example document folder already contains broader fixture families:
 
@@ -33,7 +33,9 @@ The example document folder already contains broader fixture families:
 - `hl7v2/*.hl7`
 - `source-previews/*.png`
 
-Only the PDF and PNG intake/lab families are currently represented in the golden eval suite. DOCX, XLSX, TIFF, and HL7 v2 are source fixtures without first-class ingestion support.
+PDF and PNG intake/lab families are represented in the implemented ingestion slice. DOCX, XLSX, TIFF, and HL7 v2 now have strict fixture-backed contract coverage, but they do not have first-class runtime ingestion support yet.
+
+Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have contract-only deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Runtime normalizers, live extraction providers, upload category mappings, and production ingestion for these formats remain deferred to later epics.
 
 ## 3. Product Requirements
 
@@ -271,7 +273,7 @@ The multi-format work is complete when:
 
 ### Epic 1 - Multi-Format Contract And Golden Coverage
 
-Status: Not started.
+Status: Implemented as contract-only deterministic coverage.
 
 Goal: Define the format matrix and fail-first eval coverage before runtime changes.
 
@@ -285,9 +287,17 @@ Tasks:
 
 Acceptance criteria:
 
-- The eval runner reports missing multi-format implementation as expected failures.
+- The eval runner reports multi-format contract coverage by document type and source format.
 - Existing lab/intake cases continue to run unchanged.
 - Preview images are explicitly excluded from required ingestion coverage.
+
+Implementation note (2026-05-08):
+
+- `agent-forge/fixtures/clinical-document-golden/source-fixture-manifest.json` inventories every real example document, ignores `.DS_Store`, and marks `source-previews/*.png` as `preview_only`.
+- The clinical-document golden gate includes one DOCX referral case, one XLSX workbook case, one TIFF fax packet case, one HL7 ADT case, and one HL7 ORU case.
+- The deterministic baseline is 65 cases under a 50-80 case policy. The accepted local proof is `agent-forge/eval-results/clinical-document-20260508-184118`.
+- The source corpus validator rejects preview-only extraction mappings, stray SHA mappings, duplicate source SHAs, unsupported roles, and sidecars whose strict citations do not match the declared document source type.
+- This does not claim runtime ingestion for non-PDF formats; it establishes the contracts and fail-first golden targets that later epics must satisfy with real normalizers/providers.
 
 ### Epic 2 - Document Type Expansion And Category Mapping
 

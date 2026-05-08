@@ -1,0 +1,66 @@
+{
+  "doc_type": "clinical_workbook",
+  "workbook_name": "Clinical workbook",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "Margaret Chen",
+      "field_path": "Patient!B2",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "clinical_workbook",
+        "source_id": "sha256:1d98562ddd4e518e63bcae24b1ff99d35e130acfcf5f6c0fa46a207f8bc7f979",
+        "page_or_section": "sheet:Patient",
+        "field_or_chunk_id": "B2",
+        "quote_or_value": "Margaret Chen"
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1968-03-12",
+      "field_path": "Patient!B3",
+      "certainty": "verified",
+      "confidence": 0.99,
+      "citation": {
+        "source_type": "clinical_workbook",
+        "source_id": "sha256:1d98562ddd4e518e63bcae24b1ff99d35e130acfcf5f6c0fa46a207f8bc7f979",
+        "page_or_section": "sheet:Patient",
+        "field_or_chunk_id": "B3",
+        "quote_or_value": "1968-03-12"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "type": "lab_result",
+      "field_path": "Labs_Trend!H3",
+      "label": "LDL cholesterol (calc)",
+      "value": "142 mg/dL on 2026-04-12",
+      "certainty": "document_fact",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "clinical_workbook",
+        "source_id": "sha256:1d98562ddd4e518e63bcae24b1ff99d35e130acfcf5f6c0fa46a207f8bc7f979",
+        "page_or_section": "sheet:Labs_Trend",
+        "field_or_chunk_id": "H3",
+        "quote_or_value": "LDL cholesterol (calc) 142 mg/dL on 2026-04-12"
+      }
+    },
+    {
+      "type": "care_gap",
+      "field_path": "Care_Gaps!A4:F4",
+      "label": "Diabetic eye exam",
+      "value": "Diabetic eye exam annual is overdue; refer to ophthalmology.",
+      "certainty": "needs_review",
+      "confidence": 0.93,
+      "citation": {
+        "source_type": "clinical_workbook",
+        "source_id": "sha256:1d98562ddd4e518e63bcae24b1ff99d35e130acfcf5f6c0fa46a207f8bc7f979",
+        "page_or_section": "sheet:Care_Gaps",
+        "field_or_chunk_id": "A4:F4",
+        "quote_or_value": "Diabetic eye exam annual is overdue; refer to ophthalmology."
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "case_format_version": 1,
+  "case_id": "chen-hl7-oru-contract",
+  "category": "hl7v2_message_extraction",
+  "patient_ref": "patient:fixture-chen",
+  "doc_type": "hl7v2_message",
+  "input": {
+    "source_document_path": "agent-forge/docs/example-documents/hl7v2/p01-chen-oru-r01.hl7",
+    "source_format": "hl7",
+    "user_question": "What observation is present in this ORU message?"
+  },
+  "expected": {
+    "extraction": {
+      "schema_valid": true,
+      "facts": [
+        {
+          "field_path": "OBX[2]",
+          "value_contains": "142",
+          "confidence_min": 0.95
+        },
+        {
+          "field_path": "NTE[1]",
+          "value_contains": "Repeat lipid panel",
+          "confidence_min": 0.95
+        }
+      ]
+    },
+    "promotions": [],
+    "document_facts": [
+      {
+        "field_path": "OBX[2]",
+        "classification": "document_fact"
+      },
+      {
+        "field_path": "NTE[1]",
+        "classification": "document_fact"
+      }
+    ],
+    "retrieval": {
+      "guideline_retrieval_required": false,
+      "min_guideline_chunks": 0
+    },
+    "answer": {
+      "required_sections": [
+        "Patient Findings",
+        "Missing or Not Found"
+      ],
+      "every_patient_claim_has_citation": true,
+      "required_handoff_types": [
+        "hl7v2_message"
+      ]
+    },
+    "refusal_required": false,
+    "log_must_not_contain": [
+      "CHEN^MARGARET",
+      "BHS-2847163"
+    ],
+    "rubrics": {
+      "schema_valid": true,
+      "citation_present": true,
+      "factually_consistent": true,
+      "safe_refusal": null,
+      "no_phi_in_logs": true,
+      "bounding_box_present": null,
+      "deleted_document_not_retrieved": null,
+      "final_answer_sections": true,
+      "supervisor_handoff": true,
+      "answer_citation_coverage": true
+    }
+  },
+  "coverage_tags": [
+    "hl7v2_oru"
+  ]
+}

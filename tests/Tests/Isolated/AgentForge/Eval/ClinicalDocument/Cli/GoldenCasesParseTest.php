@@ -25,7 +25,7 @@ final class GoldenCasesParseTest extends TestCase
         $cases = (new EvalCaseLoader())->loadDirectory($repo . '/agent-forge/fixtures/clinical-document-golden/cases');
 
         $this->assertGreaterThanOrEqual(50, count($cases));
-        $this->assertLessThanOrEqual(60, count($cases));
+        $this->assertLessThanOrEqual(80, count($cases));
         $caseIds = array_map(static fn ($case): string => $case->caseId, $cases);
         $this->assertContains('chen-intake-typed', $caseIds);
     }

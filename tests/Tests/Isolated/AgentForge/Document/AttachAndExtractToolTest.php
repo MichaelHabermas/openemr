@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OpenEMR\Tests\Isolated\AgentForge\Document;
 
-use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\AttachAndExtractTool;
@@ -32,6 +31,7 @@ use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
+use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -145,6 +145,21 @@ final class AttachAndExtractToolTest extends TestCase
 
         $this->assertFalse($result->success);
         $this->assertSame(ExtractionErrorCode::SchemaValidationFailure, $result->errorCode);
+        $this->assertSame(88, $result->documentId?->value);
+    }
+
+    public function testContractOnlyDocumentTypesAreRejectedByRuntimeTool(): void
+    {
+        $tool = new AttachAndExtractTool(
+            new InMemorySourceDocumentStorage(),
+            new FixedDocumentLoader(new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx')),
+            new AttachToolStaticProvider(self::strictResponse()),
+        );
+
+        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::ReferralDocx, self::deadline());
+
+        $this->assertFalse($result->success);
+        $this->assertSame(ExtractionErrorCode::UnsupportedDocType, $result->errorCode);
         $this->assertSame(88, $result->documentId?->value);
     }
 

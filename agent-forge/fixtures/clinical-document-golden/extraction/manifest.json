@@ -8,6 +8,11 @@
     "d9a4f49b3ec6c14555b9014c31fb41e5c158a2bb3158c3439fd99df9d8dddd71": "whitaker-intake.json",
     "22db1772808e93134df1edb24909ecbf26e8f739f871d0bef23af9aac35ed8ef": "whitaker-cbc.json",
     "500077eb69905a31763bb3843417f9f89eade39ca1139e9bfd273b025de6f6c5": "reyes-intake.json",
-    "304ac110de6b5de085d73a889a469c333f3db5f3887621d4805d1945528793fe": "kowalski-intake.json"
+    "304ac110de6b5de085d73a889a469c333f3db5f3887621d4805d1945528793fe": "kowalski-intake.json",
+    "79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320": "chen-referral-docx.json",
+    "1d98562ddd4e518e63bcae24b1ff99d35e130acfcf5f6c0fa46a207f8bc7f979": "chen-clinical-workbook.json",
+    "c36bfeaf126d927f79e0abbe94e5512f0dc27279af62167e35dae166a59689bc": "chen-fax-packet.json",
+    "ac6114bffe752b3ef7c1bcc8e4c19828673b5bbfa0fd5618bb7f1aa0c7396ba8": "chen-hl7-adt-a08.json",
+    "199839dac4e31f7af08ca978c59461c3607a35c32542fae1e66a9e424e2c6bb6": "chen-hl7-oru-r01.json"
   }
 }

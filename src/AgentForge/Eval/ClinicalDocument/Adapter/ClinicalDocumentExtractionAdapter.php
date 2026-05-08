@@ -477,7 +477,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
      */
     private function documentFactProofRecords(EvalCase $case, int $documentId, array $facts): array
     {
-        if ($case->docType !== DocumentType::IntakeForm->value) {
+        if ($case->docType === DocumentType::LabPdf->value) {
             return [];
         }
 
@@ -492,7 +492,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             $value = $fact['value'] ?? null;
             $records[] = [
                 'document_id' => $documentId,
-                'doc_type' => DocumentType::IntakeForm->value,
+                'doc_type' => (string) $case->docType,
                 'field_path' => is_string($fact['field_path'] ?? null) ? $fact['field_path'] : '',
                 'fact_type' => $certainty,
                 'fact_text' => is_scalar($value) ? (string) $value : '',

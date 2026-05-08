@@ -1,0 +1,70 @@
+{
+  "doc_type": "fax_packet",
+  "packet_name": "Multipage referral fax packet",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "Margaret Chen",
+      "field_path": "packet.patient_name",
+      "certainty": "verified",
+      "confidence": 0.94,
+      "citation": {
+        "source_type": "fax_packet",
+        "source_id": "sha256:c36bfeaf126d927f79e0abbe94e5512f0dc27279af62167e35dae166a59689bc",
+        "page_or_section": "page:1",
+        "field_or_chunk_id": "patient_name",
+        "quote_or_value": "Margaret Chen",
+        "bounding_box": {"x": 0.10, "y": 0.12, "width": 0.30, "height": 0.04}
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1968-03-12",
+      "field_path": "packet.date_of_birth",
+      "certainty": "verified",
+      "confidence": 0.94,
+      "citation": {
+        "source_type": "fax_packet",
+        "source_id": "sha256:c36bfeaf126d927f79e0abbe94e5512f0dc27279af62167e35dae166a59689bc",
+        "page_or_section": "page:1",
+        "field_or_chunk_id": "date_of_birth",
+        "quote_or_value": "03/12/1968",
+        "bounding_box": {"x": 0.42, "y": 0.12, "width": 0.18, "height": 0.04}
+      }
+    }
+  ],
+  "facts": [
+    {
+      "type": "fax_section",
+      "field_path": "sections[0]",
+      "label": "Referral cover sheet",
+      "value": "Referral fax packet contains cardiology referral content for lipid management review.",
+      "certainty": "document_fact",
+      "confidence": 0.91,
+      "citation": {
+        "source_type": "fax_packet",
+        "source_id": "sha256:c36bfeaf126d927f79e0abbe94e5512f0dc27279af62167e35dae166a59689bc",
+        "page_or_section": "page:1",
+        "field_or_chunk_id": "section:cover",
+        "quote_or_value": "Referral fax packet contains cardiology referral content for lipid management review.",
+        "bounding_box": {"x": 0.08, "y": 0.20, "width": 0.45, "height": 0.05}
+      }
+    },
+    {
+      "type": "lab_result",
+      "field_path": "sections[2].ldl_c",
+      "label": "LDL-C",
+      "value": "142 mg/dL",
+      "certainty": "document_fact",
+      "confidence": 0.90,
+      "citation": {
+        "source_type": "fax_packet",
+        "source_id": "sha256:c36bfeaf126d927f79e0abbe94e5512f0dc27279af62167e35dae166a59689bc",
+        "page_or_section": "page:3",
+        "field_or_chunk_id": "ldl_c",
+        "quote_or_value": "142 mg/dL",
+        "bounding_box": {"x": 0.14, "y": 0.48, "width": 0.36, "height": 0.04}
+      }
+    }
+  ]
+}

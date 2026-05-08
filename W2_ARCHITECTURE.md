@@ -49,8 +49,10 @@ job worker. The implemented guideline path has a checked-in primary-care
 corpus, deterministic indexing, separate MariaDB Vector tables for guideline
 chunks, sparse+dense retrieval, mandatory rerank, cited top-k output, and
 deterministic not-found/refusal for out-of-corpus questions. Current local
-proof is `baseline_met` across 59 clinical-document cases plus a passing
-comprehensive AgentForge gate.
+proof is `baseline_met` across 65 clinical-document cases, including Epic 1
+contract-only DOCX, XLSX, TIFF, and HL7 v2 golden coverage, plus a passing
+comprehensive AgentForge gate. The new formats have strict fixture-backed
+contracts and eval visibility, not runtime normalizers or live ingestion yet.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -951,11 +953,12 @@ It summarizes the measured clinical-document cost, latency, and operational cave
 
 Week 2 requires at least a 50-case golden dataset and a blocking eval gate. A demo without a regression-blocking gate does not satisfy the assignment.
 
-Current implementation note (2026-05-06): the checked-in clinical document
-golden set is the 59-case H1 submission set. It gates strict fixture-backed
+Current implementation note (2026-05-08): the checked-in clinical document
+golden set is the 65-case H1/Epic 1 baseline. It gates strict fixture-backed
 extraction, identity checks, real guideline retrieval, safe refusal, citation
-shape, bounding boxes, supervisor/final-answer behavior, no-PHI logging, and
-runner-enforced structural coverage for the required H1 scenarios.
+shape, bounding boxes, supervisor/final-answer behavior, no-PHI logging,
+preview-only exclusion, and runner-enforced structural coverage for required
+H1 scenarios plus contract-only DOCX, XLSX, TIFF, and HL7 v2 formats.
 
 AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `agent-forge/scripts`.
 
@@ -966,8 +969,14 @@ php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
 The existing `agent-forge/fixtures/clinical-document-golden` directory is the
-clinical document golden set location. It contains the 59-case Week 2 H1
-submission set.
+clinical document golden set location. It contains the 65-case Week 2 H1/Epic
+1 submission set and `source-fixture-manifest.json`, which inventories every
+real example document, its role, MIME type, SHA-256, expected document type,
+and linked deterministic sidecar when applicable.
+The corpus validator fails closed on preview-only extraction mappings, stray
+SHA mappings, duplicate source SHAs, unsupported fixture roles, and strict
+sidecar citations whose `source_type` does not match the declared document
+type.
 
 Baseline storage and comparison are checked into the repo:
 
@@ -1043,7 +1052,7 @@ The latest local manual verification on 2026-05-08 passed:
 ```text
 AgentForge isolated PHPUnit: 677 tests, 3164 assertions, 1 skipped
 AgentForge deterministic evals: 32 passed, 0 failed
-clinical document evals: 59 cases, verdict baseline_met
+clinical document evals: 65 cases, verdict baseline_met
 focused PHPStan and PHPCS: clean
 ```
 
@@ -1051,7 +1060,7 @@ focused PHPStan and PHPCS: clean
 
 The provided examples under `agent-forge/docs/example-documents` are MVP development fixtures, not the complete golden set.
 
-Initial examples include lab results and intake forms for Chen, Whitaker, Reyes, and Kowalski. The Week 2 eval set expands from these into 59 synthetic/demo cases using templates/scripts where possible.
+Initial examples include lab results and intake forms for Chen, Whitaker, Reyes, and Kowalski. Epic 1 also inventories DOCX referrals, XLSX workbooks, TIFF fax packets, HL7 v2 messages, and source-preview proof artifacts. The Week 2 eval set expands from these into 65 synthetic/demo cases using templates/scripts where possible.
 
 The generated set should cover:
 
@@ -1071,6 +1080,11 @@ missing data behavior
 out-of-corpus guideline question
 no-PHI logging trap
 follow-up question grounding
+DOCX referral contract extraction
+XLSX workbook contract extraction
+TIFF fax packet contract extraction
+HL7 v2 ADT/ORU contract extraction
+preview-only source artifact exclusion
 ```
 
 Each case includes ground truth:
@@ -1086,7 +1100,7 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-The 59-case H1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions.
+The 65-case H1/Epic 1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions. Non-PDF Epic 1 cases prove strict deterministic contracts only; runtime normalizers and live providers are deferred to later multi-format epics.
 
 ## 19. Deployment Runtime
 
@@ -1208,7 +1222,7 @@ Rollback uses the existing rollback script and must leave the previous deployed 
 
 These are out of scope only after the required Week 2 core is satisfied:
 
-- No third document type beyond `lab_pdf` and `intake_form`.
+- No runtime ingestion claim for third document types beyond `lab_pdf` and `intake_form`; DOCX, XLSX, TIFF, and HL7 v2 are contract/eval targets until later epics add normalizers and providers.
 - No raw-PDF RAG as a substitute for strict extraction.
 - No automatic demographic overwrite from intake forms.
 - No uncited model-generated clinical claims.
@@ -1258,7 +1272,7 @@ Bounding boxes are hard on scanned documents. The MVP requires boxes for promote
 | Separate patient facts from guideline evidence | Final answer sections separate patient record/document findings from guideline evidence. |
 | Surface uncertainty | `needs_review` findings are stored with citation metadata for review, but are excluded from active evidence and chart promotion until resolved. |
 | Safe refusal / narrowing | Supervisor and verifier refuse unsupported, unsafe, or out-of-corpus requests. |
-| 50+ case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 59 synthetic/demo H1 cases under the 50-60 case policy. |
+| 50+ case golden dataset | `agent-forge/fixtures/clinical-document-golden` contains 65 synthetic/demo H1/Epic 1 cases under the 50-80 case policy. |
 | Boolean rubrics | Required rubrics are `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`; Week 2 gated rubrics also protect guideline retrieval, bounding boxes, deleted-document exclusion, promotion expectations, and document-fact expectations. |
 | Blocking gate command | `agent-forge/scripts/check-clinical-document.sh` runs tests and `run-clinical-document-evals.php`; the same command is intended for CI/hook and grader reruns. |
 | No raw PHI in logs | All AgentForge logs pass through `SensitiveLogPolicy`; W2 eval scans telemetry artifacts for forbidden keys and demo PHI strings. |

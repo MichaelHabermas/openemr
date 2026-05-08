@@ -122,6 +122,26 @@ final class ExtractionSchemaContractTest extends TestCase
         LabPdfExtraction::fromArray($payload);
     }
 
+    public function testStrictParserRejectsCitationSourceTypeThatDoesNotMatchDocumentType(): void
+    {
+        $payload = $this->minimalLabPayload();
+        $results = $payload['results'];
+        $this->assertIsArray($results);
+        $row = $results[0] ?? null;
+        $this->assertIsArray($row);
+        $citation = $row['citation'] ?? null;
+        $this->assertIsArray($citation);
+        $citation['source_type'] = 'intake_form';
+        $row['citation'] = $citation;
+        $results[0] = $row;
+        $payload['results'] = $results;
+
+        $this->expectException(\OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected source type lab_pdf.');
+
+        LabPdfExtraction::fromArray($payload);
+    }
+
     /** @return array<string, mixed> */
     private function minimalLabPayload(): array
     {

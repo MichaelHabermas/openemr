@@ -13,15 +13,19 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Identity;
 
 use OpenEMR\AgentForge\Document\DocumentId;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\PatientIdentityCandidate;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 
 final readonly class ExtractionIdentityEvidenceBuilder
 {
     public function build(
         DocumentId $documentId,
-        LabPdfExtraction | IntakeFormExtraction $extraction,
+        LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction,
         ?string $documentName,
     ): DocumentIdentityEvidence {
         return new DocumentIdentityEvidence(

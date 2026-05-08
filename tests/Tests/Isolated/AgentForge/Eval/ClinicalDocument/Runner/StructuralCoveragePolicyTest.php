@@ -54,13 +54,13 @@ final class StructuralCoveragePolicyTest extends TestCase
     public function testFailsWhenCaseCountExceedsPolicyMaximum(): void
     {
         $cases = $this->goldenCases();
-        while (count($cases) <= 60) {
+        while (count($cases) <= 80) {
             $cases[] = $cases[0];
         }
 
         $violations = (new StructuralCoveragePolicy())->validate($cases, new RubricRegistry());
 
-        $this->assertContains(sprintf('Clinical document golden set must contain 50-60 cases; found %d.', count($cases)), $violations);
+        $this->assertContains(sprintf('Clinical document golden set must contain 50-80 cases; found %d.', count($cases)), $violations);
     }
 
     /** @return list<EvalCase> */

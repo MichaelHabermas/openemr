@@ -1,0 +1,81 @@
+{
+  "doc_type": "referral_docx",
+  "referral_name": "Cardiology referral letter",
+  "patient_identity": [
+    {
+      "kind": "patient_name",
+      "value": "Margaret Chen",
+      "field_path": "header.re",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "referral_docx",
+        "source_id": "sha256:79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320",
+        "page_or_section": "section:re",
+        "field_or_chunk_id": "paragraph:9",
+        "quote_or_value": "RE: Margaret Chen | DOB: 03/12/1968 | MRN: BHS-2847163"
+      }
+    },
+    {
+      "kind": "date_of_birth",
+      "value": "1968-03-12",
+      "field_path": "header.re.dob",
+      "certainty": "verified",
+      "confidence": 0.98,
+      "citation": {
+        "source_type": "referral_docx",
+        "source_id": "sha256:79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320",
+        "page_or_section": "section:re",
+        "field_or_chunk_id": "paragraph:9",
+        "quote_or_value": "DOB: 03/12/1968"
+      }
+    }
+  ],
+  "facts": [
+    {
+      "type": "referral_reason",
+      "field_path": "reason_for_referral",
+      "label": "Reason for Referral",
+      "value": "Evaluation and co-management of statin-refractory hyperlipidemia and ASCVD risk.",
+      "certainty": "document_fact",
+      "confidence": 0.96,
+      "citation": {
+        "source_type": "referral_docx",
+        "source_id": "sha256:79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320",
+        "page_or_section": "section:reason-for-referral",
+        "field_or_chunk_id": "paragraph:11",
+        "quote_or_value": "Evaluation and co-management of statin-refractory hyperlipidemia and ASCVD risk."
+      }
+    },
+    {
+      "type": "medication",
+      "field_path": "current_medications[0]",
+      "label": "atorvastatin",
+      "value": "atorvastatin 40 mg PO daily",
+      "certainty": "document_fact",
+      "confidence": 0.95,
+      "citation": {
+        "source_type": "referral_docx",
+        "source_id": "sha256:79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320",
+        "page_or_section": "section:current-medications",
+        "field_or_chunk_id": "paragraph:18",
+        "quote_or_value": "atorvastatin 40 mg PO daily"
+      }
+    },
+    {
+      "type": "lab_result",
+      "field_path": "pertinent_labs.ldl_c",
+      "label": "LDL-C",
+      "value": "142 mg/dL [HIGH] on 2026-04-12",
+      "certainty": "document_fact",
+      "confidence": 0.97,
+      "citation": {
+        "source_type": "referral_docx",
+        "source_id": "sha256:79e08367f70ba219aa136d9bfd854a2a50e231852d8bdeeac576adf74263b320",
+        "page_or_section": "section:pertinent-labs",
+        "field_or_chunk_id": "paragraph:26",
+        "quote_or_value": "142 mg/dL [HIGH] on 2026-04-12"
+      }
+    }
+  ]
+}

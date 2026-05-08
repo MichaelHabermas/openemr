@@ -79,7 +79,7 @@ final readonly class IntakeFormExtraction
             }
 
             /** @var array<string, mixed> $candidate */
-            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index));
+            $identity[] = PatientIdentityCandidate::fromArray($candidate, SchemaReader::index('$.patient_identity', $index), DocumentSourceType::IntakeForm);
         }
 
         return new self(

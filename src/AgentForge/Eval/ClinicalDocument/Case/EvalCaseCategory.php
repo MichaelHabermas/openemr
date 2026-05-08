@@ -16,6 +16,10 @@ enum EvalCaseCategory: string
 {
     case LabPdfExtraction = 'lab_pdf_extraction';
     case IntakeFormExtraction = 'intake_form_extraction';
+    case ReferralDocxExtraction = 'referral_docx_extraction';
+    case ClinicalWorkbookExtraction = 'clinical_workbook_extraction';
+    case FaxPacketExtraction = 'fax_packet_extraction';
+    case Hl7v2MessageExtraction = 'hl7v2_message_extraction';
     case GuidelineRetrieval = 'guideline_retrieval';
     case Refusal = 'refusal';
     case DuplicateUpload = 'duplicate_upload';
