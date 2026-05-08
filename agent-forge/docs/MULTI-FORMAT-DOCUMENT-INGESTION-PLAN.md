@@ -21,7 +21,7 @@ The support is intentionally narrow and appears in these main seams:
 - `src/AgentForge/Document/Extraction/FixtureExtractionProvider.php` maps known fixture SHA-256 hashes to strict JSON extraction output.
 - `src/AgentForge/Document/Extraction/IntakeExtractorWorker.php` runs extraction, identity verification, fact classification, and promotion.
 - `agent-forge/sql/seed-demo-data.sql` maps OpenEMR document categories to AgentForge document types.
-- `agent-forge/fixtures/clinical-document-golden/` contains deterministic golden cases for the current lab/intake slice plus Epic 1 contract-only coverage for DOCX, XLSX, TIFF, and HL7 v2.
+- `agent-forge/fixtures/clinical-document-golden/` contains deterministic golden cases for the current lab/intake slice plus Epic 1 multi-format coverage for DOCX, XLSX, TIFF, and HL7 v2.
 
 The example document folder already contains broader fixture families:
 
@@ -33,9 +33,9 @@ The example document folder already contains broader fixture families:
 - `hl7v2/*.hl7`
 - `source-previews/*.png`
 
-PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. DOCX, XLSX, and HL7 v2 still have strict fixture-backed contract coverage only and do not have first-class runtime ingestion support yet.
+PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. Epic 5 adds bounded runtime extraction for referral DOCX files by parsing a safe OOXML text/table subset. XLSX and HL7 v2 still have strict fixture-backed contract coverage only and do not have first-class runtime ingestion support yet.
 
-Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support; DOCX, XLSX, and HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to later epics.
+Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support, and Epic 5 moves DOCX referrals to bounded runtime support. XLSX and HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to later epics.
 
 ## 3. Product Requirements
 
@@ -264,7 +264,7 @@ Initial promotion policy:
 The multi-format work is complete when:
 
 - Every file family in `agent-forge/docs/example-documents/` has at least one golden eval case.
-- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction; TIFF fax packets also have bounded live-provider rendering support.
+- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction; TIFF fax packets and DOCX referrals also have bounded live-provider normalization support.
 - Live provider mode has an implementation path for each format family.
 - Unsupported MIME types fail with a clear PHI-safe error.
 - Identity verification runs before facts become trusted evidence for every format.
@@ -354,9 +354,10 @@ with a normalizer registry, immutable normalized-content value objects, PDF and
 image normalizers, coded warnings, and PHI-safe telemetry. The OpenAI extraction
 provider now builds model content parts from `NormalizedDocumentContent` while
 keeping `DocumentExtractionProvider::extract(DocumentLoadResult ...)` stable.
-Fixture extraction remains source-SHA-keyed. DOCX, XLSX, and HL7 v2 remain
+Fixture extraction remains source-SHA-keyed. XLSX and HL7 v2 remain
 contract-only until later runtime-support epics; TIFF fax packets move to
-bounded runtime support in Epic 4.
+bounded runtime support in Epic 4 and DOCX referrals move to bounded runtime
+support in Epic 5.
 
 ### Epic 4 - TIFF Fax Packet Support
 
@@ -386,12 +387,12 @@ normalization through Imagick-backed TIFF rendering, and adds a 10 MB default
 TIFF source byte limit plus the existing VLM page limit. `fax_packet` is now
 runtime-ingestion supported, but fax facts are counted and persisted as cited
 document facts only; there is no chart-table promotion, packet splitting, OCR
-layer, or TIFF browser preview endpoint in this epic. DOCX, XLSX, and HL7 v2
-remain fail-closed contract-only types.
+layer, or TIFF browser preview endpoint in this epic. DOCX remains fail-closed
+until Epic 5; XLSX and HL7 v2 remain fail-closed contract-only types.
 
 ### Epic 5 - DOCX Referral Support
 
-Status: Not started.
+Status: Implemented.
 
 Goal: Support structured extraction from referral DOCX files.
 
@@ -400,9 +401,9 @@ Tasks:
 - Add `DocxDocumentContentNormalizer`.
 - Parse document paragraphs, headings, tables, headers, and footers from OOXML.
 - Normalize paragraph ids and table ids into stable citation anchors.
-- Add `ReferralDocxExtraction` schema and parser.
-- Add a referral fact mapper for referral reason, diagnosis/problem context, medications, relevant labs, requested consult, and clinician metadata.
-- Add fixture extraction output for at least one referral.
+- Reuse the existing strict `ReferralDocxExtraction` schema and parser.
+- Count and persist referral facts as cited document facts only.
+- Keep fixture extraction output source-SHA-keyed for the Chen referral sidecar.
 - Add live provider prompt/schema support using normalized DOCX text and tables.
 
 Acceptance criteria:
@@ -410,6 +411,16 @@ Acceptance criteria:
 - At least one DOCX fixture extracts cited referral facts in fixture mode.
 - DOCX citation anchors are stable across runs.
 - DOCX extraction does not depend on filename heuristics.
+
+Implementation note (2026-05-08): Epic 5 adds native `ZipArchive`/XML DOCX
+normalization for `referral_docx` without adding a DOCX dependency. Runtime
+support is bounded to canonical DOCX MIME input, a 10 MB default DOCX source
+byte limit, safe OOXML parts (`word/document.xml` plus internal headers and
+footers), deterministic paragraph/table anchors, and PHI-safe aggregate
+telemetry. Referral facts remain document facts only: there is no chart
+promotion, medication reconciliation, referral/order creation, DOCX preview
+endpoint, OCR layer, arbitrary Office support, or automatic requeue of older
+failed `unsupported_doc_type` jobs. XLSX and HL7 v2 remain contract-only.
 
 ### Epic 6 - XLSX Workbook Support
 

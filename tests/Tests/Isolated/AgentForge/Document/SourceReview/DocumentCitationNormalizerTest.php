@@ -82,4 +82,19 @@ final class DocumentCitationNormalizerTest extends TestCase
         $this->assertSame(3, $citation->pageNumber);
         $this->assertSame(['x' => 0.05, 'y' => 0.15, 'width' => 0.25, 'height' => 0.1], $citation->boundingBox);
     }
+
+    public function testPreservesDocxSectionAndParagraphAnchors(): void
+    {
+        $citation = (new DocumentCitationNormalizer())->normalize([
+            'source_type' => 'referral_docx',
+            'source_id' => 'doc:55',
+            'page_or_section' => 'section:reason-for-referral',
+            'field_or_chunk_id' => 'paragraph:3',
+            'quote_or_value' => 'Cardiology consult',
+        ]);
+
+        $this->assertSame('section:reason-for-referral', $citation->pageOrSection);
+        $this->assertNull($citation->pageNumber);
+        $this->assertSame('paragraph:3', $citation->fieldOrChunkId);
+    }
 }

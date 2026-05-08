@@ -152,11 +152,11 @@ final class AttachAndExtractToolTest extends TestCase
     {
         $tool = new AttachAndExtractTool(
             new InMemorySourceDocumentStorage(),
-            new FixedDocumentLoader(new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx')),
+            new FixedDocumentLoader(new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx')),
             new AttachToolStaticProvider(self::strictResponse()),
         );
 
-        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::ReferralDocx, self::deadline());
+        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::ClinicalWorkbook, self::deadline());
 
         $this->assertFalse($result->success);
         $this->assertSame(ExtractionErrorCode::UnsupportedDocType, $result->errorCode);

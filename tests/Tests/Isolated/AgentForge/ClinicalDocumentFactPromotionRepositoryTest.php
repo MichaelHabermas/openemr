@@ -26,6 +26,7 @@ use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionReposi
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use PHPUnit\Framework\TestCase;
 
 final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
@@ -227,6 +228,24 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $executor->ledgerWrites);
     }
 
+    public function testReferralDocxFactsAreNotPromotedIntoNativeChartTables(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::ReferralDocx),
+            $this->referralExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(1, $summary->skipped);
+        $this->assertSame(0, $executor->insertCount('procedure_order'));
+        $this->assertSame(0, $executor->insertCount('procedure_report'));
+        $this->assertSame(0, $executor->insertCount('procedure_result'));
+        $this->assertSame(0, $executor->insertCount('lists'));
+        $this->assertSame(0, $executor->ledgerWrites);
+    }
+
     private function job(DocumentType $type): DocumentJob
     {
         return new DocumentJob(
@@ -330,6 +349,35 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'certainty' => 'needs_review',
                     'confidence' => 0.4,
                     'citation' => $this->citation('fax_packet'),
+                ],
+            ],
+        ]);
+    }
+
+    private function referralExtraction(): ReferralDocxExtraction
+    {
+        return ReferralDocxExtraction::fromArray([
+            'doc_type' => 'referral_docx',
+            'referral_name' => 'Referral letter',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'referral_reason',
+                    'field_path' => 'facts[0]',
+                    'label' => 'Referral reason',
+                    'value' => 'Cardiology consult',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.9,
+                    'citation' => $this->citation('referral_docx'),
+                ],
+                [
+                    'type' => 'referral_note',
+                    'field_path' => 'facts[1]',
+                    'label' => 'Ambiguous note',
+                    'value' => 'Needs review',
+                    'certainty' => 'needs_review',
+                    'confidence' => 0.4,
+                    'citation' => $this->citation('referral_docx'),
                 ],
             ],
         ]);

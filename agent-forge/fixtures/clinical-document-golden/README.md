@@ -2,7 +2,7 @@
 
 This directory holds the synthetic/demo clinical document golden dataset, boolean rubrics, thresholds, and baseline for the multimodal Clinical Co-Pilot gate.
 
-The current H1/Epic 1 gate contains 65 deterministic cases across 10 machine categories and the required Week 2/H1 behavior tags: lab PDF extraction, intake form extraction, DOCX referral contract coverage, XLSX workbook contract coverage, TIFF fax packet contract coverage, HL7 v2 ADT/ORU contract coverage, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, deleted-document retrieval protection, combined document-plus-guideline grounding, missing-data handling, uncertain allergy review, incomplete collection date review, irrelevant preference filtering, follow-up grounding, preview-only exclusion, and citation-regression protection. The scored lab/intake suite uses checked-in source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski); Epic 1 adds contract cases against Chen multi-format fixtures.
+The current H1/Epic 1 gate contains 65 deterministic cases across 10 machine categories and the required Week 2/H1 behavior tags: lab PDF extraction, intake form extraction, DOCX referral coverage, XLSX workbook contract coverage, TIFF fax packet coverage, HL7 v2 ADT/ORU contract coverage, duplicate upload idempotency, log sanitization audit, guideline retrieval, out-of-corpus refusal, unsafe advice refusal, deleted-document retrieval protection, combined document-plus-guideline grounding, missing-data handling, uncertain allergy review, incomplete collection date review, irrelevant preference filtering, follow-up grounding, preview-only exclusion, and citation-regression protection. The scored lab/intake suite uses checked-in source documents across 4 patient fixtures (Chen, Whitaker, Reyes, Kowalski); Epic 1 adds contract cases against Chen multi-format fixtures.
 
 ## Files
 
@@ -37,7 +37,7 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 
 - **Lab PDF extraction** (10 cases): Chen lipid panel, Whitaker CBC, Reyes HbA1c image, Kowalski CMP, missing-data handling, follow-up grounding, and citation-regression protection.
 - **Intake form extraction** (11 cases): Chen typed intake, Whitaker scanned intake, Reyes intake, Kowalski intake, uncertain allergy review, unexpected-location review, and irrelevant-preference filtering.
-- **DOCX referral extraction contract** (1 case): Chen referral facts, identity evidence, paragraph citations, and document-fact proof records.
+- **DOCX referral extraction** (1 case): Chen referral facts, identity evidence, paragraph citations, and document-fact proof records.
 - **XLSX workbook extraction contract** (1 case): Chen workbook lab trend and care-gap facts with sheet/cell-range citations.
 - **TIFF fax packet extraction contract** (1 case): Chen multipage fax packet facts with page citations and bounding boxes.
 - **HL7 v2 message extraction contract** (2 cases): Chen ADT A08 visit update and ORU R01 observation/note facts with segment/field citations.
@@ -48,7 +48,7 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 
 ## Epic 1 multi-format contract coverage
 
-Epic 1 is a fail-first contract layer, not runtime ingestion for every format. The source fixture manifest covers every real file under `agent-forge/docs/example-documents/`, marks `source-previews/*.png` as `preview_only`, and links deterministic extraction sidecars only for formats that participate in the golden gate. DOCX, XLSX, TIFF, and HL7 v2 cases validate strict schemas, identity evidence, citations, document-fact proof records, and no-PHI logging. Epic 4 promotes the TIFF fax packet path from contract-only to bounded runtime support while keeping DOCX, XLSX, and HL7 v2 contract-only.
+Epic 1 is a fail-first contract layer, not runtime ingestion for every format. The source fixture manifest covers every real file under `agent-forge/docs/example-documents/`, marks `source-previews/*.png` as `preview_only`, and links deterministic extraction sidecars only for formats that participate in the golden gate. DOCX, XLSX, TIFF, and HL7 v2 cases validate strict schemas, identity evidence, citations, document-fact proof records, and no-PHI logging. Epic 4 promotes the TIFF fax packet path from contract-only to bounded runtime support, and Epic 5 promotes the DOCX referral path to bounded runtime support. XLSX and HL7 v2 remain contract-only.
 
 ## 2026-05-06 audit follow-ups
 
@@ -67,9 +67,10 @@ registered rubric, or loses required H1 coverage tags such as
 
 Epic 3 adds a runtime normalized-content seam for currently supported PDF/image
 extraction input. Epic 4 reuses that seam for TIFF fax packets by rendering
-pages to normalized PNG content, without changing this golden suite's strict
-extraction facts, fixture sidecars, or SHA-256 lookup behavior. DOCX/XLSX/HL7
-baseline semantics remain contract-only.
+pages to normalized PNG content, and Epic 5 reuses it for DOCX referrals by
+normalizing safe OOXML text/table content, without changing this golden suite's
+strict extraction facts, fixture sidecars, or SHA-256 lookup behavior.
+XLSX/HL7 baseline semantics remain contract-only.
 
 ### Threshold tightening (done)
 
@@ -117,11 +118,13 @@ They are kept here to inform future work.
 
 ### Coverage gaps still open
 
-- No runtime normalizers or live extraction providers for DOCX, XLSX, or HL7 v2
-  yet; Epic 1 proves strict fixture-backed contracts only. TIFF fax packets have
-  bounded runtime support as one multi-page source document, but no OCR layer,
-  packet splitting, chart promotion, or TIFF browser preview endpoint is claimed
-  here.
+- No runtime normalizers or live extraction providers for XLSX or HL7 v2 yet;
+  Epic 1 proves strict fixture-backed contracts for those formats only. TIFF fax
+  packets have bounded runtime support as one multi-page source document, and
+  DOCX referrals have bounded runtime support as one source document with
+  section/paragraph/table citations. No OCR layer, packet splitting, chart
+  promotion, DOCX/TIFF browser preview endpoint, arbitrary Office parsing, or
+  automatic requeue of older failed `unsupported_doc_type` jobs is claimed here.
 - No multi-section clinical notes (discharge summaries, progress notes,
   H&Ps, op notes, consult notes, ED triage).
 - No medical coding (LOINC, SNOMED, ICD-10, RxNorm, CPT) in inputs or

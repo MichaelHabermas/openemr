@@ -62,7 +62,7 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
                     id: new DocumentJobId(100),
                     patientId: new PatientId(200),
                     documentId: new DocumentId(300),
-                    docType: DocumentType::ReferralDocx,
+                    docType: DocumentType::ClinicalWorkbook,
                     status: JobStatus::Running,
                     attempts: 1,
                     lockToken: 'lock-token',
@@ -74,7 +74,7 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
                     retractedAt: null,
                     retractionReason: null,
                 ),
-                new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx'),
+                new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx'),
             );
         } finally {
             self::restoreEnv('AGENTFORGE_VLM_PROVIDER', $openAiProvider);

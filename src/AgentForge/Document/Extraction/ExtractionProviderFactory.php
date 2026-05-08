@@ -47,11 +47,13 @@ final class ExtractionProviderFactory
                 $config->timeoutSeconds,
                 $config->maxPdfPages,
                 $config->maxTiffSourceBytes,
+                $config->maxDocxSourceBytes,
                 DocumentContentNormalizerRegistryFactory::withTiffRenderer(
                     $renderer,
                     $config->maxPdfPages,
                     new ImagickTiffRasterRenderer(),
                     $config->maxTiffSourceBytes,
+                    $config->maxDocxSourceBytes,
                 ),
             ),
         };

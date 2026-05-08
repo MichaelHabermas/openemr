@@ -209,6 +209,83 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertSame(2, $response->normalizationTelemetry['rendered_page_count'] ?? null);
     }
 
+    public function testExtractReferralDocxUsesReferralSchemaAndNormalizedTextTables(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiReferralResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+            contentNormalizers: new DocumentContentNormalizerRegistry([
+                new OpenAiProviderReferralDocxNormalizer(),
+            ]),
+        );
+
+        $response = $provider->extract(
+            new DocumentId(16),
+            new DocumentLoadResult('docx-source-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'chen-referral.docx'),
+            DocumentType::ReferralDocx,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('referral_docx', $this->factCitationSourceType($response->facts[0] ?? []));
+        $payload = $client->lastPayload();
+        $this->assertSame(
+            ['doc_type', 'referral_name', 'patient_identity', 'facts'],
+            $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
+        );
+        $this->assertStringContainsString(
+            'Requested document type: referral_docx',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
+        $encodedPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('chen-referral.docx', $encodedPayload);
+        $this->assertStringNotContainsString('docx-source-bytes', $encodedPayload);
+
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertCount(3, $content);
+        $this->assertStringContainsString('Normalized text section paragraph:3', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('section:reason-for-referral; paragraph:3', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('Cardiology consult requested', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('Normalized table table:1', $this->contentTextAt($content, 2));
+        $this->assertStringContainsString('table:1.row:1', $this->contentTextAt($content, 2));
+        $this->assertSame('docx', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertSame(1, $response->normalizationTelemetry['text_section_count'] ?? null);
+        $this->assertSame(1, $response->normalizationTelemetry['table_count'] ?? null);
+    }
+
+    public function testExtractReferralDocxWithDefaultRegistryNormalizesRealFixture(): void
+    {
+        $bytes = file_get_contents(__DIR__ . '/../../../../../../agent-forge/docs/example-documents/docx/p01-chen-referral.docx');
+        $this->assertIsString($bytes);
+        $client = new RecordingExtractionOpenAiClient($this->openAiReferralResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        $response = $provider->extract(
+            new DocumentId(17),
+            new DocumentLoadResult($bytes, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'p01-chen-referral.docx'),
+            DocumentType::ReferralDocx,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('docx', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertGreaterThan(0, $response->normalizationTelemetry['text_section_count'] ?? 0);
+
+        $payloadJson = json_encode($client->lastPayload(), JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('section:reason-for-referral', $payloadJson);
+        $this->assertStringContainsString('statin-refractory hyperlipidemia', $payloadJson);
+        $this->assertStringNotContainsString('p01-chen-referral.docx', $payloadJson);
+    }
+
+
     public function testUnsupportedMimeFailsWithStableNormalizationError(): void
     {
         $provider = new OpenAiVlmExtractionProvider(
@@ -568,6 +645,42 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         ];
     }
 
+    /** @return array<string, mixed> */
+    private function openAiReferralResponse(): array
+    {
+        return [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'doc_type' => 'referral_docx',
+                            'referral_name' => 'Referral letter',
+                            'patient_identity' => [],
+                            'facts' => [
+                                [
+                                    'type' => 'referral_reason',
+                                    'field_path' => 'reason_for_referral',
+                                    'label' => 'Reason for Referral',
+                                    'value' => 'Cardiology consult',
+                                    'certainty' => 'document_fact',
+                                    'confidence' => 0.86,
+                                    'citation' => [
+                                        'source_type' => 'referral_docx',
+                                        'source_id' => 'sha256:fixture',
+                                        'page_or_section' => 'section:reason-for-referral',
+                                        'field_or_chunk_id' => 'paragraph:3',
+                                        'quote_or_value' => 'Cardiology consult',
+                                    ],
+                                ],
+                            ],
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ],
+            ],
+            'usage' => ['prompt_tokens' => 70, 'completion_tokens' => 25],
+        ];
+    }
+
     private function deadline(): Deadline
     {
         return new Deadline(new SystemMonotonicClock(), 8000);
@@ -705,6 +818,36 @@ final class OpenAiProviderRenderedFaxNormalizer implements DocumentContentNormal
     public function name(): string
     {
         return 'tiff';
+    }
+}
+
+final class OpenAiProviderReferralDocxNormalizer implements DocumentContentNormalizer
+{
+    public function supports(DocumentContentNormalizationRequest $request): bool
+    {
+        return $request->documentType === DocumentType::ReferralDocx;
+    }
+
+    public function normalize(
+        DocumentContentNormalizationRequest $request,
+        Deadline $deadline,
+    ): NormalizedDocumentContent {
+        return new NormalizedDocumentContent(
+            NormalizedDocumentSource::fromLoadResult($request->document, $request->documentType),
+            textSections: [
+                new NormalizedTextSection('paragraph:3', 'reason-for-referral', 'Cardiology consult requested', 'section:reason-for-referral; paragraph:3'),
+            ],
+            tables: [
+                new NormalizedTable('table:1', 'pertinent-labs', ['test'], [['test' => 'LDL', '_anchor' => 'table:1.row:1']]),
+            ],
+            normalizer: 'docx',
+            normalizationElapsedMs: 17,
+        );
+    }
+
+    public function name(): string
+    {
+        return 'docx';
     }
 }
 

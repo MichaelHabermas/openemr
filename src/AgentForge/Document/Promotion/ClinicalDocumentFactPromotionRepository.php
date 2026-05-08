@@ -16,8 +16,9 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 
 interface ClinicalDocumentFactPromotionRepository
 {
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary;
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): PromotionSummary;
 }

@@ -36,6 +36,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
     use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
     use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
+    use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
     use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
     use OpenEMR\AgentForge\Document\Worker\ProcessingResult;
     use OpenEMR\AgentForge\Document\Worker\WorkerName;
@@ -216,8 +217,8 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
 
             $result = $worker->process(
-                self::job(docType: DocumentType::ReferralDocx),
-                new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx'),
+                self::job(docType: DocumentType::ClinicalWorkbook),
+                new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx'),
             );
 
             $this->assertSame(JobStatus::Failed, $result->terminalStatus);
@@ -264,6 +265,44 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame('tiff', $record['context']['normalizer']);
             $this->assertSame('image/tiff', $record['context']['source_mime_type']);
             $this->assertStringNotContainsString('chen-fax-packet.tiff', json_encode($record['context'], JSON_THROW_ON_ERROR));
+        }
+
+        public function testReferralDocxRuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
+        {
+            $provider = new IntakeWorkerCountingProvider(self::strictReferralResponse(withIdentity: true));
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $promotions = new IntakeWorkerPromotionRepository();
+            $logger = new IntakeWorkerRecordingLogger();
+            $worker = new IntakeExtractorWorker(
+                $provider,
+                new CertaintyClassifier(),
+                $logger,
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+                factPromotions: $promotions,
+            );
+
+            $result = $worker->process(
+                self::job(docType: DocumentType::ReferralDocx),
+                new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'chen-referral.docx'),
+            );
+
+            $this->assertSame(JobStatus::Succeeded, $result->terminalStatus);
+            $this->assertSame(1, $provider->calls);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
+            $this->assertInstanceOf(ReferralDocxExtraction::class, $promotions->lastExtraction);
+            $record = $logger->recordByMessage('document.extraction.completed');
+            $this->assertSame(0, $record['context']['fact_count_verified']);
+            $this->assertSame(1, $record['context']['fact_count_document_fact']);
+            $this->assertSame(1, $record['context']['fact_count_needs_review']);
+            $this->assertSame('docx', $record['context']['normalizer']);
+            $this->assertSame('application/vnd.openxmlformats-officedocument.wordprocessingml.document', $record['context']['source_mime_type']);
+            $this->assertStringNotContainsString('chen-referral.docx', json_encode($record['context'], JSON_THROW_ON_ERROR));
         }
 
         public function testAmbiguousIdentityBlocksWorkerSuccessAndPersistsCheck(): void
@@ -379,6 +418,36 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
         }
 
+        private static function strictReferralResponse(bool $withIdentity = false): ExtractionProviderResponse
+        {
+            return ExtractionProviderResponse::fromStrictJson(
+                DocumentType::ReferralDocx,
+                json_encode([
+                    'doc_type' => 'referral_docx',
+                    'referral_name' => 'Worker Test Referral',
+                    'patient_identity' => $withIdentity ? self::identityCandidates('referral_docx') : [],
+                    'facts' => [
+                        self::referralFact('document_fact', 'Reason for Referral', 0.91, 'Cardiology consult'),
+                        self::referralFact('needs_review', 'Ambiguous plan', 0.40, 'unclear plan'),
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                new DraftUsage('fixture-vlm', 13, 8, 0.0014),
+                'fixture-vlm',
+                normalizationTelemetry: [
+                    'normalizer' => 'docx',
+                    'source_mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'source_byte_count' => 10,
+                    'rendered_page_count' => 0,
+                    'text_section_count' => 4,
+                    'table_count' => 1,
+                    'message_segment_count' => 0,
+                    'warning_codes' => [],
+                    'normalization_elapsed_ms' => 14,
+                    'document_text' => 'must be sanitized',
+                ],
+            );
+        }
+
         /** @return list<array<string, mixed>> */
         private static function identityCandidates(string $sourceType = 'lab_pdf'): array
         {
@@ -454,6 +523,26 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'field_or_chunk_id' => $label,
                     'quote_or_value' => $quote,
                     'bounding_box' => ['x' => 0.1, 'y' => 0.1, 'width' => 0.2, 'height' => 0.1],
+                ],
+            ];
+        }
+
+        /** @return array<string, mixed> */
+        private static function referralFact(string $certainty, string $label, float $confidence, string $quote): array
+        {
+            return [
+                'type' => 'referral_note',
+                'field_path' => $label,
+                'label' => $label,
+                'value' => $quote,
+                'certainty' => $certainty,
+                'confidence' => $confidence,
+                'citation' => [
+                    'source_type' => 'referral_docx',
+                    'source_id' => 'sha256:worker-test',
+                    'page_or_section' => 'section:reason-for-referral',
+                    'field_or_chunk_id' => 'paragraph:3',
+                    'quote_or_value' => $quote,
                 ],
             ];
         }
@@ -574,9 +663,9 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
 
     final class IntakeWorkerPromotionRepository implements ClinicalDocumentFactPromotionRepository
     {
-        public LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction | null $lastExtraction = null;
+        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction | null $lastExtraction = null;
 
-        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary
+        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): PromotionSummary
         {
             $this->lastExtraction = $extraction;
 

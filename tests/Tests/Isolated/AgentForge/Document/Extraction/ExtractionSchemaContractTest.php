@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\StringKeyedArray;
 use PHPUnit\Framework\TestCase;
@@ -116,6 +117,33 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->assertInstanceOf(FaxPacketExtraction::class, $response->extraction);
     }
 
+    public function testMinimalReferralDocxJsonParsesAndMatchesSchemaRootAndFactKeys(): void
+    {
+        $json = json_encode($this->minimalReferralPayload(), JSON_THROW_ON_ERROR);
+        $extraction = ReferralDocxExtraction::fromJson($json);
+        $this->assertSame(DocumentType::ReferralDocx, $extraction->documentType);
+        $this->assertCount(1, $extraction->facts);
+
+        $schema = (new JsonSchemaBuilder())->schema(DocumentType::ReferralDocx);
+        $this->assertSchemaObjectRequiredKeys(
+            $schema,
+            ['doc_type', 'referral_name', 'patient_identity', 'facts'],
+        );
+        $items = $this->nestedSchemaItems($schema, ['properties', 'facts']);
+        $this->assertSchemaObjectRequiredKeys(
+            $items,
+            ['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'],
+        );
+
+        $response = ExtractionProviderResponse::fromStrictJson(
+            DocumentType::ReferralDocx,
+            $json,
+            DraftUsage::fixture(),
+        );
+        $this->assertTrue($response->schemaValid);
+        $this->assertInstanceOf(ReferralDocxExtraction::class, $response->extraction);
+    }
+
     public function testFaxPacketJsonRequiresFacts(): void
     {
         $payload = $this->minimalFaxPayload();
@@ -145,6 +173,26 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->expectExceptionMessage('Expected source type fax_packet.');
 
         FaxPacketExtraction::fromArray($payload);
+    }
+
+    public function testReferralDocxRejectsCitationSourceTypeThatDoesNotMatchDocumentType(): void
+    {
+        $payload = $this->minimalReferralPayload();
+        $facts = $payload['facts'];
+        $this->assertIsArray($facts);
+        $fact = $facts[0] ?? null;
+        $this->assertIsArray($fact);
+        $citation = $fact['citation'] ?? null;
+        $this->assertIsArray($citation);
+        $citation['source_type'] = 'lab_pdf';
+        $fact['citation'] = $citation;
+        $facts[0] = $fact;
+        $payload['facts'] = $facts;
+
+        $this->expectException(ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected source type referral_docx.');
+
+        ReferralDocxExtraction::fromArray($payload);
     }
 
     public function testNormalizationTelemetryKeepsOnlySafeAggregateFields(): void
@@ -317,6 +365,33 @@ final class ExtractionSchemaContractTest extends TestCase
                         'field_or_chunk_id' => 'facts[0]',
                         'quote_or_value' => 'Cardiology consult',
                         'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.4],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function minimalReferralPayload(): array
+    {
+        return [
+            'doc_type' => 'referral_docx',
+            'referral_name' => 'Referral Letter',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'referral_reason',
+                    'field_path' => 'reason_for_referral',
+                    'label' => 'Reason for Referral',
+                    'value' => 'Cardiology consult',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.9,
+                    'citation' => [
+                        'source_type' => 'referral_docx',
+                        'source_id' => 'doc:4',
+                        'page_or_section' => 'section:reason-for-referral',
+                        'field_or_chunk_id' => 'paragraph:3',
+                        'quote_or_value' => 'Cardiology consult',
                     ],
                 ],
             ],

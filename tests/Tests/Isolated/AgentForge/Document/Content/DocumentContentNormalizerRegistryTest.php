@@ -78,7 +78,7 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
         }
     }
 
-    public function testFactoryRegistrySupportsPdfImagesAndInjectedTiffRenderer(): void
+    public function testFactoryRegistrySupportsPdfImagesInjectedTiffRendererAndDocx(): void
     {
         $registry = DocumentContentNormalizerRegistryFactory::withTiffRenderer(
             new RegistryFactoryPdfRenderer(),
@@ -103,11 +103,35 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
             DocumentType::FaxPacket,
             new DocumentLoadResult('tiff', 'image/tiff', 'fax.tiff'),
         ), $deadline);
+        $docx = $registry->normalize(new DocumentContentNormalizationRequest(
+            new DocumentId(15),
+            DocumentType::ReferralDocx,
+            new DocumentLoadResult($this->minimalDocx(), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx'),
+        ), $deadline);
 
         $this->assertSame('pdf', $pdf->telemetry()->normalizer);
         $this->assertSame('image', $image->telemetry()->normalizer);
         $this->assertSame('tiff', $tiff->telemetry()->normalizer);
+        $this->assertSame('docx', $docx->telemetry()->normalizer);
         $this->assertSame('data:image/png;base64,dGlmZi1wYWdl', $tiff->renderedPages[0]->dataUrl());
+    }
+
+    private function minimalDocx(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'agentforge-registry-docx-');
+        $this->assertIsString($path);
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($path, \ZipArchive::OVERWRITE));
+        $zip->addFromString(
+            'word/document.xml',
+            '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Referral text</w:t></w:r></w:p></w:body></w:document>',
+        );
+        $zip->close();
+        $bytes = file_get_contents($path);
+        unlink($path);
+        $this->assertIsString($bytes);
+
+        return $bytes;
     }
 
     public function testDefaultFactoryRegistrySupportsTiffWhenImagickAvailable(): void

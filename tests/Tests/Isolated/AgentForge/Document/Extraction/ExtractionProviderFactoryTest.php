@@ -164,6 +164,7 @@ final class ExtractionProviderFactoryTest extends TestCase
         $this->assertSame(10.0, $config->connectTimeoutSeconds);
         $this->assertSame(5, $config->maxPdfPages);
         $this->assertSame(10_485_760, $config->maxTiffSourceBytes);
+        $this->assertSame(10_485_760, $config->maxDocxSourceBytes);
     }
 
     /** @return list<string> */
@@ -175,6 +176,7 @@ final class ExtractionProviderFactoryTest extends TestCase
             'OPENAI_API_KEY',
             'AGENTFORGE_VLM_MODEL',
             'AGENTFORGE_VLM_MAX_TIFF_BYTES',
+            'AGENTFORGE_VLM_MAX_DOCX_BYTES',
             'AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST',
             'AGENTFORGE_EXTRACTION_FIXTURES_DIR',
         ];

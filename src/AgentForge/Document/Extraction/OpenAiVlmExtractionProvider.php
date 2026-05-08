@@ -49,6 +49,7 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         private float $configuredTimeoutSeconds = 30.0,
         private int $maxPdfPages = 6,
         private int $maxTiffSourceBytes = 10_485_760,
+        private int $maxDocxSourceBytes = 10_485_760,
         private ?DocumentContentNormalizerRegistry $contentNormalizers = null,
     ) {
         LlmCredentialGuard::requireApiKey($apiKey, 'OpenAI extraction provider');
@@ -61,6 +62,9 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         }
         if ($maxTiffSourceBytes < 1) {
             throw new DomainException('OpenAI extraction max TIFF source bytes must be positive.');
+        }
+        if ($maxDocxSourceBytes < 1) {
+            throw new DomainException('OpenAI extraction max DOCX source bytes must be positive.');
         }
     }
 
@@ -275,6 +279,7 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
             $this->pdfRenderer,
             $this->maxPdfPages,
             $this->maxTiffSourceBytes,
+            $this->maxDocxSourceBytes,
         );
     }
 

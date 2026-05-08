@@ -32,6 +32,7 @@ use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
+use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Time\SystemPsrClock;
 use Psr\Clock\ClockInterface;
@@ -57,7 +58,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
 
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): PromotionSummary
     {
         if ($job->id === null || !$this->trustedJob($job)) {
             return PromotionSummary::empty();
