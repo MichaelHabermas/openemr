@@ -52,6 +52,40 @@ final class ClinicalDocumentSeedTest extends TestCase
         $this->assertStringContainsString('WHERE category_id = @intake_form_cat_id', $section);
     }
 
+    public function testSeedCreatesAndMapsContractOnlyDocumentCategories(): void
+    {
+        $section = $this->clinicalDocumentSeedSection();
+
+        foreach ([
+            'Referral Document' => ['referral_document', 'referral_docx'],
+            'Clinical Workbook' => ['clinical_workbook', 'clinical_workbook'],
+            'Fax Packet' => ['fax_packet', 'fax_packet'],
+            'HL7 v2 Message' => ['hl7v2_message', 'hl7v2_message'],
+        ] as $categoryName => [$variablePrefix, $docType]) {
+            $this->assertStringContainsString("'{$categoryName}'", $section);
+            $this->assertStringContainsString("SELECT @{$variablePrefix}_cat_id, '{$docType}', 1, NOW()", $section);
+            $this->assertStringContainsString("WHERE category_id = @{$variablePrefix}_cat_id", $section);
+        }
+    }
+
+    public function testSeedMappingInsertsAreIdempotentByCategory(): void
+    {
+        $section = $this->clinicalDocumentSeedSection();
+
+        foreach ([
+            'lab_pdf',
+            'intake_form',
+            'referral_document',
+            'clinical_workbook',
+            'fax_packet',
+            'hl7v2_message',
+        ] as $variablePrefix) {
+            $this->assertStringContainsString("WHERE category_id = @{$variablePrefix}_cat_id", $section);
+        }
+
+        $this->assertSame(6, substr_count($section, 'SELECT 1 FROM clinical_document_type_mappings'));
+    }
+
     public function testSeedIncludesChenClinicalDocumentDemoPatient(): void
     {
         $this->assertStringContainsString('SET @chen_pid := 900101;', $this->seedSql);

@@ -163,6 +163,36 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame('Extraction provider returned schema-invalid output.', $result->errorMessage);
         }
 
+        public function testContractOnlyDocumentTypeFailsBeforeProviderExtraction(): void
+        {
+            $provider = new IntakeWorkerCountingProvider(self::strictLabResponse(withIdentity: true));
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $logger = new IntakeWorkerRecordingLogger();
+            $worker = new IntakeExtractorWorker(
+                $provider,
+                new CertaintyClassifier(),
+                $logger,
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+            );
+
+            $result = $worker->process(
+                self::job(docType: DocumentType::ReferralDocx),
+                new DocumentLoadResult('docx-bytes', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx'),
+            );
+
+            $this->assertSame(JobStatus::Failed, $result->terminalStatus);
+            $this->assertSame('unsupported_doc_type', $result->errorCode);
+            $this->assertSame('Document type is contract-only until runtime ingestion support is implemented.', $result->errorMessage);
+            $this->assertSame(0, $provider->calls);
+            $this->assertSame([], $identityChecks->results);
+            $this->assertSame([], $logger->records);
+        }
+
         public function testAmbiguousIdentityBlocksWorkerSuccessAndPersistsCheck(): void
         {
             $identityChecks = new IntakeWorkerIdentityCheckRepository();
@@ -305,6 +335,26 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             DocumentType $documentType,
             Deadline $deadline,
         ): ExtractionProviderResponse {
+            return $this->response;
+        }
+    }
+
+    final class IntakeWorkerCountingProvider implements DocumentExtractionProvider
+    {
+        public int $calls = 0;
+
+        public function __construct(private readonly ExtractionProviderResponse $response)
+        {
+        }
+
+        public function extract(
+            DocumentId $documentId,
+            DocumentLoadResult $document,
+            DocumentType $documentType,
+            Deadline $deadline,
+        ): ExtractionProviderResponse {
+            $this->calls++;
+
             return $this->response;
         }
     }

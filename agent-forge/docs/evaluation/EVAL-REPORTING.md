@@ -51,8 +51,8 @@ Render the Week 2 clinical-document cost/latency report from a passing clinical 
 
 ```bash
 php agent-forge/scripts/render-clinical-document-cost-latency.php \
-  --clinical-run=agent-forge/eval-results/clinical-document-20260508-161531/run.json \
-  --clinical-summary=agent-forge/eval-results/clinical-document-20260508-161531/summary.json
+  --clinical-run=agent-forge/eval-results/clinical-document-20260508-190800/run.json \
+  --clinical-summary=agent-forge/eval-results/clinical-document-20260508-190800/summary.json
 ```
 
 Exit codes:

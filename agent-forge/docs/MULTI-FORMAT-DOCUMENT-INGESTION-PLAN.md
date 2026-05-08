@@ -295,13 +295,13 @@ Implementation note (2026-05-08):
 
 - `agent-forge/fixtures/clinical-document-golden/source-fixture-manifest.json` inventories every real example document, ignores `.DS_Store`, and marks `source-previews/*.png` as `preview_only`.
 - The clinical-document golden gate includes one DOCX referral case, one XLSX workbook case, one TIFF fax packet case, one HL7 ADT case, and one HL7 ORU case.
-- The deterministic baseline is 65 cases under a 50-80 case policy. The accepted local proof is `agent-forge/eval-results/clinical-document-20260508-184118`.
+- The deterministic baseline is 65 cases under a 50-80 case policy. The accepted local proof is `agent-forge/eval-results/clinical-document-20260508-190800`.
 - The source corpus validator rejects preview-only extraction mappings, stray SHA mappings, duplicate source SHAs, unsupported roles, and sidecars whose strict citations do not match the declared document source type.
 - This does not claim runtime ingestion for non-PDF formats; it establishes the contracts and fail-first golden targets that later epics must satisfy with real normalizers/providers.
 
 ### Epic 2 - Document Type Expansion And Category Mapping
 
-Status: Not started.
+Status: Implemented as category/queue expansion with fail-closed worker behavior.
 
 Goal: Add first-class document types and OpenEMR category mappings without changing extraction behavior yet.
 
@@ -318,6 +318,13 @@ Acceptance criteria:
 - Uploads in mapped categories enqueue jobs with the correct new document type.
 - Unmapped categories remain ignored.
 - No extraction provider is required to pass yet.
+
+Implementation note (2026-05-08):
+
+- Demo seed data maps `Referral Document`, `Clinical Workbook`, `Fax Packet`, and `HL7 v2 Message` to `referral_docx`, `clinical_workbook`, `fax_packet`, and `hl7v2_message`.
+- The intake-extractor worker accepts queued jobs for these known document types but fails them before provider extraction with `unsupported_doc_type`.
+- Later runtime-support epics must include an explicit requeue or migration step for previously failed `unsupported_doc_type` jobs because job uniqueness is keyed by `(patient_id, document_id, doc_type)`.
+- No install/upgrade SQL default production mappings, live providers, normalizers, promotion behavior, or golden baseline counts were changed for Epic 2.
 
 ### Epic 3 - Normalized Document Content Layer
 

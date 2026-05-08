@@ -3179,6 +3179,14 @@ INSERT INTO procedure_result (
 SET @lab_pdf_cat_id := (SELECT id FROM categories WHERE name = 'Lab Report' LIMIT 1);
 SET @intake_form_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'Intake Form');
 SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'Intake Form' LIMIT 1);
+SET @referral_document_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'Referral Document');
+SET @referral_document_cat_id := (SELECT id FROM categories WHERE name = 'Referral Document' LIMIT 1);
+SET @clinical_workbook_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'Clinical Workbook');
+SET @clinical_workbook_cat_id := (SELECT id FROM categories WHERE name = 'Clinical Workbook' LIMIT 1);
+SET @fax_packet_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'Fax Packet');
+SET @fax_packet_cat_id := (SELECT id FROM categories WHERE name = 'Fax Packet' LIMIT 1);
+SET @hl7v2_message_cat_exists := (SELECT COUNT(*) FROM categories WHERE name = 'HL7 v2 Message');
+SET @hl7v2_message_cat_id := (SELECT id FROM categories WHERE name = 'HL7 v2 Message' LIMIT 1);
 SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
 
 INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
@@ -3191,6 +3199,54 @@ WHERE id = 1
     AND @intake_form_cat_exists = 0;
 
 SET @intake_form_cat_id := (SELECT id FROM categories WHERE name = 'Intake Form' LIMIT 1);
+SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
+
+INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
+SELECT 900102, 'Referral Document', '', 1, @category_root_rght, @category_root_rght + 1, 'patients|docs', ''
+WHERE @referral_document_cat_exists = 0;
+
+UPDATE categories
+SET rght = rght + 2
+WHERE id = 1
+    AND @referral_document_cat_exists = 0;
+
+SET @referral_document_cat_id := (SELECT id FROM categories WHERE name = 'Referral Document' LIMIT 1);
+SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
+
+INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
+SELECT 900103, 'Clinical Workbook', '', 1, @category_root_rght, @category_root_rght + 1, 'patients|docs', ''
+WHERE @clinical_workbook_cat_exists = 0;
+
+UPDATE categories
+SET rght = rght + 2
+WHERE id = 1
+    AND @clinical_workbook_cat_exists = 0;
+
+SET @clinical_workbook_cat_id := (SELECT id FROM categories WHERE name = 'Clinical Workbook' LIMIT 1);
+SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
+
+INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
+SELECT 900104, 'Fax Packet', '', 1, @category_root_rght, @category_root_rght + 1, 'patients|docs', ''
+WHERE @fax_packet_cat_exists = 0;
+
+UPDATE categories
+SET rght = rght + 2
+WHERE id = 1
+    AND @fax_packet_cat_exists = 0;
+
+SET @fax_packet_cat_id := (SELECT id FROM categories WHERE name = 'Fax Packet' LIMIT 1);
+SET @category_root_rght := (SELECT rght FROM categories WHERE id = 1 LIMIT 1);
+
+INSERT INTO categories (id, name, value, parent, lft, rght, aco_spec, codes)
+SELECT 900105, 'HL7 v2 Message', '', 1, @category_root_rght, @category_root_rght + 1, 'patients|docs', ''
+WHERE @hl7v2_message_cat_exists = 0;
+
+UPDATE categories
+SET rght = rght + 2
+WHERE id = 1
+    AND @hl7v2_message_cat_exists = 0;
+
+SET @hl7v2_message_cat_id := (SELECT id FROM categories WHERE name = 'HL7 v2 Message' LIMIT 1);
 
 INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
 SELECT @lab_pdf_cat_id, 'lab_pdf', 1, NOW()
@@ -3206,6 +3262,38 @@ WHERE @intake_form_cat_id IS NOT NULL
     AND NOT EXISTS (
         SELECT 1 FROM clinical_document_type_mappings
         WHERE category_id = @intake_form_cat_id
+    );
+
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
+SELECT @referral_document_cat_id, 'referral_docx', 1, NOW()
+WHERE @referral_document_cat_id IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM clinical_document_type_mappings
+        WHERE category_id = @referral_document_cat_id
+    );
+
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
+SELECT @clinical_workbook_cat_id, 'clinical_workbook', 1, NOW()
+WHERE @clinical_workbook_cat_id IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM clinical_document_type_mappings
+        WHERE category_id = @clinical_workbook_cat_id
+    );
+
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
+SELECT @fax_packet_cat_id, 'fax_packet', 1, NOW()
+WHERE @fax_packet_cat_id IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM clinical_document_type_mappings
+        WHERE category_id = @fax_packet_cat_id
+    );
+
+INSERT INTO clinical_document_type_mappings (category_id, doc_type, active, created_at)
+SELECT @hl7v2_message_cat_id, 'hl7v2_message', 1, NOW()
+WHERE @hl7v2_message_cat_id IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM clinical_document_type_mappings
+        WHERE category_id = @hl7v2_message_cat_id
     );
 
 COMMIT;

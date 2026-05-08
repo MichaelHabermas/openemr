@@ -31,7 +31,7 @@ There are two reviewer paths:
 - **Week 2 multimodal flow:** clinical document upload/extraction for
   `lab_pdf` and `intake_form`, an automatic `intake-extractor` worker,
   guideline retrieval through `evidence-retriever`, source review, and the
-  59-case clinical-document eval gate.
+  65-case clinical-document eval gate.
 
 Deployed reviewer URL: [https://openemr.titleredacted.cc/](https://openemr.titleredacted.cc/)
 

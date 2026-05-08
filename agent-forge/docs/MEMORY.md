@@ -42,6 +42,9 @@ Contracts that downstream code depends on.
 
 - `clinical_document_type_mappings` maps OpenEMR document categories to clinical document types. One category → one doc type.
 - `clinical_document_processing_jobs` is the durable queue. Job enqueue is idempotent for `(patient_id, document_id, doc_type)`. `retracted` is terminal.
+- Demo category mappings include `Referral Document -> referral_docx`, `Clinical Workbook -> clinical_workbook`, `Fax Packet -> fax_packet`, and `HL7 v2 Message -> hl7v2_message`; these enqueue jobs but remain contract-only.
+- Contract-only document jobs must fail closed with `unsupported_doc_type` before provider extraction until normalizers/providers are implemented.
+- When a contract-only type becomes runtime-supported, its epic must requeue or migrate existing failed `unsupported_doc_type` jobs because duplicate enqueue returns the existing unique job row.
 - Only `intake-extractor` may claim `clinical_document_processing_jobs`. `supervisor` records routing/handoffs, and `evidence-retriever` is answer-time evidence retrieval, not a document-job processor.
 - `clinical_document_retractions` is append-only audit. Prior/new state JSON, action, actor, reason, timestamp.
 - `clinical_document_facts` + `clinical_document_fact_embeddings` are the patient-document fact store. Guideline vectors are separate in `clinical_guideline_chunk_embeddings`.

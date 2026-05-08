@@ -100,16 +100,24 @@ Allowed `doc_type` values:
 ```text
 lab_pdf
 intake_form
+referral_docx
+clinical_workbook
+fax_packet
+hl7v2_message
 ```
 
 Seeded demo mappings:
 
 ```text
 Lab Report -> lab_pdf
-(real intake category TBD) -> intake_form
+Intake Form -> intake_form
+Referral Document -> referral_docx
+Clinical Workbook -> clinical_workbook
+Fax Packet -> fax_packet
+HL7 v2 Message -> hl7v2_message
 ```
 
-Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker.
+Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 are category/queue targets only: the worker marks those jobs failed with `unsupported_doc_type` before provider extraction until later epics add normalizers and live extraction support.
 
 ## 5. Background Ingestion Jobs
 

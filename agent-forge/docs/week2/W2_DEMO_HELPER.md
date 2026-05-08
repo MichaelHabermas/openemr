@@ -8,6 +8,5 @@
   `What changed in recent documents, which evidence is notable, and what sources support it?`
 4. Show the answer separates patient findings, needs human review, and guideline evidence.
 5. Click citations and show source previews / original documents.
-6. Show the 59-case eval gate result: `baseline_met`.
+6. Show the 65-case eval gate result: `baseline_met`.
 7. Show or mention supervisor/workers, no raw PHI logs, and cost/latency proof.
-

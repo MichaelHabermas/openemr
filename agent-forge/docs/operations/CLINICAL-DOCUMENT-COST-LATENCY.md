@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The latest clinical-document gate artifact contains `59` cases with verdict `baseline_met`. Clinical-document handoff latency is a placeholder: the field is instrumented, but the current deterministic fixture artifact does not prove runtime latency. Clinical-document model cost remains `unknown/not recorded` unless a live clinical-document artifact provides provider token usage.
+The latest clinical-document gate artifact contains `65` cases with verdict `baseline_met`. Clinical-document handoff latency is a placeholder: the field is instrumented, but the current deterministic fixture artifact does not prove runtime latency. Clinical-document model cost remains `unknown/not recorded` unless a live clinical-document artifact provides provider token usage.
 
 The available live-provider development spend baseline is $0.015599 using `gpt-5.4-mini` with `5943` input tokens and `2476` output tokens. Shared live request latency p50/p95 is `1699 ms` / `3691 ms`; deployed smoke p50/p95 is `1620 ms` / `6204 ms`.
 
@@ -14,8 +14,8 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Artifact | Role |
 | --- | --- |
-| `agent-forge/eval-results/clinical-document-20260508-161531/run.json` | Source input for this rendered report. |
-| `agent-forge/eval-results/clinical-document-20260508-161531/summary.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-190800/run.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-190800/summary.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/tier2-live-20260503-202550.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/deployed-smoke-20260503-201547.json` | Source input for this rendered report. |
 
@@ -23,8 +23,8 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Metric | Value | Interpretation |
 | --- | ---: | --- |
-| Clinical run executed at | `2026-05-08T16:15:31+00:00` | Source clinical-document summary timestamp. |
-| Clinical cases | `59` | Deterministic Week 2 gate cases. |
+| Clinical run executed at | `2026-05-08T19:08:00+00:00` | Source clinical-document summary timestamp. |
+| Clinical cases | `65` | Deterministic Week 2 gate cases. |
 | Clinical verdict | `baseline_met` | Baseline/threshold result from the gate. |
 | Clinical handoff p50 | `placeholder 0 ms` | Instrumentation placeholder, not runtime proof. |
 | Clinical handoff p95 | `placeholder 0 ms` | Instrumentation placeholder, not runtime proof. |

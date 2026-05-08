@@ -22,6 +22,7 @@ use OpenEMR\AgentForge\Document\Embedding\SqlDocumentFactEmbeddingRepository;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\IntakeExtractorWorker;
+use OpenEMR\AgentForge\Document\Extraction\LazyExtractionProvider;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
 use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\SqlDocumentIdentityCheckRepository;
@@ -94,7 +95,7 @@ final class DocumentJobWorkerFactory
     {
         return match ($workerName) {
             WorkerName::IntakeExtractor => new IntakeExtractorWorker(
-                ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment()),
+                new LazyExtractionProvider(static fn () => ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())),
                 new CertaintyClassifier(),
                 self::workerLogger(),
                 new SystemMonotonicClock(),

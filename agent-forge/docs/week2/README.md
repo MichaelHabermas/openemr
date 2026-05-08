@@ -49,29 +49,31 @@ Use this command as the single local/CI clinical document gate:
 agent-forge/scripts/check-clinical-document.sh
 ```
 
-The gate now passes for the accepted Week 2 path: 59 fixture-backed
+The gate now passes for the accepted Week 2 path: 65 fixture-backed
 clinical-document cases, identity gating, real guideline retrieval for
 guideline cases, runner-enforced structural coverage, boolean rubric
 thresholds, regression comparison, source-review/bounding-box coverage,
-deleted-document exclusion, no-PHI telemetry checks, and artifact writing.
+multi-format contract coverage, deleted-document exclusion, no-PHI telemetry
+checks, and artifact writing.
 
 Current local proof artifacts:
 
-- `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`
-- `agent-forge/eval-results/clinical-document-20260508-161531/run.json`
+- `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`
+- `agent-forge/eval-results/clinical-document-20260508-190800/run.json`
 - `agent-forge/eval-results/eval-results-20260508-161500.json`
 
-The checked-in repository does not currently include a
-`clinical-document-deployed-smoke-*.json` artifact. H3 deployment/runtime proof
-is documented in [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md) and the
-deployed clinical smoke command is documented for rerun.
+The checked-in repository includes deployed clinical smoke artifacts under
+`agent-forge/eval-results/`; the latest recorded smoke proof is
+`clinical-document-deployed-smoke-20260508-001525.json`. H3 deployment/runtime
+proof is documented in [W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md), and
+the deployed clinical smoke command remains documented for rerun.
 
 ## Week 2 stages (from spec)
 
 1. Ingest lab PDF and intake form (attach, extract, FHIR/OpenEMR integrity). — see `PLAN-W2.md` for implementation order and `W2_ARCHITECTURE.md` §1–2 for defense architecture.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
-4. Eval-driven CI: current gate under `check-clinical-document.sh` with 59 cases, boolean rubrics, structural coverage, and regression comparison. — §6.
+4. Eval-driven CI: current gate under `check-clinical-document.sh` with 65 cases, boolean rubrics, structural coverage, and regression comparison. — §6.
 5. Integrate, deploy with Week 2 reviewer environment markers, demo video, cost/latency report, and reviewer acceptance matrix. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).

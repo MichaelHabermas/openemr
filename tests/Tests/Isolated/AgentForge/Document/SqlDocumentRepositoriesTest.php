@@ -25,8 +25,11 @@ use OpenEMR\AgentForge\Document\SqlDocumentJobRepository;
 use OpenEMR\AgentForge\Document\SqlDocumentTypeMappingRepository;
 use OpenEMR\AgentForge\Document\Worker\LockToken;
 use OpenEMR\Tests\Isolated\AgentForge\Support\FakeDatabaseExecutor;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
 use RuntimeException;
+use Stringable;
 
 final class SqlDocumentRepositoriesTest extends TestCase
 {
@@ -49,14 +52,37 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertSame([7], $executor->reads[0]['binds']);
     }
 
-    public function testJobRepositoryEnqueueUsesInsertIgnoreThenSelectsUniqueJob(): void
+    public function testMappingRepositoryReturnsNullAndLogsWarningForUnknownDocType(): void
+    {
+        $executor = new FakeDatabaseExecutor(records:[
+            [
+                'id' => 3,
+                'category_id' => 7,
+                'doc_type' => 'unknown_type',
+                'active' => 1,
+                'created_at' => '2026-05-05 00:00:00',
+            ],
+        ]);
+        $logger = new SqlDocumentRecordingLogger();
+
+        $mapping = (new SqlDocumentTypeMappingRepository($executor, $logger))->findActiveByCategoryId(new CategoryId(7));
+
+        $this->assertNull($mapping);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertSame('clinical_document.mapping.invalid', $logger->records[0]['message']);
+        $this->assertSame(7, $logger->records[0]['context']['category_id']);
+        $this->assertArrayNotHasKey('doc_type', $logger->records[0]['context']);
+    }
+
+    #[DataProvider('documentTypeProvider')]
+    public function testJobRepositoryEnqueueUsesInsertIgnoreThenSelectsUniqueJob(DocumentType $docType): void
     {
         $executor = new FakeDatabaseExecutor(records:[
             [
                 'id' => 9,
                 'patient_id' => 900001,
                 'document_id' => 123,
-                'doc_type' => 'lab_pdf',
+                'doc_type' => $docType->value,
                 'status' => 'pending',
                 'attempts' => 0,
                 'lock_token' => null,
@@ -73,12 +99,12 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $jobId = (new SqlDocumentJobRepository($executor))->enqueue(
             new PatientId(900001),
             new DocumentId(123),
-            DocumentType::LabPdf,
+            $docType,
         );
 
         $this->assertSame(9, $jobId->value);
         $this->assertStringContainsString('INSERT IGNORE INTO clinical_document_processing_jobs', $executor->statements[0]['sql']);
-        $this->assertSame([900001, 123, 'lab_pdf', 'pending'], $executor->statements[0]['binds']);
+        $this->assertSame([900001, 123, $docType->value, 'pending'], $executor->statements[0]['binds']);
         $this->assertStringContainsString('WHERE patient_id = ? AND document_id = ? AND doc_type = ?', $executor->reads[0]['sql']);
     }
 
@@ -277,5 +303,36 @@ final class SqlDocumentRepositoriesTest extends TestCase
         $this->assertSame($lockToken->value, $job->lockToken);
         $this->assertStringContainsString('WHERE lock_token = ? AND status = ?', $executor->reads[0]['sql']);
         $this->assertSame([$lockToken->value, 'running'], $executor->reads[0]['binds']);
+    }
+
+    /**
+     * @return array<string, array{DocumentType}>
+     *
+     * @codeCoverageIgnore Data providers run before coverage instrumentation starts.
+     */
+    public static function documentTypeProvider(): array
+    {
+        $cases = [];
+        foreach (DocumentType::cases() as $type) {
+            $cases[$type->value] = [$type];
+        }
+
+        return $cases;
+    }
+}
+
+final class SqlDocumentRecordingLogger extends AbstractLogger
+{
+    /** @var list<array{level: mixed, message: string|Stringable, context: array<mixed>}> */
+    public array $records = [];
+
+    /** @param array<mixed> $context */
+    public function log($level, string | Stringable $message, array $context = []): void
+    {
+        $this->records[] = [
+            'level' => $level,
+            'message' => $message,
+            'context' => $context,
+        ];
     }
 }

@@ -28,6 +28,7 @@ use OpenEMR\AgentForge\Document\DocumentUploadEnqueuer;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use RuntimeException;
@@ -58,6 +59,25 @@ final class DocumentUploadEnqueuerTest extends TestCase
         $this->assertSame('clinical_document.job.enqueued', $logger->records[0]['message']);
         $this->assertSame($hasher->hash(new PatientId(900001)), $logger->records[0]['context']['patient_ref']);
         $this->assertArrayNotHasKey('patient_id', $logger->records[0]['context']);
+    }
+
+    #[DataProvider('documentTypeProvider')]
+    public function testMappedActiveCategoryCreatesPendingJobForEveryKnownDocumentType(DocumentType $docType): void
+    {
+        $mappings = InMemoryDocumentTypeMappingRepository::withMapping(7, $docType, true);
+        $jobs = new InMemoryDocumentJobRepository();
+
+        $jobId = (new DocumentUploadEnqueuer(
+            $mappings,
+            $jobs,
+            new DocumentRecordingLogger(),
+            new PatientRefHasher('test-salt'),
+        ))->enqueueIfEligible(new PatientId(900001), new DocumentId(123), new CategoryId(7));
+
+        $this->assertSame(1, $jobId?->value);
+        $this->assertCount(1, $jobs->jobs);
+        $this->assertSame($docType, $jobs->jobs[0]->docType);
+        $this->assertSame(JobStatus::Pending, $jobs->jobs[0]->status);
     }
 
     public function testInactiveMappingDoesNotEnqueue(): void
@@ -112,6 +132,25 @@ final class DocumentUploadEnqueuerTest extends TestCase
         $this->assertCount(1, $jobs->jobs);
         $this->assertCount(2, $logger->records);
         $this->assertSame($logger->records[0]['context']['job_id'], $logger->records[1]['context']['job_id']);
+    }
+
+    #[DataProvider('documentTypeProvider')]
+    public function testDuplicateEnqueueReturnsSameJobIdForEveryKnownDocumentType(DocumentType $docType): void
+    {
+        $jobs = new InMemoryDocumentJobRepository();
+        $enqueuer = new DocumentUploadEnqueuer(
+            InMemoryDocumentTypeMappingRepository::withMapping(7, $docType, true),
+            $jobs,
+            new DocumentRecordingLogger(),
+            new PatientRefHasher('test-salt'),
+        );
+
+        $first = $enqueuer->enqueueIfEligible(new PatientId(900001), new DocumentId(123), new CategoryId(7));
+        $second = $enqueuer->enqueueIfEligible(new PatientId(900001), new DocumentId(123), new CategoryId(7));
+
+        $this->assertSame($first?->value, $second?->value);
+        $this->assertCount(1, $jobs->jobs);
+        $this->assertSame($docType, $jobs->jobs[0]->docType);
     }
 
     public function testMappingRepositoryFailureIsCaughtAndLogged(): void
@@ -192,6 +231,21 @@ final class DocumentUploadEnqueuerTest extends TestCase
 
         $this->assertSame($hasher->hash(new PatientId(900001)), $logger->records[0]['context']['patient_ref']);
         $this->assertNotSame('900001', $logger->records[0]['context']['patient_ref']);
+    }
+
+    /**
+     * @return array<string, array{DocumentType}>
+     *
+     * @codeCoverageIgnore Data providers run before coverage instrumentation starts.
+     */
+    public static function documentTypeProvider(): array
+    {
+        $cases = [];
+        foreach (DocumentType::cases() as $type) {
+            $cases[$type->value] = [$type];
+        }
+
+        return $cases;
     }
 }
 

@@ -41,7 +41,7 @@ If you only have a few minutes, review these in order:
 5. Open the Clinical Co-Pilot panel and ask:
    `What changed in recent documents, which evidence is notable, and what sources support it?`
 6. Confirm the answer separates `Patient Findings`, `Needs Human Review`, and `Guideline Evidence`, and that citation links open source previews.
-7. Inspect the latest local gate result at `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`; expected verdict is `baseline_met` across 59 cases.
+7. Inspect the latest local gate result at `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`; expected verdict is `baseline_met` across 65 cases.
 8. Inspect `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` for the requirement-by-requirement map and `agent-forge/docs/week2/W2_DEMO_HELPER.md` for the video/demo script.
 
 ## Requirement-To-Evidence Map
@@ -49,13 +49,13 @@ If you only have a few minutes, review these in order:
 | Week 2 requirement | Where to look in the repo | What to check in the app |
 | --- | --- | --- |
 | Lab PDF and intake form ingestion | `agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf`, `agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf`, `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` | Chen Documents tab shows the lab and intake uploads. |
-| Strict schemas and persisted facts | `agent-forge/eval-results/clinical-document-20260508-161531/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Click `Extraction` on a document to see extracted facts, destinations, and review status. |
+| Strict schemas and persisted facts | `agent-forge/eval-results/clinical-document-20260508-190800/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Click `Extraction` on a document to see extracted facts, destinations, and review status. |
 | Click-to-source citations and page preview | `agent-forge/docs/submission/browser-proof/MANIFEST.md`, `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` | Click a document citation or `Review source`; source preview and `Open source document` should appear. |
-| Patient findings vs guideline evidence | `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`, `W2_ARCHITECTURE.md` | Clinical Co-Pilot answer has separate Patient Findings, Needs Human Review, and Guideline Evidence sections. |
-| Hybrid retrieval plus rerank | `agent-forge/eval-results/clinical-document-20260508-161531/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Guideline Evidence section includes retrieved guideline citations. |
+| Patient findings vs guideline evidence | `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`, `W2_ARCHITECTURE.md` | Clinical Co-Pilot answer has separate Patient Findings, Needs Human Review, and Guideline Evidence sections. |
+| Hybrid retrieval plus rerank | `agent-forge/eval-results/clinical-document-20260508-190800/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Guideline Evidence section includes retrieved guideline citations. |
 | Supervisor plus two workers | `W2_ARCHITECTURE.md`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Handoff proof shows `supervisor -> intake-extractor` for document work and `supervisor -> evidence-retriever` for answer-time guideline retrieval. |
-| Verification, critic/refusal gate | `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`, `tests/Tests/Isolated/AgentForge/DraftVerifierTest.php`, `tests/Tests/Isolated/AgentForge/VerifiedAgentHandlerTest.php`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Ask an unsafe dosing question such as `What dose of atorvastatin should I prescribe for this patient?`; the UI should refuse clinical advice rather than recommend a dose. |
-| 59-case eval gate and CI | `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`, `.github/workflows/agentforge-evals.yml` | Not UI-only; the `clinical-document-gate` job runs `php agent-forge/scripts/run-clinical-document-evals.php` on pull requests and fails if required boolean rubrics drop below threshold or regress beyond policy. |
+| Verification, critic/refusal gate | `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`, `tests/Tests/Isolated/AgentForge/DraftVerifierTest.php`, `tests/Tests/Isolated/AgentForge/VerifiedAgentHandlerTest.php`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Ask an unsafe dosing question such as `What dose of atorvastatin should I prescribe for this patient?`; the UI should refuse clinical advice rather than recommend a dose. |
+| 65-case eval gate and CI | `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`, `.github/workflows/agentforge-evals.yml` | Not UI-only; the `clinical-document-gate` job runs `php agent-forge/scripts/run-clinical-document-evals.php` on pull requests and fails if required boolean rubrics drop below threshold or regress beyond policy. |
 | Observability, cost, and no raw PHI logs | `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Health/readiness shows worker/queue state; logs should show aggregate telemetry, not raw document text or quotes. |
 | Demo video/social/reviewer packaging | `agent-forge/docs/week2/W2_DEMO_HELPER.md`, `agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md` | Watch the linked Loom when accessible; use the helper/checklist as the coverage index. |
 
@@ -142,12 +142,12 @@ Current local proof snapshot:
 
 | Check | Artifact or command | Status |
 | --- | --- | --- |
-| Week 2 clinical-document gate | `agent-forge/eval-results/clinical-document-20260508-161531/summary.json` and `run.json` | 59 cases, verdict `baseline_met`. |
+| Week 2 clinical-document gate | `agent-forge/eval-results/clinical-document-20260508-190800/summary.json` and `run.json` | 65 cases, verdict `baseline_met`. |
 | Tier 0 deterministic orchestration | `agent-forge/eval-results/eval-results-20260508-161500.json` and `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed. |
 | Source review/browser proof | [agent-forge/docs/submission/browser-proof/MANIFEST.md](agent-forge/docs/submission/browser-proof/MANIFEST.md) | Browser screenshots and request ids for reviewer UI evidence. |
 | Cost/latency | [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md) | Rendered from current clinical-document artifact and available live/deployed baselines. |
 | Deployed runtime health | `agent-forge/scripts/health-check.sh` and `agent-forge/scripts/verify-deployed.sh` | Rerunnable; health covers MariaDB 11.8, worker heartbeat, and queue state. |
-| Deployed clinical smoke | `php agent-forge/scripts/run-clinical-document-deployed-smoke.php` | Rerunnable with assigned deployed VM credentials; no checked-in clinical smoke artifact in this checkout. |
+| Deployed clinical smoke | `agent-forge/eval-results/clinical-document-deployed-smoke-20260508-001525.json`; rerun with `php agent-forge/scripts/run-clinical-document-deployed-smoke.php` | Checked-in smoke proof is present; rerunnable with assigned deployed VM credentials. |
 
 ## Commands
 
@@ -182,8 +182,8 @@ Cost/latency report rendering:
 
 ```sh
 php agent-forge/scripts/render-clinical-document-cost-latency.php \
-  --clinical-run=agent-forge/eval-results/clinical-document-20260508-161531/run.json \
-  --clinical-summary=agent-forge/eval-results/clinical-document-20260508-161531/summary.json
+  --clinical-run=agent-forge/eval-results/clinical-document-20260508-190800/run.json \
+  --clinical-summary=agent-forge/eval-results/clinical-document-20260508-190800/summary.json
 ```
 
 ## Review Configuration
@@ -208,7 +208,7 @@ The hard Week 2 PR gate is the `clinical-document-gate` job in
 `.github/workflows/agentforge-evals.yml`. It runs
 `php agent-forge/scripts/run-clinical-document-evals.php`, appends the summary,
 and uploads the clinical-document artifact. The checked-in passing artifact has
-59 cases with pass rate `1.0` for required rubrics including `schema_valid`,
+65 cases with pass rate `1.0` for required rubrics including `schema_valid`,
 `citation_present`, `factually_consistent`, `guideline_retrieval`,
 `safe_refusal`, `answer_citation_coverage`, and `no_phi_in_logs`.
 
@@ -250,8 +250,8 @@ Optional deep dive:
 
 Production readiness is not claimed.
 
-- No checked-in `clinical-document-deployed-smoke-*.json` artifact exists in
-  this checkout, even though the smoke command is implemented and documented.
+- Checked-in deployed clinical smoke proof exists, but reviewers should rerun
+  the smoke command when they need current deployed-state confirmation.
 - The Loom demo link is recorded, but this checkout can only verify the
   required Week 2 video coverage through the documented checklist unless the
   reviewer has access to inspect the recording itself.

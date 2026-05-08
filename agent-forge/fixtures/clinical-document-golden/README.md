@@ -146,7 +146,7 @@ Current artifacts are written under
 Latest local accepted artifact:
 
 ```text
-agent-forge/eval-results/clinical-document-20260508-184118
+agent-forge/eval-results/clinical-document-20260508-190800
 ```
 
 This is deterministic fixture-backed gate proof. Deployed smoke, visual source

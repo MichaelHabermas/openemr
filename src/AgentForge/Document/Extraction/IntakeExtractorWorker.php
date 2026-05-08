@@ -61,6 +61,13 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
     public function ingest(DocumentJob $job, DocumentLoadResult $document): ProcessingResult
     {
         // The spec-required worker name is "intake-extractor"; this worker handles lab_pdf and intake_form.
+        if (!$job->docType->runtimeIngestionSupported()) {
+            return ProcessingResult::failed(
+                'unsupported_doc_type',
+                'Document type is contract-only until runtime ingestion support is implemented.',
+            );
+        }
+
         $timer = new StageTimer($this->clock);
         try {
             $timer->start('extraction:model_request');

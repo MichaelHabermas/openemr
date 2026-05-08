@@ -687,7 +687,7 @@ Files/modules:
 - Modify `agent-forge/fixtures/clinical-document-golden/cases/*.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/baseline.json`.
 - Modify `agent-forge/fixtures/clinical-document-golden/thresholds.json`.
-- Maintain `agent-forge/fixtures/clinical-document-golden/cases/*.json` as the checked-in 50-60 case golden set.
+- Maintain `agent-forge/fixtures/clinical-document-golden/cases/*.json` as the checked-in 50-80 case golden set.
 - Modify `agent-forge/scripts/run-clinical-document-evals.php` and the clinical document eval runner policy.
 
 Database changes: None.
@@ -698,7 +698,7 @@ Tests/evals first:
 
 Implementation tasks:
 
-- Expand to 50-60 synthetic/demo cases with structural H1 coverage tags.
+- Expand to 50-80 synthetic/demo cases with structural H1 coverage tags.
 - Enforce required rubrics: `schema_valid`, `citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`.
 - Keep clinical document gated rubrics: `bounding_box_present`, `deleted_document_not_retrieved`, `promotion_expectations`, `document_fact_expectations`.
 - Fail on any required threshold drop or >5% regression.
@@ -706,22 +706,21 @@ Implementation tasks:
 
 Acceptance criteria:
 
-- Fewer than 50 cases or more than 60 cases fails the gate.
+- Fewer than 50 cases or more than 80 cases fails the gate.
 - A deliberate citation, schema, refusal, or no-PHI regression fails.
 
 Definition of done:
 
-- 59-case run writes current results and compares against baseline.
+- 65-case run writes current results and compares against baseline.
 
-Implementation/proof note (2026-05-06): H1 is implemented with a 59-case
+Implementation/proof note (2026-05-08): H1/Epic 1 is implemented with a 65-case
 golden set, a runner-enforced `StructuralCoveragePolicy`, all configured
 rubric thresholds at `1.0`, `deleted_document_not_retrieved`,
 `promotion_expectations`, and `document_fact_expectations` explicitly
-threshold-gated, and `regression_max_drop_pct` set to `5`. Focused clinical
-document isolated tests passed (`59 tests, 224 assertions`) and the latest
-clinical document eval artifact is
-`agent-forge/eval-results/clinical-document-20260506-204755` with verdict
-`baseline_met`.
+threshold-gated, and `regression_max_drop_pct` set to `5`. The current set
+includes contract-only DOCX, XLSX, TIFF, and HL7 v2 coverage. Latest clinical
+document eval artifact is `agent-forge/eval-results/clinical-document-20260508-190800`
+with verdict `baseline_met`.
 
 Dependencies: M7.
 
@@ -839,8 +838,9 @@ healthy (0 pending, 0 running, 0 stale). `health-check.sh` validates PHI-safe
 `run-clinical-document-deployed-smoke.php` and runner lib exist. Clinical
 document gate PASSED (606 tests, 2749 assertions, eval `baseline_met`),
 comprehensive AgentForge gate PASSED, full PHPStan 0 errors on 4682 files.
-Remaining: deployed VM smoke run producing
-`clinical-document-deployed-smoke-*.json` is a manual validation step.
+Latest checked-in deployed clinical smoke proof is
+`clinical-document-deployed-smoke-20260508-001525.json`; rerunning it remains a
+manual validation step when assigned deployed credentials are available.
 
 ### Epic H4 - Observability, Cost/Latency, And Privacy Hardening
 

@@ -49,9 +49,9 @@ Use this checklist when recording or reviewing the Week 2 Clinical Co-Pilot demo
 
 10. Show eval and gate proof.
     - Show `php agent-forge/scripts/run-clinical-document-evals.php` or the latest checked artifact.
-    - Current expected artifact: `agent-forge/eval-results/clinical-document-20260508-161531`.
-    - Expected result: 59 cases and verdict `baseline_met`.
-    - Mention any known deployment artifact gap instead of implying deployed clinical-document smoke is checked in.
+    - Current expected artifact: `agent-forge/eval-results/clinical-document-20260508-190800`.
+    - Expected result: 65 cases and verdict `baseline_met`.
+    - Mention the checked-in deployed clinical smoke artifact `agent-forge/eval-results/clinical-document-deployed-smoke-20260508-001525.json` and rerun it when assigned deployed credentials are available.
 
 ## Reviewer Caveat
 

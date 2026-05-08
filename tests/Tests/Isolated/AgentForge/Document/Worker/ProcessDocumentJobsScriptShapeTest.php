@@ -33,6 +33,7 @@ final class ProcessDocumentJobsScriptShapeTest extends TestCase
 
         $this->assertStringContainsString('WorkerName::IntakeExtractor', $factory);
         $this->assertStringContainsString('new IntakeExtractorWorker', $factory);
+        $this->assertStringContainsString('new LazyExtractionProvider', $factory);
         $this->assertStringContainsString('ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())', $factory);
         $this->assertStringContainsString('new CertaintyClassifier()', $factory);
         $this->assertStringContainsString('PatientRefHasher::createDefault()', $factory);
