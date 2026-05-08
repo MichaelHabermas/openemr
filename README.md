@@ -43,6 +43,8 @@ Final submission links:
 
 Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patients, Week 1 and Week 2 demo paths, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
 
+For the video and social/demo narrative, use [agent-forge/docs/week2/W2_DEMO_HELPER.md](agent-forge/docs/week2/W2_DEMO_HELPER.md).
+
 Required root submission artifacts are readable on their own here:
 
 - [AUDIT.md](AUDIT.md)

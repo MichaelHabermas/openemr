@@ -17,8 +17,8 @@ Final submission links:
 | --- | --- |
 | Gauntlet Labs submission | https://labs.gauntletai.com/michaelhabermas/openemr |
 | Deployed app | https://openemr.titleredacted.cc/ |
-| Demo video | https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32 |
-| Social post | https://x.com/habermoose/status/2050766281515700369 |
+| Recorded demo video | https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32 |
+| Recorded social post | https://x.com/habermoose/status/2050766281515700369 |
 
 Run health before any live demo:
 
@@ -26,13 +26,38 @@ Run health before any live demo:
 agent-forge/scripts/health-check.sh
 ```
 
-The health command checks the public app URL and the PHI-safe readiness endpoint
-when available:
+The health command checks the deployed app and PHI-safe readiness endpoint. A
+passing result proves reachability and runtime readiness only; it is not a
+production-readiness claim.
 
-`https://openemr.titleredacted.cc/meta/health/readyz`
+## Reviewer Fast Path
 
-A passing health check proves current reachability and runtime readiness only;
-it is not a production-readiness claim.
+If you only have a few minutes, review these in order:
+
+1. Open the deployed app at `https://openemr.titleredacted.cc/` and sign in with assigned demo credentials.
+2. Search for Chen, Margaret L or `BHS-2847163`; the internal pid is `900101`.
+3. Upload the Chen lab PDF and intake form, or inspect already-uploaded copies if the environment was pre-seeded. Use `agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf` in `Lab Report` and `agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf` in `Intake Form`.
+4. Open one uploaded document and click `Extraction` next to `Properties` / `Contents` to see what AgentForge extracted, promoted, skipped as already present, or held for review.
+5. Open the Clinical Co-Pilot panel and ask:
+   `What changed in recent documents, which evidence is notable, and what sources support it?`
+6. Confirm the answer separates `Patient Findings`, `Needs Human Review`, and `Guideline Evidence`, and that citation links open source previews.
+7. Inspect the checked-in gate result at `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`; expected verdict is `baseline_met` across 59 cases.
+8. Inspect `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` for the requirement-by-requirement map and `agent-forge/docs/week2/W2_DEMO_HELPER.md` for the video/demo script.
+
+## Requirement-To-Evidence Map
+
+| Week 2 requirement | Where to look in the repo | What to check in the app |
+| --- | --- | --- |
+| Lab PDF and intake form ingestion | `agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf`, `agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf`, `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` | Chen Documents tab shows the lab and intake uploads. |
+| Strict schemas and persisted facts | `agent-forge/eval-results/clinical-document-20260508-001019/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Click `Extraction` on a document to see extracted facts, destinations, and review status. |
+| Click-to-source citations and page preview | `agent-forge/docs/submission/browser-proof/MANIFEST.md`, `agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md` | Click a document citation or `Review source`; source preview and `Open source document` should appear. |
+| Patient findings vs guideline evidence | `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`, `W2_ARCHITECTURE.md` | Clinical Co-Pilot answer has separate Patient Findings, Needs Human Review, and Guideline Evidence sections. |
+| Hybrid retrieval plus rerank | `agent-forge/eval-results/clinical-document-20260508-001019/run.json`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Guideline Evidence section includes retrieved guideline citations. |
+| Supervisor plus two workers | `W2_ARCHITECTURE.md`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Handoff proof shows `supervisor -> intake-extractor` and `supervisor -> evidence-retriever`. |
+| Verification, critic/refusal gate | `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`, `tests/Tests/Isolated/AgentForge/DraftVerifierTest.php`, `tests/Tests/Isolated/AgentForge/VerifiedAgentHandlerTest.php`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Ask an unsafe dosing question such as `What dose of atorvastatin should I prescribe for this patient?`; the UI should refuse clinical advice rather than recommend a dose. |
+| 50+ case eval gate and CI | `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`, `.github/workflows/agentforge-evals.yml` | Not UI-only; the `clinical-document-gate` job runs `php agent-forge/scripts/run-clinical-document-evals.php` on pull requests and fails if required boolean rubrics drop below threshold or regress beyond policy. |
+| Observability, cost, and no raw PHI logs | `agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md`, `agent-forge/docs/week2/W2_MANUAL_COMPLETENESS_CHECK.md` | Health/readiness shows worker/queue state; logs should show aggregate telemetry, not raw document text or quotes. |
+| Demo video/social/reviewer packaging | `agent-forge/docs/week2/W2_DEMO_HELPER.md`, `agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md` | Watch the linked Loom when accessible; use the helper/checklist as the coverage index. |
 
 ## Demo Data And Credentials
 
@@ -45,25 +70,14 @@ out of band by the deployed environment owner.
 | Week 1 chart baseline | `900001` | `AF-DEMO-900001` | Seeded chart evidence, A1c trend, visit briefing, refusals, citations. |
 | Week 2 clinical documents | `900101` internally; default for deployed clinical smoke | `BHS-2847163` / Chen, Margaret L in the OpenEMR UI | Lab/intake upload, extraction worker, guideline retrieval, source review, retraction proof. |
 
-## Week 1 Baseline Demo Path
+## Week 1 Baseline
 
-Use this path to review the original chart-grounded Clinical Co-Pilot behavior.
-
-1. Authenticate to OpenEMR with assigned demo credentials.
-2. Open fake patient `900001` / `AF-DEMO-900001`.
-3. Use the chart-embedded Clinical Co-Pilot panel.
-4. Ask `Show me the recent A1c trend.`
-5. Confirm the answer is scoped to the active patient, includes `8.2 %` on
-   `2026-01-09` and `7.4 %` on `2026-04-10`, and displays citations under
-   Sources.
-
-Week 1 proof and supporting docs:
-
-- [ARCHITECTURE.md](ARCHITECTURE.md)
-- [USERS.md](USERS.md)
-- [AUDIT.md](AUDIT.md)
-- [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
-- [agent-forge/eval-results/canonical.json](agent-forge/eval-results/canonical.json)
+Week 1 remains the chart-grounded baseline: fake patient `900001` /
+`AF-DEMO-900001`, active chart binding, source-cited chart facts, refusal
+behavior, and the original audit/user/architecture docs. Supporting proof:
+[ARCHITECTURE.md](ARCHITECTURE.md), [USERS.md](USERS.md), [AUDIT.md](AUDIT.md),
+[agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md),
+and [agent-forge/eval-results/canonical.json](agent-forge/eval-results/canonical.json).
 
 ## Week 2 Clinical Document Demo Path
 
@@ -74,25 +88,30 @@ Use this path to review the multimodal Week 2 flow.
 3. Open the configured Week 2 fake patient. In the OpenEMR UI, search for
    `Chen, Margaret L` or public id `BHS-2847163`; the internal pid and deployed
    clinical smoke default are `AGENTFORGE_CLINICAL_SMOKE_PID=900101`.
-4. Upload or attach a lab PDF using the mapped `lab_pdf` category. The smoke
-   runner defaults can be overridden with
+4. Upload or attach a lab PDF using the mapped `lab_pdf` category. For manual
+   demo review, use `agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf`,
+   normally under `Lab Report`. Smoke runner defaults can be overridden with
    `AGENTFORGE_CLINICAL_SMOKE_LAB_PATH` and
    `AGENTFORGE_CLINICAL_SMOKE_LAB_CATEGORY`.
-5. Upload or attach an intake form using the mapped `intake_form` category. The
-   smoke runner defaults can be overridden with
+5. Upload or attach an intake form using the mapped `intake_form` category. For
+   manual demo review, use `agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf`,
+   normally under `Intake Form`. Smoke runner defaults can be overridden with
    `AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH` and
    `AGENTFORGE_CLINICAL_SMOKE_INTAKE_CATEGORY`.
 6. Watch the background `agentforge-worker` process claim jobs as
    `intake-extractor`; health/readiness exposes worker heartbeat and queue
    health.
-7. Ask the Clinical Co-Pilot a Week 2 cited question such as:
+7. Open the uploaded document in the Documents tab and click `Extraction` next
+   to `Properties` / `Contents`. Confirm the modal shows the extraction job,
+   fact rows, destination/review status, and per-fact source review.
+8. Ask the Clinical Co-Pilot a Week 2 cited question such as:
    `What changed, what should I pay attention to, and what evidence supports it?`
-8. Confirm the final answer separates Patient Findings, Needs Human Review,
+9. Confirm the final answer separates Patient Findings, Needs Human Review,
    Guideline Evidence, and Missing or Not Found.
-9. Inspect citations/source review from the answer. Document citations should
+10. Inspect citations/source review from the answer. Document citations should
    open guarded source review with page/section, quote/value, and a bounding box
    when available or deterministic page/quote fallback when unavailable.
-10. Inspect handoffs/evals through the artifacts and commands below.
+11. Inspect handoffs/evals through the artifacts and commands below.
 
 Rerunnable deployed clinical smoke:
 
@@ -104,13 +123,10 @@ export AGENTFORGE_VM_SSH_HOST='assigned-vm-ssh-host'
 php agent-forge/scripts/run-clinical-document-deployed-smoke.php
 ```
 
-No `clinical-document-deployed-smoke-*.json` artifact is checked into this
-checkout. Treat that as an explicit artifact gap; rerun the command above in an
-authorized deployed environment to create the artifact. For remote deployed
-URLs, `AGENTFORGE_VM_SSH_HOST` must point at the same deployment's VM so the
-HTTP upload and database job polling inspect the same environment. Use
-`docker-compose` only for local Docker smoke targets, not for the public
-deployed URL.
+For remote deployed URLs, `AGENTFORGE_VM_SSH_HOST` must point at the same
+deployment's VM so the HTTP upload and database job polling inspect the same
+environment. Use `docker-compose` only for local Docker smoke targets, not for
+the public deployed URL.
 
 ## Week 2 Proof Snapshot
 
@@ -131,50 +147,35 @@ Current checked-in proof snapshot:
 | Source review/browser proof | [agent-forge/docs/submission/browser-proof/MANIFEST.md](agent-forge/docs/submission/browser-proof/MANIFEST.md) | Browser screenshots and request ids for reviewer UI evidence. |
 | Cost/latency | [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md) | Rendered from current clinical-document artifact and available live/deployed baselines. |
 | Deployed runtime health | `agent-forge/scripts/health-check.sh` and `agent-forge/scripts/verify-deployed.sh` | Rerunnable; health covers MariaDB 11.8, worker heartbeat, and queue state. |
-| Deployed clinical smoke artifact | `php agent-forge/scripts/run-clinical-document-deployed-smoke.php` | Rerunnable; no checked-in `clinical-document-deployed-smoke-*.json` artifact in this checkout. |
-
-Older but still relevant AgentForge baseline proof:
-
-- [agent-forge/eval-results/tier2-live-20260503-202550.json](agent-forge/eval-results/tier2-live-20260503-202550.json)
-- [agent-forge/eval-results/deployed-smoke-20260503-201547.json](agent-forge/eval-results/deployed-smoke-20260503-201547.json)
-- [agent-forge/docs/submission/FINAL-PROOF-PACK.md](agent-forge/docs/submission/FINAL-PROOF-PACK.md)
+| Deployed clinical smoke | `php agent-forge/scripts/run-clinical-document-deployed-smoke.php` | Rerunnable with assigned deployed VM credentials; no checked-in clinical smoke artifact in this checkout. |
 
 ## Commands
 
-Local Week 2 clinical-document gate:
+Primary Week 2 gate:
 
 ```sh
 agent-forge/scripts/check-clinical-document.sh
+```
+
+Eval-only rerun:
+
+```sh
 php agent-forge/scripts/run-clinical-document-evals.php
 ```
 
-Comprehensive AgentForge gate:
-
-```sh
-agent-forge/scripts/check-agentforge.sh
-```
-
-Week 1/local deterministic baseline:
-
-```sh
-agent-forge/scripts/check-local.sh
-php agent-forge/scripts/run-evals.php
-```
-
-Seed and verify fake demo data:
-
-```sh
-agent-forge/scripts/seed-demo-data.sh
-agent-forge/scripts/verify-demo-data.sh
-```
-
-Deployment/runtime checks:
+Deployed runtime/smoke checks:
 
 ```sh
 agent-forge/scripts/health-check.sh
-agent-forge/scripts/verify-deployed.sh
 php agent-forge/scripts/run-clinical-document-deployed-smoke.php
-php agent-forge/scripts/run-deployed-smoke.php
+```
+
+Comprehensive local checks when needed:
+
+```sh
+agent-forge/scripts/check-agentforge.sh
+agent-forge/scripts/seed-demo-data.sh
+agent-forge/scripts/verify-demo-data.sh
 ```
 
 Cost/latency report rendering:
@@ -185,66 +186,36 @@ php agent-forge/scripts/render-clinical-document-cost-latency.php \
   --clinical-summary=agent-forge/eval-results/clinical-document-20260508-001019/summary.json
 ```
 
-## Environment Variables
+## Review Configuration
 
-Reviewer-facing Week 2 variables are documented here and in
-[agent-forge/.env.sample](agent-forge/.env.sample). Do not commit real
-credentials or patient data.
-
-Core model/extraction variables:
-
-```text
-AGENTFORGE_DRAFT_PROVIDER
-AGENTFORGE_OPENAI_API_KEY
-AGENTFORGE_OPENAI_MODEL
-AGENTFORGE_VLM_PROVIDER
-AGENTFORGE_VLM_MODEL
-AGENTFORGE_COHERE_API_KEY
-AGENTFORGE_EMBEDDING_MODEL
-AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS
-AGENTFORGE_CLINICAL_DOCUMENT_ENABLED
-```
-
-Deployment and smoke variables:
+Normal deployed-app review needs only the deployed URL and assigned OpenEMR
+credentials. Local eval review needs no provider keys for the checked-in
+clinical-document gate. Deployed clinical smoke needs assigned smoke credentials
+and VM access:
 
 ```text
-AGENTFORGE_APP_URL
-AGENTFORGE_READYZ_URL
-AGENTFORGE_CONNECT_TIMEOUT_SECONDS
-AGENTFORGE_MAX_TIME_SECONDS
 AGENTFORGE_SMOKE_USER
 AGENTFORGE_SMOKE_PASSWORD
 AGENTFORGE_DEPLOYED_URL
-AGENTFORGE_CLINICAL_SMOKE_PID
-AGENTFORGE_CLINICAL_SMOKE_LAB_PATH
-AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH
-AGENTFORGE_CLINICAL_SMOKE_LAB_CATEGORY
-AGENTFORGE_CLINICAL_SMOKE_INTAKE_CATEGORY
-AGENTFORGE_CLINICAL_SMOKE_JOB_TIMEOUT_S
-AGENTFORGE_CLINICAL_SMOKE_POLL_INTERVAL_MS
-AGENTFORGE_EVAL_RESULTS_DIR
-AGENTFORGE_SMOKE_EXECUTOR
-AGENTFORGE_DB_USER
-AGENTFORGE_DB_PASS
-AGENTFORGE_DB_NAME
 AGENTFORGE_VM_SSH_HOST
-AGENTFORGE_REPO_DIR
-AGENTFORGE_COMPOSE_DIR
 ```
+
+Full operator configuration is documented in [agent-forge/.env.sample](agent-forge/.env.sample).
 
 ## Evaluation And CI
 
-Evaluation tier taxonomy:
+The hard Week 2 PR gate is the `clinical-document-gate` job in
+`.github/workflows/agentforge-evals.yml`. It runs
+`php agent-forge/scripts/run-clinical-document-evals.php`, appends the summary,
+and uploads the clinical-document artifact. The checked-in passing artifact has
+59 cases with pass rate `1.0` for required rubrics including `schema_valid`,
+`citation_present`, `factually_consistent`, `guideline_retrieval`,
+`safe_refusal`, `answer_citation_coverage`, and `no_phi_in_logs`.
 
-- [agent-forge/docs/evaluation/EVALUATION-TIERS.md](agent-forge/docs/evaluation/EVALUATION-TIERS.md)
-- [agent-forge/eval-results/README.md](agent-forge/eval-results/README.md)
-- [agent-forge/eval-results/canonical.json](agent-forge/eval-results/canonical.json)
-
-Workflow evidence:
-
-- [.github/workflows/agentforge-evals.yml](.github/workflows/agentforge-evals.yml)
-- [.github/workflows/agentforge-tier2.yml](.github/workflows/agentforge-tier2.yml)
-- [.github/workflows/agentforge-deployed-smoke.yml](.github/workflows/agentforge-deployed-smoke.yml)
+Related workflow evidence:
+[.github/workflows/agentforge-evals.yml](.github/workflows/agentforge-evals.yml),
+[.github/workflows/agentforge-tier2.yml](.github/workflows/agentforge-tier2.yml),
+and [.github/workflows/agentforge-deployed-smoke.yml](.github/workflows/agentforge-deployed-smoke.yml).
 
 ## Artifact Map
 
@@ -258,14 +229,19 @@ Required root submission artifacts:
 Week 2 and operations:
 
 - [agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md](agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md)
+- [agent-forge/docs/week2/W2_DEMO_HELPER.md](agent-forge/docs/week2/W2_DEMO_HELPER.md)
 - [agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md](agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md)
 - [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
 - [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)
+
+Optional deep dive:
+
+- [agent-forge/eval-results/README.md](agent-forge/eval-results/README.md)
+- [agent-forge/eval-results/tier2-live-20260503-202550.json](agent-forge/eval-results/tier2-live-20260503-202550.json)
+- [agent-forge/eval-results/deployed-smoke-20260503-201547.json](agent-forge/eval-results/deployed-smoke-20260503-201547.json)
+- [agent-forge/docs/submission/FINAL-PROOF-PACK.md](agent-forge/docs/submission/FINAL-PROOF-PACK.md)
 - [agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md](agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md)
 - [agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md](agent-forge/docs/submission/REVIEWER-PACKAGING-PLAN.md)
-
-Durable implementation and proof records:
-
 - [agent-forge/docs/epics/COMPLETED_EPICS_LOG.md](agent-forge/docs/epics/COMPLETED_EPICS_LOG.md)
 - [agent-forge/docs/epics/DECISIONS.md](agent-forge/docs/epics/DECISIONS.md)
 - [agent-forge/docs/MEMORY.md](agent-forge/docs/MEMORY.md)
@@ -289,16 +265,6 @@ Production readiness is not claimed.
   tiers.
 - Demo credentials, deployment secrets, and provider keys are never committed.
 
-## Reviewer Navigation Checklist
-
-Use this checklist from a fresh root checkout:
-
-- [ ] Open [README.md](README.md) and find `AgentForge Reviewer Entry Point`.
-- [ ] Open this guide from the README link.
-- [ ] Confirm Week 1 and Week 2 demo paths are separate.
-- [ ] Confirm [agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md](agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md) is linked.
-- [ ] Confirm [agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md](agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md) is linked.
-- [ ] Confirm [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is linked.
-- [ ] Confirm `agent-forge/scripts/check-clinical-document.sh` and `agent-forge/scripts/check-agentforge.sh` are visible.
-- [ ] Confirm env vars are visible without committed secret values.
-- [ ] Confirm known caveats are visible before relying on deployment proof.
+Reviewer path sanity checks are covered by isolated documentation tests; from a
+fresh checkout, start at [README.md](README.md), then this guide, then
+[agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md](agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md).
