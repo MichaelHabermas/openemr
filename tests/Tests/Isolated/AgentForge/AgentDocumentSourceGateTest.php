@@ -55,12 +55,12 @@ final class AgentDocumentSourceGateTest extends TestCase
 
     public function testSourceGateAllowsExplicitlyApprovedIdentityReview(): void
     {
-        $script = file_get_contents(dirname(__DIR__, 4) . '/src/AgentForge/Document/SourceReview/SourceDocumentAccessGate.php');
+        $script = file_get_contents(dirname(__DIR__, 4) . '/src/AgentForge/Document/TrustedDocumentGate.php');
         $this->assertIsString($script);
 
-        $this->assertStringContainsString('ic.review_decision = ?', $script);
-        $this->assertStringContainsString('ic.review_required = 0 OR ic.review_decision = ?', $script);
-        $this->assertStringContainsString("'approved'", $script);
-        $this->assertStringContainsString('d.deleted IS NULL OR d.deleted = 0', $script);
+        $this->assertStringContainsString('review_decision = ?', $script);
+        $this->assertStringContainsString('review_required = 0 OR ', $script);
+        $this->assertStringContainsString('APPROVED_REVIEW_DECISION', $script);
+        $this->assertStringContainsString('deleted IS NULL OR ', $script);
     }
 }

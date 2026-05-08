@@ -17,8 +17,10 @@ use JsonException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\SourceReview\DocumentCitationNormalizer;
 use OpenEMR\AgentForge\Document\SourceReview\NormalizedDocumentCitation;
+use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
 
 final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTool
@@ -27,6 +29,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
         private DatabaseExecutor $executor,
         private int $limit = 12,
         private DocumentCitationNormalizer $citationNormalizer = new DocumentCitationNormalizer(),
+        private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
     ) {
     }
 
@@ -80,14 +83,8 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             . 'AND f.certainty IN (?, ?, ?) '
             . 'AND j.patient_id = f.patient_id '
             . 'AND j.document_id = f.document_id '
-            . 'AND j.status = ? '
-            . 'AND j.retracted_at IS NULL '
-            . 'AND ic.patient_id = f.patient_id '
-            . 'AND ic.document_id = f.document_id '
             . 'AND ic.job_id = f.job_id '
-            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
-            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
+            . $this->trustedDocuments->where(statuses: [JobStatus::Succeeded])
             . 'ORDER BY COALESCE(j.finished_at, f.created_at, d.date) DESC, f.id DESC '
             . 'LIMIT ' . max(1, min(50, $this->limit)),
             [
@@ -95,11 +92,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
                 'verified',
                 'document_fact',
                 'needs_review',
-                'succeeded',
-                'identity_verified',
-                'identity_review_approved',
-                'approved',
-                'approved',
+                ...$this->trustedDocuments->binds([JobStatus::Succeeded]),
             ],
             $deadline,
         );

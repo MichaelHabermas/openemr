@@ -104,8 +104,12 @@ final class DocumentIntegrationWiringTest extends TestCase
             $source = $this->readProjectFile($path);
 
             $this->assertStringContainsString('INNER JOIN documents d ON d.id = ', $source, $path);
-            $this->assertStringContainsString('AND (d.deleted IS NULL OR d.deleted = 0)', $source, $path);
+            $this->assertStringContainsString('TrustedDocumentGate', $source, $path);
         }
+
+        $gate = $this->readProjectFile('/src/AgentForge/Document/TrustedDocumentGate.php');
+        $this->assertStringContainsString('deleted IS NULL OR ', $gate);
+        $this->assertStringContainsString('deleted = 0', $gate);
     }
 
     private function readProjectFile(string $path): string

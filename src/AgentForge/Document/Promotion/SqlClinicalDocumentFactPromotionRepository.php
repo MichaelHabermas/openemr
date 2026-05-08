@@ -21,6 +21,7 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\Embedding\DocumentFactEmbeddingRepository;
 use OpenEMR\AgentForge\Document\Embedding\EmbeddingProvider;
+use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
@@ -29,6 +30,7 @@ use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
+use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Time\SystemPsrClock;
 use Psr\Clock\ClockInterface;
 use Throwable;
@@ -44,6 +46,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         private ?DocumentFactRepository $facts = null,
         private ?DocumentFactEmbeddingRepository $embeddings = null,
         private ?EmbeddingProvider $embeddingProvider = null,
+        private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
         ?ClockInterface $wallClock = null,
     ) {
         $this->certaintyClassifier = new CertaintyClassifier();
@@ -109,22 +112,13 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             . 'WHERE j.id = ? '
             . 'AND j.patient_id = ? '
             . 'AND j.document_id = ? '
-            . 'AND j.status IN (?, ?) '
-            . 'AND j.retracted_at IS NULL '
-            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
-            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
+            . $this->trustedDocuments->where(statuses: [JobStatus::Pending, JobStatus::Running])
             . 'LIMIT 1',
             [
                 $job->id->value,
                 $job->patientId->value,
                 $job->documentId->value,
-                'pending',
-                'running',
-                'identity_verified',
-                'identity_review_approved',
-                'approved',
-                'approved',
+                ...$this->trustedDocuments->binds([JobStatus::Pending, JobStatus::Running]),
             ],
         );
 

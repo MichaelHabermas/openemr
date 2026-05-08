@@ -20,7 +20,10 @@ use OpenEMR\AgentForge\StringKeyedArray;
 
 final readonly class SqlDocumentFactRepository implements DocumentFactRepository
 {
-    public function __construct(private DatabaseExecutor $executor)
+    public function __construct(
+        private DatabaseExecutor $executor,
+        private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
+    )
     {
     }
 
@@ -84,21 +87,13 @@ final readonly class SqlDocumentFactRepository implements DocumentFactRepository
             . 'AND f.retracted_at IS NULL '
             . 'AND f.deactivated_at IS NULL '
             . 'AND f.certainty IN (?, ?) '
-            . 'AND j.status = ? '
-            . 'AND j.retracted_at IS NULL '
-            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
-            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
+            . $this->trustedDocuments->where(statuses: [JobStatus::Succeeded])
             . 'ORDER BY f.created_at DESC LIMIT ' . $this->limit($limit),
             [
                 $patientId->value,
                 'verified',
                 'document_fact',
-                'succeeded',
-                'identity_verified',
-                'identity_review_approved',
-                'approved',
-                'approved',
+                ...$this->trustedDocuments->binds([JobStatus::Succeeded]),
             ],
             $deadline,
         );

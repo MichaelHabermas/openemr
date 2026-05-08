@@ -16,10 +16,15 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJobId;
+use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 
 final readonly class SourceDocumentAccessGate
 {
-    public function __construct(private DatabaseExecutor $executor)
+    public function __construct(
+        private DatabaseExecutor $executor,
+        private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
+    )
     {
     }
 
@@ -53,11 +58,7 @@ final readonly class SourceDocumentAccessGate
         $sql .= 'WHERE j.id = ? '
             . 'AND j.patient_id = ? '
             . 'AND j.document_id = ? '
-            . 'AND j.status = ? '
-            . 'AND j.retracted_at IS NULL '
-            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
-            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) ';
+            . $this->trustedDocuments->where(statuses: [JobStatus::Succeeded]);
 
         if ($requireFact) {
             $sql .= 'AND f.id = ? '
@@ -78,11 +79,7 @@ final readonly class SourceDocumentAccessGate
             $jobId->value,
             $patientId->value,
             $documentId->value,
-            'succeeded',
-            'identity_verified',
-            'identity_review_approved',
-            'approved',
-            'approved',
+            ...$this->trustedDocuments->binds([JobStatus::Succeeded]),
         ];
 
         if ($factId !== null) {

@@ -23,6 +23,8 @@ use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
+use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
 use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
@@ -36,6 +38,7 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
         private DocumentLoader $documentLoader,
         private DocumentExtractionProvider $extractionProvider,
         private int $limit = 6,
+        private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
     ) {
     }
 
@@ -97,22 +100,12 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
             . 'INNER JOIN clinical_document_identity_checks ic ON ic.job_id = j.id '
             . 'INNER JOIN documents d ON d.id = j.document_id '
             . 'WHERE j.patient_id = ? '
-            . 'AND j.status = ? '
-            . 'AND j.retracted_at IS NULL '
-            . 'AND ic.patient_id = j.patient_id '
-            . 'AND ic.document_id = j.document_id '
-            . 'AND (ic.identity_status IN (?, ?) OR ic.review_decision = ?) '
-            . 'AND (ic.review_required = 0 OR ic.review_decision = ?) '
-            . 'AND (d.deleted IS NULL OR d.deleted = 0) '
+            . $this->trustedDocuments->where(statuses: [JobStatus::Succeeded])
             . 'ORDER BY COALESCE(j.finished_at, d.date) DESC '
             . 'LIMIT ' . max(1, min(20, $this->limit)),
             [
                 $patientId->value,
-                'succeeded',
-                'identity_verified',
-                'identity_review_approved',
-                'approved',
-                'approved',
+                ...$this->trustedDocuments->binds([JobStatus::Succeeded]),
             ],
         );
     }
