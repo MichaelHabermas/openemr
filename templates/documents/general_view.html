@@ -107,6 +107,13 @@ function tagProcedure() {
                 <button class="btn btn-sm btn-secondary properties">{xlt t='Properties'}</button>
                 <button class="btn btn-sm btn-primary active">{xlt t='Contents'}</button>
               </div>
+              {if $agent_forge_extraction_available}
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary ml-1"
+                    onclick="return agentForgeShowExtractionReview('{$file->get_id()|attr_js}', '{$file->get_foreign_id()|attr_js}')"
+                >{xlt t='Extraction'}</button>
+              {/if}
             <span class="float-right">
             <script>var file = {$file->get_url()|js_escape};var mime = {$file->get_mimetype()|js_escape};var docid = {$file->get_id()|js_escape};</script>
             {dispatchPatientDocumentEvent event="actions_render_fax_anchor"}
@@ -251,6 +258,38 @@ function tagProcedure() {
 		</td>
 	</tr>
 </table>
+{if $agent_forge_extraction_available}
+<div class="modal fade" id="AgentForgeExtractionModal" tabindex="-1" role="dialog" aria-labelledby="AgentForgeExtractionTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="AgentForgeExtractionTitle">{xlt t='Document extraction'}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{xla t='Close'}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="AgentForgeExtractionStatus" class="text-muted">{xlt t='Loading extraction review...'}</div>
+                <div id="AgentForgeExtractionContent" class="d-none"></div>
+                <div id="AgentForgeExtractionSource" class="d-none mt-3 border-top pt-3">
+                    <div class="font-weight-bold mb-1">{xlt t='Source citation'}</div>
+                    <div id="AgentForgeExtractionSourceMeta" class="small text-muted mb-2"></div>
+                    <div id="AgentForgeExtractionSourcePreview" class="border position-relative overflow-auto" style="max-height: 420px;">
+                        <img id="AgentForgeExtractionSourceImage" alt="{xla t='Source page preview'}" class="img-fluid d-none" />
+                        <div id="AgentForgeExtractionSourceBox" class="d-none position-absolute" style="border: 3px solid #d32727; background: rgba(211, 39, 39, 0.12); pointer-events: none;"></div>
+                        <div id="AgentForgeExtractionSourceFallback" class="p-3 d-none"></div>
+                    </div>
+                    <a id="AgentForgeExtractionSourceLink" class="btn btn-link btn-sm p-0 mt-2 d-none" href="#" target="_blank" rel="noopener">{xlt t='Open source document'}</a>
+                    <div id="AgentForgeExtractionSourceQuote" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{xlt t='Close'}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{/if}
 <script>
 
 $('.btn-toggle').click(function() {
@@ -264,5 +303,207 @@ $('.btn-toggle').click(function() {
     var show_prop = ($(this).find('.properties.active').length > 0 ? 'block':'none');
     $("#DocProperties").css('display', show_prop);
 });
+
+{if $agent_forge_extraction_available}
+(function () {
+    const webroot = {$webroot|js_escape};
+    const summary = $('#AgentForgeExtractionStatus');
+    const content = $('#AgentForgeExtractionContent');
+    const source = $('#AgentForgeExtractionSource');
+    const sourceMeta = $('#AgentForgeExtractionSourceMeta');
+    const sourceImage = $('#AgentForgeExtractionSourceImage');
+    const sourceBox = $('#AgentForgeExtractionSourceBox');
+    const sourceFallback = $('#AgentForgeExtractionSourceFallback');
+    const sourceQuote = $('#AgentForgeExtractionSourceQuote');
+    const sourceLink = $('#AgentForgeExtractionSourceLink');
+    let loaded = false;
+
+    function endpoint(documentId, patientId) {
+        const params = new URLSearchParams();
+        params.set('patient_id', patientId || '');
+        params.set('document_id', documentId || '');
+        return webroot + '/interface/patient_file/summary/agent_document_extraction_review.php?' + params.toString();
+    }
+
+    function escapeText(value) {
+        return $('<div>').text(value || '').html();
+    }
+
+    function statusClass(status) {
+        if (status === 'Promoted') {
+            return 'badge-success';
+        }
+        if (status === 'Needs review') {
+            return 'badge-warning';
+        }
+        if (status === 'Duplicate skipped' || status === 'Already exists') {
+            return 'badge-secondary';
+        }
+        return 'badge-info';
+    }
+
+    function renderJobs(jobs) {
+        if (!jobs || jobs.length === 0) {
+            return '<p class="text-muted mb-2">' + escapeText({xlj t='No AgentForge extraction job was found for this document.'}) + '</p>';
+        }
+        return '<div class="mb-3"><div class="font-weight-bold">' + escapeText({xlj t='Jobs'}) + '</div>' +
+            jobs.map(function (job) {
+                const finished = job.finished_at ? ' | ' + job.finished_at : '';
+                const error = job.error_code ? ' | ' + job.error_code : '';
+                return '<div class="small">' + escapeText(job.doc_type) + ' #' + escapeText(job.id) + ': ' +
+                    escapeText(job.status) + finished + error + '</div>';
+            }).join('') + '</div>';
+    }
+
+    function renderCounts(counts) {
+        counts = counts || {};
+        const count = function (key) {
+            return Object.prototype.hasOwnProperty.call(counts, key) ? counts[key] : 0;
+        };
+        return '<div class="mb-3">' +
+            '<span class="badge badge-success mr-1">' + escapeText({xlj t='Promoted'}) + ': ' + escapeText(count('promoted')) + '</span>' +
+            '<span class="badge badge-info mr-1">' + escapeText({xlj t='Document only'}) + ': ' + escapeText(count('document_only')) + '</span>' +
+            '<span class="badge badge-warning mr-1">' + escapeText({xlj t='Needs review'}) + ': ' + escapeText(count('needs_review')) + '</span>' +
+            '<span class="badge badge-secondary mr-1">' + escapeText({xlj t='Already present/skipped'}) + ': ' + escapeText(count('duplicate_or_skipped')) + '</span>' +
+            '</div>';
+    }
+
+    function renderFacts(facts) {
+        if (!facts || facts.length === 0) {
+            return '<p class="text-muted">' + escapeText({xlj t='No extracted facts have been persisted yet.'}) + '</p>';
+        }
+        return '<div class="table-responsive"><table class="table table-sm table-striped">' +
+            '<thead><tr>' +
+            '<th>' + escapeText({xlj t='Status'}) + '</th>' +
+            '<th>' + escapeText({xlj t='Finding'}) + '</th>' +
+            '<th>' + escapeText({xlj t='Destination'}) + '</th>' +
+            '<th>' + escapeText({xlj t='Source'}) + '</th>' +
+            '</tr></thead><tbody>' +
+            facts.map(function (fact, index) {
+                const destination = fact.promoted_table
+                    ? fact.promoted_table + (fact.promoted_record_id ? '/' + fact.promoted_record_id : '')
+                    : (fact.reason || fact.review_status || fact.outcome || '');
+                const sourceButton = fact.source_review_url
+                    ? '<button type="button" class="btn btn-link btn-sm p-0 agent-forge-source-review" data-index="' + index + '">' + escapeText({xlj t='Review source'}) + '</button>'
+                    : '';
+                const citation = [fact.citation && fact.citation.page_or_section, fact.citation && fact.citation.field_or_chunk_id].filter(Boolean).join(' | ');
+                return '<tr>' +
+                    '<td><span class="badge ' + statusClass(fact.status) + '">' + escapeText(fact.status) + '</span></td>' +
+                    '<td><div class="font-weight-bold">' + escapeText(fact.label) + '</div><div>' + escapeText(fact.value) + '</div></td>' +
+                    '<td>' + escapeText(destination) + '</td>' +
+                    '<td><div class="small text-muted">' + escapeText(citation) + '</div>' + sourceButton + '</td>' +
+                    '</tr>';
+            }).join('') + '</tbody></table></div>';
+    }
+
+    function showSourceBox(box) {
+        sourceBox.removeClass('d-none');
+        sourceBox.css({
+            left: (box.x * 100) + '%',
+            top: (box.y * 100) + '%',
+            width: (box.width * 100) + '%',
+            height: (box.height * 100) + '%'
+        });
+        sourceBox[0].scrollIntoView({ block: 'center', inline: 'nearest' });
+    }
+
+    function renderSource(review, fallbackFact) {
+        const citation = review || {};
+        source.removeClass('d-none');
+        sourceMeta.text([citation.page_or_section, citation.field_or_chunk_id].filter(Boolean).join(' | '));
+        sourceQuote.text(citation.quote_or_value || (fallbackFact && fallbackFact.value) || '');
+        sourceBox.addClass('d-none').removeAttr('style');
+        sourceFallback.addClass('d-none').text('');
+        sourceImage.addClass('d-none').removeAttr('src');
+
+        if (citation.document_url) {
+            const docUrl = citation.document_url.charAt(0) === '/'
+                ? citation.document_url
+                : webroot + '/interface/patient_file/summary/' + citation.document_url;
+            sourceLink.attr('href', docUrl).removeClass('d-none');
+        } else {
+            sourceLink.addClass('d-none').removeAttr('href');
+        }
+
+        if (citation.page_image_url) {
+            const imageUrl = citation.page_image_url.charAt(0) === '/'
+                ? citation.page_image_url
+                : webroot + '/interface/patient_file/summary/' + citation.page_image_url;
+            sourceImage.off('load error');
+            sourceImage.on('load', function () {
+                sourceImage.removeClass('d-none');
+                if (citation.bounding_box) {
+                    showSourceBox(citation.bounding_box);
+                }
+            });
+            sourceImage.on('error', function () {
+                sourceImage.addClass('d-none').removeAttr('src');
+                sourceFallback.removeClass('d-none').text({xlj t='Source page preview could not be rendered. Open the source document to review this citation.'});
+            });
+            sourceImage.attr('src', imageUrl);
+        } else {
+            sourceFallback.removeClass('d-none').text(citation.quote_or_value || (fallbackFact && fallbackFact.value) || '');
+        }
+    }
+
+    function loadExtractionReview(documentId, patientId) {
+        summary.text({xlj t='Loading extraction review...'}).removeClass('d-none');
+        content.addClass('d-none').empty();
+        source.addClass('d-none');
+        top.restoreSession();
+        fetch(endpoint(documentId, patientId), {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' }
+        }).then(function (result) {
+            if (!result.ok) {
+                return result.json().then(function (payload) {
+                    throw new Error(payload && payload.message ? payload.message : {xlj t='Extraction review could not be loaded.'});
+                }).catch(function (error) {
+                    throw new Error(error && error.message ? error.message : {xlj t='Extraction review could not be loaded.'});
+                });
+            }
+            return result.json();
+        }).then(function (payload) {
+            if (!payload || payload.status !== 'ok') {
+                throw new Error('extraction review failed');
+            }
+            const facts = payload.facts || [];
+            summary.addClass('d-none');
+            content.removeClass('d-none').html(renderCounts(payload.counts) + renderJobs(payload.jobs) + renderFacts(facts));
+            content.find('.agent-forge-source-review').on('click', function () {
+                const fact = facts[parseInt($(this).attr('data-index'), 10)];
+                if (!fact || !fact.source_review_url) {
+                    return;
+                }
+                fetch(webroot + '/interface/patient_file/summary/' + fact.source_review_url, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (result) {
+                    if (!result.ok) {
+                        throw new Error('source review failed');
+                    }
+                    return result.json();
+                }).then(function (sourcePayload) {
+                    renderSource(sourcePayload.review || {}, fact);
+                }).catch(function () {
+                    renderSource(fact.citation || {}, fact);
+                });
+            });
+            loaded = true;
+        }).catch(function (error) {
+            summary.text(error && error.message ? error.message : {xlj t='Extraction review could not be loaded.'}).removeClass('d-none');
+        });
+    }
+
+    window.agentForgeShowExtractionReview = function (documentId, patientId) {
+        $('#AgentForgeExtractionModal').modal('show');
+        loaded = false;
+        loadExtractionReview(documentId, patientId);
+        return false;
+    };
+})();
+{/if}
 
 </script>

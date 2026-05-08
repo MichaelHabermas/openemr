@@ -472,6 +472,12 @@ class C_Document extends Controller
 
         $this->assign("file", $d);
         $this->assign("web_path", $this->_link("retrieve") . "document_id=" . urlencode((string) $d->get_id()) . "&");
+        $extractionTable = sqlQuery("SHOW TABLES LIKE 'clinical_document_processing_jobs'");
+        $extractionJob = $extractionTable === false ? false : sqlQuery(
+            'SELECT id FROM clinical_document_processing_jobs WHERE patient_id = ? AND document_id = ? LIMIT 1',
+            [(int) $doc_pid, (int) $d->get_id()]
+        );
+        $this->assign("agent_forge_extraction_available", $extractionTable !== false && $extractionJob !== false);
         $this->assign("NOTE_ACTION", $this->_link("note"));
         $this->assign("MOVE_ACTION", $this->_link("move") . "document_id=" . urlencode((string) $d->get_id()) . "&process=true");
         $this->assign("hide_encryption", OEGlobalsBag::getInstance()->getBoolean('hide_document_encryption'));
