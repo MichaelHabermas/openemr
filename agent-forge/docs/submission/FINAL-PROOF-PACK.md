@@ -44,7 +44,7 @@ Attach the latest local gate artifact to the final submission packet if possible
 | Gauntlet Labs submission | https://labs.gauntletai.com/michaelhabermas/openemr |
 | Deployed app | https://openemr.titleredacted.cc/ |
 | Demo video | https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32 |
-| Social post | https://x.com/habermoose/status/2050766281515700369 |
+| Social post | https://x.com/habermoose/status/2052575143768084988 |
 
 The checked-in Tier 4 smoke command was run against the deployed app on 2026-05-03:
 
