@@ -17,11 +17,21 @@ use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Response;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizationRequest;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizer;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistry;
+use OpenEMR\AgentForge\Document\Content\NormalizedDocumentContent;
+use OpenEMR\AgentForge\Document\Content\NormalizedDocumentSource;
+use OpenEMR\AgentForge\Document\Content\NormalizedMessageSegment;
+use OpenEMR\AgentForge\Document\Content\NormalizedTable;
+use OpenEMR\AgentForge\Document\Content\NormalizedTextSection;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
 use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
 use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
+use OpenEMR\AgentForge\Document\ExtractionErrorCode;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use PHPUnit\Framework\TestCase;
@@ -59,6 +69,10 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertSame(120, $response->usage->inputTokens);
         $this->assertSame(30, $response->usage->outputTokens);
         $this->assertSame(0.000036, $response->usage->estimatedCost);
+        $this->assertSame('pdf', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertSame('application/pdf', $response->normalizationTelemetry['source_mime_type'] ?? null);
+        $this->assertSame(strlen('%PDF fixture'), $response->normalizationTelemetry['source_byte_count'] ?? null);
+        $this->assertSame(1, $response->normalizationTelemetry['rendered_page_count'] ?? null);
         $this->assertSame('%PDF fixture', $renderer->lastPdfBytes);
         $this->assertSame(2, $renderer->lastMaxPages);
 
@@ -148,6 +162,61 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertSecondContentImageJpegDataUrl($content);
     }
 
+    public function testUnsupportedMimeFailsWithStableNormalizationError(): void
+    {
+        $provider = new OpenAiVlmExtractionProvider(
+            new RecordingExtractionOpenAiClient($this->openAiResponse()),
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        try {
+            $provider->extract(
+                new DocumentId(9),
+                new DocumentLoadResult('plain text contents', 'text/plain', 'note.txt'),
+                DocumentType::LabPdf,
+                $this->deadline(),
+            );
+            $this->fail('Expected unsupported MIME type to fail before OpenAI request.');
+        } catch (ExtractionProviderException $exception) {
+            $this->assertSame(ExtractionErrorCode::UnsupportedMimeType, $exception->errorCode);
+            $this->assertStringContainsString('text/plain', $exception->getMessage());
+            $this->assertStringNotContainsString('plain text contents', $exception->getMessage());
+            $this->assertStringNotContainsString('note.txt', $exception->getMessage());
+        }
+    }
+
+    public function testNormalizedTextTableAndMessageSegmentsAreSentToOpenAi(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiIntakeResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+            contentNormalizers: new DocumentContentNormalizerRegistry([
+                new OpenAiProviderTextContentNormalizer(),
+            ]),
+        );
+
+        $provider->extract(
+            new DocumentId(10),
+            new DocumentLoadResult('normalized-source', 'application/test-normalized', 'normalized.source'),
+            DocumentType::IntakeForm,
+            $this->deadline(),
+        );
+
+        $content = $this->arrayPath($client->lastPayload(), ['messages', 1, 'content']);
+        $this->assertCount(4, $content);
+        $this->assertStringContainsString('Normalized text section section-1', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('Current medications: aspirin', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('Normalized table table-1', $this->contentTextAt($content, 2));
+        $this->assertStringContainsString('"Medication"', $this->contentTextAt($content, 2));
+        $this->assertStringContainsString('Normalized message segment segment-1', $this->contentTextAt($content, 3));
+        $this->assertStringContainsString('"PID.5":"Jane Doe"', $this->contentTextAt($content, 3));
+    }
+
     /**
      * @param array<int|string, mixed> $content
      */
@@ -188,6 +257,22 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         }
 
         return $url;
+    }
+
+    /** @param array<int|string, mixed> $content */
+    private function contentTextAt(array $content, int $index): string
+    {
+        $block = $content[$index] ?? null;
+        if (!is_array($block)) {
+            $this->fail('Expected content block to be an array.');
+        }
+        $this->assertSame('text', $block['type'] ?? null);
+        $text = $block['text'] ?? null;
+        if (!is_string($text)) {
+            $this->fail('Expected content block text to be a string.');
+        }
+
+        return $text;
     }
 
     /** @return array<string, mixed> */
@@ -341,6 +426,38 @@ final class TestPdfPageRenderer implements PdfPageRenderer
         $this->lastMaxPages = $maxPages;
 
         return [new RenderedPdfPage(1, 'image/png', 'page-1')];
+    }
+}
+
+final class OpenAiProviderTextContentNormalizer implements DocumentContentNormalizer
+{
+    public function supports(DocumentContentNormalizationRequest $request): bool
+    {
+        return true;
+    }
+
+    public function normalize(
+        DocumentContentNormalizationRequest $request,
+        Deadline $deadline,
+    ): NormalizedDocumentContent {
+        return new NormalizedDocumentContent(
+            NormalizedDocumentSource::fromLoadResult($request->document, $request->documentType),
+            textSections: [
+                new NormalizedTextSection('section-1', 'Medications', 'Current medications: aspirin', 'section:meds'),
+            ],
+            tables: [
+                new NormalizedTable('table-1', 'Medication Table', ['Medication'], [['Medication' => 'aspirin']]),
+            ],
+            messageSegments: [
+                new NormalizedMessageSegment('segment-1', 'PID', ['PID.5' => 'Jane Doe']),
+            ],
+            normalizer: 'test-text',
+        );
+    }
+
+    public function name(): string
+    {
+        return 'test-text';
     }
 }
 

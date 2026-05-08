@@ -80,7 +80,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
             $timer->stop('extraction:model_request');
         } catch (ExtractionProviderException $e) {
             $timer->stop('extraction:model_request');
-            return ProcessingResult::failed($e->errorCode->value, $e->getMessage());
+            return ProcessingResult::failed($e->errorCode->value, $e->safeMessage());
         }
 
         $timer->start('extraction:parse_response');

@@ -146,6 +146,8 @@ final class ExtractionProviderFactoryTest extends TestCase
         $this->assertTrue($response->schemaValid);
         $this->assertInstanceOf(LabPdfExtraction::class, $response->extraction);
         $this->assertSame('Injected Client Lab', $response->extraction->labName);
+        $this->assertSame('pdf', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertSame('application/pdf', $response->normalizationTelemetry['source_mime_type'] ?? null);
     }
 
     public function testOpenAiDefaultsUseKnownGpt4oPricing(): void

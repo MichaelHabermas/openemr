@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistryFactory;
 
 final class ExtractionProviderFactory
 {
@@ -27,6 +28,7 @@ final class ExtractionProviderFactory
         ?PdfPageRenderer $pdfRenderer = null,
         ?ClientInterface $httpClient = null,
     ): DocumentExtractionProvider {
+        $renderer = $pdfRenderer ?? new ImagickPdfPageRenderer();
         return match (ExtractionProviderMode::from($config->mode)) {
             ExtractionProviderMode::Fixture => new FixtureExtractionProvider($config->fixtureManifestPath),
             ExtractionProviderMode::OpenAi => new OpenAiVlmExtractionProvider(
@@ -37,12 +39,13 @@ final class ExtractionProviderFactory
                 ]),
                 (string) $config->apiKey,
                 $config->model,
-                $pdfRenderer ?? new ImagickPdfPageRenderer(),
+                $renderer,
                 new JsonSchemaBuilder(),
                 $config->inputCostPerMillionTokens,
                 $config->outputCostPerMillionTokens,
                 $config->timeoutSeconds,
                 $config->maxPdfPages,
+                DocumentContentNormalizerRegistryFactory::default($renderer, $config->maxPdfPages),
             ),
         };
     }

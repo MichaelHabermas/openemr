@@ -65,6 +65,11 @@ registered rubric, or loses required H1 coverage tags such as
 `citation_regression`, `referral_docx`, `clinical_workbook`, `fax_packet`,
 `hl7v2_adt`, `hl7v2_oru`, and `preview_only_excluded`.
 
+Epic 3 adds a runtime normalized-content seam for currently supported PDF/image
+extraction input. It does not change this golden suite's strict extraction facts,
+fixture sidecars, SHA-256 lookup behavior, or DOCX/XLSX/TIFF/HL7 contract-only
+baseline semantics.
+
 ### Threshold tightening (done)
 
 `thresholds.json` previously set `factually_consistent` and

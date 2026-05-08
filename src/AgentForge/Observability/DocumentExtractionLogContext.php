@@ -32,7 +32,7 @@ final class DocumentExtractionLogContext
         array $factCounts,
         array $stageTimingsMs = [],
     ): array {
-        return SensitiveLogPolicy::sanitizeContext([
+        return SensitiveLogPolicy::sanitizeContext(array_merge([
             'worker' => $nodeName->value,
             'job_id' => $job->id?->value,
             'document_id' => $job->documentId->value,
@@ -54,7 +54,7 @@ final class DocumentExtractionLogContext
             'schema_valid' => $response->schemaValid,
             'stage_timings_ms' => $stageTimingsMs,
             'status' => 'succeeded',
-        ]);
+        ], $response->normalizationTelemetry));
     }
 
     /** @param list<array<string, mixed>> $facts */

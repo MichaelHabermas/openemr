@@ -39,6 +39,7 @@ final readonly class ExtractionProviderResponse
     /**
      * @param list<mixed> $facts
      * @param list<mixed> $warnings
+     * @param array<string, mixed> $normalizationTelemetry
      */
     public function __construct(
         public bool $schemaValid,
@@ -48,6 +49,7 @@ final readonly class ExtractionProviderResponse
         public ?string $model = null,
         public ?string $rawText = null,
         public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction | null $extraction = null,
+        public array $normalizationTelemetry = [],
     ) {
         if ($schemaValid && $extraction === null) {
             throw new DomainException('Schema-valid extraction responses must include a parsed extraction value object.');
@@ -75,6 +77,7 @@ final readonly class ExtractionProviderResponse
 
     /**
      * @param list<string> $warnings
+     * @param array<string, mixed> $normalizationTelemetry
      */
     public static function fromStrictJson(
         DocumentType $documentType,
@@ -82,6 +85,7 @@ final readonly class ExtractionProviderResponse
         DraftUsage $usage,
         ?string $model = null,
         array $warnings = [],
+        array $normalizationTelemetry = [],
     ): self {
         $extraction = match ($documentType) {
             DocumentType::LabPdf => LabPdfExtraction::fromJson($json),
@@ -100,6 +104,7 @@ final readonly class ExtractionProviderResponse
             $model,
             $json,
             $extraction,
+            self::safeNormalizationTelemetry($normalizationTelemetry),
         );
     }
 
@@ -111,6 +116,7 @@ final readonly class ExtractionProviderResponse
             'facts' => $this->facts,
             'warnings' => $this->warnings,
             'model' => $this->model,
+            'normalization' => $this->normalizationTelemetry,
         ];
     }
 
@@ -139,6 +145,48 @@ final readonly class ExtractionProviderResponse
         }
 
         return array_map(self::factFromGenericClinicalFact(...), $extraction->facts);
+    }
+
+    /**
+     * @param array<string, mixed> $telemetry
+     * @return array<string, mixed>
+     */
+    private static function safeNormalizationTelemetry(array $telemetry): array
+    {
+        $out = [];
+        foreach ([
+            'normalizer',
+            'source_mime_type',
+        ] as $key) {
+            if (isset($telemetry[$key]) && is_string($telemetry[$key])) {
+                $out[$key] = $telemetry[$key];
+            }
+        }
+
+        foreach ([
+            'source_byte_count',
+            'rendered_page_count',
+            'text_section_count',
+            'table_count',
+            'message_segment_count',
+            'normalization_elapsed_ms',
+        ] as $key) {
+            if (isset($telemetry[$key]) && is_int($telemetry[$key]) && $telemetry[$key] >= 0) {
+                $out[$key] = $telemetry[$key];
+            }
+        }
+
+        if (isset($telemetry['warning_codes']) && is_array($telemetry['warning_codes'])) {
+            $warningCodes = [];
+            foreach ($telemetry['warning_codes'] as $warningCode) {
+                if (is_string($warningCode) && preg_match('/^[a-z0-9_:-]+$/', $warningCode)) {
+                    $warningCodes[] = $warningCode;
+                }
+            }
+            $out['warning_codes'] = array_values(array_unique($warningCodes));
+        }
+
+        return $out;
     }
 
     /**

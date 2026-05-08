@@ -25,4 +25,15 @@ class ExtractionProviderException extends RuntimeException
     ) {
         parent::__construct($message, previous: $previous);
     }
+
+    public function safeMessage(): string
+    {
+        return match ($this->errorCode) {
+            ExtractionErrorCode::UnsupportedDocType => 'Document type is not supported for runtime extraction.',
+            ExtractionErrorCode::UnsupportedMimeType => 'Document MIME type is not supported for content normalization.',
+            ExtractionErrorCode::NormalizationFailure => 'Document content normalization failed.',
+            ExtractionErrorCode::SchemaValidationFailure => 'Extraction provider response failed strict schema validation.',
+            default => 'Extraction provider failed before extraction completed.',
+        };
+    }
 }

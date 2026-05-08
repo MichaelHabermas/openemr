@@ -330,7 +330,7 @@ Implementation note (2026-05-08):
 
 ### Epic 3 - Normalized Document Content Layer
 
-Status: Not started.
+Status: Implemented and gated.
 
 Goal: Insert a clean content normalization seam before extraction.
 
@@ -347,6 +347,14 @@ Acceptance criteria:
 - Current lab/intake PDF and PNG cases still pass.
 - The worker no longer needs direct MIME branching for extraction input preparation.
 - Normalizer failures produce safe error codes and do not log raw content.
+
+Implementation note (2026-05-08): Epic 3 adds `src/AgentForge/Document/Content/`
+with a normalizer registry, immutable normalized-content value objects, PDF and
+image normalizers, coded warnings, and PHI-safe telemetry. The OpenAI extraction
+provider now builds model content parts from `NormalizedDocumentContent` while
+keeping `DocumentExtractionProvider::extract(DocumentLoadResult ...)` stable.
+Fixture extraction remains source-SHA-keyed. DOCX, XLSX, TIFF, and HL7 v2 remain
+contract-only until later runtime-support epics.
 
 ### Epic 4 - TIFF Fax Packet Support
 
@@ -540,4 +548,3 @@ This plan is done when:
 - Existing PDF/PNG lab and intake support remains green.
 - The clinical document gate proves schema validity, citations, identity gating, PHI-safe logs, retraction, retrieval, and source review across formats.
 - The architecture still has small replaceable modules instead of format-specific branching scattered through the worker.
-

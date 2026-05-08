@@ -17,6 +17,14 @@ use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use JsonException;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizationException;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizationRequest;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistry;
+use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistryFactory;
+use OpenEMR\AgentForge\Document\Content\NormalizedDocumentContent;
+use OpenEMR\AgentForge\Document\Content\NormalizedMessageSegment;
+use OpenEMR\AgentForge\Document\Content\NormalizedTable;
+use OpenEMR\AgentForge\Document\Content\NormalizedTextSection;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\ExtractionErrorCode;
@@ -40,6 +48,7 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         private ?float $outputCostPerMillionTokens = null,
         private float $configuredTimeoutSeconds = 30.0,
         private int $maxPdfPages = 6,
+        private ?DocumentContentNormalizerRegistry $contentNormalizers = null,
     ) {
         LlmCredentialGuard::requireApiKey($apiKey, 'OpenAI extraction provider');
         LlmCredentialGuard::requireModel($model, 'OpenAI extraction provider');
@@ -62,6 +71,18 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
         }
 
         $timeoutSeconds = min($this->configuredTimeoutSeconds, $deadline->remainingSeconds());
+        try {
+            $content = $this->contentNormalizers()->normalize(
+                new DocumentContentNormalizationRequest($documentId, $documentType, $document),
+                $deadline,
+            );
+        } catch (DocumentContentNormalizationException $exception) {
+            throw new ExtractionProviderException(
+                $exception->getMessage(),
+                $exception->errorCode,
+                $exception,
+            );
+        }
 
         try {
             $response = $this->client->request('POST', '/v1/chat/completions', [
@@ -69,18 +90,18 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
                     'Authorization' => sprintf('Bearer %s', $this->apiKey),
                     'Content-Type' => 'application/json',
                 ],
-                'json' => $this->payload($documentType, $document),
+                'json' => $this->payload($documentType, $content),
                 'timeout' => $timeoutSeconds,
             ]);
         } catch (GuzzleException $exception) {
             throw new ExtractionProviderException('OpenAI extraction request failed.', previous: $exception);
         }
 
-        return $this->parseResponse($response, $documentType);
+        return $this->parseResponse($response, $documentType, $content->telemetry()->toLogContext());
     }
 
     /** @return array<string, mixed> */
-    private function payload(DocumentType $documentType, DocumentLoadResult $document): array
+    private function payload(DocumentType $documentType, NormalizedDocumentContent $content): array
     {
         return [
             'model' => $this->model,
@@ -91,7 +112,7 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
                 ],
                 [
                     'role' => 'user',
-                    'content' => $this->contentParts($document),
+                    'content' => $this->contentParts($content),
                 ],
             ],
             'response_format' => [
@@ -121,46 +142,85 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
     /**
      * @return list<array<string, mixed>>
      */
-    private function contentParts(DocumentLoadResult $document): array
+    private function contentParts(NormalizedDocumentContent $content): array
     {
         $parts = [[
             'type' => 'text',
             'text' => sprintf(
                 'Extract cited clinical facts from the supplied %s content (sha256=%s). Do not infer beyond the visible document.',
-                $document->mimeType,
-                hash('sha256', $document->bytes),
+                $content->source->mimeType,
+                $content->source->sha256,
             ),
         ]];
 
-        if ($document->mimeType === 'application/pdf') {
-            foreach ($this->pdfRenderer->render($document->bytes, $this->maxPdfPages) as $page) {
-                $parts[] = [
-                    'type' => 'image_url',
-                    'image_url' => ['url' => $page->dataUrl()],
-                ];
-            }
-
-            return $parts;
-        }
-
-        if (in_array($document->mimeType, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+        foreach ($content->renderedPages as $page) {
             $parts[] = [
                 'type' => 'image_url',
-                'image_url' => [
-                    'url' => sprintf('data:%s;base64,%s', $document->mimeType, base64_encode($document->bytes)),
-                ],
+                'image_url' => ['url' => $page->dataUrl()],
             ];
-
-            return $parts;
         }
 
-        throw new ExtractionProviderException(
-            sprintf('Document MIME type "%s" is not supported for OpenAI VLM extraction.', $document->mimeType),
-            ExtractionErrorCode::UnsupportedDocType,
+        foreach ($content->textSections as $section) {
+            $parts[] = [
+                'type' => 'text',
+                'text' => $this->textSectionPart($section),
+            ];
+        }
+
+        foreach ($content->tables as $table) {
+            $parts[] = [
+                'type' => 'text',
+                'text' => $this->tablePart($table),
+            ];
+        }
+
+        foreach ($content->messageSegments as $segment) {
+            $parts[] = [
+                'type' => 'text',
+                'text' => $this->messageSegmentPart($segment),
+            ];
+        }
+
+        return $parts;
+    }
+
+    private function textSectionPart(NormalizedTextSection $section): string
+    {
+        return sprintf(
+            "Normalized text section %s (%s, source=%s):\n%s",
+            $section->sectionId,
+            $section->title,
+            $section->sourceReference,
+            $section->text,
         );
     }
 
-    private function parseResponse(ResponseInterface $response, DocumentType $documentType): ExtractionProviderResponse
+    private function tablePart(NormalizedTable $table): string
+    {
+        return sprintf(
+            "Normalized table %s (%s):\n%s",
+            $table->tableId,
+            $table->title,
+            json_encode(['columns' => $table->columns, 'rows' => $table->rows], JSON_THROW_ON_ERROR),
+        );
+    }
+
+    private function messageSegmentPart(NormalizedMessageSegment $segment): string
+    {
+        return sprintf(
+            "Normalized message segment %s (%s):\n%s",
+            $segment->segmentId,
+            $segment->segmentType,
+            json_encode($segment->fields, JSON_THROW_ON_ERROR),
+        );
+    }
+
+    /** @param array<string, mixed> $normalizationTelemetry */
+    private function parseResponse(
+        ResponseInterface $response,
+        DocumentType $documentType,
+        array $normalizationTelemetry = [],
+    ): ExtractionProviderResponse
     {
         $statusCode = $response->getStatusCode();
         if ($statusCode < 200 || $statusCode >= 300) {
@@ -190,6 +250,7 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
                 $content,
                 $this->usageFromResponse($body),
                 $this->model,
+                normalizationTelemetry: $normalizationTelemetry,
             );
         } catch (ExtractionSchemaException $exception) {
             throw new ExtractionProviderException(
@@ -198,6 +259,15 @@ final readonly class OpenAiVlmExtractionProvider implements DocumentExtractionPr
                 $exception,
             );
         }
+    }
+
+    private function contentNormalizers(): DocumentContentNormalizerRegistry
+    {
+        if ($this->contentNormalizers !== null) {
+            return $this->contentNormalizers;
+        }
+
+        return DocumentContentNormalizerRegistryFactory::default($this->pdfRenderer, $this->maxPdfPages);
     }
 
     /** @return array<string, mixed> */

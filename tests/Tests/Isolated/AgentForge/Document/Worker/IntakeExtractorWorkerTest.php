@@ -83,6 +83,12 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 'facts:promote' => 9,
                 'worker:finish' => 0,
             ], $record['context']['stage_timings_ms']);
+            $this->assertSame('pdf', $record['context']['normalizer']);
+            $this->assertSame('application/pdf', $record['context']['source_mime_type']);
+            $this->assertSame(9, $record['context']['source_byte_count']);
+            $this->assertSame(1, $record['context']['rendered_page_count']);
+            $this->assertSame(['rendered_page_limit_applied'], $record['context']['warning_codes']);
+            $this->assertSame(12, $record['context']['normalization_elapsed_ms']);
             $context = StringKeyedArray::filter($record['context']);
             $this->assertSame($context, SensitiveLogPolicy::sanitizeContext($context));
             $this->assertFalse(SensitiveLogPolicy::containsForbiddenKey($context));
@@ -134,7 +140,31 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
 
             $this->assertSame(JobStatus::Failed, $result->terminalStatus);
             $this->assertSame('extraction_failure', $result->errorCode);
-            $this->assertSame('Provider failed before extraction completed.', $result->errorMessage);
+            $this->assertSame('Extraction provider failed before extraction completed.', $result->errorMessage);
+        }
+
+        public function testExtractionFailureDoesNotPersistProviderMessageText(): void
+        {
+            $worker = new IntakeExtractorWorker(
+                new IntakeWorkerThrowingProvider(new ExtractionProviderException(
+                    'Raw patient snippet: Jane Doe LDL 91 from lab.pdf',
+                )),
+                new CertaintyClassifier(),
+                new IntakeWorkerRecordingLogger(),
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                self::testPatientRefHasher(),
+            );
+
+            $result = $worker->process(
+                self::job(),
+                new DocumentLoadResult('pdf-bytes', 'application/pdf', 'lab.pdf'),
+            );
+
+            $this->assertSame(JobStatus::Failed, $result->terminalStatus);
+            $this->assertSame('extraction_failure', $result->errorCode);
+            $this->assertSame('Extraction provider failed before extraction completed.', $result->errorMessage);
+            $this->assertStringNotContainsString('Jane Doe', (string) $result->errorMessage);
+            $this->assertStringNotContainsString('lab.pdf', (string) $result->errorMessage);
         }
 
         public function testSchemaInvalidResponseReturnsStableFailedProcessingResult(): void
@@ -261,6 +291,18 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 ], JSON_THROW_ON_ERROR),
                 new DraftUsage('fixture-vlm', 11, 7, 0.0012),
                 'fixture-vlm',
+                normalizationTelemetry: [
+                    'normalizer' => 'pdf',
+                    'source_mime_type' => 'application/pdf',
+                    'source_byte_count' => 9,
+                    'rendered_page_count' => 1,
+                    'text_section_count' => 0,
+                    'table_count' => 0,
+                    'message_segment_count' => 0,
+                    'warning_codes' => ['rendered_page_limit_applied'],
+                    'normalization_elapsed_ms' => 12,
+                    'document_text' => 'must be sanitized',
+                ],
             );
         }
 

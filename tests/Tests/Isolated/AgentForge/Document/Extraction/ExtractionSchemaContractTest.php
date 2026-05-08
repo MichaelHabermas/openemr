@@ -87,6 +87,44 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->assertNotNull($response->extraction);
     }
 
+    public function testNormalizationTelemetryKeepsOnlySafeAggregateFields(): void
+    {
+        $response = ExtractionProviderResponse::fromStrictJson(
+            DocumentType::LabPdf,
+            json_encode($this->minimalLabPayload(), JSON_THROW_ON_ERROR),
+            DraftUsage::fixture(),
+            normalizationTelemetry: [
+                'normalizer' => 'pdf',
+                'source_mime_type' => 'application/pdf',
+                'source_byte_count' => 128,
+                'rendered_page_count' => 2,
+                'text_section_count' => 0,
+                'table_count' => 0,
+                'message_segment_count' => 0,
+                'warning_codes' => ['rendered_page_limit_applied', 'bad warning with spaces'],
+                'normalization_elapsed_ms' => 14,
+                'status' => 'succeeded-but-overridden',
+                'document_id' => 999,
+                'source_filename' => 'jane-doe-lab.pdf',
+                'quote_or_value' => 'Jane Doe',
+            ],
+        );
+
+        $this->assertSame([
+            'normalizer' => 'pdf',
+            'source_mime_type' => 'application/pdf',
+            'source_byte_count' => 128,
+            'rendered_page_count' => 2,
+            'text_section_count' => 0,
+            'table_count' => 0,
+            'message_segment_count' => 0,
+            'normalization_elapsed_ms' => 14,
+            'warning_codes' => ['rendered_page_limit_applied'],
+        ], $response->normalizationTelemetry);
+        $this->assertArrayNotHasKey('status', $response->normalizationTelemetry);
+        $this->assertArrayNotHasKey('quote_or_value', $response->normalizationTelemetry);
+    }
+
     public function testLabJsonCanExposeCitedPatientIdentityCandidates(): void
     {
         $payload = $this->minimalLabPayload();

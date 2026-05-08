@@ -117,7 +117,16 @@ Fax Packet -> fax_packet
 HL7 v2 Message -> hl7v2_message
 ```
 
-Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 are category/queue targets only: the worker marks those jobs failed with `unsupported_doc_type` before provider extraction until later epics add normalizers and live extraction support.
+Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 are category/queue targets only: the worker marks those jobs failed with `unsupported_doc_type` before provider extraction until later epics add live extraction support.
+
+Epic 3 inserts the normalized-content seam used by provider-backed extraction.
+The seam lives under `src/AgentForge/Document/Content/` and converts raw OpenEMR
+document bytes into provider-ready source metadata, rendered pages, future-safe
+text/table/message placeholders, coded warnings, and aggregate normalization
+telemetry. Current runtime support remains `lab_pdf` and `intake_form`: PDF and
+PNG/JPEG/WEBP image inputs are normalized before OpenAI payload construction,
+while DOCX, XLSX, TIFF, and HL7 v2 still fail closed before normalization or
+provider calls.
 
 ## 5. Background Ingestion Jobs
 
