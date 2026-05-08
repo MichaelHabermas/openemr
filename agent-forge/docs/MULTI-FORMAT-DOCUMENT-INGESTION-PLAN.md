@@ -47,14 +47,16 @@ As a clinician using OpenEMR, I want AgentForge to process common clinical docum
 
 The target support matrix is:
 
-| Fixture family | File extensions | Target document type | Required behavior |
-| --- | --- | --- | --- |
-| Lab results | `.pdf`, `.png` | `lab_pdf` | Extract structured lab results, identity, citations, confidence, and abnormal flags. |
-| Intake forms | `.pdf`, `.png` | `intake_form` | Extract intake findings, identity, citations, confidence, and review flags. |
-| Referrals | `.docx` | `referral_docx` | Extract referral reason, referring/specialist clinicians, problems, medications, relevant recent labs, plan/request, and identity. |
-| Workbooks | `.xlsx` | `clinical_workbook` | Extract sheet/table clinical rows with cell-range citations, especially labs, medication lists, care gaps, and review notes. |
-| Fax packets | `.tiff` | `fax_packet` | Treat multipage TIFF as a packet of rendered pages; extract packet-level identity, document sections, labs/intake/referral-like facts, and page citations. |
-| HL7 v2 | `.hl7` | `hl7v2_message` | Parse ADT and ORU messages deterministically; extract identity, visit/order context, observations, notes, and message metadata. |
+
+| Fixture family | File extensions | Target document type | Required behavior                                                                                                                                          |
+| -------------- | --------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lab results    | `.pdf`, `.png`  | `lab_pdf`            | Extract structured lab results, identity, citations, confidence, and abnormal flags.                                                                       |
+| Intake forms   | `.pdf`, `.png`  | `intake_form`        | Extract intake findings, identity, citations, confidence, and review flags.                                                                                |
+| Referrals      | `.docx`         | `referral_docx`      | Extract referral reason, referring/specialist clinicians, problems, medications, relevant recent labs, plan/request, and identity.                         |
+| Workbooks      | `.xlsx`         | `clinical_workbook`  | Extract sheet/table clinical rows with cell-range citations, especially labs, medication lists, care gaps, and review notes.                               |
+| Fax packets    | `.tiff`         | `fax_packet`         | Treat multipage TIFF as a packet of rendered pages; extract packet-level identity, document sections, labs/intake/referral-like facts, and page citations. |
+| HL7 v2         | `.hl7`          | `hl7v2_message`      | Parse ADT and ORU messages deterministically; extract identity, visit/order context, observations, notes, and message metadata.                            |
+
 
 `source-previews/*.png` are proof artifacts, not ingestion inputs.
 
@@ -538,3 +540,4 @@ This plan is done when:
 - Existing PDF/PNG lab and intake support remains green.
 - The clinical document gate proves schema validity, citations, identity gating, PHI-safe logs, retraction, retrieval, and source review across formats.
 - The architecture still has small replaceable modules instead of format-specific branching scattered through the worker.
+
