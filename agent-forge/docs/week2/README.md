@@ -57,9 +57,9 @@ deleted-document exclusion, no-PHI telemetry checks, and artifact writing.
 
 Current local proof artifacts:
 
-- `agent-forge/eval-results/clinical-document-20260508-153134/summary.json`
-- `agent-forge/eval-results/clinical-document-20260508-153134/run.json`
-- `agent-forge/eval-results/eval-results-20260508-153104.json`
+- `agent-forge/eval-results/clinical-document-20260508-161531/summary.json`
+- `agent-forge/eval-results/clinical-document-20260508-161531/run.json`
+- `agent-forge/eval-results/eval-results-20260508-161500.json`
 
 The checked-in repository does not currently include a
 `clinical-document-deployed-smoke-*.json` artifact. H3 deployment/runtime proof

@@ -551,7 +551,7 @@ Intake allergies and medications may be promoted only when explicit, high-confid
 
 AgentForge must avoid duplicate and untraceable records.
 
-Duplicate detection uses OpenEMR document identity, document hash, patient id, doc type, source-scoped fact fingerprint, patient-scoped clinical-content fingerprint, and promotion provenance. Reprocessing the same job or retrying after a transient failure must not create duplicate facts, duplicate embeddings, duplicate promotion outcome rows, or duplicate promoted chart rows. Re-uploading the same lab under a different document id should resolve to `already_exists`, `duplicate_skipped`, or `conflict_needs_review`, not a second clinical row.
+Duplicate detection uses OpenEMR document identity, document hash, patient id, doc type, source-scoped fact fingerprint, patient-scoped clinical-content fingerprint, and promotion provenance. `PromotionFingerprinter` owns those stable fingerprint/hash shapes so promotion policy and duplicate lookup do not drift inside SQL persistence. Reprocessing the same job or retrying after a transient failure must not create duplicate facts, duplicate embeddings, duplicate promotion outcome rows, or duplicate promoted chart rows. Re-uploading the same lab under a different document id should resolve to `already_exists`, `duplicate_skipped`, or `conflict_needs_review`, not a second clinical row.
 
 If a document is deleted or deactivated:
 
@@ -1041,7 +1041,7 @@ agent-forge/scripts/check-agentforge.sh
 The latest local manual verification on 2026-05-08 passed:
 
 ```text
-AgentForge isolated PHPUnit: 672 tests, 3145 assertions, 1 skipped
+AgentForge isolated PHPUnit: 677 tests, 3164 assertions, 1 skipped
 AgentForge deterministic evals: 32 passed, 0 failed
 clinical document evals: 59 cases, verdict baseline_met
 focused PHPStan and PHPCS: clean
