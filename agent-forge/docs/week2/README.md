@@ -72,7 +72,7 @@ deployed clinical smoke command is documented for rerun.
 2. Hybrid RAG + rerank over a general primary-care guideline corpus (lipids, glycemia, BP, USPSTF). — §3.
 3. Supervisor + two workers (Extractor, EvidenceRetriever); logged handoffs in PHP state machine. — §4.
 4. Eval-driven CI: current gate under `check-clinical-document.sh` with 59 cases, boolean rubrics, structural coverage, and regression comparison. — §6.
-5. Integrate, deploy behind `AGENTFORGE_CLINICAL_DOCUMENT_ENABLED`, demo video, cost/latency report, and reviewer acceptance matrix. — §7, §9.
+5. Integrate, deploy with Week 2 reviewer environment markers, demo video, cost/latency report, and reviewer acceptance matrix. — §7, §9.
 
 **Scope reminder.** The agent is disease-agnostic — extraction, retrieval, and verification are general. The corpus is bounded to common outpatient conditions; out-of-corpus questions return a deterministic refusal. Hybrid RAG indexes **only** that guideline corpus; patient document flows use structured extraction into chart/FHIR paths (see [../MEMORY.md](../MEMORY.md) §Week 2 stakeholder clarifications).
 
@@ -84,7 +84,10 @@ variables are documented in [../../.env.sample](../../.env.sample),
 [../../../AGENTFORGE-REVIEWER-GUIDE.md](../../../AGENTFORGE-REVIEWER-GUIDE.md),
 and [../../../W2_ARCHITECTURE.md](../../../W2_ARCHITECTURE.md).
 
-Week 2 reviewer variables include:
+Week 2 reviewer variables include the PHP-read provider/worker settings plus
+reviewer/deployment markers. `AGENTFORGE_EMBEDDING_MODEL` and
+`AGENTFORGE_CLINICAL_DOCUMENT_ENABLED` are currently documented markers in the
+review environment; PHP runtime selection does not read them.
 
 ```text
 AGENTFORGE_DRAFT_PROVIDER

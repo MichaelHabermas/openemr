@@ -47,6 +47,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         private ?DocumentFactEmbeddingRepository $embeddings = null,
         private ?EmbeddingProvider $embeddingProvider = null,
         private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
+        private PromotionFingerprinter $fingerprinter = new PromotionFingerprinter(),
         ?ClockInterface $wallClock = null,
     ) {
         $this->certaintyClassifier = new CertaintyClassifier();
@@ -132,9 +133,9 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         }
 
         $stableValue = $this->stableLabValueJson($row);
-        $clinicalContentFingerprint = $this->patientClinicalFingerprint('lab_result', $row->testName, $stableValue);
-        $legacyFactHash = $this->legacyFactHash('lab_result', $row->testName, $stableValue);
-        $factFingerprint = $this->sourceFactFingerprint($job, 'lab_result', $fieldPath, $stableValue);
+        $clinicalContentFingerprint = $this->fingerprinter->patientClinicalFingerprint('lab_result', $row->testName, $stableValue);
+        $legacyFactHash = $this->fingerprinter->legacyFactHash('lab_result', $row->testName, $stableValue);
+        $factFingerprint = $this->fingerprinter->sourceFactFingerprint($job, 'lab_result', $fieldPath, $stableValue);
         $collectedAt = $this->dateTimeOrNull($row->collectedAt);
         $certainty = $this->documentFactClassifier->classify($job, $row);
         if (
@@ -233,8 +234,8 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         }
 
         $stableValue = $this->stableFindingValueJson($finding);
-        $clinicalContentFingerprint = $this->patientClinicalFingerprint('intake_finding', $finding->field, $stableValue);
-        $factFingerprint = $this->sourceFactFingerprint($job, 'intake_finding', $fieldPath, $stableValue);
+        $clinicalContentFingerprint = $this->fingerprinter->patientClinicalFingerprint('intake_finding', $finding->field, $stableValue);
+        $factFingerprint = $this->fingerprinter->sourceFactFingerprint($job, 'intake_finding', $fieldPath, $stableValue);
         $certainty = $this->documentFactClassifier->classify($job, $finding);
         $this->persistIntakeFact($job, $finding, $fieldPath, $certainty, $factFingerprint, $clinicalContentFingerprint);
         $needsReview = $certainty === Certainty::NeedsReview;
@@ -658,16 +659,6 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         return strtolower(trim((string) $value));
     }
 
-    /** @param array<string, mixed> $valueJson */
-    private function legacyFactHash(string $factType, string $label, array $valueJson): string
-    {
-        return hash('sha256', $this->jsonEncode([
-            'fact_type' => $factType,
-            'label' => $label,
-            'value' => $valueJson,
-        ]));
-    }
-
     /** @param array<string, mixed> $row */
     private function nullableString(array $row, string $key): ?string
     {
@@ -687,40 +678,6 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         }
 
         return null;
-    }
-
-    // ── Fingerprinting ─────────────────────────────────────────────────────
-
-    /** @param array<string, mixed> $stableValue */
-    private function sourceFactFingerprint(DocumentJob $job, string $factType, string $fieldPath, array $stableValue): string
-    {
-        return $this->fingerprintHash([
-            'scope' => 'source_fact',
-            'patient_id' => $job->patientId->value,
-            'document_id' => $job->documentId->value,
-            'job_id' => $job->id?->value,
-            'doc_type' => $job->docType->value,
-            'fact_type' => $factType,
-            'field_path' => $fieldPath,
-            'value' => $stableValue,
-        ]);
-    }
-
-    /** @param array<string, mixed> $stableValue */
-    private function patientClinicalFingerprint(string $factType, string $label, array $stableValue): string
-    {
-        return $this->fingerprintHash([
-            'scope' => 'patient_clinical_content',
-            'fact_type' => $factType,
-            'label' => strtolower($label),
-            'value' => $stableValue,
-        ]);
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function fingerprintHash(array $payload): string
-    {
-        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
     }
 
     // ── Locking and time ───────────────────────────────────────────────────

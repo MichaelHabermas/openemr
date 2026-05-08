@@ -1114,7 +1114,9 @@ agentforge-worker:
 
 `docker compose up` should start both the web app and the worker. The app should expose worker/job health so graders can see that extraction jobs are being processed.
 
-Important environment variables:
+Important environment variables. Provider and worker variables are read by PHP
+runtime configuration; `AGENTFORGE_EMBEDDING_MODEL` is retained as a reviewer
+environment marker and is not currently read by PHP runtime selection.
 
 ```text
 AGENTFORGE_DRAFT_PROVIDER

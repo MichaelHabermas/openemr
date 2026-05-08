@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Non-model AgentForge handler that returns authorized chart evidence.
+ * Test-only AgentForge handler that returns authorized chart evidence.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -10,10 +10,13 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge\Handlers;
+namespace OpenEMR\Tests\Isolated\AgentForge\Support;
 
 use OpenEMR\AgentForge\Evidence\ChartEvidenceTool;
 use OpenEMR\AgentForge\Evidence\ChartEvidenceToolInvoker;
+use OpenEMR\AgentForge\Handlers\AgentHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Handlers\AgentResponse;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 

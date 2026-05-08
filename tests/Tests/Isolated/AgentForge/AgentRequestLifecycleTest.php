@@ -18,11 +18,11 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Handlers\AgentRequestHandler;
 use OpenEMR\AgentForge\Handlers\AgentRequestLifecycle;
 use OpenEMR\AgentForge\Handlers\AgentRequestParser;
-use OpenEMR\AgentForge\Handlers\PlaceholderAgentHandler;
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\RequestLogger;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Time\SystemPsrClock;
+use OpenEMR\Tests\Isolated\AgentForge\Support\PlaceholderAgentHandler;
 use PHPUnit\Framework\TestCase;
 
 final class AgentRequestLifecycleTest extends TestCase

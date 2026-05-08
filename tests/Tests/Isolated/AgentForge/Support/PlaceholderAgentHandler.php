@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Non-model AgentForge handler used by Epic 4.
+ * Test-only AgentForge handler returning the placeholder response.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -10,7 +10,11 @@
 
 declare(strict_types=1);
 
-namespace OpenEMR\AgentForge\Handlers;
+namespace OpenEMR\Tests\Isolated\AgentForge\Support;
+
+use OpenEMR\AgentForge\Handlers\AgentHandler;
+use OpenEMR\AgentForge\Handlers\AgentRequest;
+use OpenEMR\AgentForge\Handlers\AgentResponse;
 
 final class PlaceholderAgentHandler implements AgentHandler
 {

@@ -14,7 +14,6 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Eval\ClinicalDocument\Runner;
 
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\CaseRunOutput;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\ExtractionSystemAdapter;
-use OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter\NotImplementedAdapter;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCaseCategory;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\ExpectedAnswer;
@@ -28,7 +27,7 @@ use PHPUnit\Framework\TestCase;
 
 final class EvalRunnerTest extends TestCase
 {
-    public function testNotImplementedAdapterFailsApplicableRubrics(): void
+    public function testNotImplementedStatusFailsApplicableRubrics(): void
     {
         $case = new EvalCase(
             1,
@@ -47,7 +46,15 @@ final class EvalRunnerTest extends TestCase
             new ExpectedRubrics(['schema_valid' => true]),
         );
 
-        $result = (new EvalRunner(new NotImplementedAdapter(), new RubricRegistry()))->run([$case]);
+        $result = (new EvalRunner(new class implements ExtractionSystemAdapter {
+            public function runCase(EvalCase $case): CaseRunOutput
+            {
+                return new CaseRunOutput(
+                    'not_implemented',
+                    failureReason: 'Clinical document implementation is not connected to the eval adapter yet.',
+                );
+            }
+        }, new RubricRegistry()))->run([$case]);
 
         $this->assertSame(1, $result->rubricSummaries['schema_valid']->failed);
         $this->assertSame('not_implemented', $result->caseResults[0]['adapter_status']);
