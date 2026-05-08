@@ -16,7 +16,7 @@ use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use RuntimeException;
 
-final readonly class SqlSupervisorHandoffRepository
+final readonly class SqlSupervisorHandoffRepository implements SupervisorHandoffRepository
 {
     private const MAX_REQUEST_ID_LENGTH = 64;
     private const MAX_NODE_LENGTH = 64;

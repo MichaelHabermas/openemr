@@ -90,9 +90,7 @@ final class LabPdfExtractionTest extends TestCase
         LabPdfExtraction::fromArray($payload);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array{doc_type: string, lab_name: string, collected_at: string, patient_identity: array<string, mixed>, results: list<array<string, mixed>>} */
     private static function validPayload(): array
     {
         return [

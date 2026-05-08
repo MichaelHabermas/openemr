@@ -83,7 +83,7 @@ final class DocumentCitationReviewServiceTest extends TestCase
         $this->assertNull($review->toArray()['page_number']);
     }
 
-    public function testCorrectsKnownChenNeedsReviewCitationToAllergyRow(): void
+    public function testDoesNotApplyFixtureSpecificCitationCorrections(): void
     {
         $row = $this->factRow([
             'source_type' => 'intake_form',
@@ -99,10 +99,27 @@ final class DocumentCitationReviewServiceTest extends TestCase
 
         $this->assertNotNull($review);
         $payload = $review->toArray();
-        $this->assertSame(2, $payload['page_number']);
-        $this->assertSame('page 2', $payload['page_or_section']);
-        $this->assertStringContainsString('page=2', $payload['page_image_url']);
-        $this->assertSame(['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040], $payload['bounding_box']);
+        $this->assertSame(1, $payload['page_number']);
+        $this->assertSame('page 1', $payload['page_or_section']);
+        $this->assertStringContainsString('page=1', $payload['page_image_url']);
+        $this->assertArrayHasKey('bounding_box', $payload);
+        $this->assertSame(['x' => 0.126, 'y' => 0.300, 'width' => 0.110, 'height' => 0.026], $payload['bounding_box']);
+    }
+
+    public function testOutOfBoundsBoundingBoxFallsBackToPageQuoteReview(): void
+    {
+        $row = $this->factRow([
+            'bounding_box' => ['x' => 0.8, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+        ]);
+        $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
+        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
+
+        $review = $service->review(new PatientId(900101), new DocumentId(22), new DocumentJobId(7), 41);
+
+        $this->assertNotNull($review);
+        $payload = $review->toArray();
+        $this->assertSame('page_quote_fallback', $payload['review_mode']);
+        $this->assertArrayNotHasKey('bounding_box', $payload);
     }
 
     public function testDeniedAccessFailsClosedBeforeFactLookup(): void

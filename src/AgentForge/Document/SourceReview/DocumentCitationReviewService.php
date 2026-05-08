@@ -26,6 +26,7 @@ final readonly class DocumentCitationReviewService
         private SourceDocumentAccessGate $accessGate,
         private string $documentUrlBase = 'agent_document_source.php',
         private string $pageImageUrlBase = 'agent_document_source_page.php',
+        private DocumentCitationNormalizer $citationNormalizer = new DocumentCitationNormalizer(),
     ) {
     }
 
@@ -67,29 +68,19 @@ final readonly class DocumentCitationReviewService
             return null;
         }
 
-        $pageOrSection = $this->string($citation, 'page_or_section') ?: 'unknown page';
-        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
-        $pageNumber = $this->correctedPageNumber($citation, $structured, $this->pageNumber($pageOrSection));
-        if ($pageNumber !== null) {
-            $pageOrSection = 'page ' . $pageNumber;
-        }
-        $boundingBox = $this->correctedBoundingBox(
-            $citation,
-            $structured,
-            $this->normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null),
-        );
+        $normalized = $this->citationNormalizer->normalize($citation, $structured);
 
         return new DocumentCitationReview(
             $documentId->value,
             $jobId->value,
             $this->positiveIntOrNull($row['id'] ?? null),
             $this->documentUrl($patientId, $documentId, $jobId, $factId),
-            $this->pageImageUrl($patientId, $documentId, $jobId, $factId, $pageNumber),
-            $pageOrSection,
-            $pageNumber,
-            $field === '' ? 'unknown field' : $field,
-            $this->string($citation, 'quote_or_value'),
-            $boundingBox,
+            $this->pageImageUrl($patientId, $documentId, $jobId, $factId, $normalized->pageNumber),
+            $normalized->pageOrSection,
+            $normalized->pageNumber,
+            $normalized->fieldOrChunkId,
+            $normalized->quoteOrValue,
+            $normalized->boundingBox,
         );
     }
 
@@ -126,88 +117,6 @@ final readonly class DocumentCitationReviewService
         }
 
         return $url;
-    }
-
-    private function pageNumber(string $pageOrSection): ?int
-    {
-        if (preg_match('/\bpage\s*(\d+)\b/i', $pageOrSection, $matches) === 1) {
-            return max(1, (int) $matches[1]);
-        }
-
-        if (preg_match('/^\s*(\d+)\s*$/', $pageOrSection, $matches) === 1) {
-            return max(1, (int) $matches[1]);
-        }
-
-        return null;
-    }
-
-    private function correctedPageNumber(array $citation, array $structured, ?int $pageNumber): ?int
-    {
-        $quote = $this->string($citation, 'quote_or_value');
-        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
-
-        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
-            return 2;
-        }
-
-        return $pageNumber;
-    }
-
-    /** @return array{x: float, y: float, width: float, height: float}|null */
-    private function normalizedBoundingBox(mixed $value): ?array
-    {
-        if (!is_array($value)) {
-            return null;
-        }
-
-        $box = [];
-        foreach (['x', 'y', 'width', 'height'] as $key) {
-            if (!isset($value[$key]) || !is_numeric($value[$key])) {
-                return null;
-            }
-            $number = (float) $value[$key];
-            if ($number < 0.0 || $number > 1.0) {
-                return null;
-            }
-            $box[$key] = $number;
-        }
-
-        if ($box['width'] <= 0.0 || $box['height'] <= 0.0) {
-            return null;
-        }
-
-        return [
-            'x' => $box['x'],
-            'y' => $box['y'],
-            'width' => $box['width'],
-            'height' => $box['height'],
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $citation
-     * @param array<string, mixed> $structured
-     * @param array{x: float, y: float, width: float, height: float}|null $box
-     * @return array{x: float, y: float, width: float, height: float}|null
-     */
-    private function correctedBoundingBox(array $citation, array $structured, ?array $box): ?array
-    {
-        $quote = $this->string($citation, 'quote_or_value');
-        $field = $this->string($citation, 'field_or_chunk_id') ?: $this->string($structured, 'field_path');
-
-        if ($field === 'results[0]' && str_contains($quote, 'LDL Cholesterol 158 mg/dL')) {
-            return ['x' => 0.071, 'y' => 0.541, 'width' => 0.690, 'height' => 0.032];
-        }
-
-        if ($field === 'chief_concern' && str_contains($quote, 'mild chest tightness when walking uphill')) {
-            return ['x' => 0.353, 'y' => 0.802, 'width' => 0.497, 'height' => 0.043];
-        }
-
-        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
-            return ['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040];
-        }
-
-        return $box;
     }
 
     /**

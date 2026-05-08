@@ -63,6 +63,19 @@ final class SqlJobClaimerTest extends TestCase
         $this->assertSame([], $jobs->findClaimedCalls);
     }
 
+    public function testOnlyIntakeExtractorClaimsExtractionJobs(): void
+    {
+        $lockToken = new LockToken(str_repeat('d', 64));
+        $executor = new FakeDatabaseExecutor(defaultAffectedRows: 1);
+        $jobs = new ClaimerDocumentJobRepository($this->runningJob($lockToken));
+
+        $job = (new SqlJobClaimer($jobs, $executor))->claimNext(WorkerName::EvidenceRetriever, $lockToken);
+
+        $this->assertNull($job);
+        $this->assertSame([], $executor->statements);
+        $this->assertSame([], $jobs->findClaimedCalls);
+    }
+
     private function runningJob(LockToken $lockToken): DocumentJob
     {
         return new DocumentJob(

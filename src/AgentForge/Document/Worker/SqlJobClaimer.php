@@ -3,9 +3,7 @@
 /**
  * SQL-backed AgentForge document job claimer.
  *
- * Claims the oldest {@see JobStatus::Pending} row without filtering by worker role. Run separate
- * worker processes only when each process should handle disjoint job types (future: add a column
- * or routing rule); today multiple worker names may compete for the same rows.
+ * Claims the oldest {@see JobStatus::Pending} extraction row for the spec-required intake-extractor.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -30,6 +28,10 @@ final readonly class SqlJobClaimer implements JobClaimer
 
     public function claimNext(WorkerName $workerName, LockToken $lockToken): ?DocumentJob
     {
+        if ($workerName !== WorkerName::IntakeExtractor) {
+            return null;
+        }
+
         $affected = $this->executor->executeAffected(
             'UPDATE clinical_document_processing_jobs '
             . 'SET status = ?, lock_token = ?, started_at = NOW(), attempts = attempts + 1 '

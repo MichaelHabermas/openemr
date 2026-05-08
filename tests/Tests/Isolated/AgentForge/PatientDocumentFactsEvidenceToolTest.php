@@ -90,6 +90,7 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
     {
         $row = $this->factRow();
         $row['id'] = 42;
+        $row['doc_type'] = 'intake_form';
         $row['certainty'] = 'needs_review';
         $row['fact_type'] = 'intake_finding';
         $row['fact_text'] = 'shellfish?? maybe iodine itchy?';
@@ -110,9 +111,28 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
         $this->assertSame('document_review', $result->items[0]->sourceType);
         $this->assertSame('Needs review: intake finding', $result->items[0]->displayLabel);
         $this->assertStringContainsString('shellfish?? maybe iodine itchy?', $result->items[0]->value);
-        $this->assertStringContainsString('Citation: intake_form, page 2, needs_review[0]', $result->items[0]->value);
-        $this->assertSame('page 2', $result->items[0]->citation['page_or_section']);
-        $this->assertSame(['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040], $result->items[0]->citation['bounding_box']);
+        $this->assertStringContainsString('Citation: intake_form, page 1, needs_review[0]', $result->items[0]->value);
+        $this->assertSame('page 1', $result->items[0]->citation['page_or_section']);
+        $this->assertSame(['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08], $result->items[0]->citation['bounding_box']);
+    }
+
+    public function testOutOfBoundsBoundingBoxIsDroppedFromCitationMetadata(): void
+    {
+        $row = $this->factRow();
+        $row['citation_json'] = json_encode([
+            'source_type' => 'lab_pdf',
+            'source_id' => 'doc:11',
+            'page_or_section' => 'page 1',
+            'field_or_chunk_id' => 'results[0]',
+            'quote_or_value' => 'LDL Cholesterol 148 mg/dL',
+            'bounding_box' => ['x' => 0.8, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+        ], JSON_THROW_ON_ERROR);
+
+        $result = (new PatientDocumentFactsEvidenceTool(new PatientDocumentFactsEvidenceExecutor([$row])))
+            ->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
+
+        $this->assertCount(1, $result->items);
+        $this->assertArrayNotHasKey('bounding_box', $result->items[0]->citation);
     }
 
     /** @return array<string, mixed> */

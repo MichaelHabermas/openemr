@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Evidence;
 
 use DomainException;
+use OpenEMR\AgentForge\Document\SourceReview\DocumentCitationNormalizer;
 
 final class DocumentEvidenceFormatting
 {
@@ -56,31 +57,6 @@ final class DocumentEvidenceFormatting
     /** @return array{x: float, y: float, width: float, height: float}|null */
     public static function normalizedBoundingBox(mixed $value): ?array
     {
-        if (!is_array($value)) {
-            return null;
-        }
-
-        $numbers = [];
-        foreach (['x', 'y', 'width', 'height'] as $key) {
-            if (!isset($value[$key]) || !is_numeric($value[$key])) {
-                return null;
-            }
-            $number = (float) $value[$key];
-            if ($number < 0.0 || $number > 1.0) {
-                return null;
-            }
-            $numbers[$key] = $number;
-        }
-
-        if ($numbers['width'] <= 0.0 || $numbers['height'] <= 0.0) {
-            return null;
-        }
-
-        return [
-            'x' => $numbers['x'],
-            'y' => $numbers['y'],
-            'width' => $numbers['width'],
-            'height' => $numbers['height'],
-        ];
+        return (new DocumentCitationNormalizer())->boundingBox($value);
     }
 }

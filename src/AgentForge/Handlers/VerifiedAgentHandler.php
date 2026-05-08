@@ -25,6 +25,8 @@ use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
+use OpenEMR\AgentForge\Orchestration\Supervisor;
+use OpenEMR\AgentForge\Orchestration\SupervisorRuntime;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use OpenEMR\AgentForge\Verification\CurrentChartScopePolicy;
@@ -42,6 +44,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     private readonly VerifiedDraftingPipeline $pipeline;
     private readonly MonotonicClock $clock;
     private readonly LoggerInterface $logger;
+    private readonly ?SupervisorRuntime $supervisorRuntime;
 
     /**
      * @param list<ChartEvidenceTool> $tools
@@ -56,7 +59,8 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         ?ChartEvidenceCollector $collector = null,
         ?ToolSelectionProvider $toolSelectionProvider = null,
         ?GuidelineRetriever $guidelineRetriever = null,
-        private readonly ?SqlSupervisorHandoffRepository $handoffs = null,
+        ?SqlSupervisorHandoffRepository $handoffs = null,
+        ?SupervisorRuntime $supervisorRuntime = null,
     ) {
         $this->clock = $clock;
         $this->logger = $logger;
@@ -64,6 +68,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
         $this->evidenceRetriever = new EvidenceRetrieverWorker($this->collector, $guidelineRetriever);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $this->clock, $logger);
+        $this->supervisorRuntime = $supervisorRuntime ?? ($handoffs === null ? null : new SupervisorRuntime(new Supervisor(), $handoffs));
     }
 
     public function handle(AgentRequest $request): AgentResponse
@@ -156,12 +161,12 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
 
     private function recordGuidelineHandoff(AgentRequest $request, string $questionType): void
     {
-        if ($this->handoffs === null || $request->requestId === null) {
+        if ($this->supervisorRuntime === null || $request->requestId === null) {
             return;
         }
 
         try {
-            $this->handoffs->recordRequestHandoff(
+            $this->supervisorRuntime->recordRequestHandoff(
                 $request->requestId,
                 NodeName::EvidenceRetriever,
                 'guideline_evidence_required',

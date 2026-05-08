@@ -27,7 +27,9 @@ final class SingleAssertionRubricTest extends RubricTestCase
     {
         $result = (new BoundingBoxPresentRubric())->evaluate($this->inputs(
             ['bounding_box_present' => true],
-            new CaseRunOutput('ok', ['facts' => [['bounding_box' => ['x' => 1, 'y' => 2, 'width' => 3, 'height' => 4]]]]),
+            new CaseRunOutput('ok', ['facts' => [[
+                'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.4],
+            ]]]),
         ));
 
         $this->assertSame(RubricStatus::Pass, $result->status);

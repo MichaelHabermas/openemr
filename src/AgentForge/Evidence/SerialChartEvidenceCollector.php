@@ -1,7 +1,8 @@
 <?php
 
 /**
- * Serial chart-evidence collector. One section at a time, sanitized failures, deadline-aware.
+ * Chart-evidence collector with optional repository prefetch. One section loop, sanitized failures,
+ * deadline-aware.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -18,7 +19,7 @@ use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
 
-final class SerialChartEvidenceCollector implements ChartEvidenceCollector
+class SerialChartEvidenceCollector implements ChartEvidenceCollector
 {
     /** @var array<string, ChartEvidenceTool> */
     private array $toolsBySection = [];
@@ -28,6 +29,7 @@ final class SerialChartEvidenceCollector implements ChartEvidenceCollector
         array $tools,
         private readonly LoggerInterface $logger,
         private readonly MonotonicClock $clock,
+        private readonly ?PrefetchableChartEvidenceRepository $prefetcher = null,
     ) {
         foreach ($tools as $tool) {
             $this->toolsBySection[$tool->section()] ??= $tool;
@@ -43,6 +45,12 @@ final class SerialChartEvidenceCollector implements ChartEvidenceCollector
         $deadline ??= new Deadline($this->clock, $plan->deadlineMs);
         $results = [];
         $toolsCalled = [];
+
+        if ($this->prefetcher !== null && $plan->sections !== []) {
+            $timer?->start('evidence:prefetch');
+            $this->prefetcher->prefetch($patientId, $plan->sections, $deadline);
+            $timer?->stop('evidence:prefetch');
+        }
 
         foreach ($plan->sections as $section) {
             $tool = $this->toolsBySection[$section] ?? null;

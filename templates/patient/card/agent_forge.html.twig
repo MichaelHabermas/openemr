@@ -289,11 +289,19 @@
     }
 
     function hasBoundingBox(box) {
-        return box
-            && typeof box.x === 'number'
-            && typeof box.y === 'number'
-            && typeof box.width === 'number'
-            && typeof box.height === 'number';
+        if (!box) {
+            return false;
+        }
+        const numbers = [box.x, box.y, box.width, box.height];
+        if (!numbers.every(function (value) { return typeof value === 'number' && Number.isFinite(value); })) {
+            return false;
+        }
+        return box.x >= 0
+            && box.y >= 0
+            && box.width > 0
+            && box.height > 0
+            && box.x + box.width <= 1
+            && box.y + box.height <= 1;
     }
 
     function normalizeReviewPayload(detail, payload) {

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Extraction;
 
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\ClinicalDocumentIngestionWorkflow;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
@@ -35,7 +36,7 @@ use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Log\LoggerInterface;
 
-final readonly class IntakeExtractorWorker implements DocumentJobProcessor
+final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionWorkflow, DocumentJobProcessor
 {
     public function __construct(
         private DocumentExtractionProvider $provider,
@@ -53,6 +54,11 @@ final readonly class IntakeExtractorWorker implements DocumentJobProcessor
     }
 
     public function process(DocumentJob $job, DocumentLoadResult $document): ProcessingResult
+    {
+        return $this->ingest($job, $document);
+    }
+
+    public function ingest(DocumentJob $job, DocumentLoadResult $document): ProcessingResult
     {
         // The spec-required worker name is "intake-extractor"; this worker handles lab_pdf and intake_form.
         $timer = new StageTimer($this->clock);

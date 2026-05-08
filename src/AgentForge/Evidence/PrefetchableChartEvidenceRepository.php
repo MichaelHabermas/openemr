@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Optional repository hook that lets a {@see ConcurrentChartEvidenceCollector}
+ * Optional repository hook that lets a chart evidence collector
  * coalesce per-section reads into a single coordinated batch before tools run.
  *
  * Implementations may use the planner's section list to issue one combined

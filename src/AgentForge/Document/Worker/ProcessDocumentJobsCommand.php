@@ -68,7 +68,7 @@ final class ProcessDocumentJobsCommand
 Usage: php agent-forge/scripts/process-document-jobs.php --worker=NAME [options]
 
 Options:
-  --worker=NAME                 Worker role: supervisor, intake-extractor, or evidence-retriever.
+  --worker=NAME                 Document job worker role. Only intake-extractor claims extraction jobs.
   --one-shot                    Run one claim/idle iteration and exit.
   --max-iterations=N            Stop after N loop iterations. 0 means unlimited.
   --idle-sleep-seconds=N        Seconds to wait between idle polls.
@@ -80,6 +80,10 @@ Environment:
   AGENTFORGE_WORKER_NAME
   AGENTFORGE_WORKER_MAX_ITERATIONS
   AGENTFORGE_WORKER_IDLE_SLEEP_SECONDS
+
+Inspectable AgentForge graph nodes:
+  supervisor and evidence-retriever are used in request-time routing and handoff logs;
+  they do not consume the clinical_document_processing_jobs extraction queue.
 
 USAGE;
     }

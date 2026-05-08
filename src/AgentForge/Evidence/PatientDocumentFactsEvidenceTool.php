@@ -17,6 +17,8 @@ use JsonException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\SourceReview\DocumentCitationNormalizer;
+use OpenEMR\AgentForge\Document\SourceReview\NormalizedDocumentCitation;
 use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
 
 final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTool
@@ -24,6 +26,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
     public function __construct(
         private DatabaseExecutor $executor,
         private int $limit = 12,
+        private DocumentCitationNormalizer $citationNormalizer = new DocumentCitationNormalizer(),
     ) {
     }
 
@@ -112,11 +115,11 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
 
         $citation = $this->jsonObject(Fmt::string($row, 'citation_json'));
         $structured = $this->jsonObject(Fmt::string($row, 'structured_value_json'));
-        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
-        if ($field === '') {
-            $field = 'fact:' . (string) Fmt::positiveInt($row, 'id');
-        }
-        $page = $this->correctedPageOrSection($citation, $structured, Fmt::string($citation, 'page_or_section') ?: 'unknown page');
+        $normalizedCitation = $this->citationNormalizer->normalize($citation, $structured);
+        $field = $normalizedCitation->fieldOrChunkId === 'unknown field'
+            ? 'fact:' . (string) Fmt::positiveInt($row, 'id')
+            : $normalizedCitation->fieldOrChunkId;
+        $page = $normalizedCitation->pageOrSection;
         $docType = Fmt::string($row, 'doc_type');
         $label = $this->displayLabel($row, $structured);
         $isNeedsReview = Fmt::string($row, 'certainty') === 'needs_review';
@@ -133,7 +136,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             ),
             $isNeedsReview ? 'Needs review: ' . $label : $label,
             EvidenceText::bounded(sprintf('%s; %s', $factText, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
-            $this->citationMetadata($row, $citation, $structured, $field, $page),
+            $this->citationMetadata($row, $normalizedCitation, $field, $page),
         );
     }
 
@@ -156,16 +159,14 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
 
     /**
      * @param array<string, mixed> $row
-     * @param array<string, mixed> $citation
-     * @param array<string, mixed> $structured
      * @return array<string, mixed>
      */
-    private function citationMetadata(array $row, array $citation, array $structured, string $field, string $page): array
+    private function citationMetadata(array $row, NormalizedDocumentCitation $citation, string $field, string $page): array
     {
         $metadata = [
             'source_type' => 'document',
             'doc_type' => Fmt::string($row, 'doc_type'),
-            'source_id' => Fmt::string($citation, 'source_id') ?: 'document:' . Fmt::string($row, 'document_id'),
+            'source_id' => $citation->sourceId !== '' ? $citation->sourceId : 'document:' . Fmt::string($row, 'document_id'),
             'document_id' => Fmt::positiveInt($row, 'document_id'),
             'job_id' => Fmt::positiveInt($row, 'job_id'),
             'identity_check_id' => Fmt::positiveInt($row, 'identity_check_id'),
@@ -177,53 +178,17 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             'clinical_content_fingerprint' => Fmt::string($row, 'clinical_content_fingerprint'),
             'page_or_section' => $page,
             'field_or_chunk_id' => $field,
-            'quote_or_value' => EvidenceText::bounded(Fmt::string($citation, 'quote_or_value'), 240),
+            'quote_or_value' => EvidenceText::bounded($citation->quoteOrValue, 240),
         ];
 
-        $box = $this->correctedBoundingBox(
-            $citation,
-            $structured,
-            Fmt::normalizedBoundingBox($citation['bounding_box'] ?? $structured['bounding_box'] ?? null),
-        );
-        if ($box !== null) {
-            $metadata['bounding_box'] = $box;
+        if ($citation->boundingBox !== null) {
+            $metadata['bounding_box'] = $citation->boundingBox;
         }
 
         return array_filter(
             $metadata,
             static fn (mixed $value): bool => $value !== '',
         );
-    }
-
-    /** @param array<string, mixed> $citation @param array<string, mixed> $structured */
-    private function correctedPageOrSection(array $citation, array $structured, string $page): string
-    {
-        $quote = Fmt::string($citation, 'quote_or_value');
-        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
-
-        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
-            return 'page 2';
-        }
-
-        return $page;
-    }
-
-    /**
-     * @param array<string, mixed> $citation
-     * @param array<string, mixed> $structured
-     * @param array{x: float, y: float, width: float, height: float}|null $box
-     * @return array{x: float, y: float, width: float, height: float}|null
-     */
-    private function correctedBoundingBox(array $citation, array $structured, ?array $box): ?array
-    {
-        $quote = Fmt::string($citation, 'quote_or_value');
-        $field = Fmt::string($citation, 'field_or_chunk_id') ?: Fmt::string($structured, 'field_path');
-
-        if ($field === 'needs_review[0]' && str_contains($quote, 'shellfish?? maybe iodine itchy?')) {
-            return ['x' => 0.115, 'y' => 0.293, 'width' => 0.770, 'height' => 0.040];
-        }
-
-        return $box;
     }
 
     /**

@@ -36,7 +36,8 @@ final class ProcessDocumentJobsScriptShapeTest extends TestCase
         $this->assertStringContainsString('ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())', $factory);
         $this->assertStringContainsString('new CertaintyClassifier()', $factory);
         $this->assertStringContainsString('PatientRefHasher::createDefault()', $factory);
-        $this->assertStringContainsString('new NoopDocumentJobProcessor()', $factory);
+        $this->assertStringContainsString('not a clinical document extraction job processor', $factory);
+        $this->assertStringNotContainsString('new NoopDocumentJobProcessor()', $factory);
         $this->assertStringNotContainsString('AttachAndExtractTool', $factory);
         $this->assertStringNotContainsString('SourceDocumentStorage', $factory);
         $this->assertStringNotContainsString('OpenEmrSourceDocumentStorage', $factory);

@@ -3,9 +3,9 @@
 /**
  * Factory for the standalone AgentForge document worker CLI.
  *
- * Queue note: {@see SqlJobClaimer} claims the oldest pending job for any worker name. Only
- * {@see WorkerName::IntakeExtractor} runs real extraction; other worker names use
- * {@see NoopDocumentJobProcessor} until their processors are implemented.
+ * Queue note: only {@see WorkerName::IntakeExtractor} consumes clinical document extraction jobs.
+ * Supervisor and evidence-retriever are real inspectable AgentForge nodes, but they do not claim
+ * this document-processing queue.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -36,6 +36,7 @@ use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 use OpenEMR\AgentForge\Time\SystemPsrClock;
 use OpenEMR\BC\ServiceContainer;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 final class DocumentJobWorkerFactory
 {
@@ -109,7 +110,10 @@ final class DocumentJobWorkerFactory
                     new DeterministicEmbeddingProvider(),
                 ),
             ),
-            WorkerName::Supervisor, WorkerName::EvidenceRetriever => new NoopDocumentJobProcessor(),
+            WorkerName::Supervisor, WorkerName::EvidenceRetriever => throw new RuntimeException(sprintf(
+                '%s is an inspectable AgentForge node, not a clinical document extraction job processor.',
+                $workerName->value,
+            )),
         };
     }
 
