@@ -50,13 +50,13 @@ final class DocumentTypeTest extends TestCase
         DocumentType::fromStringOrThrow('referral_fax');
     }
 
-    public function testOnlyMatureDocumentTypesAreRuntimeIngestionSupported(): void
+    public function testOnlyBoundedRuntimeDocumentTypesAreRuntimeIngestionSupported(): void
     {
         $this->assertTrue(DocumentType::LabPdf->runtimeIngestionSupported());
         $this->assertTrue(DocumentType::IntakeForm->runtimeIngestionSupported());
+        $this->assertTrue(DocumentType::FaxPacket->runtimeIngestionSupported());
         $this->assertFalse(DocumentType::ReferralDocx->runtimeIngestionSupported());
         $this->assertFalse(DocumentType::ClinicalWorkbook->runtimeIngestionSupported());
-        $this->assertFalse(DocumentType::FaxPacket->runtimeIngestionSupported());
         $this->assertFalse(DocumentType::Hl7v2Message->runtimeIngestionSupported());
     }
 }

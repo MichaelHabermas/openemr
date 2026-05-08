@@ -68,7 +68,7 @@ final class DocumentCitationNormalizer
 
     public function pageNumber(string $pageOrSection): ?int
     {
-        if (preg_match('/\bpage\s*(\d+)\b/i', $pageOrSection, $matches) === 1) {
+        if (preg_match('/\bpage\s*:?\s*(\d+)\b/i', $pageOrSection, $matches) === 1) {
             return max(1, (int) $matches[1]);
         }
 

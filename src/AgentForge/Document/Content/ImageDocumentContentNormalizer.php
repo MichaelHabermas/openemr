@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Content;
 
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 
 final readonly class ImageDocumentContentNormalizer implements DocumentContentNormalizer
@@ -25,7 +26,8 @@ final readonly class ImageDocumentContentNormalizer implements DocumentContentNo
 
     public function supports(DocumentContentNormalizationRequest $request): bool
     {
-        return in_array($request->document->mimeType, self::SUPPORTED_MIME_TYPES, true);
+        return ($request->documentType === DocumentType::LabPdf || $request->documentType === DocumentType::IntakeForm)
+            && in_array($request->document->mimeType, self::SUPPORTED_MIME_TYPES, true);
     }
 
     public function normalize(

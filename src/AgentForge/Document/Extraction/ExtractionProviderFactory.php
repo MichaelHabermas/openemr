@@ -15,6 +15,7 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistryFactory;
+use OpenEMR\AgentForge\Document\Content\ImagickTiffRasterRenderer;
 
 final class ExtractionProviderFactory
 {
@@ -45,7 +46,13 @@ final class ExtractionProviderFactory
                 $config->outputCostPerMillionTokens,
                 $config->timeoutSeconds,
                 $config->maxPdfPages,
-                DocumentContentNormalizerRegistryFactory::default($renderer, $config->maxPdfPages),
+                $config->maxTiffSourceBytes,
+                DocumentContentNormalizerRegistryFactory::withTiffRenderer(
+                    $renderer,
+                    $config->maxPdfPages,
+                    new ImagickTiffRasterRenderer(),
+                    $config->maxTiffSourceBytes,
+                ),
             ),
         };
     }

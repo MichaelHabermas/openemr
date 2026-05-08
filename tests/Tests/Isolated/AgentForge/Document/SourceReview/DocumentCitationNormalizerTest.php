@@ -66,4 +66,20 @@ final class DocumentCitationNormalizerTest extends TestCase
 
         $this->assertNull($citation->boundingBox);
     }
+
+    public function testNormalizesFaxPageColonCitationAndKeepsBoundingBox(): void
+    {
+        $citation = (new DocumentCitationNormalizer())->normalize([
+            'source_type' => 'fax_packet',
+            'source_id' => 'doc:44',
+            'page_or_section' => 'page:3',
+            'field_or_chunk_id' => 'facts[2]',
+            'quote_or_value' => 'Cardiology consult',
+            'bounding_box' => ['x' => 0.05, 'y' => 0.15, 'width' => 0.25, 'height' => 0.1],
+        ]);
+
+        $this->assertSame('page 3', $citation->pageOrSection);
+        $this->assertSame(3, $citation->pageNumber);
+        $this->assertSame(['x' => 0.05, 'y' => 0.15, 'width' => 0.25, 'height' => 0.1], $citation->boundingBox);
+    }
 }

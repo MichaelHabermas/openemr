@@ -16,11 +16,11 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizationException;
 use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizationRequest;
 use OpenEMR\AgentForge\Document\Content\PdfDocumentContentNormalizer;
+use OpenEMR\AgentForge\Document\Content\RasterDocumentRenderer;
+use OpenEMR\AgentForge\Document\Content\RenderedDocumentPage;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
-use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
-use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
 use OpenEMR\AgentForge\Document\ExtractionErrorCode;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\Tests\Isolated\AgentForge\Support\TickingMonotonicClock;
@@ -39,6 +39,11 @@ final class PdfDocumentContentNormalizerTest extends TestCase
         $content = $normalizer->normalize($request, new Deadline(new TickingMonotonicClock([100]), 1_000));
 
         $this->assertTrue($normalizer->supports($request));
+        $this->assertFalse($normalizer->supports(new DocumentContentNormalizationRequest(
+            new DocumentId(8),
+            DocumentType::FaxPacket,
+            new DocumentLoadResult('%PDF fixture', 'application/pdf', 'fax.pdf'),
+        )));
         $this->assertSame('%PDF fixture', $renderer->lastPdfBytes);
         $this->assertSame(2, $renderer->lastMaxPages);
         $this->assertSame(hash('sha256', $document->bytes), $content->source->sha256);
@@ -91,25 +96,25 @@ final class PdfDocumentContentNormalizerTest extends TestCase
     }
 }
 
-final class PdfNormalizerTestRenderer implements PdfPageRenderer
+final class PdfNormalizerTestRenderer implements RasterDocumentRenderer
 {
     public ?string $lastPdfBytes = null;
     public ?int $lastMaxPages = null;
 
-    /** @return list<RenderedPdfPage> */
-    public function render(string $pdfBytes, int $maxPages): array
+    /** @return list<RenderedDocumentPage> */
+    public function render(string $bytes, int $maxPages): array
     {
-        $this->lastPdfBytes = $pdfBytes;
+        $this->lastPdfBytes = $bytes;
         $this->lastMaxPages = $maxPages;
 
-        return [new RenderedPdfPage(1, 'image/png', 'page-1')];
+        return [new RenderedDocumentPage(1, 'image/png', 'page-1')];
     }
 }
 
-final class PdfNormalizerThrowingRenderer implements PdfPageRenderer
+final class PdfNormalizerThrowingRenderer implements RasterDocumentRenderer
 {
-    /** @return list<RenderedPdfPage> */
-    public function render(string $pdfBytes, int $maxPages): array
+    /** @return list<RenderedDocumentPage> */
+    public function render(string $bytes, int $maxPages): array
     {
         throw new ExtractionProviderException('Renderer saw Jane Doe in jane-lab.pdf');
     }

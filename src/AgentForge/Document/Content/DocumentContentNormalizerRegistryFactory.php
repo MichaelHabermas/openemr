@@ -17,13 +17,28 @@ use OpenEMR\AgentForge\Time\SystemMonotonicClock;
 
 final class DocumentContentNormalizerRegistryFactory
 {
-    public static function default(PdfPageRenderer $pdfRenderer, int $maxPdfPages): DocumentContentNormalizerRegistry
+    public static function default(
+        PdfPageRenderer $pdfRenderer,
+        int $maxPdfPages,
+        int $maxTiffSourceBytes = 10_485_760,
+    ): DocumentContentNormalizerRegistry
+    {
+        return self::withTiffRenderer($pdfRenderer, $maxPdfPages, new ImagickTiffRasterRenderer(), $maxTiffSourceBytes);
+    }
+
+    public static function withTiffRenderer(
+        PdfPageRenderer $pdfRenderer,
+        int $maxPages,
+        RasterDocumentRenderer $tiffRenderer,
+        int $maxTiffSourceBytes = 10_485_760,
+    ): DocumentContentNormalizerRegistry
     {
         $clock = new SystemMonotonicClock();
 
         return new DocumentContentNormalizerRegistry([
-            new PdfDocumentContentNormalizer($pdfRenderer, $clock, $maxPdfPages),
+            new PdfDocumentContentNormalizer(new PdfPageRasterRenderer($pdfRenderer), $clock, $maxPages),
             new ImageDocumentContentNormalizer($clock),
+            new TiffDocumentContentNormalizer($tiffRenderer, $clock, $maxPages, $maxTiffSourceBytes),
         ]);
     }
 }

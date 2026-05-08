@@ -33,9 +33,9 @@ The example document folder already contains broader fixture families:
 - `hl7v2/*.hl7`
 - `source-previews/*.png`
 
-PDF and PNG intake/lab families are represented in the implemented ingestion slice. DOCX, XLSX, TIFF, and HL7 v2 now have strict fixture-backed contract coverage, but they do not have first-class runtime ingestion support yet.
+PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. DOCX, XLSX, and HL7 v2 still have strict fixture-backed contract coverage only and do not have first-class runtime ingestion support yet.
 
-Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have contract-only deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Runtime normalizers, live extraction providers, upload category mappings, and production ingestion for these formats remain deferred to later epics.
+Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support; DOCX, XLSX, and HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to later epics.
 
 ## 3. Product Requirements
 
@@ -177,7 +177,7 @@ Add one normalizer per format family:
 - `ImageDocumentContentNormalizer`
   - Handles PNG/JPEG/WEBP.
 - `TiffDocumentContentNormalizer`
-  - Renders multipage TIFF pages to PNG/JPEG with page numbers.
+  - Renders multipage TIFF pages to PNG with page numbers.
 - `DocxDocumentContentNormalizer`
   - Reads OOXML package content.
   - Extracts paragraphs, headings, tables, headers, and footers.
@@ -254,8 +254,9 @@ Use one generic fact persistence path for all formats first. Add clinical-table 
 
 Initial promotion policy:
 
-- Lab-like facts from `lab_pdf`, `fax_packet`, `clinical_workbook`, and `hl7v2_message` may become promotion candidates.
-- Referral and intake findings remain document facts unless a specific promotion rule is approved.
+- Lab-like facts from `lab_pdf` may become promotion candidates through the mature lab path.
+- `fax_packet` facts remain cited document facts only in Epic 4, even when model certainty is `verified` or `document_fact`.
+- Referral, intake, workbook, and HL7 findings remain document facts unless a specific promotion rule is approved.
 - Every promotion requires document id, job id, fact id, citation, confidence, promotion status, and duplicate fingerprint.
 
 ## 6. Product Acceptance Criteria
@@ -263,7 +264,7 @@ Initial promotion policy:
 The multi-format work is complete when:
 
 - Every file family in `agent-forge/docs/example-documents/` has at least one golden eval case.
-- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction.
+- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction; TIFF fax packets also have bounded live-provider rendering support.
 - Live provider mode has an implementation path for each format family.
 - Unsupported MIME types fail with a clear PHI-safe error.
 - Identity verification runs before facts become trusted evidence for every format.
@@ -353,30 +354,40 @@ with a normalizer registry, immutable normalized-content value objects, PDF and
 image normalizers, coded warnings, and PHI-safe telemetry. The OpenAI extraction
 provider now builds model content parts from `NormalizedDocumentContent` while
 keeping `DocumentExtractionProvider::extract(DocumentLoadResult ...)` stable.
-Fixture extraction remains source-SHA-keyed. DOCX, XLSX, TIFF, and HL7 v2 remain
-contract-only until later runtime-support epics.
+Fixture extraction remains source-SHA-keyed. DOCX, XLSX, and HL7 v2 remain
+contract-only until later runtime-support epics; TIFF fax packets move to
+bounded runtime support in Epic 4.
 
 ### Epic 4 - TIFF Fax Packet Support
 
-Status: Not started.
+Status: Implemented.
 
 Goal: Support multipage TIFF packets as rendered page content.
 
 Tasks:
 
 - Add `TiffDocumentContentNormalizer`.
-- Render each TIFF page to a bounded PNG/JPEG representation.
+- Render each TIFF page to a bounded PNG representation.
 - Add max page and max byte limits.
-- Add `FaxPacketExtraction` schema and parser.
-- Add fixture extraction output for at least one fax packet.
+- Reuse the existing strict `FaxPacketExtraction` schema and parser.
+- Keep fixture extraction output source-SHA-keyed for the Chen TIFF sidecar.
 - Add VLM prompt/schema support for fax packets.
-- Add citation tests for `page:N` references.
+- Add citation tests for `page:N`, `page N`, and `page:N`-style references.
 
 Acceptance criteria:
 
 - At least one TIFF fixture extracts cited facts in fixture mode.
 - Live provider mode can send rendered TIFF pages to the model path.
 - Page citations survive through source review metadata.
+
+Implementation note (2026-05-08): Epic 4 adds a generic raster rendered-page
+seam, adapts PDF normalization to it, registers `image/tiff` and `image/tif`
+normalization through Imagick-backed TIFF rendering, and adds a 10 MB default
+TIFF source byte limit plus the existing VLM page limit. `fax_packet` is now
+runtime-ingestion supported, but fax facts are counted and persisted as cited
+document facts only; there is no chart-table promotion, packet splitting, OCR
+layer, or TIFF browser preview endpoint in this epic. DOCX, XLSX, and HL7 v2
+remain fail-closed contract-only types.
 
 ### Epic 5 - DOCX Referral Support
 

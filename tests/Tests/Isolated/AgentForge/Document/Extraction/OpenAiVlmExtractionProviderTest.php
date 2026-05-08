@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistry;
 use OpenEMR\AgentForge\Document\Content\NormalizedDocumentContent;
 use OpenEMR\AgentForge\Document\Content\NormalizedDocumentSource;
 use OpenEMR\AgentForge\Document\Content\NormalizedMessageSegment;
+use OpenEMR\AgentForge\Document\Content\NormalizedRenderedPage;
 use OpenEMR\AgentForge\Document\Content\NormalizedTable;
 use OpenEMR\AgentForge\Document\Content\NormalizedTextSection;
 use OpenEMR\AgentForge\Document\DocumentId;
@@ -162,6 +163,52 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertSecondContentImageJpegDataUrl($content);
     }
 
+    public function testExtractFaxPacketUsesFaxSchemaAndRenderedTiffPages(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiFaxResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+            contentNormalizers: new DocumentContentNormalizerRegistry([
+                new OpenAiProviderRenderedFaxNormalizer(),
+            ]),
+        );
+
+        $response = $provider->extract(
+            new DocumentId(13),
+            new DocumentLoadResult('raw-tiff-bytes', 'image/tiff', 'chen-fax-packet.tiff'),
+            DocumentType::FaxPacket,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('fax_packet', $this->factCitationSourceType($response->facts[0] ?? []));
+        $payload = $client->lastPayload();
+        $this->assertSame(
+            ['doc_type', 'packet_name', 'patient_identity', 'facts'],
+            $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
+        );
+        $this->assertStringContainsString(
+            'Requested document type: fax_packet',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
+        $encodedPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('chen-fax-packet.tiff', $encodedPayload);
+        $this->assertStringNotContainsString('raw-tiff-bytes', $encodedPayload);
+
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertCount(3, $content);
+        $this->assertSame('text', $this->contentBlockType($content, 0));
+        $this->assertSame('image_url', $this->contentBlockType($content, 1));
+        $this->assertSame('data:image/png;base64,dGlmZi1wYWdlLTE=', $this->imageDataUrlAt($content, 1));
+        $this->assertSame('image_url', $this->contentBlockType($content, 2));
+        $this->assertSame('data:image/png;base64,dGlmZi1wYWdlLTI=', $this->imageDataUrlAt($content, 2));
+        $this->assertSame('tiff', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertSame(2, $response->normalizationTelemetry['rendered_page_count'] ?? null);
+    }
+
     public function testUnsupportedMimeFailsWithStableNormalizationError(): void
     {
         $provider = new OpenAiVlmExtractionProvider(
@@ -184,6 +231,61 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
             $this->assertStringContainsString('text/plain', $exception->getMessage());
             $this->assertStringNotContainsString('plain text contents', $exception->getMessage());
             $this->assertStringNotContainsString('note.txt', $exception->getMessage());
+        }
+    }
+
+    public function testTiffMimeFailsForNonFaxDocumentType(): void
+    {
+        $provider = new OpenAiVlmExtractionProvider(
+            new RecordingExtractionOpenAiClient($this->openAiResponse()),
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        try {
+            $provider->extract(
+                new DocumentId(14),
+                new DocumentLoadResult('raw-tiff-bytes', 'image/tiff', 'lab.tiff'),
+                DocumentType::LabPdf,
+                $this->deadline(),
+            );
+            $this->fail('Expected TIFF MIME to fail for non-fax document type.');
+        } catch (ExtractionProviderException $exception) {
+            $this->assertSame(ExtractionErrorCode::UnsupportedMimeType, $exception->errorCode);
+            $this->assertStringContainsString('image/tiff', $exception->getMessage());
+            $this->assertStringNotContainsString('raw-tiff-bytes', $exception->getMessage());
+            $this->assertStringNotContainsString('lab.tiff', $exception->getMessage());
+        }
+    }
+
+    public function testFaxPacketRejectsPdfAndSingleImageMimeTypes(): void
+    {
+        $provider = new OpenAiVlmExtractionProvider(
+            new RecordingExtractionOpenAiClient($this->openAiFaxResponse()),
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        foreach ([
+            ['application/pdf', '%PDF fax bytes', 'fax.pdf'],
+            ['image/png', 'png fax bytes', 'fax.png'],
+        ] as [$mimeType, $bytes, $name]) {
+            try {
+                $provider->extract(
+                    new DocumentId(15),
+                    new DocumentLoadResult($bytes, $mimeType, $name),
+                    DocumentType::FaxPacket,
+                    $this->deadline(),
+                );
+                $this->fail('Expected non-TIFF fax packet content to fail before OpenAI request.');
+            } catch (ExtractionProviderException $exception) {
+                $this->assertSame(ExtractionErrorCode::UnsupportedMimeType, $exception->errorCode);
+                $this->assertStringContainsString($mimeType, $exception->getMessage());
+                $this->assertStringNotContainsString($bytes, $exception->getMessage());
+                $this->assertStringNotContainsString($name, $exception->getMessage());
+            }
         }
     }
 
@@ -257,6 +359,86 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         }
 
         return $url;
+    }
+
+    /**
+     * @param array<int|string, mixed> $fact
+     */
+    private function factCitationSourceType(array $fact): string
+    {
+        $citation = $fact['citation'] ?? null;
+        if (!is_array($citation)) {
+            $this->fail('Expected fact citation to be an array.');
+        }
+        $sourceType = $citation['source_type'] ?? null;
+        if (!is_string($sourceType)) {
+            $this->fail('Expected citation source_type to be a string.');
+        }
+
+        return $sourceType;
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     */
+    private function contentBlockType(array $content, int $index): string
+    {
+        $block = $this->contentBlockAt($content, $index);
+        $type = $block['type'] ?? null;
+        if (!is_string($type)) {
+            $this->fail('Expected content block type to be a string.');
+        }
+
+        return $type;
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     */
+    private function imageDataUrlAt(array $content, int $index): string
+    {
+        $block = $this->contentBlockAt($content, $index);
+        $imageUrl = $block['image_url'] ?? null;
+        if (!is_array($imageUrl)) {
+            $this->fail('Expected content block image_url to be an array.');
+        }
+        $url = $imageUrl['url'] ?? null;
+        if (!is_string($url)) {
+            $this->fail('Expected image_url.url to be a string.');
+        }
+
+        return $url;
+    }
+
+    /**
+     * @param array<int|string, mixed> $content
+     * @return array<string, mixed>
+     */
+    private function contentBlockAt(array $content, int $index): array
+    {
+        $block = $content[$index] ?? null;
+        if (!is_array($block)) {
+            $this->fail('Expected content block to be an array.');
+        }
+
+        return $this->stringKeyedArray($block);
+    }
+
+    /**
+     * @param array<mixed> $source
+     * @return array<string, mixed>
+     */
+    private function stringKeyedArray(array $source): array
+    {
+        $out = [];
+        foreach ($source as $key => $value) {
+            if (!is_string($key)) {
+                $this->fail('Expected string-keyed array.');
+            }
+            $out[$key] = $value;
+        }
+
+        return $out;
     }
 
     /** @param array<int|string, mixed> $content */
@@ -346,6 +528,43 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
                 ],
             ],
             'usage' => ['prompt_tokens' => 50, 'completion_tokens' => 20],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function openAiFaxResponse(): array
+    {
+        return [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'doc_type' => 'fax_packet',
+                            'packet_name' => 'Fax packet',
+                            'patient_identity' => [],
+                            'facts' => [
+                                [
+                                    'type' => 'fax_note',
+                                    'field_path' => 'facts[0]',
+                                    'label' => 'Referral reason',
+                                    'value' => 'Cardiology consult',
+                                    'certainty' => 'document_fact',
+                                    'confidence' => 0.86,
+                                    'citation' => [
+                                        'source_type' => 'fax_packet',
+                                        'source_id' => 'sha256:fixture',
+                                        'page_or_section' => 'page 2',
+                                        'field_or_chunk_id' => 'facts[0]',
+                                        'quote_or_value' => 'Cardiology consult',
+                                        'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.4],
+                                    ],
+                                ],
+                            ],
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ],
+            ],
+            'usage' => ['prompt_tokens' => 70, 'completion_tokens' => 25],
         ];
     }
 
@@ -458,6 +677,34 @@ final class OpenAiProviderTextContentNormalizer implements DocumentContentNormal
     public function name(): string
     {
         return 'test-text';
+    }
+}
+
+final class OpenAiProviderRenderedFaxNormalizer implements DocumentContentNormalizer
+{
+    public function supports(DocumentContentNormalizationRequest $request): bool
+    {
+        return $request->documentType === DocumentType::FaxPacket;
+    }
+
+    public function normalize(
+        DocumentContentNormalizationRequest $request,
+        Deadline $deadline,
+    ): NormalizedDocumentContent {
+        return new NormalizedDocumentContent(
+            NormalizedDocumentSource::fromLoadResult($request->document, $request->documentType),
+            renderedPages: [
+                new NormalizedRenderedPage(1, 'image/png', 'tiff-page-1'),
+                new NormalizedRenderedPage(2, 'image/png', 'tiff-page-2'),
+            ],
+            normalizer: 'tiff',
+            normalizationElapsedMs: 17,
+        );
+    }
+
+    public function name(): string
+    {
+        return 'tiff';
     }
 }
 

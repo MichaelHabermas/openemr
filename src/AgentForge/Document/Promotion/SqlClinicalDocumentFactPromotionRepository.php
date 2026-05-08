@@ -26,6 +26,8 @@ use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\Schema\DocumentCitation;
+use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -55,7 +57,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
 
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction $extraction): PromotionSummary
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary
     {
         if ($job->id === null || !$this->trustedJob($job)) {
             return PromotionSummary::empty();
@@ -79,7 +81,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                     PromotionOutcome::Retracted => ++$skipped,
                 };
             }
-        } else {
+        } elseif ($extraction instanceof IntakeFormExtraction) {
             foreach ($extraction->findings as $index => $finding) {
                 $outcome = $this->promoteIntakeFinding($job, $finding, sprintf('findings[%d]', $index));
                 match ($outcome) {
@@ -93,6 +95,16 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                     PromotionOutcome::PromotionFailed,
                     PromotionOutcome::Retracted => ++$skipped,
                 };
+            }
+        } else {
+            foreach ($extraction->facts as $index => $fact) {
+                $certainty = $this->documentFactClassifier->classify($job, $fact);
+                $this->persistGenericFact($job, $fact, $fact->fieldPath !== '' ? $fact->fieldPath : sprintf('facts[%d]', $index), $certainty);
+                if ($certainty === Certainty::NeedsReview) {
+                    ++$needsReview;
+                } else {
+                    ++$skipped;
+                }
             }
         }
 
@@ -547,6 +559,43 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $this->embedFact($factId, $finding->value, $certainty);
     }
 
+    private function persistGenericFact(
+        DocumentJob $job,
+        ExtractedClinicalFact $fact,
+        string $fieldPath,
+        Certainty $certainty,
+    ): void {
+        if ($this->facts === null || $job->id === null) {
+            return;
+        }
+
+        $valueJson = $this->genericValueJson($fact) + ['field_path' => $fieldPath];
+        $clinicalContentFingerprint = $this->fingerprinter->patientClinicalFingerprint($fact->type, $fact->label, $valueJson);
+        $factFingerprint = $this->fingerprinter->sourceFactFingerprint($job, $fact->type, $fieldPath, $valueJson);
+        $factText = trim($fact->label . ': ' . $fact->value);
+        if ($factText === ':') {
+            $factText = $fieldPath;
+        }
+
+        $factId = $this->facts->upsert(new DocumentFact(
+            null,
+            $job->patientId,
+            $job->documentId,
+            new DocumentJobId($job->id->value),
+            $job->docType,
+            $fact->type,
+            $certainty->value,
+            $factFingerprint,
+            $clinicalContentFingerprint,
+            $factText,
+            $valueJson,
+            $this->citationJson($fact->citation),
+            $fact->confidence,
+            $this->documentFactClassifier->promotionStatus($certainty),
+        ));
+        $this->embedFact($factId, $factText, $certainty);
+    }
+
     private function embedFact(int $factId, string $factText, Certainty $certainty): void
     {
         if (
@@ -617,6 +666,18 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         return [
             'field' => strtolower($finding->field),
             'value' => strtolower($finding->value),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function genericValueJson(ExtractedClinicalFact $fact): array
+    {
+        return [
+            'type' => $fact->type,
+            'label' => $fact->label,
+            'value' => $fact->value,
+            'certainty' => $fact->certainty->value,
+            'confidence' => $fact->confidence,
         ];
     }
 

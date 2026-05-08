@@ -50,9 +50,10 @@ corpus, deterministic indexing, separate MariaDB Vector tables for guideline
 chunks, sparse+dense retrieval, mandatory rerank, cited top-k output, and
 deterministic not-found/refusal for out-of-corpus questions. Current local
 proof is `baseline_met` across 65 clinical-document cases, including Epic 1
-contract-only DOCX, XLSX, TIFF, and HL7 v2 golden coverage, plus a passing
-comprehensive AgentForge gate. The new formats have strict fixture-backed
-contracts and eval visibility, not runtime normalizers or live ingestion yet.
+DOCX, XLSX, TIFF, and HL7 v2 golden coverage, plus a passing comprehensive
+AgentForge gate. Epic 4 adds bounded TIFF fax packet runtime support; DOCX,
+XLSX, and HL7 v2 remain strict fixture-backed contracts and eval visibility
+until later runtime epics.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -117,16 +118,16 @@ Fax Packet -> fax_packet
 HL7 v2 Message -> hl7v2_message
 ```
 
-Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 are category/queue targets only: the worker marks those jobs failed with `unsupported_doc_type` before provider extraction until later epics add live extraction support.
+Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 start as category/queue targets; after Epic 4, `fax_packet` jobs are runtime-supported while DOCX, XLSX, and HL7 v2 still fail with `unsupported_doc_type` before provider extraction.
 
 Epic 3 inserts the normalized-content seam used by provider-backed extraction.
 The seam lives under `src/AgentForge/Document/Content/` and converts raw OpenEMR
 document bytes into provider-ready source metadata, rendered pages, future-safe
 text/table/message placeholders, coded warnings, and aggregate normalization
-telemetry. Current runtime support remains `lab_pdf` and `intake_form`: PDF and
-PNG/JPEG/WEBP image inputs are normalized before OpenAI payload construction,
-while DOCX, XLSX, TIFF, and HL7 v2 still fail closed before normalization or
-provider calls.
+telemetry. Current runtime support includes `lab_pdf`, `intake_form`, and bounded
+`fax_packet` TIFF extraction: PDF, PNG/JPEG/WEBP image inputs, and multipage
+TIFF fax packets are normalized before OpenAI payload construction. DOCX, XLSX,
+and HL7 v2 still fail closed before normalization or provider calls.
 
 ## 5. Background Ingestion Jobs
 
@@ -1117,7 +1118,7 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-The 65-case H1/Epic 1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions. Non-PDF Epic 1 cases prove strict deterministic contracts only; runtime normalizers and live providers are deferred to later multi-format epics.
+The 65-case H1/Epic 1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions. DOCX, XLSX, and HL7 v2 Epic 1 cases prove strict deterministic contracts only; TIFF fax packet fixtures now also have a bounded runtime path through Epic 4.
 
 ## 19. Deployment Runtime
 
@@ -1239,7 +1240,7 @@ Rollback uses the existing rollback script and must leave the previous deployed 
 
 These are out of scope only after the required Week 2 core is satisfied:
 
-- No runtime ingestion claim for third document types beyond `lab_pdf` and `intake_form`; DOCX, XLSX, TIFF, and HL7 v2 are contract/eval targets until later epics add normalizers and providers.
+- No runtime ingestion claim for third document types beyond `lab_pdf`, `intake_form`, and bounded `fax_packet` TIFF support; DOCX, XLSX, and HL7 v2 are contract/eval targets until later epics add normalizers and providers.
 - No raw-PDF RAG as a substitute for strict extraction.
 - No automatic demographic overwrite from intake forms.
 - No uncited model-generated clinical claims.

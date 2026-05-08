@@ -30,7 +30,12 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
     use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
     use OpenEMR\AgentForge\Document\JobStatus;
+    use OpenEMR\AgentForge\Document\Promotion\ClinicalDocumentFactPromotionRepository;
+    use OpenEMR\AgentForge\Document\Promotion\PromotionSummary;
     use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+    use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+    use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
+    use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
     use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
     use OpenEMR\AgentForge\Document\Worker\ProcessingResult;
     use OpenEMR\AgentForge\Document\Worker\WorkerName;
@@ -223,6 +228,44 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame([], $logger->records);
         }
 
+        public function testFaxPacketRuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
+        {
+            $provider = new IntakeWorkerCountingProvider(self::strictFaxResponse(withIdentity: true));
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $promotions = new IntakeWorkerPromotionRepository();
+            $logger = new IntakeWorkerRecordingLogger();
+            $worker = new IntakeExtractorWorker(
+                $provider,
+                new CertaintyClassifier(),
+                $logger,
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+                factPromotions: $promotions,
+            );
+
+            $result = $worker->process(
+                self::job(docType: DocumentType::FaxPacket),
+                new DocumentLoadResult('tiff-bytes', 'image/tiff', 'chen-fax-packet.tiff'),
+            );
+
+            $this->assertSame(JobStatus::Succeeded, $result->terminalStatus);
+            $this->assertSame(1, $provider->calls);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
+            $this->assertInstanceOf(FaxPacketExtraction::class, $promotions->lastExtraction);
+            $record = $logger->recordByMessage('document.extraction.completed');
+            $this->assertSame(0, $record['context']['fact_count_verified']);
+            $this->assertSame(1, $record['context']['fact_count_document_fact']);
+            $this->assertSame(1, $record['context']['fact_count_needs_review']);
+            $this->assertSame('tiff', $record['context']['normalizer']);
+            $this->assertSame('image/tiff', $record['context']['source_mime_type']);
+            $this->assertStringNotContainsString('chen-fax-packet.tiff', json_encode($record['context'], JSON_THROW_ON_ERROR));
+        }
+
         public function testAmbiguousIdentityBlocksWorkerSuccessAndPersistsCheck(): void
         {
             $identityChecks = new IntakeWorkerIdentityCheckRepository();
@@ -306,8 +349,38 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
         }
 
+        private static function strictFaxResponse(bool $withIdentity = false): ExtractionProviderResponse
+        {
+            return ExtractionProviderResponse::fromStrictJson(
+                DocumentType::FaxPacket,
+                json_encode([
+                    'doc_type' => 'fax_packet',
+                    'packet_name' => 'Worker Test Fax',
+                    'patient_identity' => $withIdentity ? self::identityCandidates('fax_packet') : [],
+                    'facts' => [
+                        self::faxFact('document_fact', 'Referral reason', 0.91, 'Cardiology consult'),
+                        self::faxFact('needs_review', 'Illegible note', 0.40, 'unclear handwritten note'),
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                new DraftUsage('fixture-vlm', 13, 8, 0.0014),
+                'fixture-vlm',
+                normalizationTelemetry: [
+                    'normalizer' => 'tiff',
+                    'source_mime_type' => 'image/tiff',
+                    'source_byte_count' => 10,
+                    'rendered_page_count' => 2,
+                    'text_section_count' => 0,
+                    'table_count' => 0,
+                    'message_segment_count' => 0,
+                    'warning_codes' => [],
+                    'normalization_elapsed_ms' => 14,
+                    'document_text' => 'must be sanitized',
+                ],
+            );
+        }
+
         /** @return list<array<string, mixed>> */
-        private static function identityCandidates(): array
+        private static function identityCandidates(string $sourceType = 'lab_pdf'): array
         {
             return [
                 [
@@ -317,7 +390,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'certainty' => 'verified',
                     'confidence' => 0.99,
                     'citation' => [
-                        'source_type' => 'lab_pdf',
+                        'source_type' => $sourceType,
                         'source_id' => 'sha256:worker-test',
                         'page_or_section' => 'page 1',
                         'field_or_chunk_id' => 'patient_name',
@@ -331,7 +404,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'certainty' => 'verified',
                     'confidence' => 0.99,
                     'citation' => [
-                        'source_type' => 'lab_pdf',
+                        'source_type' => $sourceType,
                         'source_id' => 'sha256:worker-test',
                         'page_or_section' => 'page 1',
                         'field_or_chunk_id' => 'date_of_birth',
@@ -358,6 +431,27 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'source_id' => 'sha256:worker-test',
                     'page_or_section' => 'page 1',
                     'field_or_chunk_id' => $testName,
+                    'quote_or_value' => $quote,
+                    'bounding_box' => ['x' => 0.1, 'y' => 0.1, 'width' => 0.2, 'height' => 0.1],
+                ],
+            ];
+        }
+
+        /** @return array<string, mixed> */
+        private static function faxFact(string $certainty, string $label, float $confidence, string $quote): array
+        {
+            return [
+                'type' => 'fax_note',
+                'field_path' => $label,
+                'label' => $label,
+                'value' => $quote,
+                'certainty' => $certainty,
+                'confidence' => $confidence,
+                'citation' => [
+                    'source_type' => 'fax_packet',
+                    'source_id' => 'sha256:worker-test',
+                    'page_or_section' => 'page 2',
+                    'field_or_chunk_id' => $label,
                     'quote_or_value' => $quote,
                     'bounding_box' => ['x' => 0.1, 'y' => 0.1, 'width' => 0.2, 'height' => 0.1],
                 ],
@@ -475,6 +569,18 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
         public function trustedForEvidence(DocumentJobId $jobId): bool
         {
             return false;
+        }
+    }
+
+    final class IntakeWorkerPromotionRepository implements ClinicalDocumentFactPromotionRepository
+    {
+        public LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction | null $lastExtraction = null;
+
+        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary
+        {
+            $this->lastExtraction = $extraction;
+
+            return new PromotionSummary(0, 1, 1);
         }
     }
 }

@@ -37,6 +37,7 @@ final readonly class ExtractionProviderConfig
         float $timeoutSeconds = 60.0,
         float $connectTimeoutSeconds = 10.0,
         public int $maxPdfPages = 5,
+        public int $maxTiffSourceBytes = 10_485_760,
     ) {
         if ($mode === '') {
             throw new DomainException('Extraction provider mode is required.');
@@ -52,6 +53,9 @@ final readonly class ExtractionProviderConfig
         }
         if ($maxPdfPages < 1) {
             throw new DomainException('Extraction provider max PDF pages must be positive.');
+        }
+        if ($maxTiffSourceBytes < 1) {
+            throw new DomainException('Extraction provider max TIFF source bytes must be positive.');
         }
 
         $resolvedModel = $model ?? self::defaultModel($mode);
@@ -91,6 +95,7 @@ final readonly class ExtractionProviderConfig
             timeoutSeconds: AgentForgeEnv::float('AGENTFORGE_VLM_TIMEOUT_SECONDS') ?? 60.0,
             connectTimeoutSeconds: AgentForgeEnv::float('AGENTFORGE_VLM_CONNECT_TIMEOUT_SECONDS') ?? 10.0,
             maxPdfPages: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_PAGES') ?? 5,
+            maxTiffSourceBytes: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_TIFF_BYTES') ?? 10_485_760,
         );
     }
 

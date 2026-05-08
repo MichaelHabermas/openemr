@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\ClinicalDocumentIngestionWorkflow;
+use OpenEMR\AgentForge\Document\DocumentFactClassifier;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
@@ -23,6 +24,7 @@ use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Promotion\ClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentJobProcessor;
@@ -89,7 +91,11 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
             return ProcessingResult::failed('schema_validation_failure', 'Extraction provider returned schema-invalid output.');
         }
 
-        if (!$response->extraction instanceof LabPdfExtraction && !$response->extraction instanceof IntakeFormExtraction) {
+        if (
+            !$response->extraction instanceof LabPdfExtraction
+            && !$response->extraction instanceof IntakeFormExtraction
+            && !$response->extraction instanceof FaxPacketExtraction
+        ) {
             $timer->stop('extraction:parse_response');
             return ProcessingResult::failed('schema_validation_failure', 'Extraction provider returned schema-invalid output.');
         }
@@ -138,7 +144,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
     private function verifyIdentity(
         DocumentJob $job,
         DocumentLoadResult $document,
-        LabPdfExtraction | IntakeFormExtraction $extraction,
+        LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction,
     ): ?ProcessingResult {
         if (
             $job->id === null
@@ -194,7 +200,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
     /**
      * @return array{verified: int, document_fact: int, needs_review: int}
      */
-    private function countFactBuckets(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction $extraction): array
+    private function countFactBuckets(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): array
     {
         $counts = [
             'verified' => 0,
@@ -202,9 +208,28 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
             'needs_review' => 0,
         ];
 
-        $candidates = $extraction instanceof LabPdfExtraction ? $extraction->results : $extraction->findings;
+        if ($extraction instanceof FaxPacketExtraction) {
+            $documentFactClassifier = new DocumentFactClassifier($this->classifier);
+            foreach ($extraction->facts as $candidate) {
+                $certainty = $documentFactClassifier->classify($job, $candidate);
+                ++$counts[$certainty->value];
+            }
+
+            return [
+                'verified' => $counts['verified'],
+                'document_fact' => $counts['document_fact'],
+                'needs_review' => $counts['needs_review'],
+            ];
+        }
+
+        if ($extraction instanceof LabPdfExtraction) {
+            $candidates = $extraction->results;
+        } else {
+            $candidates = $extraction->findings;
+        }
         foreach ($candidates as $candidate) {
-            ++$counts[$this->classifier->classify($job->docType, $candidate)->value];
+            $certainty = $this->classifier->classify($job->docType, $candidate);
+            ++$counts[$certainty->value];
         }
 
         return [

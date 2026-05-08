@@ -42,10 +42,11 @@ Contracts that downstream code depends on.
 
 - `clinical_document_type_mappings` maps OpenEMR document categories to clinical document types. One category → one doc type.
 - `clinical_document_processing_jobs` is the durable queue. Job enqueue is idempotent for `(patient_id, document_id, doc_type)`. `retracted` is terminal.
-- Demo category mappings include `Referral Document -> referral_docx`, `Clinical Workbook -> clinical_workbook`, `Fax Packet -> fax_packet`, and `HL7 v2 Message -> hl7v2_message`; these enqueue jobs but remain contract-only.
+- Demo category mappings include `Referral Document -> referral_docx`, `Clinical Workbook -> clinical_workbook`, `Fax Packet -> fax_packet`, and `HL7 v2 Message -> hl7v2_message`; `Fax Packet` now has bounded TIFF runtime support, while the DOCX/XLSX/HL7 mappings still enqueue contract-only jobs.
 - Contract-only document jobs must fail closed with `unsupported_doc_type` before provider extraction until normalizers/providers are implemented.
 - When a contract-only type becomes runtime-supported, its epic must requeue or migrate existing failed `unsupported_doc_type` jobs because duplicate enqueue returns the existing unique job row.
-- Epic 3 added the normalized-content seam for runtime-supported PDF/image extraction only. `DocumentExtractionProvider::extract(DocumentLoadResult ...)` intentionally remains stable; OpenAI extraction normalizes internally through `DocumentContentNormalizerRegistry`.
+- Epic 3 added the normalized-content seam for runtime-supported PDF/image extraction. Epic 4 reuses that seam for multipage TIFF fax packets via rendered PNG pages. `DocumentExtractionProvider::extract(DocumentLoadResult ...)` intentionally remains stable; OpenAI extraction normalizes internally through `DocumentContentNormalizerRegistry`.
+- `fax_packet` is runtime-supported as one source document with page citations. Fax facts stay cited document facts only; do not split packets into child documents, add TIFF preview endpoints, or promote fax facts into chart tables without a later approved epic.
 - Normalization telemetry is aggregate-only: normalizer name, MIME type, byte count, content counts, warning codes, and elapsed time. Never log filenames, raw text, raw cells, raw HL7, quotes, extracted values, rendered bytes, or data URLs.
 - Only `intake-extractor` may claim `clinical_document_processing_jobs`. `supervisor` records routing/handoffs, and `evidence-retriever` is answer-time evidence retrieval, not a document-job processor.
 - `clinical_document_retractions` is append-only audit. Prior/new state JSON, action, actor, reason, timestamp.

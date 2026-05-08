@@ -13,10 +13,11 @@ declare(strict_types=1);
 namespace OpenEMR\AgentForge\Document\Promotion;
 
 use OpenEMR\AgentForge\Document\DocumentJob;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 
 interface ClinicalDocumentFactPromotionRepository
 {
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction $extraction): PromotionSummary;
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | FaxPacketExtraction $extraction): PromotionSummary;
 }

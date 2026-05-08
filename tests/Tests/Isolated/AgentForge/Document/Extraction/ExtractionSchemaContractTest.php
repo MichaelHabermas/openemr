@@ -15,6 +15,8 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Extraction;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
 use OpenEMR\AgentForge\Document\Extraction\JsonSchemaBuilder;
+use OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
@@ -85,6 +87,64 @@ final class ExtractionSchemaContractTest extends TestCase
         );
         $this->assertTrue($response->schemaValid);
         $this->assertNotNull($response->extraction);
+    }
+
+    public function testMinimalFaxPacketJsonParsesAndMatchesSchemaRootAndFactKeys(): void
+    {
+        $json = json_encode($this->minimalFaxPayload(), JSON_THROW_ON_ERROR);
+        $extraction = FaxPacketExtraction::fromJson($json);
+        $this->assertSame(DocumentType::FaxPacket, $extraction->documentType);
+        $this->assertCount(1, $extraction->facts);
+
+        $schema = (new JsonSchemaBuilder())->schema(DocumentType::FaxPacket);
+        $this->assertSchemaObjectRequiredKeys(
+            $schema,
+            ['doc_type', 'packet_name', 'patient_identity', 'facts'],
+        );
+        $items = $this->nestedSchemaItems($schema, ['properties', 'facts']);
+        $this->assertSchemaObjectRequiredKeys(
+            $items,
+            ['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'],
+        );
+
+        $response = ExtractionProviderResponse::fromStrictJson(
+            DocumentType::FaxPacket,
+            $json,
+            DraftUsage::fixture(),
+        );
+        $this->assertTrue($response->schemaValid);
+        $this->assertInstanceOf(FaxPacketExtraction::class, $response->extraction);
+    }
+
+    public function testFaxPacketJsonRequiresFacts(): void
+    {
+        $payload = $this->minimalFaxPayload();
+        $payload['facts'] = [];
+
+        $this->expectException(ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected at least one fax packet fact.');
+
+        FaxPacketExtraction::fromArray($payload);
+    }
+
+    public function testFaxPacketRejectsCitationSourceTypeThatDoesNotMatchDocumentType(): void
+    {
+        $payload = $this->minimalFaxPayload();
+        $facts = $payload['facts'];
+        $this->assertIsArray($facts);
+        $fact = $facts[0] ?? null;
+        $this->assertIsArray($fact);
+        $citation = $fact['citation'] ?? null;
+        $this->assertIsArray($citation);
+        $citation['source_type'] = 'lab_pdf';
+        $fact['citation'] = $citation;
+        $facts[0] = $fact;
+        $payload['facts'] = $facts;
+
+        $this->expectException(ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected source type fax_packet.');
+
+        FaxPacketExtraction::fromArray($payload);
     }
 
     public function testNormalizationTelemetryKeepsOnlySafeAggregateFields(): void
@@ -229,6 +289,34 @@ final class ExtractionSchemaContractTest extends TestCase
                         'page_or_section' => '1',
                         'field_or_chunk_id' => 'allergies',
                         'quote_or_value' => 'NKDA',
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function minimalFaxPayload(): array
+    {
+        return [
+            'doc_type' => 'fax_packet',
+            'packet_name' => 'Fax Packet',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'fax_note',
+                    'field_path' => 'facts[0]',
+                    'label' => 'Referral reason',
+                    'value' => 'Cardiology consult',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.9,
+                    'citation' => [
+                        'source_type' => 'fax_packet',
+                        'source_id' => 'doc:3',
+                        'page_or_section' => 'page 3',
+                        'field_or_chunk_id' => 'facts[0]',
+                        'quote_or_value' => 'Cardiology consult',
+                        'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.4],
                     ],
                 ],
             ],

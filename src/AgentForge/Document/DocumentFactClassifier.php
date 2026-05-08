@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Document;
 
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabResultRow;
 
@@ -23,8 +24,12 @@ final readonly class DocumentFactClassifier
     {
     }
 
-    public function classify(DocumentJob $job, LabResultRow | IntakeFormFinding $candidate): Certainty
+    public function classify(DocumentJob $job, LabResultRow | IntakeFormFinding | ExtractedClinicalFact $candidate): Certainty
     {
+        if ($candidate instanceof ExtractedClinicalFact) {
+            return $candidate->certainty === Certainty::NeedsReview ? Certainty::NeedsReview : Certainty::DocumentFact;
+        }
+
         if ($candidate instanceof IntakeFormFinding) {
             return $candidate->certainty === Certainty::NeedsReview ? Certainty::NeedsReview : Certainty::DocumentFact;
         }

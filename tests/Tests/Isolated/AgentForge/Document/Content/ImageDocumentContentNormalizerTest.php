@@ -34,6 +34,11 @@ final class ImageDocumentContentNormalizerTest extends TestCase
         $content = $normalizer->normalize($request, new Deadline(new TickingMonotonicClock([200]), 1_000));
 
         $this->assertTrue($normalizer->supports($request));
+        $this->assertFalse($normalizer->supports(new DocumentContentNormalizationRequest(
+            new DocumentId(9),
+            DocumentType::FaxPacket,
+            new DocumentLoadResult('png-bytes', 'image/png', 'fax.png'),
+        )));
         $this->assertSame(hash('sha256', $document->bytes), $content->source->sha256);
         $this->assertSame('image/png', $content->source->mimeType);
         $this->assertSame('data:image/png;base64,cG5nLWJ5dGVz', $content->renderedPages[0]->dataUrl());

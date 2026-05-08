@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Promotion\PromotionOutcome;
 use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionRepository;
+use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use PHPUnit\Framework\TestCase;
@@ -208,6 +209,24 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame('no_safe_native_destination', $executor->lastConflictReason);
     }
 
+    public function testFaxPacketFactsAreNotPromotedIntoNativeChartTables(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::FaxPacket),
+            $this->faxExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(1, $summary->skipped);
+        $this->assertSame(0, $executor->insertCount('procedure_order'));
+        $this->assertSame(0, $executor->insertCount('procedure_report'));
+        $this->assertSame(0, $executor->insertCount('procedure_result'));
+        $this->assertSame(0, $executor->insertCount('lists'));
+        $this->assertSame(0, $executor->ledgerWrites);
+    }
+
     private function job(DocumentType $type): DocumentJob
     {
         return new DocumentJob(
@@ -282,6 +301,35 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'certainty' => 'verified',
                     'confidence' => 0.95,
                     'citation' => $this->citation('intake_form'),
+                ],
+            ],
+        ]);
+    }
+
+    private function faxExtraction(): FaxPacketExtraction
+    {
+        return FaxPacketExtraction::fromArray([
+            'doc_type' => 'fax_packet',
+            'packet_name' => 'Fax packet',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'fax_note',
+                    'field_path' => 'facts[0]',
+                    'label' => 'Referral reason',
+                    'value' => 'Cardiology consult',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.9,
+                    'citation' => $this->citation('fax_packet'),
+                ],
+                [
+                    'type' => 'fax_note',
+                    'field_path' => 'facts[1]',
+                    'label' => 'Illegible note',
+                    'value' => 'Needs review',
+                    'certainty' => 'needs_review',
+                    'confidence' => 0.4,
+                    'citation' => $this->citation('fax_packet'),
                 ],
             ],
         ]);

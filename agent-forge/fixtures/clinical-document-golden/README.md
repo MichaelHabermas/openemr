@@ -48,7 +48,7 @@ Rubric expectations are `true`, `false`, or `null`. `null` means the rubric is n
 
 ## Epic 1 multi-format contract coverage
 
-Epic 1 is a fail-first contract layer, not runtime ingestion for every format. The source fixture manifest covers every real file under `agent-forge/docs/example-documents/`, marks `source-previews/*.png` as `preview_only`, and links deterministic extraction sidecars only for formats that participate in the golden gate. DOCX, XLSX, TIFF, and HL7 v2 cases validate strict schemas, identity evidence, citations, document-fact proof records, and no-PHI logging without adding normalizers or live extraction providers yet.
+Epic 1 is a fail-first contract layer, not runtime ingestion for every format. The source fixture manifest covers every real file under `agent-forge/docs/example-documents/`, marks `source-previews/*.png` as `preview_only`, and links deterministic extraction sidecars only for formats that participate in the golden gate. DOCX, XLSX, TIFF, and HL7 v2 cases validate strict schemas, identity evidence, citations, document-fact proof records, and no-PHI logging. Epic 4 promotes the TIFF fax packet path from contract-only to bounded runtime support while keeping DOCX, XLSX, and HL7 v2 contract-only.
 
 ## 2026-05-06 audit follow-ups
 
@@ -66,9 +66,10 @@ registered rubric, or loses required H1 coverage tags such as
 `hl7v2_adt`, `hl7v2_oru`, and `preview_only_excluded`.
 
 Epic 3 adds a runtime normalized-content seam for currently supported PDF/image
-extraction input. It does not change this golden suite's strict extraction facts,
-fixture sidecars, SHA-256 lookup behavior, or DOCX/XLSX/TIFF/HL7 contract-only
-baseline semantics.
+extraction input. Epic 4 reuses that seam for TIFF fax packets by rendering
+pages to normalized PNG content, without changing this golden suite's strict
+extraction facts, fixture sidecars, or SHA-256 lookup behavior. DOCX/XLSX/HL7
+baseline semantics remain contract-only.
 
 ### Threshold tightening (done)
 
@@ -116,8 +117,11 @@ They are kept here to inform future work.
 
 ### Coverage gaps still open
 
-- No runtime normalizers or live extraction providers for DOCX, XLSX, TIFF,
-  or HL7 v2 yet; Epic 1 proves strict fixture-backed contracts only.
+- No runtime normalizers or live extraction providers for DOCX, XLSX, or HL7 v2
+  yet; Epic 1 proves strict fixture-backed contracts only. TIFF fax packets have
+  bounded runtime support as one multi-page source document, but no OCR layer,
+  packet splitting, chart promotion, or TIFF browser preview endpoint is claimed
+  here.
 - No multi-section clinical notes (discharge summaries, progress notes,
   H&Ps, op notes, consult notes, ED triage).
 - No medical coding (LOINC, SNOMED, ICD-10, RxNorm, CPT) in inputs or
