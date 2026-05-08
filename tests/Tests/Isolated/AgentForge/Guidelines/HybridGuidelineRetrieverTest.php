@@ -87,6 +87,27 @@ final class HybridGuidelineRetrieverTest extends TestCase
         $this->assertGreaterThan(0, $spy->lastCandidateCount);
     }
 
+    public function testSparseAndDenseRetrievalBothRunBeforeRerank(): void
+    {
+        $repository = new InMemoryGuidelineChunkRepository();
+        $embeddingProvider = new DeterministicGuidelineEmbeddingProvider();
+        $indexer = new GuidelineCorpusIndexer($repository, $embeddingProvider, $this->corpusDir());
+        $indexer->index();
+        $spy = new SpyReranker();
+
+        (new HybridGuidelineRetriever(
+            $repository,
+            $embeddingProvider,
+            $spy,
+            $indexer->corpusVersion(),
+        ))->retrieve('LDL cholesterol 130 follow-up');
+
+        $this->assertSame(1, $repository->sparseSearchCount);
+        $this->assertSame(1, $repository->denseSearchCount);
+        $this->assertSame(1, $spy->callCount);
+        $this->assertGreaterThan(0, $spy->lastCandidateCount);
+    }
+
     private function retriever(?GuidelineReranker $reranker = null): HybridGuidelineRetriever
     {
         $repository = new InMemoryGuidelineChunkRepository();

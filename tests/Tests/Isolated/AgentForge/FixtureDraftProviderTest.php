@@ -49,6 +49,29 @@ final class FixtureDraftProviderTest extends TestCase
         $this->assertNull($draft->usage->estimatedCost);
     }
 
+    public function testDocumentReviewEvidenceIsDraftedAsNeedsReview(): void
+    {
+        $draft = (new FixtureDraftProvider())->draft(
+            new DraftRequest(
+                new AgentQuestion('What changed in recent documents, which evidence is notable, and what sources support it?'),
+                new PatientId(900101),
+            ),
+            new EvidenceBundle([
+                new EvidenceBundleItem(
+                    'document_review',
+                    'document_review:clinical_document_facts/42@2026-05-06',
+                    '2026-05-06',
+                    'Needs review: intake finding',
+                    'shellfish?? maybe iodine itchy?; Citation: intake_form, page 2, needs_review[0]',
+                ),
+            ]),
+            $this->deadline(),
+        );
+
+        $this->assertSame(DraftClaim::TYPE_NEEDS_REVIEW, $draft->claims[0]->type);
+        $this->assertSame(['document_review:clinical_document_facts/42@2026-05-06'], $draft->claims[0]->citedSourceIds);
+    }
+
     public function testAdviceQuestionProducesRefusalDraft(): void
     {
         $draft = (new FixtureDraftProvider())->draft(

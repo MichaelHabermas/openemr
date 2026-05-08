@@ -21,6 +21,7 @@ final class InMemoryGuidelineChunkRepository implements GuidelineChunkRepository
     private array $embeddingsByChunkId = [];
 
     public int $replaceCount = 0;
+    public int $sparseSearchCount = 0;
     public int $denseSearchCount = 0;
 
     public function replaceCorpus(string $corpusVersion, array $chunks, GuidelineEmbeddingProvider $embeddingProvider): void
@@ -36,6 +37,7 @@ final class InMemoryGuidelineChunkRepository implements GuidelineChunkRepository
 
     public function sparseSearch(string $corpusVersion, string $query, int $limit): array
     {
+        $this->sparseSearchCount++;
         $queryTokens = DeterministicGuidelineEmbeddingProvider::tokens($query);
         $candidates = [];
         foreach ($this->findActiveByVersion($corpusVersion) as $chunk) {

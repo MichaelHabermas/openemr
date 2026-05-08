@@ -315,6 +315,9 @@ final readonly class VerifiedDraftingPipeline
         $citations = [];
 
         foreach ($draft->claims as $claim) {
+            if ($claim->type === DraftClaim::TYPE_NEEDS_REVIEW) {
+                continue;
+            }
             $verifiedSentenceIds[] = $claim->sentenceId;
             if (in_array($claim->type, [DraftClaim::TYPE_PATIENT_FACT, DraftClaim::TYPE_GUIDELINE_EVIDENCE], true)) {
                 $citations = array_merge($citations, $claim->citedSourceIds);

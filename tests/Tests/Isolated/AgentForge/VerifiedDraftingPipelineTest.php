@@ -259,6 +259,33 @@ final class VerifiedDraftingPipelineTest extends TestCase
         $this->assertContains('document_review:clinical_document_facts/42@2026-05-06', $result->response->citations);
     }
 
+    public function testUnavailableProviderFallbackDoesNotUseDocumentReviewAsReasoning(): void
+    {
+        $result = (new VerifiedDraftingPipeline(
+            new PipelineUnavailableProvider(),
+            new DraftVerifier(),
+            new SystemMonotonicClock(),
+        ))->run(
+            new AgentRequest(
+                new PatientId(900101),
+                new AgentQuestion('What changed in recent documents, which evidence is notable, and what sources support it?'),
+            ),
+            $this->documentGuidelineBundleWithReviewEvidence(),
+            'follow_up_change_review',
+            ['Recent clinical documents', 'Guideline Evidence'],
+        );
+
+        $reviewLine = 'Needs human review; not used for reasoning: Needs review: intake finding: shellfish?? maybe iodine itchy?; Citation: intake_form, page 2, needs_review[0]';
+        $this->assertSame('ok', $result->response->status);
+        $this->assertStringNotContainsString('shellfish?? maybe iodine itchy?', $result->response->answer);
+        $this->assertContains($reviewLine, $result->response->missingOrUncheckedSections);
+        $this->assertSame('Patient Findings', $result->response->sections[0]['title']);
+        $this->assertSame('Needs Human Review', $result->response->sections[1]['title']);
+        $this->assertSame('Guideline Evidence', $result->response->sections[2]['title']);
+        $this->assertStringContainsString($reviewLine, $result->response->sections[1]['content']);
+        $this->assertContains('document_review:clinical_document_facts/42@2026-05-06', $result->response->citations);
+    }
+
 
     public function testVisitBriefingDoesNotEchoUnsafeNoteEvidenceDuringCompletion(): void
     {

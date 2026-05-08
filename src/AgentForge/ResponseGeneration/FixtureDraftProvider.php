@@ -59,9 +59,11 @@ final class FixtureDraftProvider implements DraftProvider
             $sentenceId = sprintf('s%d', $index);
             $text = sprintf('%s: %s [%s]', $item->displayLabel, $item->value, $item->sourceId);
             $sentences[] = new DraftSentence($sentenceId, $text);
-            $claimType = $item->sourceType === 'guideline'
-                ? DraftClaim::TYPE_GUIDELINE_EVIDENCE
-                : DraftClaim::TYPE_PATIENT_FACT;
+            $claimType = match ($item->sourceType) {
+                'guideline' => DraftClaim::TYPE_GUIDELINE_EVIDENCE,
+                'document_review' => DraftClaim::TYPE_NEEDS_REVIEW,
+                default => DraftClaim::TYPE_PATIENT_FACT,
+            };
             $claims[] = new DraftClaim(
                 sprintf('%s: %s', $item->displayLabel, $item->value),
                 $claimType,
