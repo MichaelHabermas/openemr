@@ -25,7 +25,7 @@ final class ClinicalDocumentDeployedSmokeRunnerTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['AGENTFORGE_SMOKE_USER', 'AGENTFORGE_SMOKE_PASSWORD', 'AGENTFORGE_CLINICAL_SMOKE_LAB_PATH', 'AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH'] as $name) {
+        foreach (['AGENTFORGE_SMOKE_USER', 'AGENTFORGE_SMOKE_PASSWORD', 'AGENTFORGE_CLINICAL_SMOKE_LAB_PATH', 'AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH', 'AGENTFORGE_VM_SSH_HOST'] as $name) {
             $this->priorEnv[$name] = getenv($name);
             putenv($name);
         }
@@ -57,6 +57,36 @@ final class ClinicalDocumentDeployedSmokeRunnerTest extends TestCase
         $this->assertContains('AGENTFORGE_SMOKE_PASSWORD is required', $issues);
         $this->assertContains('lab_path does not point to a readable fixture', $issues);
         $this->assertContains('intake_path does not point to a readable fixture', $issues);
+    }
+
+    public function testPreflightRequiresSshHostForRemoteDeployedUrl(): void
+    {
+        $fixture = dirname(__DIR__, 4) . '/agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf';
+
+        $issues = \agentforge_clinical_smoke_preflight_issues([
+            'base_url' => 'https://openemr.example.test/',
+            'username' => 'smoke',
+            'password' => 'secret',
+            'lab_path' => $fixture,
+            'intake_path' => $fixture,
+        ]);
+
+        $this->assertContains('AGENTFORGE_VM_SSH_HOST is required when AGENTFORGE_DEPLOYED_URL points at a remote host', $issues);
+    }
+
+    public function testPreflightAllowsLocalhostWithoutSshHost(): void
+    {
+        $fixture = dirname(__DIR__, 4) . '/agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf';
+
+        $issues = \agentforge_clinical_smoke_preflight_issues([
+            'base_url' => 'http://127.0.0.1:8300/',
+            'username' => 'smoke',
+            'password' => 'secret',
+            'lab_path' => $fixture,
+            'intake_path' => $fixture,
+        ]);
+
+        $this->assertNotContains('AGENTFORGE_VM_SSH_HOST is required when AGENTFORGE_DEPLOYED_URL points at a remote host', $issues);
     }
 
     public function testArtifactRedactionRemovesRawClinicalContentKeys(): void

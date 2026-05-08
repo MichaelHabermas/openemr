@@ -161,8 +161,30 @@ function agentforge_clinical_smoke_preflight_issues(array $config): array
     if (!extension_loaded('curl')) {
         $issues[] = 'PHP curl extension is required';
     }
+    if (agentforge_clinical_smoke_requires_remote_db((string) ($config['base_url'] ?? ''))) {
+        $sshHost = getenv('AGENTFORGE_VM_SSH_HOST');
+        if (
+            !is_string($sshHost)
+            || trim($sshHost) === ''
+            || in_array(strtolower(trim($sshHost)), ['local', 'docker-compose'], true)
+        ) {
+            $issues[] = 'AGENTFORGE_VM_SSH_HOST is required when AGENTFORGE_DEPLOYED_URL points at a remote host';
+        }
+    }
 
     return $issues;
+}
+
+function agentforge_clinical_smoke_requires_remote_db(string $baseUrl): bool
+{
+    $host = parse_url($baseUrl, PHP_URL_HOST);
+    if (!is_string($host) || trim($host) === '') {
+        return false;
+    }
+
+    $normalized = strtolower($host);
+
+    return !in_array($normalized, ['localhost', '127.0.0.1', '::1'], true);
 }
 
 /**

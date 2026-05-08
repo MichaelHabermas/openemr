@@ -60,6 +60,8 @@ final class SensitiveLogPolicy
         'fact_count_verified' => true,
         'fact_count_document_fact' => true,
         'fact_count_needs_review' => true,
+        'extraction_confidence_min' => true,
+        'extraction_confidence_avg' => true,
         'schema_valid' => true,
         'pages_rendered' => true,
         'http_status' => true,

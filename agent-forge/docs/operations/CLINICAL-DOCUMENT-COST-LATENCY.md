@@ -1,6 +1,6 @@
 # Week 2 Clinical Document Cost And Latency
 
-**Updated:** 2026-05-07
+**Updated:** 2026-05-08
 **Scope:** Week 2 clinical-document path: strict document extraction, guideline retrieval, supervisor handoffs, no-PHI logging, and deterministic eval artifacts.
 **Status:** Reproducible report rendered from AgentForge proof artifacts. Values are labeled as measured, projected, placeholder, or unknown.
 
@@ -14,8 +14,8 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Artifact | Role |
 | --- | --- |
-| `agent-forge/eval-results/clinical-document-20260507-202311/run.json` | Source input for this rendered report. |
-| `agent-forge/eval-results/clinical-document-20260507-202311/summary.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-001019/run.json` | Source input for this rendered report. |
+| `agent-forge/eval-results/clinical-document-20260508-001019/summary.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/tier2-live-20260503-202550.json` | Source input for this rendered report. |
 | `agent-forge/eval-results/deployed-smoke-20260503-201547.json` | Source input for this rendered report. |
 
@@ -23,7 +23,7 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 
 | Metric | Value | Interpretation |
 | --- | ---: | --- |
-| Clinical run executed at | `2026-05-07T20:23:11+00:00` | Source clinical-document summary timestamp. |
+| Clinical run executed at | `2026-05-08T00:10:19+00:00` | Source clinical-document summary timestamp. |
 | Clinical cases | `59` | Deterministic Week 2 gate cases. |
 | Clinical verdict | `baseline_met` | Baseline/threshold result from the gate. |
 | Clinical handoff p50 | `placeholder 0 ms` | Instrumentation placeholder, not runtime proof. |
@@ -42,6 +42,17 @@ The available live-provider development spend baseline is $0.015599 using `gpt-5
 - Human-review operations for identity mismatch, uncertain facts, duplicate handling, and retractions.
 - Audit retention, backup, monitoring, incident response, and vendor/compliance review.
 
+## Projected Model Spend
+
+Token-only projection from the available live-provider baseline. This excludes hosting, storage, monitoring, backups, audit retention, support/on-call, compliance work, and human-review operations.
+
+| Monthly requests | Projected model spend | Basis |
+| ---: | ---: | --- |
+| `1,000` | `$15.599250` | $0.015599/request from the latest live artifact. |
+| `10,000` | `$155.992500` | $0.015599/request from the latest live artifact. |
+| `100,000` | `$1559.925000` | $0.015599/request from the latest live artifact. |
+| `1,000,000` | `$15599.250000` | $0.015599/request from the latest live artifact. |
+
 ## Bottleneck Analysis
 
 Stage-timing drivers from available artifacts:
@@ -57,5 +68,6 @@ Stage-timing drivers from available artifacts:
 | --- | --- | --- |
 | Cost/latency report exists. | Implemented | This file is rendered by `agent-forge/scripts/render-clinical-document-cost-latency.php`. |
 | Actual dev spend is not invented. | Implemented | Missing clinical-document cost renders as unknown; available Tier 2 spend is shown separately. |
+| Projected production cost is labeled. | Implemented | Model-spend projections are derived only from measured live-provider spend and explicitly exclude non-token operating costs. |
 | p50/p95 latency is reported honestly. | Implemented | Placeholder clinical latency is labeled separately from measured live/deployed latency. |
 | Bottleneck analysis exists. | Implemented | Uses stage timings when present and deterministic fallback drivers otherwise. |

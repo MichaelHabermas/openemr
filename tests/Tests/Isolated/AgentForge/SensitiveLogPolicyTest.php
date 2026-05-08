@@ -39,6 +39,8 @@ final class SensitiveLogPolicyTest extends TestCase
             'idle_seconds' => 5,
             'claimed_count' => 1,
             'worker_status' => 'running',
+            'extraction_confidence_min' => 0.91,
+            'extraction_confidence_avg' => 0.955,
             'decision' => 'allowed',
             'question' => 'What changed?',
             'answer' => 'raw answer',
@@ -65,6 +67,8 @@ final class SensitiveLogPolicyTest extends TestCase
         $this->assertSame(5, $context['idle_seconds']);
         $this->assertSame(1, $context['claimed_count']);
         $this->assertSame('running', $context['worker_status']);
+        $this->assertSame(0.91, $context['extraction_confidence_min']);
+        $this->assertSame(0.955, $context['extraction_confidence_avg']);
         $this->assertSame('allowed', $context['decision']);
         $this->assertArrayNotHasKey('question', $context);
         $this->assertArrayNotHasKey('answer', $context);

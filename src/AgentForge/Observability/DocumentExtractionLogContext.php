@@ -46,6 +46,8 @@ final class DocumentExtractionLogContext
             'fact_count_verified' => $factCounts['verified'],
             'fact_count_document_fact' => $factCounts['document_fact'],
             'fact_count_needs_review' => $factCounts['needs_review'],
+            'extraction_confidence_min' => self::confidenceMin($response->facts),
+            'extraction_confidence_avg' => self::confidenceAvg($response->facts),
             'facts_extracted_count' => array_sum($factCounts),
             'facts_promoted_count' => $factCounts['verified'],
             'facts_needing_review_count' => $factCounts['needs_review'],
@@ -53,5 +55,37 @@ final class DocumentExtractionLogContext
             'stage_timings_ms' => $stageTimingsMs,
             'status' => 'succeeded',
         ]);
+    }
+
+    /** @param list<array<string, mixed>> $facts */
+    private static function confidenceMin(array $facts): ?float
+    {
+        $values = self::confidenceValues($facts);
+
+        return $values === [] ? null : min($values);
+    }
+
+    /** @param list<array<string, mixed>> $facts */
+    private static function confidenceAvg(array $facts): ?float
+    {
+        $values = self::confidenceValues($facts);
+
+        return $values === [] ? null : round(array_sum($values) / count($values), 6);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $facts
+     * @return list<float>
+     */
+    private static function confidenceValues(array $facts): array
+    {
+        $values = [];
+        foreach ($facts as $fact) {
+            if (is_int($fact['confidence'] ?? null) || is_float($fact['confidence'] ?? null)) {
+                $values[] = (float) $fact['confidence'];
+            }
+        }
+
+        return $values;
     }
 }

@@ -57,8 +57,8 @@ deleted-document exclusion, no-PHI telemetry checks, and artifact writing.
 
 Current local proof artifacts:
 
-- `agent-forge/eval-results/clinical-document-20260507-202311/summary.json`
-- `agent-forge/eval-results/clinical-document-20260507-202311/run.json`
+- `agent-forge/eval-results/clinical-document-20260508-001019/summary.json`
+- `agent-forge/eval-results/clinical-document-20260508-001019/run.json`
 - `agent-forge/eval-results/eval-results-20260507-202234.json`
 
 The checked-in repository does not currently include a
@@ -99,4 +99,6 @@ AGENTFORGE_CLINICAL_DOCUMENT_ENABLED
 AGENTFORGE_SMOKE_USER
 AGENTFORGE_SMOKE_PASSWORD
 AGENTFORGE_DEPLOYED_URL
+AGENTFORGE_VM_SSH_HOST
+AGENTFORGE_CLINICAL_SMOKE_PID
 ```

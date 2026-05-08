@@ -103,13 +103,15 @@ Deployed smoke tier from the VM host:
 ```sh
 export AGENTFORGE_SMOKE_USER='assigned-smoke-user'
 export AGENTFORGE_SMOKE_PASSWORD='assigned-smoke-password'
-export AGENTFORGE_VM_SSH_HOST='docker-compose'
+export AGENTFORGE_VM_SSH_HOST='assigned-vm-ssh-host'
 export AGENTFORGE_VM_AUDIT_LOG_PATH='/var/log/apache2/error.log'
 export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
 php agent-forge/scripts/run-deployed-smoke.php
 ```
 
 If the current shell is already inside `agent-forge/`, use `php scripts/run-deployed-smoke.php`.
+For remote deployed URLs, `AGENTFORGE_VM_SSH_HOST` must point at the same
+deployment VM; use `docker-compose` only for local Docker smoke targets.
 
 Deployed latency trace from the VM host:
 

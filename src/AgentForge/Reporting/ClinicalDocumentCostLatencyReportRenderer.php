@@ -51,12 +51,14 @@ final class ClinicalDocumentCostLatencyReportRenderer
             . "- MariaDB vector index writes and query work for guideline and document evidence boundaries.\n"
             . "- Human-review operations for identity mismatch, uncertain facts, duplicate handling, and retractions.\n"
             . "- Audit retention, backup, monitoring, incident response, and vendor/compliance review.\n\n"
+            . "## Projected Model Spend\n\n%s\n\n"
             . "## Bottleneck Analysis\n\n%s\n\n"
             . "## Acceptance Matrix\n\n"
             . "| Requirement | Status | Proof |\n"
             . "| --- | --- | --- |\n"
             . "| Cost/latency report exists. | Implemented | This file is rendered by `agent-forge/scripts/render-clinical-document-cost-latency.php`. |\n"
             . "| Actual dev spend is not invented. | Implemented | Missing clinical-document cost renders as unknown; available Tier 2 spend is shown separately. |\n"
+            . "| Projected production cost is labeled. | Implemented | Model-spend projections are derived only from measured live-provider spend and explicitly exclude non-token operating costs. |\n"
             . "| p50/p95 latency is reported honestly. | Implemented | Placeholder clinical latency is labeled separately from measured live/deployed latency. |\n"
             . "| Bottleneck analysis exists. | Implemented | Uses stage timings when present and deterministic fallback drivers otherwise. |\n",
             gmdate('Y-m-d'),
@@ -84,6 +86,7 @@ final class ClinicalDocumentCostLatencyReportRenderer
             $smokeP50,
             $smokeP95,
             $this->formatCost($run->tier2EstimatedCostUsd),
+            $this->projectedSpendSection($run->tier2EstimatedCostUsd),
             $this->bottleneckSection($run->stageTimingsMs),
         )) . "\n";
     }
@@ -134,6 +137,30 @@ final class ClinicalDocumentCostLatencyReportRenderer
         }
 
         return $path;
+    }
+
+    private function projectedSpendSection(?float $measuredCostPerRequest): string
+    {
+        if ($measuredCostPerRequest === null) {
+            return 'Model-spend projection is `unknown/not recorded` because no live-provider cost artifact was supplied.';
+        }
+
+        $rows = [
+            'Token-only projection from the available live-provider baseline. This excludes hosting, storage, monitoring, backups, audit retention, support/on-call, compliance work, and human-review operations.',
+            '',
+            '| Monthly requests | Projected model spend | Basis |',
+            '| ---: | ---: | --- |',
+        ];
+        foreach ([1000, 10000, 100000, 1000000] as $requests) {
+            $rows[] = sprintf(
+                '| `%s` | `%s` | %s/request from the latest live artifact. |',
+                number_format($requests),
+                $this->formatCost($measuredCostPerRequest * $requests),
+                $this->formatCost($measuredCostPerRequest),
+            );
+        }
+
+        return implode("\n", $rows);
     }
 
     /** @param array<string, int> $stageTimingsMs */

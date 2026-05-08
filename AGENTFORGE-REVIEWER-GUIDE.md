@@ -43,7 +43,7 @@ out of band by the deployed environment owner.
 | Demo patient | OpenEMR pid | Public id | Purpose |
 | --- | ---: | --- | --- |
 | Week 1 chart baseline | `900001` | `AF-DEMO-900001` | Seeded chart evidence, A1c trend, visit briefing, refusals, citations. |
-| Week 2 clinical documents | `900101` by default for deployed clinical smoke | Configurable through `AGENTFORGE_CLINICAL_SMOKE_PID` | Lab/intake upload, extraction worker, guideline retrieval, source review, retraction proof. |
+| Week 2 clinical documents | `900101` internally; default for deployed clinical smoke | `BHS-2847163` / Chen, Margaret L in the OpenEMR UI | Lab/intake upload, extraction worker, guideline retrieval, source review, retraction proof. |
 
 ## Week 1 Baseline Demo Path
 
@@ -71,8 +71,9 @@ Use this path to review the multimodal Week 2 flow.
 
 1. Run `agent-forge/scripts/health-check.sh`.
 2. Authenticate to OpenEMR with assigned demo credentials.
-3. Open the configured Week 2 fake patient. The deployed clinical smoke default
-   is `AGENTFORGE_CLINICAL_SMOKE_PID=900101`.
+3. Open the configured Week 2 fake patient. In the OpenEMR UI, search for
+   `Chen, Margaret L` or public id `BHS-2847163`; the internal pid and deployed
+   clinical smoke default are `AGENTFORGE_CLINICAL_SMOKE_PID=900101`.
 4. Upload or attach a lab PDF using the mapped `lab_pdf` category. The smoke
    runner defaults can be overridden with
    `AGENTFORGE_CLINICAL_SMOKE_LAB_PATH` and
@@ -99,13 +100,17 @@ Rerunnable deployed clinical smoke:
 export AGENTFORGE_SMOKE_USER='assigned-smoke-user'
 export AGENTFORGE_SMOKE_PASSWORD='assigned-smoke-password'
 export AGENTFORGE_DEPLOYED_URL='https://openemr.titleredacted.cc/'
-export AGENTFORGE_VM_SSH_HOST='docker-compose'
+export AGENTFORGE_VM_SSH_HOST='assigned-vm-ssh-host'
 php agent-forge/scripts/run-clinical-document-deployed-smoke.php
 ```
 
 No `clinical-document-deployed-smoke-*.json` artifact is checked into this
 checkout. Treat that as an explicit artifact gap; rerun the command above in an
-authorized deployed environment to create the artifact.
+authorized deployed environment to create the artifact. For remote deployed
+URLs, `AGENTFORGE_VM_SSH_HOST` must point at the same deployment's VM so the
+HTTP upload and database job polling inspect the same environment. Use
+`docker-compose` only for local Docker smoke targets, not for the public
+deployed URL.
 
 ## Week 2 Proof Snapshot
 
@@ -121,7 +126,7 @@ Current checked-in proof snapshot:
 
 | Check | Artifact or command | Status |
 | --- | --- | --- |
-| Week 2 clinical-document gate | `agent-forge/eval-results/clinical-document-20260507-202311/summary.json` and `run.json` | 59 cases, verdict `baseline_met`. |
+| Week 2 clinical-document gate | `agent-forge/eval-results/clinical-document-20260508-001019/summary.json` and `run.json` | 59 cases, verdict `baseline_met`. |
 | Tier 0 deterministic orchestration | `agent-forge/eval-results/eval-results-20260507-202234.json` and `LATEST-SUMMARY-TIER0.md` | 32 passed, 0 failed. |
 | Source review/browser proof | [agent-forge/docs/submission/browser-proof/MANIFEST.md](agent-forge/docs/submission/browser-proof/MANIFEST.md) | Browser screenshots and request ids for reviewer UI evidence. |
 | Cost/latency | [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md) | Rendered from current clinical-document artifact and available live/deployed baselines. |
@@ -176,8 +181,8 @@ Cost/latency report rendering:
 
 ```sh
 php agent-forge/scripts/render-clinical-document-cost-latency.php \
-  --clinical-run=agent-forge/eval-results/clinical-document-20260507-202311/run.json \
-  --clinical-summary=agent-forge/eval-results/clinical-document-20260507-202311/summary.json
+  --clinical-run=agent-forge/eval-results/clinical-document-20260508-001019/run.json \
+  --clinical-summary=agent-forge/eval-results/clinical-document-20260508-001019/summary.json
 ```
 
 ## Environment Variables
@@ -253,6 +258,7 @@ Required root submission artifacts:
 Week 2 and operations:
 
 - [agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md](agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md)
+- [agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md](agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md)
 - [agent-forge/docs/operations/COST-ANALYSIS.md](agent-forge/docs/operations/COST-ANALYSIS.md)
 - [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)
 - [agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md](agent-forge/docs/evaluation/GAUNTLET-INSTRUCTOR-REVIEWS.md)
@@ -270,6 +276,9 @@ Production readiness is not claimed.
 
 - No checked-in `clinical-document-deployed-smoke-*.json` artifact exists in
   this checkout, even though the smoke command is implemented and documented.
+- The Loom demo link is recorded, but this checkout can only verify the
+  required Week 2 video coverage through the documented checklist unless the
+  reviewer has access to inspect the recording itself.
 - The clinical-document cost/latency report honestly labels deterministic
   clinical handoff latency as placeholder when runtime timing is not present in
   the artifact.
@@ -288,6 +297,7 @@ Use this checklist from a fresh root checkout:
 - [ ] Open this guide from the README link.
 - [ ] Confirm Week 1 and Week 2 demo paths are separate.
 - [ ] Confirm [agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md](agent-forge/docs/week2/W2_ACCEPTANCE_MATRIX.md) is linked.
+- [ ] Confirm [agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md](agent-forge/docs/week2/W2_DEMO_VIDEO_CHECKLIST.md) is linked.
 - [ ] Confirm [agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md) is linked.
 - [ ] Confirm `agent-forge/scripts/check-clinical-document.sh` and `agent-forge/scripts/check-agentforge.sh` are visible.
 - [ ] Confirm env vars are visible without committed secret values.
