@@ -590,7 +590,7 @@ final class VerifiedEmptyGuidelineRetriever implements GuidelineRetriever
 {
     public function retrieve(string $query): GuidelineRetrievalResult
     {
-        return new GuidelineRetrievalResult('not_found', [], true, 0.0);
+        return new GuidelineRetrievalResult('not_found', [], null, 0.0);
     }
 }
 

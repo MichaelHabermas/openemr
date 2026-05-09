@@ -52,7 +52,7 @@ final readonly class EvidenceRetrieverWorker
         $timer?->start('evidence:' . self::GUIDELINE_SECTION);
         try {
             $guidelineResult = $this->guidelineRetriever?->retrieve($this->guidelineQuery($question, $chartRun->bundle))
-                ?? new GuidelineRetrievalResult('not_found', [], true, 0.0);
+                ?? new GuidelineRetrievalResult('not_found', [], null, 0.0);
         } catch (RuntimeException) {
             $timer?->stop('evidence:' . self::GUIDELINE_SECTION);
 

@@ -30,7 +30,7 @@ final class EvidenceRetrieverWorkerTest extends TestCase
 {
     public function testChartOnlyQuestionDoesNotRunGuidelineRetrieval(): void
     {
-        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], true, 0.4));
+        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], 'deterministic', 0.4));
 
         $run = (new EvidenceRetrieverWorker(
             new RecordingChartCollector(),
@@ -49,7 +49,7 @@ final class EvidenceRetrieverWorkerTest extends TestCase
 
     public function testGuidelineQuestionMergesCitedGuidelineEvidence(): void
     {
-        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], true, 0.4));
+        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], 'deterministic', 0.4));
 
         $run = (new EvidenceRetrieverWorker(
             new RecordingChartCollector(),
@@ -71,7 +71,7 @@ final class EvidenceRetrieverWorkerTest extends TestCase
 
     public function testGuidelineRetrievalQueryIncludesCollectedEvidenceText(): void
     {
-        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], true, 0.4));
+        $retriever = new RecordingGuidelineRetriever(new GuidelineRetrievalResult('found', [$this->candidate()], 'deterministic', 0.4));
 
         (new EvidenceRetrieverWorker(
             new RecordingChartCollector(),
@@ -92,7 +92,7 @@ final class EvidenceRetrieverWorkerTest extends TestCase
     {
         $run = (new EvidenceRetrieverWorker(
             new RecordingChartCollector(),
-            new RecordingGuidelineRetriever(new GuidelineRetrievalResult('not_found', [], true, 0.4)),
+            new RecordingGuidelineRetriever(new GuidelineRetrievalResult('not_found', [], 'deterministic', 0.4)),
         ))->retrieve(
             new PatientId(900001),
             new AgentQuestion('What is the rheumatoid arthritis guideline?'),
