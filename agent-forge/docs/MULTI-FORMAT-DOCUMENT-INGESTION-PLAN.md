@@ -33,9 +33,13 @@ The example document folder already contains broader fixture families:
 - `hl7v2/*.hl7`
 - `source-previews/*.png`
 
-PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. Epic 5 adds bounded runtime extraction for referral DOCX files by parsing a safe OOXML text/table subset. Epic 6 adds bounded runtime extraction for XLSX clinical workbooks by normalizing safe sheet/table content. HL7 v2 still has strict fixture-backed contract coverage only and does not have first-class runtime ingestion support yet.
+PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. Epic 5 adds bounded runtime extraction for referral DOCX files by parsing a safe OOXML text/table subset. Epic 6 adds bounded runtime extraction for XLSX clinical workbooks by normalizing safe sheet/table content. Epic 7 adds bounded deterministic runtime extraction for HL7 v2 ADT/ORU messages.
 
-Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support, Epic 5 moves DOCX referrals to bounded runtime support, and Epic 6 moves XLSX clinical workbooks to bounded runtime support. HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to a later epic.
+Current implementation note (2026-05-09): DOCX, XLSX, TIFF, and HL7 v2 have
+deterministic golden coverage. Epic 4 moves TIFF fax packets to bounded runtime
+support, Epic 5 moves DOCX referrals to bounded runtime support, Epic 6 moves
+XLSX clinical workbooks to bounded runtime support, and Epic 7 moves supported
+HL7 v2 ADT/ORU messages to deterministic runtime support without a model call.
 
 ## 3. Product Requirements
 
@@ -55,7 +59,7 @@ The target support matrix is:
 | Referrals      | `.docx`         | `referral_docx`      | Extract referral reason, referring/specialist clinicians, problems, medications, relevant recent labs, plan/request, and identity.                         |
 | Workbooks      | `.xlsx`         | `clinical_workbook`  | Extract sheet/table clinical rows with cell-range citations, especially labs, medication lists, care gaps, and review notes.                               |
 | Fax packets    | `.tiff`         | `fax_packet`         | Treat multipage TIFF as a packet of rendered pages; extract packet-level identity, document sections, labs/intake/referral-like facts, and page citations. |
-| HL7 v2         | `.hl7`          | `hl7v2_message`      | Parse ADT and ORU messages deterministically; extract identity, visit/order context, observations, notes, and message metadata.                            |
+| HL7 v2         | `.hl7`          | `hl7v2_message`      | Parse bounded supported ADT/ORU message shapes deterministically; extract identity, visit/order context, observations, notes, and message metadata.       |
 
 
 `source-previews/*.png` are proof artifacts, not ingestion inputs.
@@ -65,7 +69,7 @@ The target support matrix is:
 - Normal OpenEMR upload remains the only source document entry point.
 - Upload must store the source document before AgentForge work begins.
 - Eligible documents must enqueue a durable processing job by category mapping.
-- Each supported document type must have a strict schema, schema parser, fixture provider path, and live extraction/provider path.
+- Each supported document type must have a strict schema, schema parser, fixture provider path, and runtime extraction/provider path. For HL7 v2, the runtime provider is deterministic rather than model-backed.
 - Each extraction must preserve source provenance using citations that can be normalized across formats.
 - Each extraction must produce patient identity evidence before any facts become trusted evidence.
 - Identity mismatch must quarantine the document.
@@ -264,8 +268,8 @@ Initial promotion policy:
 The multi-format work is complete when:
 
 - Every file family in `agent-forge/docs/example-documents/` has at least one golden eval case.
-- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction; TIFF fax packets and DOCX referrals also have bounded live-provider normalization support.
-- Live provider mode has an implementation path for each format family.
+- DOCX, XLSX, TIFF, and HL7 v2 fixtures can run through deterministic fixture-backed extraction; TIFF fax packets, DOCX referrals, XLSX clinical workbooks, and supported HL7 v2 ADT/ORU messages also have bounded runtime support.
+- Live/provider-backed mode has an implementation path for each format family, with HL7 v2 using deterministic extraction rather than a model call for supported shapes.
 - Unsupported MIME types fail with a clear PHI-safe error.
 - Identity verification runs before facts become trusted evidence for every format.
 - Document deletion retracts facts created from every format.
@@ -357,7 +361,7 @@ keeping `DocumentExtractionProvider::extract(DocumentLoadResult ...)` stable.
 Fixture extraction remains source-SHA-keyed. TIFF fax packets move to bounded
 runtime support in Epic 4, DOCX referrals move to bounded runtime support in
 Epic 5, and XLSX clinical workbooks move to bounded runtime support in Epic 6.
-HL7 v2 remains contract-only until a later runtime-support epic.
+HL7 v2 ADT/ORU messages move to bounded deterministic runtime support in Epic 7.
 
 ### Epic 4 - TIFF Fax Packet Support
 
@@ -387,9 +391,8 @@ normalization through Imagick-backed TIFF rendering, and adds a 10 MB default
 TIFF source byte limit plus the existing VLM page limit. `fax_packet` is now
 runtime-ingestion supported, but fax facts are counted and persisted as cited
 document facts only; there is no chart-table promotion, packet splitting, OCR
-layer, or TIFF browser preview endpoint in this epic. DOCX remains fail-closed
-until Epic 5 and XLSX remains fail-closed until Epic 6; HL7 v2 remains
-fail-closed contract-only.
+layer, or TIFF browser preview endpoint in this epic. Later epics add bounded
+DOCX, XLSX, and supported HL7 v2 ADT/ORU runtime support.
 
 ### Epic 5 - DOCX Referral Support
 
@@ -421,8 +424,8 @@ footers), deterministic paragraph/table anchors, and PHI-safe aggregate
 telemetry. Referral facts remain document facts only: there is no chart
 promotion, medication reconciliation, referral/order creation, DOCX preview
 endpoint, OCR layer, arbitrary Office support, or automatic requeue of older
-failed `unsupported_doc_type` jobs. XLSX remains contract-only until Epic 6 and
-HL7 v2 remains contract-only.
+failed `unsupported_doc_type` jobs. XLSX and supported HL7 v2 ADT/ORU ingestion
+are now runtime-supported by their respective epics.
 
 ### Epic 6 - XLSX Workbook Support
 
@@ -445,11 +448,11 @@ Acceptance criteria:
 - At least one XLSX fixture extracts cited facts in fixture mode.
 - Extracted facts cite sheet names and cell/range anchors.
 - Hidden sheets, hidden rows/columns, merged cells, and formulas produce coded warnings rather than unsafe inference. External workbook relationships, macros, embedded/binary parts, unsafe content types, malformed workbooks, empty normalized content, and limit violations fail closed with PHI-safe `normalization_failed`.
-- HL7 v2 remains contract-only.
+- Supported HL7 v2 ADT/ORU ingestion is runtime-supported by Epic 7.
 
 ### Epic 7 - HL7 v2 Message Support
 
-Status: Not started.
+Status: Implemented and gated. See `EPIC_HL7_V2_MESSAGE_SUPPORT.md`.
 
 Goal: Parse HL7 v2 ADT and ORU messages deterministically.
 
@@ -468,6 +471,14 @@ Acceptance criteria:
 - At least one ADT and one ORU fixture extract cited facts in fixture mode.
 - HL7 extraction does not require a model for the supported fixture shapes.
 - Segment/field citations are stable and human-reviewable.
+
+Implementation note (2026-05-09): Epic 7 adds `Hl7v2DocumentContentNormalizer`
+and deterministic provider routing for supported ADT/ORU shapes. HL7 facts are
+persisted as cited document facts only; OBX observations are not promoted into
+OpenEMR lab tables. Historical `unsupported_doc_type` jobs are not replayed
+automatically. Focused isolated proof, the broader AgentForge document isolated
+suite, the clinical-document gate with `baseline_met`, and the comprehensive
+AgentForge check passed for this boundary.
 
 ### Epic 8 - Unified Fact Mapping, Identity, And Retrieval
 
@@ -536,9 +547,9 @@ Acceptance criteria:
 2. Add document enum values and category mappings.
 3. Introduce the normalization layer while preserving existing PDF/PNG behavior.
 4. Implement TIFF first because it is closest to the existing page-rendered VLM path.
-5. Implement HL7 v2 next because deterministic parsing gives high confidence and low model cost.
-6. Implement DOCX narrative extraction.
-7. Implement XLSX workbook extraction.
+5. Implement DOCX narrative extraction.
+6. Implement XLSX workbook extraction.
+7. Implement HL7 v2 support after bounded deterministic ADT/ORU parser proof.
 8. Generalize fact mapping only when at least two new format mappers prove the shared shape.
 9. Finish citation rendering and source review for every format.
 10. Expand the one-command gate and documentation.
@@ -561,7 +572,7 @@ Acceptance criteria:
 - Should referral facts ever promote into OpenEMR referral/order tables, or remain document facts for review only?
 - Which workbook sheets are expected to be canonical in the example XLSX files?
 - Should TIFF fax packets be split into child logical documents, or remain one packet with multiple section/page citations?
-- What is the minimum source-review UI for DOCX/XLSX/HL7 that is acceptable before visual previews are added?
+- What richer source-review UI, if any, is needed for DOCX/XLSX/HL7 beyond gated citation metadata and quote/value review?
 - What live-model cost ceiling should block oversized DOCX/TIFF packets?
 
 ## 11. Definition Of Done
@@ -569,7 +580,7 @@ Acceptance criteria:
 This plan is done when:
 
 - Every target fixture family has deterministic extraction coverage.
-- Every supported document type has a schema, parser, normalizer, mapper, identity path, citation path, and eval coverage.
+- Every supported document type has a schema, parser/provider path, normalizer where applicable, mapper, identity path, citation path, and eval coverage.
 - Existing PDF/PNG lab and intake support remains green.
 - The clinical document gate proves schema validity, citations, identity gating, PHI-safe logs, retraction, retrieval, and source review across formats.
 - The architecture still has small replaceable modules instead of format-specific branching scattered through the worker.

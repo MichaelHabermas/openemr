@@ -95,7 +95,9 @@ final class DocumentJobWorkerFactory
     {
         return match ($workerName) {
             WorkerName::IntakeExtractor => new IntakeExtractorWorker(
-                new LazyExtractionProvider(static fn () => ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())),
+                ExtractionProviderFactory::withDeterministicRoutes(
+                    new LazyExtractionProvider(static fn () => ExtractionProviderFactory::create(ExtractionProviderConfig::fromEnvironment())),
+                ),
                 new CertaintyClassifier(),
                 self::workerLogger(),
                 new SystemMonotonicClock(),

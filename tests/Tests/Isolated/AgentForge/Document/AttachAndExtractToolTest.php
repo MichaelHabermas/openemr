@@ -148,18 +148,20 @@ final class AttachAndExtractToolTest extends TestCase
         $this->assertSame(88, $result->documentId?->value);
     }
 
-    public function testContractOnlyDocumentTypesAreRejectedByRuntimeTool(): void
+    public function testHl7v2ExistingDocumentUsesProviderPath(): void
     {
         $tool = new AttachAndExtractTool(
             new InMemorySourceDocumentStorage(),
             new FixedDocumentLoader(new DocumentLoadResult('hl7-bytes', 'text/plain', 'message.hl7')),
-            new AttachToolStaticProvider(self::strictResponse()),
+            new AttachToolStaticProvider(self::strictHl7v2Response()),
+            new FixedPatientIdentityRepository(new PatientIdentity(new PatientId(1), 'Jane', 'Doe', '1980-04-15')),
+            new DocumentIdentityVerifier(),
+            new ExtractionIdentityEvidenceBuilder(),
         );
 
         $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::Hl7v2Message, self::deadline());
 
-        $this->assertFalse($result->success);
-        $this->assertSame(ExtractionErrorCode::UnsupportedDocType, $result->errorCode);
+        $this->assertTrue($result->success);
         $this->assertSame(88, $result->documentId?->value);
     }
 
@@ -240,6 +242,36 @@ final class AttachAndExtractToolTest extends TestCase
             ], JSON_THROW_ON_ERROR),
             DraftUsage::fixture(),
             'fixture-vlm',
+        );
+    }
+
+    private static function strictHl7v2Response(): ExtractionProviderResponse
+    {
+        return ExtractionProviderResponse::fromStrictJson(
+            DocumentType::Hl7v2Message,
+            json_encode([
+                'doc_type' => 'hl7v2_message',
+                'message_type' => 'ORU^R01',
+                'message_control_id' => 'MSG-ATTACH-HL7',
+                'patient_identity' => self::identityCandidates('hl7v2_message'),
+                'facts' => [[
+                    'type' => 'lab_result',
+                    'field_path' => 'OBX[1].5',
+                    'label' => 'LDL cholesterol',
+                    'value' => '142 mg/dL',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.98,
+                    'citation' => [
+                        'source_type' => 'hl7v2_message',
+                        'source_id' => 'sha256:hl7',
+                        'page_or_section' => 'message:MSG-ATTACH-HL7',
+                        'field_or_chunk_id' => 'OBX[1].5',
+                        'quote_or_value' => '142 mg/dL',
+                    ],
+                ]],
+            ], JSON_THROW_ON_ERROR),
+            DraftUsage::fixture(),
+            'deterministic-hl7v2',
         );
     }
 

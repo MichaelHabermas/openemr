@@ -45,6 +45,7 @@ final class DocumentContentNormalizerRegistryFactory
             new TiffDocumentContentNormalizer($tiffRenderer, $clock, $maxPages, $maxTiffSourceBytes),
             new DocxDocumentContentNormalizer($clock, $maxDocxSourceBytes),
             new XlsxDocumentContentNormalizer($clock, $maxXlsxSourceBytes),
+            new Hl7v2DocumentContentNormalizer($clock),
         ]);
     }
 }

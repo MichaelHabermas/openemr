@@ -16,6 +16,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
 use OpenEMR\AgentForge\Document\Content\DocumentContentNormalizerRegistryFactory;
 use OpenEMR\AgentForge\Document\Content\ImagickTiffRasterRenderer;
+use OpenEMR\AgentForge\Document\DocumentType;
 
 final class ExtractionProviderFactory
 {
@@ -30,34 +31,48 @@ final class ExtractionProviderFactory
         ?ClientInterface $httpClient = null,
     ): DocumentExtractionProvider {
         $renderer = $pdfRenderer ?? new ImagickPdfPageRenderer();
-        return match (ExtractionProviderMode::from($config->mode)) {
+        $defaultProvider = match (ExtractionProviderMode::from($config->mode)) {
             ExtractionProviderMode::Fixture => new FixtureExtractionProvider($config->fixtureManifestPath),
-            ExtractionProviderMode::OpenAi => new OpenAiVlmExtractionProvider(
-                $httpClient ?? new Client([
-                    'base_uri' => 'https://api.openai.com',
-                    'timeout' => $config->timeoutSeconds,
-                    'connect_timeout' => $config->connectTimeoutSeconds,
-                ]),
-                (string) $config->apiKey,
-                $config->model,
-                $renderer,
-                new JsonSchemaBuilder(),
-                $config->inputCostPerMillionTokens,
-                $config->outputCostPerMillionTokens,
-                $config->timeoutSeconds,
-                $config->maxPdfPages,
-                $config->maxTiffSourceBytes,
-                $config->maxDocxSourceBytes,
-                $config->maxXlsxSourceBytes,
-                DocumentContentNormalizerRegistryFactory::withTiffRenderer(
+            ExtractionProviderMode::OpenAi => new LazyExtractionProvider(
+                static fn (): DocumentExtractionProvider => new OpenAiVlmExtractionProvider(
+                    $httpClient ?? new Client([
+                        'base_uri' => 'https://api.openai.com',
+                        'timeout' => $config->timeoutSeconds,
+                        'connect_timeout' => $config->connectTimeoutSeconds,
+                    ]),
+                    (string) $config->apiKey,
+                    $config->model,
                     $renderer,
+                    new JsonSchemaBuilder(),
+                    $config->inputCostPerMillionTokens,
+                    $config->outputCostPerMillionTokens,
+                    $config->timeoutSeconds,
                     $config->maxPdfPages,
-                    new ImagickTiffRasterRenderer(),
                     $config->maxTiffSourceBytes,
                     $config->maxDocxSourceBytes,
                     $config->maxXlsxSourceBytes,
+                    DocumentContentNormalizerRegistryFactory::withTiffRenderer(
+                        $renderer,
+                        $config->maxPdfPages,
+                        new ImagickTiffRasterRenderer(),
+                        $config->maxTiffSourceBytes,
+                        $config->maxDocxSourceBytes,
+                        $config->maxXlsxSourceBytes,
+                    ),
                 ),
             ),
         };
+
+        return self::withDeterministicRoutes($defaultProvider);
+    }
+
+    public static function withDeterministicRoutes(DocumentExtractionProvider $defaultProvider): DocumentExtractionProvider
+    {
+        return new DocumentTypeRoutingExtractionProvider(
+            $defaultProvider,
+            [
+                DocumentType::Hl7v2Message->value => new Hl7v2MessageExtractionProvider(),
+            ],
+        );
     }
 }

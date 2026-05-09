@@ -80,7 +80,7 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
         }
     }
 
-    public function testFactoryRegistrySupportsPdfImagesInjectedTiffRendererDocxAndXlsx(): void
+    public function testFactoryRegistrySupportsPdfImagesInjectedTiffRendererDocxXlsxAndHl7v2(): void
     {
         $registry = DocumentContentNormalizerRegistryFactory::withTiffRenderer(
             new RegistryFactoryPdfRenderer(),
@@ -115,12 +115,18 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
             DocumentType::ClinicalWorkbook,
             new DocumentLoadResult($this->minimalXlsx(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx'),
         ), $deadline);
+        $hl7 = $registry->normalize(new DocumentContentNormalizationRequest(
+            new DocumentId(17),
+            DocumentType::Hl7v2Message,
+            new DocumentLoadResult("MSH|^~\\&|LAB|ACME|OPENEMR|CLINIC|202605090930||ADT^A08|MSG-17|P|2.5.1\rPID|1||12345||Doe^Jane", 'text/plain', 'message.hl7'),
+        ), $deadline);
 
         $this->assertSame('pdf', $pdf->telemetry()->normalizer);
         $this->assertSame('image', $image->telemetry()->normalizer);
         $this->assertSame('tiff', $tiff->telemetry()->normalizer);
         $this->assertSame('docx', $docx->telemetry()->normalizer);
         $this->assertSame('xlsx', $xlsx->telemetry()->normalizer);
+        $this->assertSame('hl7v2', $hl7->telemetry()->normalizer);
         $this->assertSame('data:image/png;base64,dGlmZi1wYWdl', $tiff->renderedPages[0]->dataUrl());
     }
 

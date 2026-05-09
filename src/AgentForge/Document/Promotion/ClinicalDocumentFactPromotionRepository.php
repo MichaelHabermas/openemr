@@ -15,11 +15,12 @@ namespace OpenEMR\AgentForge\Document\Promotion;
 use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 
 interface ClinicalDocumentFactPromotionRepository
 {
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction): PromotionSummary;
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction): PromotionSummary;
 }

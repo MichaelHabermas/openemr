@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Contract-only extraction schema for HL7 v2 message fixtures.
+ * Strict extraction schema for deterministic HL7 v2 message ingestion.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org

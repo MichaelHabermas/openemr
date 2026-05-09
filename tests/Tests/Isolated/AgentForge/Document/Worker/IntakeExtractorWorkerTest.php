@@ -35,6 +35,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
     use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
     use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
+    use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
     use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
     use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
     use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
@@ -200,10 +201,11 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame('Extraction provider returned schema-invalid output.', $result->errorMessage);
         }
 
-        public function testContractOnlyDocumentTypeFailsBeforeProviderExtraction(): void
+        public function testHl7v2RuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
         {
-            $provider = new IntakeWorkerCountingProvider(self::strictLabResponse(withIdentity: true));
+            $provider = new IntakeWorkerCountingProvider(self::strictHl7v2Response(withIdentity: true));
             $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $promotions = new IntakeWorkerPromotionRepository();
             $logger = new IntakeWorkerRecordingLogger();
             $worker = new IntakeExtractorWorker(
                 $provider,
@@ -215,6 +217,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 identityChecks: $identityChecks,
                 identityVerifier: new DocumentIdentityVerifier(),
                 identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+                factPromotions: $promotions,
             );
 
             $result = $worker->process(
@@ -222,12 +225,19 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                 new DocumentLoadResult('hl7-bytes', 'text/plain', 'message.hl7'),
             );
 
-            $this->assertSame(JobStatus::Failed, $result->terminalStatus);
-            $this->assertSame('unsupported_doc_type', $result->errorCode);
-            $this->assertSame('Document type is contract-only until runtime ingestion support is implemented.', $result->errorMessage);
-            $this->assertSame(0, $provider->calls);
-            $this->assertSame([], $identityChecks->results);
-            $this->assertSame([], $logger->records);
+            $this->assertSame(JobStatus::Succeeded, $result->terminalStatus);
+            $this->assertSame(1, $provider->calls);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
+            $this->assertInstanceOf(Hl7v2MessageExtraction::class, $promotions->lastExtraction);
+            $record = $logger->recordByMessage('document.extraction.completed');
+            $this->assertSame(0, $record['context']['fact_count_verified']);
+            $this->assertSame(1, $record['context']['fact_count_document_fact']);
+            $this->assertSame(1, $record['context']['fact_count_needs_review']);
+            $this->assertSame('hl7v2', $record['context']['normalizer']);
+            $this->assertSame('text/plain', $record['context']['source_mime_type']);
+            $this->assertSame(4, $record['context']['message_segment_count']);
+            $this->assertStringNotContainsString('message.hl7', json_encode($record['context'], JSON_THROW_ON_ERROR));
         }
 
         public function testClinicalWorkbookRuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
@@ -517,6 +527,37 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
         }
 
+        private static function strictHl7v2Response(bool $withIdentity = false): ExtractionProviderResponse
+        {
+            return ExtractionProviderResponse::fromStrictJson(
+                DocumentType::Hl7v2Message,
+                json_encode([
+                    'doc_type' => 'hl7v2_message',
+                    'message_type' => 'ORU^R01',
+                    'message_control_id' => 'MSG-WORKER-HL7',
+                    'patient_identity' => $withIdentity ? self::identityCandidates('hl7v2_message') : [],
+                    'facts' => [
+                        self::hl7v2Fact('document_fact', 'LDL cholesterol', 0.91, '142 mg/dL'),
+                        self::hl7v2Fact('needs_review', 'Result note', 0.40, 'Repeat lipid panel'),
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                new DraftUsage('deterministic-hl7v2', 0, 0, 0.0),
+                'deterministic-hl7v2',
+                normalizationTelemetry: [
+                    'normalizer' => 'hl7v2',
+                    'source_mime_type' => 'text/plain',
+                    'source_byte_count' => 10,
+                    'rendered_page_count' => 0,
+                    'text_section_count' => 0,
+                    'table_count' => 0,
+                    'message_segment_count' => 4,
+                    'warning_codes' => [],
+                    'normalization_elapsed_ms' => 14,
+                    'raw_hl7' => 'must be sanitized',
+                ],
+            );
+        }
+
         /** @return list<array<string, mixed>> */
         private static function identityCandidates(string $sourceType = 'lab_pdf'): array
         {
@@ -631,6 +672,26 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'source_id' => 'sha256:worker-test',
                     'page_or_section' => 'sheet:Labs_Trend',
                     'field_or_chunk_id' => 'H3',
+                    'quote_or_value' => $quote,
+                ],
+            ];
+        }
+
+        /** @return array<string, mixed> */
+        private static function hl7v2Fact(string $certainty, string $label, float $confidence, string $quote): array
+        {
+            return [
+                'type' => 'hl7_observation',
+                'field_path' => $label,
+                'label' => $label,
+                'value' => $quote,
+                'certainty' => $certainty,
+                'confidence' => $confidence,
+                'citation' => [
+                    'source_type' => 'hl7v2_message',
+                    'source_id' => 'sha256:worker-test',
+                    'page_or_section' => 'message:MSG-WORKER-HL7',
+                    'field_or_chunk_id' => 'OBX[1].5',
                     'quote_or_value' => $quote,
                 ],
             ];
@@ -752,9 +813,9 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
 
     final class IntakeWorkerPromotionRepository implements ClinicalDocumentFactPromotionRepository
     {
-        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | null $lastExtraction = null;
+        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction | null $lastExtraction = null;
 
-        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction): PromotionSummary
+        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction): PromotionSummary
         {
             $this->lastExtraction = $extraction;
 

@@ -42,7 +42,7 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
         $this->assertInstanceOf(ClinicalDocumentIngestionWorkflow::class, $processor);
     }
 
-    public function testContractOnlyJobFailsClosedWithoutProviderEnvironment(): void
+    public function testHl7v2JobUsesDeterministicProviderWithoutProviderEnvironment(): void
     {
         $openAiProvider = getenv('AGENTFORGE_VLM_PROVIDER', true);
         $agentForgeOpenAiKey = getenv('AGENTFORGE_OPENAI_API_KEY', true);
@@ -74,7 +74,13 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
                     retractedAt: null,
                     retractionReason: null,
                 ),
-                new DocumentLoadResult('hl7-bytes', 'text/plain', 'message.hl7'),
+                new DocumentLoadResult(
+                    "MSH|^~\\&|BHS-LIS|BHS LAB|EHR^^L|EHR|20260506143215||ORU^R01|MSG-WORKER-FACTORY|P|2.5.1\r"
+                    . "PID|1||BHS-2847163^^^MRN^MR||CHEN^MARGARET^L||19680312|F\r"
+                    . "OBX|1|NM|2089-1^LDL^LN||142|mg/dL|<100|H\r",
+                    'text/plain',
+                    'message.hl7',
+                ),
             );
         } finally {
             self::restoreEnv('AGENTFORGE_VLM_PROVIDER', $openAiProvider);
@@ -83,8 +89,8 @@ final class DocumentJobWorkerFactoryProcessorTest extends TestCase
         }
 
         $this->assertEquals(ProcessingResult::failed(
-            'unsupported_doc_type',
-            'Document type is contract-only until runtime ingestion support is implemented.',
+            'identity_ambiguous_needs_review',
+            'Patient identity could not be loaded for document verification.',
         ), $result);
     }
 

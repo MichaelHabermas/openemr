@@ -30,10 +30,13 @@ enum DocumentType: string
 
     public function runtimeIngestionSupported(): bool
     {
-        return $this === self::LabPdf
-            || $this === self::IntakeForm
-            || $this === self::ReferralDocx
-            || $this === self::ClinicalWorkbook
-            || $this === self::FaxPacket;
+        return match ($this) {
+            self::LabPdf,
+            self::IntakeForm,
+            self::ReferralDocx,
+            self::ClinicalWorkbook,
+            self::FaxPacket,
+            self::Hl7v2Message => true,
+        };
     }
 }

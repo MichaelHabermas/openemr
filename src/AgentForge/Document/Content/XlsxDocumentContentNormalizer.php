@@ -407,6 +407,10 @@ final readonly class XlsxDocumentContentNormalizer implements DocumentContentNor
     /** @param list<int> $columnIndexes */
     private function rowRange(string $sheetName, int $rowNumber, array $columnIndexes): string
     {
+        if ($columnIndexes === []) {
+            return sprintf('%s!A%d:A%d', $sheetName, $rowNumber, $rowNumber);
+        }
+
         $min = min($columnIndexes);
         $max = max($columnIndexes);
 
@@ -457,7 +461,10 @@ final readonly class XlsxDocumentContentNormalizer implements DocumentContentNor
         if (is_string($value)) {
             return trim($value);
         }
+        if (is_object($value) && method_exists($value, '__toString')) {
+            return trim((string) $value);
+        }
 
-        return trim((string) $value);
+        return '';
     }
 }

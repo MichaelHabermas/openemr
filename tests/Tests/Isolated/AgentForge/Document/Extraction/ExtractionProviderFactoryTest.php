@@ -19,13 +19,13 @@ use GuzzleHttp\Psr7\Response;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\Extraction\DocumentTypeRoutingExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderConfig;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderFactory;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderMode;
-use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
-use OpenEMR\AgentForge\Document\Extraction\OpenAiVlmExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\PdfPageRenderer;
 use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
+use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\AgentForge\Time\SystemMonotonicClock;
@@ -67,10 +67,10 @@ final class ExtractionProviderFactoryTest extends TestCase
             putenv($name);
         }
 
-        $this->assertInstanceOf(FixtureExtractionProvider::class, ExtractionProviderFactory::createDefault());
+        $this->assertInstanceOf(DocumentTypeRoutingExtractionProvider::class, ExtractionProviderFactory::createDefault());
     }
 
-    public function testOpenAiModeReturnsOpenAiProvider(): void
+    public function testOpenAiModeReturnsRoutingProvider(): void
     {
         $provider = ExtractionProviderFactory::create(new ExtractionProviderConfig(
             mode: ExtractionProviderMode::OpenAi->value,
@@ -78,7 +78,7 @@ final class ExtractionProviderFactoryTest extends TestCase
             model: 'gpt-4o-mini',
         ));
 
-        $this->assertInstanceOf(OpenAiVlmExtractionProvider::class, $provider);
+        $this->assertInstanceOf(DocumentTypeRoutingExtractionProvider::class, $provider);
     }
 
     public function testOpenAiCreateUsesInjectedHttpClient(): void
@@ -136,7 +136,7 @@ final class ExtractionProviderFactoryTest extends TestCase
             $client,
         );
 
-        $this->assertInstanceOf(OpenAiVlmExtractionProvider::class, $provider);
+        $this->assertInstanceOf(DocumentTypeRoutingExtractionProvider::class, $provider);
         $response = $provider->extract(
             new DocumentId(1),
             new DocumentLoadResult('%PDF', 'application/pdf', 'x.pdf'),
@@ -148,6 +148,67 @@ final class ExtractionProviderFactoryTest extends TestCase
         $this->assertSame('Injected Client Lab', $response->extraction->labName);
         $this->assertSame('pdf', $response->normalizationTelemetry['normalizer'] ?? null);
         $this->assertSame('application/pdf', $response->normalizationTelemetry['source_mime_type'] ?? null);
+    }
+
+    public function testOpenAiModeRoutesHl7v2ToDeterministicProviderWithoutHttpCall(): void
+    {
+        $mock = new MockHandler([]);
+        $client = new Client([
+            'base_uri' => 'https://api.openai.com',
+            'handler' => HandlerStack::create($mock),
+        ]);
+
+        $provider = ExtractionProviderFactory::create(
+            new ExtractionProviderConfig(
+                mode: ExtractionProviderMode::OpenAi->value,
+                apiKey: 'k',
+                model: 'gpt-4o-mini',
+            ),
+            new FactoryTestPdfRenderer(),
+            $client,
+        );
+
+        $response = $provider->extract(
+            new DocumentId(2),
+            new DocumentLoadResult(
+                "MSH|^~\\&|BHS-LIS|BHS LAB|EHR^^L|EHR|20260506143215||ORU^R01|MSG-ORU-ROUTE|P|2.5.1\r"
+                . "PID|1||BHS-2847163^^^MRN^MR||CHEN^MARGARET^L||19680312|F\r"
+                . "OBX|1|NM|2089-1^LDL^LN||142|mg/dL|<100|H\r",
+                'text/plain',
+                'message.hl7',
+            ),
+            DocumentType::Hl7v2Message,
+            new Deadline(new SystemMonotonicClock(), 8000),
+        );
+
+        $this->assertInstanceOf(Hl7v2MessageExtraction::class, $response->extraction);
+        $this->assertSame('deterministic-hl7v2', $response->model);
+        $this->assertSame('MSG-ORU-ROUTE', $response->extraction->messageControlId);
+    }
+
+    public function testFixtureModeRoutesHl7v2ToDeterministicProviderWithoutFixtureManifest(): void
+    {
+        $provider = ExtractionProviderFactory::create(new ExtractionProviderConfig(
+            mode: ExtractionProviderMode::Fixture->value,
+            fixtureManifestPath: '/path/that/does/not/exist.json',
+        ));
+
+        $response = $provider->extract(
+            new DocumentId(3),
+            new DocumentLoadResult(
+                "MSH|^~\\&|BHS-LIS|BHS LAB|EHR^^L|EHR|20260506143215||ORU^R01|MSG-ORU-FIXTURE-ROUTE|P|2.5.1\r"
+                . "PID|1||BHS-2847163^^^MRN^MR||CHEN^MARGARET^L||19680312|F\r"
+                . "OBX|1|NM|2089-1^LDL^LN||142|mg/dL|<100|H\r",
+                'text/plain',
+                'message.hl7',
+            ),
+            DocumentType::Hl7v2Message,
+            new Deadline(new SystemMonotonicClock(), 8000),
+        );
+
+        $this->assertInstanceOf(Hl7v2MessageExtraction::class, $response->extraction);
+        $this->assertSame('deterministic-hl7v2', $response->model);
+        $this->assertSame('MSG-ORU-FIXTURE-ROUTE', $response->extraction->messageControlId);
     }
 
     public function testOpenAiDefaultsUseKnownGpt4oPricing(): void

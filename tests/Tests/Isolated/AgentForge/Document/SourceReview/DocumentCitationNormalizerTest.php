@@ -112,4 +112,20 @@ final class DocumentCitationNormalizerTest extends TestCase
         $this->assertNull($citation->pageNumber);
         $this->assertSame('Care_Gaps!A4:F4', $citation->fieldOrChunkId);
     }
+
+    public function testPreservesHl7MessageAndFieldAnchors(): void
+    {
+        $citation = (new DocumentCitationNormalizer())->normalize([
+            'source_type' => 'hl7v2_message',
+            'source_id' => 'sha256:abc123',
+            'page_or_section' => 'message:MSG-ORU-1',
+            'field_or_chunk_id' => 'OBX[2].5',
+            'quote_or_value' => '142',
+        ]);
+
+        $this->assertSame('message:MSG-ORU-1', $citation->pageOrSection);
+        $this->assertNull($citation->pageNumber);
+        $this->assertSame('OBX[2].5', $citation->fieldOrChunkId);
+        $this->assertSame('142', $citation->quoteOrValue);
+    }
 }

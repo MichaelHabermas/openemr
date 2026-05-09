@@ -52,9 +52,9 @@ deterministic not-found/refusal for out-of-corpus questions. Current local
 proof is `baseline_met` across 65 clinical-document cases, including Epic 1
 DOCX, XLSX, TIFF, and HL7 v2 golden coverage, plus passing AgentForge isolated
 PHPUnit proof. Epic 4 adds bounded TIFF fax packet runtime support, Epic 5
-adds bounded DOCX referral runtime support, and Epic 6 adds bounded XLSX
-clinical workbook runtime support. HL7 v2 remains strict fixture-backed
-contract coverage until a later runtime epic.
+adds bounded DOCX referral runtime support, Epic 6 adds bounded XLSX
+clinical workbook runtime support, and Epic 7 adds bounded deterministic
+HL7 v2 ADT/ORU runtime support.
 
 ## 3. Existing OpenEMR Document Upload Flow
 
@@ -119,18 +119,19 @@ Fax Packet -> fax_packet
 HL7 v2 Message -> hl7v2_message
 ```
 
-Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 start as category/queue targets; after Epic 4, `fax_packet` jobs are runtime-supported, after Epic 5, `referral_docx` jobs are runtime-supported, and after Epic 6, `clinical_workbook` jobs are runtime-supported. HL7 v2 still fails with `unsupported_doc_type` before provider extraction.
+Only mapped active categories create extraction jobs. Other uploaded documents remain normal OpenEMR documents and are ignored by the Week 2 extraction worker. Epic 2 mappings for DOCX, XLSX, TIFF, and HL7 v2 start as category/queue targets; after Epic 4, `fax_packet` jobs are runtime-supported, after Epic 5, `referral_docx` jobs are runtime-supported, after Epic 6, `clinical_workbook` jobs are runtime-supported, and after Epic 7, `hl7v2_message` jobs are runtime-supported for bounded deterministic ADT/ORU extraction.
 
 Epic 3 inserts the normalized-content seam used by provider-backed extraction.
 The seam lives under `src/AgentForge/Document/Content/` and converts raw OpenEMR
 document bytes into provider-ready source metadata, rendered pages, future-safe
 text/table/message placeholders, coded warnings, and aggregate normalization
 telemetry. Current runtime support includes `lab_pdf`, `intake_form`, bounded
-`fax_packet` TIFF extraction, bounded `referral_docx` DOCX extraction, and
-bounded `clinical_workbook` XLSX extraction: PDF, PNG/JPEG/WEBP image inputs,
-multipage TIFF fax packets, referral DOCX text/table content, and XLSX
-sheet/table content are normalized before OpenAI payload construction. HL7 v2
-still fails closed before normalization or provider calls.
+`fax_packet` TIFF extraction, bounded `referral_docx` DOCX extraction, bounded
+`clinical_workbook` XLSX extraction, and bounded deterministic `hl7v2_message`
+ADT/ORU extraction. PDF, PNG/JPEG/WEBP image inputs, multipage TIFF fax
+packets, referral DOCX text/table content, and XLSX sheet/table content are
+normalized before OpenAI payload construction. HL7 v2 messages are parsed by a
+deterministic provider and do not require a model for supported ADT/ORU shapes.
 
 ## 5. Background Ingestion Jobs
 
@@ -979,9 +980,8 @@ golden set is the 65-case H1/Epic 1 baseline. It gates strict fixture-backed
 extraction, identity checks, real guideline retrieval, safe refusal, citation
 shape, bounding boxes, supervisor/final-answer behavior, no-PHI logging,
 preview-only exclusion, and runner-enforced structural coverage for required
-H1 scenarios plus multi-format coverage. DOCX referrals, XLSX workbooks, and
-TIFF fax packets now also have bounded runtime paths; HL7 v2 remains
-contract-only.
+H1 scenarios plus multi-format coverage. DOCX referrals, XLSX workbooks, TIFF
+fax packets, and HL7 v2 ADT/ORU messages now also have bounded runtime paths.
 
 AgentForge extends the existing eval harness under `src/AgentForge/Eval` and `agent-forge/scripts`.
 
@@ -1127,7 +1127,7 @@ expected retrieval behavior
 
 All documents and facts are synthetic/demo only.
 
-The 65-case H1/Epic 1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions. HL7 v2 Epic 1 cases prove strict deterministic contracts only; TIFF fax packet fixtures now also have a bounded runtime path through Epic 4, DOCX referral fixtures now also have a bounded runtime path through Epic 5, and XLSX workbook fixtures now also have a bounded runtime path through Epic 6.
+The 65-case H1/Epic 1 set is checked in under `agent-forge/fixtures/clinical-document-golden/cases`. Generated source documents remain committed or reproducibly regenerated according to fixture README instructions. TIFF fax packet fixtures now also have a bounded runtime path through Epic 4, DOCX referral fixtures now also have a bounded runtime path through Epic 5, XLSX workbook fixtures now also have a bounded runtime path through Epic 6, and supported HL7 v2 ADT/ORU fixtures now also have deterministic runtime extraction through Epic 7.
 
 ## 19. Deployment Runtime
 
@@ -1249,7 +1249,7 @@ Rollback uses the existing rollback script and must leave the previous deployed 
 
 These are out of scope only after the required Week 2 core is satisfied:
 
-- No runtime ingestion claim beyond `lab_pdf`, `intake_form`, bounded `fax_packet` TIFF support, bounded `referral_docx` DOCX support, and bounded `clinical_workbook` XLSX support; HL7 v2 is a contract/eval target until a later epic adds a normalizer and provider path.
+- No runtime ingestion claim beyond `lab_pdf`, `intake_form`, bounded `fax_packet` TIFF support, bounded `referral_docx` DOCX support, bounded `clinical_workbook` XLSX support, and bounded deterministic `hl7v2_message` ADT/ORU support.
 - No raw-PDF RAG as a substitute for strict extraction.
 - No automatic demographic overwrite from intake forms.
 - No uncited model-generated clinical claims.
