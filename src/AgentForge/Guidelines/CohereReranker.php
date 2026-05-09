@@ -22,6 +22,11 @@ final readonly class CohereReranker implements GuidelineReranker
     ) {
     }
 
+    public function name(): string
+    {
+        return 'cohere';
+    }
+
     public static function fromEnvironment(): ?self
     {
         $apiKey = getenv('AGENTFORGE_COHERE_API_KEY');
@@ -61,6 +66,10 @@ final readonly class CohereReranker implements GuidelineReranker
             ],
         ]);
         $response = file_get_contents('https://api.cohere.com/v2/rerank', false, $context);
+        $statusLine = $http_response_header[0] ?? '';
+        if (!str_contains($statusLine, '200')) {
+            throw new RuntimeException(sprintf('Cohere rerank returned HTTP %s', $statusLine));
+        }
         if (!is_string($response)) {
             throw new RuntimeException('Cohere rerank request failed.');
         }

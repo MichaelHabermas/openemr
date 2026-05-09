@@ -20,7 +20,7 @@ final readonly class GuidelineRetrievalResult
     public function __construct(
         public string $status,
         public array $candidates,
-        public bool $rerankApplied,
+        public ?string $rerankerUsed,
         public float $threshold,
     ) {
     }

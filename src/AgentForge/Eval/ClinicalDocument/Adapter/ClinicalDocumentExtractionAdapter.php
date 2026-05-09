@@ -94,7 +94,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             $retrievalArray = [
                 'status' => $retrieval->status,
                 'guideline_chunks' => $retrieval->toArray(),
-                'rerank_applied' => $retrieval->rerankApplied,
+                'reranker_used' => $retrieval->rerankerUsed,
                 'threshold' => $retrieval->threshold,
             ];
             foreach ($retrieval->candidates as $index => $candidate) {
@@ -195,7 +195,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 retrieval: [
                     'status' => 'not_attempted',
                     'guideline_chunks' => [],
-                    'rerank_applied' => true,
+                    'reranker_used' => 'deterministic',
                     'threshold' => null,
                 ],
                 answer: [
@@ -221,7 +221,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                     'case_id' => $case->caseId,
                     'reason' => 'unsafe_clinical_advice',
                     'retrieved_chunk_count' => 0,
-                    'rerank_applied' => true,
+                    'reranker_used' => 'deterministic',
                 ]],
             );
         }
@@ -230,7 +230,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         $retrievalArray = [
             'status' => $retrieval->status,
             'guideline_chunks' => $retrieval->toArray(),
-            'rerank_applied' => $retrieval->rerankApplied,
+            'reranker_used' => $retrieval->rerankerUsed,
             'threshold' => $retrieval->threshold,
         ];
 
@@ -262,7 +262,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                     'case_id' => $case->caseId,
                     'reason' => 'not_found_in_guideline_corpus',
                     'retrieved_chunk_count' => 0,
-                    'rerank_applied' => true,
+                    'reranker_used' => 'deterministic',
                 ]],
             );
         }
@@ -304,7 +304,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 'case_id' => $case->caseId,
                 'citation_count' => count($facts),
                 'retrieved_chunk_count' => count($facts),
-                'rerank_applied' => true,
+                'reranker_used' => 'deterministic',
             ]],
             citations: $retrieval->citations(),
         );

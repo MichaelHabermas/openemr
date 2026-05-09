@@ -30,7 +30,7 @@ final class HybridGuidelineRetrieverTest extends TestCase
         $result = $retriever->retrieve('What does the guideline say about LDL greater than or equal to 130?');
 
         $this->assertTrue($result->found());
-        $this->assertTrue($result->rerankApplied);
+        $this->assertSame('deterministic', $result->rerankerUsed);
         $this->assertNotSame([], $result->candidates);
         $this->assertSame('guideline', $result->candidates[0]->chunk->citationArray()['source_type']);
         $this->assertStringContainsString('LDL', $result->candidates[0]->chunk->chunkText);
@@ -74,7 +74,7 @@ final class HybridGuidelineRetrieverTest extends TestCase
 
             $this->assertSame('not_found', $result->status, $query);
             $this->assertSame([], $result->candidates, $query);
-            $this->assertTrue($result->rerankApplied, $query);
+            $this->assertSame('deterministic', $result->rerankerUsed, $query);
         }
     }
 
@@ -134,6 +134,11 @@ final class SpyReranker implements GuidelineReranker
     public int $callCount = 0;
 
     public int $lastCandidateCount = 0;
+
+    public function name(): string
+    {
+        return 'spy';
+    }
 
     public function rerank(string $query, array $candidates): array
     {

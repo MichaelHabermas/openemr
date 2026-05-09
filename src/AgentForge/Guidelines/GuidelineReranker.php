@@ -14,6 +14,8 @@ namespace OpenEMR\AgentForge\Guidelines;
 
 interface GuidelineReranker
 {
+    public function name(): string;
+
     /**
      * @param list<GuidelineSearchCandidate> $candidates
      * @return list<GuidelineSearchCandidate>

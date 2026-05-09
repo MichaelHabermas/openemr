@@ -29,7 +29,7 @@ final readonly class HybridGuidelineRetriever implements GuidelineRetriever
     {
         $query = trim($query);
         if ($query === '') {
-            return new GuidelineRetrievalResult('not_found', [], true, $this->threshold);
+            return new GuidelineRetrievalResult('not_found', [], null, $this->threshold);
         }
 
         $sparse = $this->repository->sparseSearch($this->corpusVersion, $query, $this->candidateLimit);
@@ -49,7 +49,7 @@ final readonly class HybridGuidelineRetriever implements GuidelineRetriever
         return new GuidelineRetrievalResult(
             $accepted === [] ? 'not_found' : 'found',
             $accepted,
-            true,
+            $this->reranker->name(),
             $this->threshold,
         );
     }

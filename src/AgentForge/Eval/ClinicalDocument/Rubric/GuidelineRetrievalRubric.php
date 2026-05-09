@@ -28,9 +28,9 @@ final class GuidelineRetrievalRubric implements Rubric
 
         $status = $inputs->output->retrieval['status'] ?? null;
         $chunks = $inputs->output->retrieval['guideline_chunks'] ?? null;
-        $rerankApplied = ($inputs->output->retrieval['rerank_applied'] ?? false) === true;
-        if (!$rerankApplied) {
-            return new RubricResult($this->name(), RubricStatus::Fail, 'Guideline retrieval did not apply rerank.');
+        $rerankerUsed = $inputs->output->retrieval['reranker_used'] ?? null;
+        if (!is_string($rerankerUsed)) {
+            return new RubricResult($this->name(), RubricStatus::Fail, 'Guideline retrieval did not report which reranker was used.');
         }
         if (!is_array($chunks)) {
             return new RubricResult($this->name(), RubricStatus::Fail, 'Guideline retrieval chunks were not reported.');

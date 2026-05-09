@@ -113,7 +113,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
         $this->assertTrue($output->answer['refused'] ?? false);
         $this->assertSame([], $output->extraction['facts'] ?? null);
         $this->assertSame('not_found', $output->retrieval['status'] ?? null);
-        $this->assertTrue($output->retrieval['rerank_applied'] ?? false);
+        $this->assertSame('deterministic', $output->retrieval['reranker_used'] ?? null);
     }
 
     public function testGuidelineCaseUsesRetrieverOutputWithCitationAndScore(): void
@@ -122,7 +122,7 @@ final class ClinicalDocumentExtractionAdapterTest extends TestCase
 
         $this->assertSame('no_extraction_required', $output->status);
         $this->assertSame('found', $output->retrieval['status'] ?? null);
-        $this->assertTrue($output->retrieval['rerank_applied'] ?? false);
+        $this->assertSame('deterministic', $output->retrieval['reranker_used'] ?? null);
         $chunks = $output->retrieval['guideline_chunks'] ?? null;
         $this->assertIsArray($chunks);
         $this->assertNotSame([], $chunks);

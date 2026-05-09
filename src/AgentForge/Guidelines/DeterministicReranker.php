@@ -14,6 +14,11 @@ namespace OpenEMR\AgentForge\Guidelines;
 
 final class DeterministicReranker implements GuidelineReranker
 {
+    public function name(): string
+    {
+        return 'deterministic';
+    }
+
     public function rerank(string $query, array $candidates): array
     {
         $queryTokens = DeterministicGuidelineEmbeddingProvider::tokens($query);
