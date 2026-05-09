@@ -73,7 +73,7 @@ final class DeployedSmokeRunnerTest extends TestCase
                 'found' => true,
                 'fields' => [
                     'user_id' => 7,
-                    'patient_id' => 900001,
+                    'patient_ref' => 'patient:abcdef1234567890',
                     'decision' => 'allowed',
                     'latency_ms' => 1234,
                     'model' => 'gpt-5.4-mini',

@@ -856,7 +856,7 @@ function agentforge_deployed_smoke_extract_log_fields(string $line): array
 function agentforge_deployed_smoke_evaluate_audit_log(array $auditResult, array $expected): array
 {
     $issues = [];
-    $requiredKeys = ['user_id', 'patient_id', 'decision', 'latency_ms', 'model'];
+    $requiredKeys = ['user_id', 'patient_ref', 'decision', 'latency_ms', 'model'];
 
     if (!$auditResult['found']) {
         $issues[] = sprintf('audit log not found: %s', $auditResult['error'] ?? 'unknown');

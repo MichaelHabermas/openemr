@@ -39,7 +39,8 @@ final class RequestLogTest extends TestCase
 
         $this->assertSame('7aa9ef18-3227-4c43-9e5e-b8ae3fb8bbcc', $context['request_id']);
         $this->assertSame(7, $context['user_id']);
-        $this->assertSame(900001, $context['patient_id']);
+        $this->assertArrayNotHasKey('patient_id', $context);
+        $this->assertIsString($context['patient_ref']);
         $this->assertSame('refused_patient_mismatch', $context['decision']);
         $this->assertGreaterThanOrEqual(0, $context['latency_ms']);
         $this->assertSame('2026-04-30T12:00:00+00:00', $context['timestamp']);
@@ -170,6 +171,7 @@ final class RequestLogTest extends TestCase
                 'selectorResult' => 'fallback_not_needed',
                 'selectorFallbackReason' => null,
                 'modelCalls' => [],
+                'traceId' => null,
             ] as $property => $value
         ) {
             $reflection->getProperty($property)->setValue($telemetry, $value);

@@ -50,7 +50,7 @@ final class SensitiveLogPolicyTest extends TestCase
         ]);
 
         $this->assertSame('request-1', $context['request_id']);
-        $this->assertSame(900001, $context['patient_id']);
+        $this->assertArrayNotHasKey('patient_id', $context);
         $this->assertSame('patient:abcdef1234567890', $context['patient_ref']);
         $this->assertSame(123, $context['document_id']);
         $this->assertSame(7, $context['category_id']);
