@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Handlers;
 
 use OpenEMR\AgentForge\Observability\RequestLog;
 use OpenEMR\AgentForge\Observability\RequestLogger;
+use OpenEMR\AgentForge\Observability\TraceId;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Clock\ClockInterface;
 
@@ -59,6 +60,9 @@ final readonly class AgentRequestLifecycle
             timestamp: $startedAt,
             telemetry: $result->telemetry,
             conversationId: $result->conversationId,
+            traceId: $result->telemetry?->traceId !== null
+                ? TraceId::fromString($result->telemetry->traceId)
+                : null,
         ));
 
         return $result;

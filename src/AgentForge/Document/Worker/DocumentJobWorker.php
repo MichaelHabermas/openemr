@@ -17,6 +17,7 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\Observability\TraceId;
 use OpenEMR\AgentForge\Time\MonotonicClock;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -105,6 +106,7 @@ final class DocumentJobWorker
             return;
         }
 
+        $traceId = TraceId::generate();
         $startedMs = $this->clock->nowMs();
 
         try {
@@ -116,12 +118,12 @@ final class DocumentJobWorker
             $result = ProcessingResult::failed('processor_failed', 'Document processor failed unexpectedly.');
         } catch (Throwable $e) {
             $result = ProcessingResult::failed('processor_failed', 'Document processor failed unexpectedly.');
-            $this->finishClaimedJob($job, $lockToken, $result, $startedMs);
+            $this->finishClaimedJob($job, $lockToken, $result, $startedMs, $traceId);
             $this->heartbeat(WorkerStatus::Stopped);
             throw $e;
         }
 
-        $this->finishClaimedJob($job, $lockToken, $result, $startedMs);
+        $this->finishClaimedJob($job, $lockToken, $result, $startedMs, $traceId);
     }
 
     private function finishClaimedJob(
@@ -129,6 +131,7 @@ final class DocumentJobWorker
         LockToken $lockToken,
         ProcessingResult $result,
         int $startedMs,
+        ?TraceId $traceId = null,
     ): void {
         if ($job->id === null) {
             return;
@@ -152,14 +155,14 @@ final class DocumentJobWorker
                 'status' => JobStatus::Failed->value,
                 'error_code' => $result->errorCode,
                 'latency_ms' => $this->latencyMs($startedMs),
-            ]));
+            ], $traceId));
             return;
         }
 
         $this->log('info', 'clinical_document.worker.job_completed', $this->jobContext($job, [
             'status' => JobStatus::Succeeded->value,
             'latency_ms' => $this->latencyMs($startedMs),
-        ]));
+        ], $traceId));
     }
 
     private function heartbeat(WorkerStatus $status): void
@@ -187,7 +190,7 @@ final class DocumentJobWorker
      * @param array<string, mixed> $extra
      * @return array<string, mixed>
      */
-    private function jobContext(DocumentJob $job, array $extra = []): array
+    private function jobContext(DocumentJob $job, array $extra = [], ?TraceId $traceId = null): array
     {
         $context = [
             'job_id' => $job->id?->value,
@@ -196,6 +199,7 @@ final class DocumentJobWorker
             'doc_type' => $job->docType->value,
             'status' => $job->status->value,
             'attempts' => $job->attempts,
+            'trace_id' => $traceId?->value,
         ];
         foreach ($extra as $key => $value) {
             $context[$key] = $value;

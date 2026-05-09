@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Guidelines\GuidelineRetriever;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
 use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
+use OpenEMR\AgentForge\Observability\TraceId;
 use OpenEMR\AgentForge\Orchestration\NodeName;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\Orchestration\Supervisor;
@@ -74,6 +75,7 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
     public function handle(AgentRequest $request): AgentResponse
     {
         $this->lastTelemetry = null;
+        $traceId = TraceId::generate();
         $plannerTimer = new StageTimer($this->clock);
         $plannerTimer->start('planner');
         $scopeRefusal = CurrentChartScopePolicy::refusalFor($request->question, $request->patientId);
@@ -83,7 +85,8 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
                 'cross_patient_refusal',
                 'cross_patient_refusal',
                 ChartQuestionPlanner::defaultSections(),
-            )->withStageTimings($plannerTimer->timings());
+            )->withStageTimings($plannerTimer->timings())
+            ->withTraceId($traceId->value);
             return AgentResponse::refusal($scopeRefusal);
         }
 
@@ -94,7 +97,8 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
                 $plan->questionType,
                 $plan->questionType,
                 $plan->skippedSections,
-            )->withStageTimings($plannerTimer->timings());
+            )->withStageTimings($plannerTimer->timings())
+            ->withTraceId($traceId->value);
             return AgentResponse::refusal((string) $plan->refusal);
         }
         $plannerTimer->stop('planner');
@@ -126,7 +130,8 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         $this->lastTelemetry = $draftingResult->telemetry
             ->withToolSelection($plan->selectorMode, $plan->selectorResult, $plan->selectorFallbackReason)
             ->withMergedStageTimings($plannerTimer->timings())
-            ->withMergedStageTimings($timer->timings());
+            ->withMergedStageTimings($timer->timings())
+            ->withTraceId($traceId->value);
 
         return $draftingResult->response;
     }

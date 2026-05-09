@@ -27,6 +27,7 @@ final readonly class RequestLog
         public DateTimeImmutable $timestamp,
         public ?AgentTelemetry $telemetry = null,
         public ?string $conversationId = null,
+        public ?TraceId $traceId = null,
     ) {
     }
 
@@ -45,6 +46,7 @@ final readonly class RequestLog
             'latency_ms' => $this->latencyMs,
             'timestamp' => $this->timestamp->format(DateTimeInterface::ATOM),
             'conversation_id' => $this->conversationId,
+            'trace_id' => $this->traceId?->value,
         ];
 
         return SensitiveLogPolicy::sanitizeContext(array_merge(

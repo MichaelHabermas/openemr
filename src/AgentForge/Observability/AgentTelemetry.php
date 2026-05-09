@@ -37,6 +37,7 @@ final readonly class AgentTelemetry
         public string $selectorResult = 'fallback_not_needed',
         public ?string $selectorFallbackReason = null,
         public array $modelCalls = [],
+        public ?string $traceId = null,
     ) {
     }
 
@@ -56,7 +57,8 @@ final readonly class AgentTelemetry
      *     selector_mode: string,
      *     selector_result: string,
      *     selector_fallback_reason: ?string,
-     *     model_calls: list<array<string, mixed>>
+     *     model_calls: list<array<string, mixed>>,
+     *     trace_id: ?string
      * }
      */
     public function toContext(): array
@@ -80,6 +82,7 @@ final readonly class AgentTelemetry
                 static fn (ModelUsageTelemetry $call): array => $call->toContext(),
                 $this->modelCalls,
             ),
+            'trace_id' => $this->traceId,
         ];
     }
 
@@ -102,6 +105,7 @@ final readonly class AgentTelemetry
             $this->selectorResult,
             $this->selectorFallbackReason,
             $this->modelCalls,
+            $this->traceId,
         );
     }
 
@@ -123,6 +127,29 @@ final readonly class AgentTelemetry
             $selectorResult,
             $selectorFallbackReason,
             $this->modelCalls,
+            $this->traceId,
+        );
+    }
+
+    public function withTraceId(?string $traceId): self
+    {
+        return new self(
+            $this->questionType,
+            $this->toolsCalled,
+            $this->skippedChartSections,
+            $this->sourceIds,
+            $this->model,
+            $this->inputTokens,
+            $this->outputTokens,
+            $this->estimatedCost,
+            $this->failureReason,
+            $this->verifierResult,
+            $this->stageTimingsMs,
+            $this->selectorMode,
+            $this->selectorResult,
+            $this->selectorFallbackReason,
+            $this->modelCalls,
+            $traceId,
         );
     }
 

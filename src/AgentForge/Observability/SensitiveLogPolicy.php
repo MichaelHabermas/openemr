@@ -17,6 +17,7 @@ final class SensitiveLogPolicy
     /** @var array<string, true> */
     private const ALLOWED_KEYS = [
         'request_id' => true,
+        'trace_id' => true,
         'user_id' => true,
         'decision' => true,
         'latency_ms' => true,
