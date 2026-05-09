@@ -85,6 +85,15 @@ final class SensitiveLogPolicy
         'promoted' => true,
         'needs_review' => true,
         'skipped' => true,
+        'sparse_candidate_count' => true,
+        'dense_candidate_count' => true,
+        'overlap_count' => true,
+        'merged_candidate_count' => true,
+        'accepted_count' => true,
+        'threshold_applied' => true,
+        'top_pre_rerank_score' => true,
+        'top_post_rerank_score' => true,
+        'merge_telemetry' => true,
     ];
 
     /** @var array<string, true> */

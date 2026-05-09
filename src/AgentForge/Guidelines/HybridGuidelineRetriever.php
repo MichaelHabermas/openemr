@@ -39,18 +39,37 @@ final readonly class HybridGuidelineRetriever implements GuidelineRetriever
             $this->candidateLimit,
         );
         $merged = $this->mergeCandidates($sparse, $dense);
+        $sparseCandidateCount = count($sparse);
+        $denseCandidateCount = count($dense);
+        $mergedCandidateCount = count($merged);
+        $overlapCount = $sparseCandidateCount + $denseCandidateCount - $mergedCandidateCount;
+        $topPreRerankScore = $merged !== [] ? $merged[0]->score() : null;
+
         $reranked = $this->reranker->rerank($query, $merged);
+        $topPostRerankScore = $reranked !== [] ? $reranked[0]->score() : null;
         $accepted = array_values(array_filter(
             $reranked,
             fn (GuidelineSearchCandidate $candidate): bool => $candidate->score() >= $this->threshold,
         ));
         $accepted = array_slice($accepted, 0, $this->topK);
 
+        $mergeTelemetry = new RetrievalMergeTelemetry(
+            $sparseCandidateCount,
+            $denseCandidateCount,
+            $overlapCount,
+            $mergedCandidateCount,
+            count($accepted),
+            $this->threshold,
+            $topPreRerankScore,
+            $topPostRerankScore,
+        );
+
         return new GuidelineRetrievalResult(
             $accepted === [] ? 'not_found' : 'found',
             $accepted,
             $this->reranker->name(),
             $this->threshold,
+            $mergeTelemetry,
         );
     }
 

@@ -22,6 +22,7 @@ final readonly class GuidelineRetrievalResult
         public array $candidates,
         public ?string $rerankerUsed,
         public float $threshold,
+        public ?RetrievalMergeTelemetry $mergeTelemetry = null,
     ) {
     }
 

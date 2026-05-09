@@ -96,6 +96,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                 'guideline_chunks' => $retrieval->toArray(),
                 'reranker_used' => $retrieval->rerankerUsed,
                 'threshold' => $retrieval->threshold,
+                'merge_telemetry' => $retrieval->mergeTelemetry?->toContext(),
             ];
             foreach ($retrieval->candidates as $index => $candidate) {
                 $guidelineFacts[] = [
@@ -197,6 +198,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
                     'guideline_chunks' => [],
                     'reranker_used' => 'deterministic',
                     'threshold' => null,
+                    'merge_telemetry' => null,
                 ],
                 answer: [
                     'refused' => true,
@@ -232,6 +234,7 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
             'guideline_chunks' => $retrieval->toArray(),
             'reranker_used' => $retrieval->rerankerUsed,
             'threshold' => $retrieval->threshold,
+            'merge_telemetry' => $retrieval->mergeTelemetry?->toContext(),
         ];
 
         if (!$retrieval->found()) {
