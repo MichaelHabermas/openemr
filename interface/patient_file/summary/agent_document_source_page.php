@@ -13,7 +13,7 @@ declare(strict_types=1);
 ob_start();
 
 require_once("../../globals.php");
-require_once($GLOBALS['srcdir'] . "/../controllers/C_Document.class.php");
+require_once(dirname(__DIR__, 3) . "/controllers/C_Document.class.php");
 
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Document\DocumentId;
@@ -23,6 +23,8 @@ use OpenEMR\AgentForge\Document\StrictPositiveInt;
 use OpenEMR\AgentForge\SqlQueryUtilsExecutor;
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Session\SessionWrapperFactory;
+use OpenEMR\Core\OEGlobalsBag;
+use Symfony\Component\Process\Process;
 
 $fail = static function (int $status): never {
     if (ob_get_level() > 0) {
@@ -72,9 +74,34 @@ if (!(new SourceDocumentAccessGate($executor))->allows(
     $fail(404);
 }
 
+$fixturePreviewPath = static function (string $documentName, int $pageNumber): ?string {
+    $baseName = basename($documentName);
+    if (!str_ends_with(strtolower($baseName), '.pdf')) {
+        return null;
+    }
+
+    $slug = substr($baseName, 0, -4);
+    $previewRoot = dirname(__DIR__, 3) . '/agent-forge/docs/example-documents/source-previews';
+    $candidate = $previewRoot . '/' . $slug . '-page-' . $pageNumber . '.png';
+    $realRoot = realpath($previewRoot);
+    $realCandidate = realpath($candidate);
+
+    if (
+        $realRoot === false
+        || $realCandidate === false
+        || !str_starts_with($realCandidate, $realRoot . DIRECTORY_SEPARATOR)
+        || !is_file($realCandidate)
+    ) {
+        return null;
+    }
+
+    return $realCandidate;
+};
+
 $document = new Document($documentId);
-$mimeType = strtolower(trim((string) $document->get_mimetype()));
-$previewPath = fixturePreviewPath((string) $document->get_name(), $pageNumber);
+$mimeRaw = $document->get_mimetype();
+$mimeType = strtolower(trim(is_string($mimeRaw) ? $mimeRaw : ''));
+$previewPath = $fixturePreviewPath((string) $document->get_name(), $pageNumber);
 if ($previewPath !== null) {
     $preview = file_get_contents($previewPath);
     if ($preview !== false && $preview !== '') {
@@ -94,7 +121,7 @@ $bytes = $controller->retrieve_action(
 );
 $controller->offReturnRetrieveKey();
 
-if ($bytes === '') {
+if (!is_string($bytes) || $bytes === '') {
     $fail(404);
 }
 
@@ -106,7 +133,8 @@ if ($mimeType !== 'application/pdf') {
     $fail(415);
 }
 
-$temporaryDirectory = $GLOBALS['temporary_files_dir'] ?? sys_get_temp_dir();
+$temporaryDir = OEGlobalsBag::getInstance()->getString('temporary_files_dir');
+$temporaryDirectory = $temporaryDir !== '' ? $temporaryDir : sys_get_temp_dir();
 $tempBase = tempnam($temporaryDirectory, 'afsrc');
 if ($tempBase === false) {
     $fail(500);
@@ -134,30 +162,26 @@ if (extension_loaded('imagick') && class_exists(\Imagick::class)) {
     }
 }
 
-$status = 1;
-exec(
-    'convert -density 150 '
-    . escapeshellarg($pdfPath . '[' . ($pageNumber - 1) . ']')
-    . ' -background white -alpha remove '
-    . escapeshellarg($pngPath),
-    $unused,
-    $status,
-);
+$convertProcess = new Process([
+    'convert', '-density', '150',
+    $pdfPath . '[' . ($pageNumber - 1) . ']',
+    '-background', 'white', '-alpha', 'remove',
+    $pngPath,
+]);
+$convertProcess->run();
+$status = $convertProcess->getExitCode() ?? 1;
 
 if ($status !== 0 || !is_file($pngPath)) {
     $pdftoppmBase = $tempBase . '-page';
-    exec(
-        'pdftoppm -png -singlefile -r 150 -f '
-        . escapeshellarg((string) $pageNumber)
-        . ' -l '
-        . escapeshellarg((string) $pageNumber)
-        . ' '
-        . escapeshellarg($pdfPath)
-        . ' '
-        . escapeshellarg($pdftoppmBase),
-        $unused,
-        $status,
-    );
+    $pdftoppmProcess = new Process([
+        'pdftoppm', '-png', '-singlefile', '-r', '150',
+        '-f', (string) $pageNumber,
+        '-l', (string) $pageNumber,
+        $pdfPath,
+        $pdftoppmBase,
+    ]);
+    $pdftoppmProcess->run();
+    $status = $pdftoppmProcess->getExitCode() ?? 1;
     if ($status === 0 && is_file($pdftoppmBase . '.png')) {
         @rename($pdftoppmBase . '.png', $pngPath);
     }
@@ -179,28 +203,3 @@ if ($png === false || $png === '') {
 }
 
 $emit($png, 'image/png');
-
-function fixturePreviewPath(string $documentName, int $pageNumber): ?string
-{
-    $baseName = basename($documentName);
-    if (!str_ends_with(strtolower($baseName), '.pdf')) {
-        return null;
-    }
-
-    $slug = substr($baseName, 0, -4);
-    $previewRoot = dirname(__DIR__, 3) . '/agent-forge/docs/example-documents/source-previews';
-    $candidate = $previewRoot . '/' . $slug . '-page-' . $pageNumber . '.png';
-    $realRoot = realpath($previewRoot);
-    $realCandidate = realpath($candidate);
-
-    if (
-        $realRoot === false
-        || $realCandidate === false
-        || !str_starts_with($realCandidate, $realRoot . DIRECTORY_SEPARATOR)
-        || !is_file($realCandidate)
-    ) {
-        return null;
-    }
-
-    return $realCandidate;
-}

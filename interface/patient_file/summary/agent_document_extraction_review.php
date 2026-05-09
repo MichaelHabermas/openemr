@@ -60,8 +60,12 @@ if ($jobs === []) {
 
 $activeJobs = array_values(array_filter(
     $jobs,
-    static fn (array $job): bool => trim((string) ($job['retracted_at'] ?? '')) === ''
-        && (int) ($job['document_deleted'] ?? 0) === 0,
+    static function (array $job): bool {
+        $retractedAt = $job['retracted_at'] ?? '';
+        $deleted = $job['document_deleted'] ?? 0;
+        return (is_string($retractedAt) ? trim($retractedAt) : '') === ''
+            && (is_numeric($deleted) ? (int) $deleted : 0) === 0;
+    },
 ));
 if ($activeJobs !== []) {
     $jobs = $activeJobs;

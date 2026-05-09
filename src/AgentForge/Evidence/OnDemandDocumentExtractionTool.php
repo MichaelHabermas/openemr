@@ -24,6 +24,7 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\DocumentExtractionProvider;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderException;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\SourceReview\SourceReviewPresenter;
 use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoader;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadException;
@@ -39,6 +40,7 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
         private DocumentExtractionProvider $extractionProvider,
         private int $limit = 6,
         private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
+        private SourceReviewPresenter $presenter = new SourceReviewPresenter(),
     ) {
     }
 
@@ -141,7 +143,7 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
                     $parts[] = sprintf('%s: %s', $name, $value);
                 }
             }
-            $parts[] = Fmt::evidenceCitationSuffix($docType, $page, $field);
+            $parts[] = $this->presenter->inlineMarker($docType, $page, $field);
 
             return new EvidenceItem(
                 'document',
@@ -174,7 +176,7 @@ final readonly class OnDemandDocumentExtractionTool implements ChartEvidenceTool
                     Fmt::string($row, 'document_date'),
                 ),
                 str_replace('_', ' ', $label),
-                EvidenceText::bounded(sprintf('%s; %s', $value, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
+                EvidenceText::bounded(sprintf('%s; %s', $value, $this->presenter->inlineMarker($docType, $page, $field)), 300),
                 $this->citationMetadata($row, $fact, $citation, $field, $page),
             );
         }

@@ -15,7 +15,7 @@ explicit gaps.
 | `agent-forge/eval-results/eval-results-20260508-161500.json` | Latest local Tier 0 deterministic orchestration proof; 32 passed, 0 failed. |
 | [tier2-live-20260503-202550.json](../../eval-results/tier2-live-20260503-202550.json) | Live provider Week 1/AgentForge baseline proof and available provider spend baseline. |
 | [deployed-smoke-20260503-201547.json](../../eval-results/deployed-smoke-20260503-201547.json) | Deployed HTTP/session/audit smoke for the baseline AgentForge path. |
-| [clinical-document-deployed-smoke-20260508-001525.json](../../eval-results/clinical-document-deployed-smoke-20260508-001525.json) | Latest checked-in deployed clinical-document smoke proof; verdict passed for the deployed URL and assigned smoke credentials. |
+| [eval-results/](../../eval-results/) | Deployed clinical-document smoke proof directory; rerun the smoke script to generate a fresh artifact. |
 | [browser-proof/MANIFEST.md](../submission/browser-proof/MANIFEST.md) | Browser proof screenshot manifest, including deployed source/citation UI evidence. |
 | [CLINICAL-DOCUMENT-COST-LATENCY.md](../operations/CLINICAL-DOCUMENT-COST-LATENCY.md) | Week 2 cost/latency report rendered from current proof artifacts. |
 

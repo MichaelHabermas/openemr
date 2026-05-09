@@ -1360,16 +1360,19 @@ class C_Document extends Controller
 
             $encounter_check = ( $encounter_check == 'on') ? 1 : 0;
             if ($encounter_check) {
-                $provider_id = $session->get('authUserID');
+                $providerIdRaw = $session->get('authUserID');
+                $provider_id = is_numeric($providerIdRaw) ? (int) $providerIdRaw : 0;
 
                 // Get the logged in user's facility
                 $facilityRow = sqlQuery("SELECT username, facility, facility_id FROM users WHERE id = ?", ["$provider_id"]);
                 $username = $facilityRow['username'];
                 $facility = $facilityRow['facility'];
-                $facility_id = $facilityRow['facility_id'];
+                $facilityIdRaw = $facilityRow['facility_id'] ?? null;
+                $facility_id = is_numeric($facilityIdRaw) ? (int) $facilityIdRaw : 0;
                 // Get the primary Business Entity facility to set as billing facility, if null take user's facility as billing facility
                 $billingFacility = $this->facilityService->getPrimaryBusinessEntity();
-                $billingFacilityID = $billingFacility['id'] ?: $facility_id;
+                $billingFacilityIdRaw = $billingFacility['id'] ?? null;
+                $billingFacilityID = is_numeric($billingFacilityIdRaw) ? (int) $billingFacilityIdRaw : $facility_id;
 
                 $encounter = QueryUtils::generateId();
                 $query = "INSERT INTO form_encounter SET
@@ -1383,7 +1386,7 @@ class C_Document extends Controller
 						provider_id = ?,
 						pid = ?,
 						encounter = ?";
-                $bindArray = [$event_date,$file_name,$facility,$_POST['visit_category_id'],(int)$facility_id,(int)$billingFacilityID,(int)$provider_id,$patient_id,$encounter];
+                $bindArray = [$event_date,$file_name,$facility,$_POST['visit_category_id'],$facility_id,$billingFacilityID,$provider_id,$patient_id,$encounter];
                 $formID = sqlInsert($query, $bindArray);
                 addForm($encounter, "New Patient Encounter", $formID, "newpatient", $patient_id, "1", date("Y-m-d H:i:s"), $username);
                 $d->set_encounter_id($encounter);
@@ -1458,9 +1461,9 @@ class C_Document extends Controller
 
         // TODO: This should be moved into a service so we can handle things such as uuid generation....
         if ($encounter != 0) {
-            $ep = sqlQuery("select u.username as assigned_to from form_encounter inner join users u on u.id = provider_id where encounter = ?", [$encounter]);
+            $ep = QueryUtils::querySingleRow("select u.username as assigned_to from form_encounter inner join users u on u.id = provider_id where encounter = ?", [$encounter]);
         } elseif ($image_procedure_id != 0) {
-            $ep = sqlQuery("select u.username as assigned_to from procedure_order inner join users u on u.id = provider_id where procedure_order_id = ?", [$image_procedure_id]);
+            $ep = QueryUtils::querySingleRow("select u.username as assigned_to from procedure_order inner join users u on u.id = provider_id where procedure_order_id = ?", [$image_procedure_id]);
         } else {
             $ep = ['assigned_to' => $session->get('authUser')];
         }
