@@ -12,7 +12,8 @@
     "bounding_box_present": 1.0,
     "deleted_document_not_retrieved": 1.0,
     "promotion_expectations": 1.0,
-    "document_fact_expectations": 1.0
+    "document_fact_expectations": 1.0,
+    "latency_budget": 1.0
   },
   "regression_max_drop_pct": 5
 }

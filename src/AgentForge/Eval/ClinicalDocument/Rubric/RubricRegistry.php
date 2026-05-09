@@ -53,6 +53,7 @@ final class RubricRegistry
             new DeletedDocumentNotRetrievedRubric(),
             new PromotionExpectationRubric(),
             new DocumentFactExpectationRubric(),
+            new LatencyBudgetRubric(),
         ];
     }
 }

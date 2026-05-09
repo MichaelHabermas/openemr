@@ -140,6 +140,9 @@ final class StructuralCoveragePolicy
         if ($rubricName === 'document_fact_expectations') {
             return $this->hasExpectedDocumentFacts($cases);
         }
+        if ($rubricName === 'latency_budget') {
+            return true;
+        }
 
         foreach ($cases as $case) {
             if ($case->expectedRubrics->expectedFor($rubricName) !== null) {
