@@ -15,6 +15,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Extraction;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\Extraction\ExtractionProviderResponse;
 use OpenEMR\AgentForge\Document\Extraction\JsonSchemaBuilder;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\ExtractionSchemaException;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
@@ -144,6 +145,33 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->assertInstanceOf(ReferralDocxExtraction::class, $response->extraction);
     }
 
+    public function testMinimalClinicalWorkbookJsonParsesAndMatchesSchemaRootAndFactKeys(): void
+    {
+        $json = json_encode($this->minimalWorkbookPayload(), JSON_THROW_ON_ERROR);
+        $extraction = ClinicalWorkbookExtraction::fromJson($json);
+        $this->assertSame(DocumentType::ClinicalWorkbook, $extraction->documentType);
+        $this->assertCount(1, $extraction->facts);
+
+        $schema = (new JsonSchemaBuilder())->schema(DocumentType::ClinicalWorkbook);
+        $this->assertSchemaObjectRequiredKeys(
+            $schema,
+            ['doc_type', 'workbook_name', 'patient_identity', 'facts'],
+        );
+        $items = $this->nestedSchemaItems($schema, ['properties', 'facts']);
+        $this->assertSchemaObjectRequiredKeys(
+            $items,
+            ['type', 'field_path', 'label', 'value', 'certainty', 'confidence', 'citation'],
+        );
+
+        $response = ExtractionProviderResponse::fromStrictJson(
+            DocumentType::ClinicalWorkbook,
+            $json,
+            DraftUsage::fixture(),
+        );
+        $this->assertTrue($response->schemaValid);
+        $this->assertInstanceOf(ClinicalWorkbookExtraction::class, $response->extraction);
+    }
+
     public function testFaxPacketJsonRequiresFacts(): void
     {
         $payload = $this->minimalFaxPayload();
@@ -153,6 +181,17 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->expectExceptionMessage('Expected at least one fax packet fact.');
 
         FaxPacketExtraction::fromArray($payload);
+    }
+
+    public function testClinicalWorkbookJsonRequiresFacts(): void
+    {
+        $payload = $this->minimalWorkbookPayload();
+        $payload['facts'] = [];
+
+        $this->expectException(ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected at least one workbook fact.');
+
+        ClinicalWorkbookExtraction::fromArray($payload);
     }
 
     public function testFaxPacketRejectsCitationSourceTypeThatDoesNotMatchDocumentType(): void
@@ -193,6 +232,26 @@ final class ExtractionSchemaContractTest extends TestCase
         $this->expectExceptionMessage('Expected source type referral_docx.');
 
         ReferralDocxExtraction::fromArray($payload);
+    }
+
+    public function testClinicalWorkbookRejectsCitationSourceTypeThatDoesNotMatchDocumentType(): void
+    {
+        $payload = $this->minimalWorkbookPayload();
+        $facts = $payload['facts'];
+        $this->assertIsArray($facts);
+        $fact = $facts[0] ?? null;
+        $this->assertIsArray($fact);
+        $citation = $fact['citation'] ?? null;
+        $this->assertIsArray($citation);
+        $citation['source_type'] = 'lab_pdf';
+        $fact['citation'] = $citation;
+        $facts[0] = $fact;
+        $payload['facts'] = $facts;
+
+        $this->expectException(ExtractionSchemaException::class);
+        $this->expectExceptionMessage('Expected source type clinical_workbook.');
+
+        ClinicalWorkbookExtraction::fromArray($payload);
     }
 
     public function testNormalizationTelemetryKeepsOnlySafeAggregateFields(): void
@@ -392,6 +451,33 @@ final class ExtractionSchemaContractTest extends TestCase
                         'page_or_section' => 'section:reason-for-referral',
                         'field_or_chunk_id' => 'paragraph:3',
                         'quote_or_value' => 'Cardiology consult',
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function minimalWorkbookPayload(): array
+    {
+        return [
+            'doc_type' => 'clinical_workbook',
+            'workbook_name' => 'Clinical Workbook',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'lab_result',
+                    'field_path' => 'Labs_Trend!H3',
+                    'label' => 'LDL cholesterol (calc)',
+                    'value' => '142 mg/dL on 2026-04-12',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.98,
+                    'citation' => [
+                        'source_type' => 'clinical_workbook',
+                        'source_id' => 'doc:5',
+                        'page_or_section' => 'sheet:Labs_Trend',
+                        'field_or_chunk_id' => 'H3',
+                        'quote_or_value' => 'LDL cholesterol (calc) 142 mg/dL',
                     ],
                 ],
             ],

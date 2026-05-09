@@ -56,7 +56,7 @@ final class DocumentTypeTest extends TestCase
         $this->assertTrue(DocumentType::IntakeForm->runtimeIngestionSupported());
         $this->assertTrue(DocumentType::ReferralDocx->runtimeIngestionSupported());
         $this->assertTrue(DocumentType::FaxPacket->runtimeIngestionSupported());
-        $this->assertFalse(DocumentType::ClinicalWorkbook->runtimeIngestionSupported());
+        $this->assertTrue(DocumentType::ClinicalWorkbook->runtimeIngestionSupported());
         $this->assertFalse(DocumentType::Hl7v2Message->runtimeIngestionSupported());
     }
 }

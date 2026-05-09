@@ -39,6 +39,7 @@ final readonly class ExtractionProviderConfig
         public int $maxPdfPages = 5,
         public int $maxTiffSourceBytes = 10_485_760,
         public int $maxDocxSourceBytes = 10_485_760,
+        public int $maxXlsxSourceBytes = 10_485_760,
     ) {
         if ($mode === '') {
             throw new DomainException('Extraction provider mode is required.');
@@ -60,6 +61,9 @@ final readonly class ExtractionProviderConfig
         }
         if ($maxDocxSourceBytes < 1) {
             throw new DomainException('Extraction provider max DOCX source bytes must be positive.');
+        }
+        if ($maxXlsxSourceBytes < 1) {
+            throw new DomainException('Extraction provider max XLSX source bytes must be positive.');
         }
 
         $resolvedModel = $model ?? self::defaultModel($mode);
@@ -101,6 +105,7 @@ final readonly class ExtractionProviderConfig
             maxPdfPages: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_PAGES') ?? 5,
             maxTiffSourceBytes: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_TIFF_BYTES') ?? 10_485_760,
             maxDocxSourceBytes: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_DOCX_BYTES') ?? 10_485_760,
+            maxXlsxSourceBytes: AgentForgeEnv::int('AGENTFORGE_VLM_MAX_XLSX_BYTES') ?? 10_485_760,
         );
     }
 

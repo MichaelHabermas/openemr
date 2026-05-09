@@ -33,9 +33,9 @@ The example document folder already contains broader fixture families:
 - `hl7v2/*.hl7`
 - `source-previews/*.png`
 
-PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. Epic 5 adds bounded runtime extraction for referral DOCX files by parsing a safe OOXML text/table subset. XLSX and HL7 v2 still have strict fixture-backed contract coverage only and do not have first-class runtime ingestion support yet.
+PDF and PNG intake/lab families are represented in the implemented ingestion slice. Epic 4 also enables bounded runtime extraction for multipage TIFF fax packets by rendering pages through the normalized-content seam. Epic 5 adds bounded runtime extraction for referral DOCX files by parsing a safe OOXML text/table subset. Epic 6 adds bounded runtime extraction for XLSX clinical workbooks by normalizing safe sheet/table content. HL7 v2 still has strict fixture-backed contract coverage only and does not have first-class runtime ingestion support yet.
 
-Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support, and Epic 5 moves DOCX referrals to bounded runtime support. XLSX and HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to later epics.
+Current Epic 1 implementation note (2026-05-08): DOCX, XLSX, TIFF, and HL7 v2 now have deterministic golden coverage. This adds strict extraction schemas, fixture sidecars, source fixture manifest coverage, document-fact proof records, and eval reporting by document type/source format. Epic 4 moves TIFF fax packets to bounded runtime support, Epic 5 moves DOCX referrals to bounded runtime support, and Epic 6 moves XLSX clinical workbooks to bounded runtime support. HL7 v2 runtime normalizers, live extraction providers, and production ingestion remain deferred to a later epic.
 
 ## 3. Product Requirements
 
@@ -354,10 +354,10 @@ with a normalizer registry, immutable normalized-content value objects, PDF and
 image normalizers, coded warnings, and PHI-safe telemetry. The OpenAI extraction
 provider now builds model content parts from `NormalizedDocumentContent` while
 keeping `DocumentExtractionProvider::extract(DocumentLoadResult ...)` stable.
-Fixture extraction remains source-SHA-keyed. XLSX and HL7 v2 remain
-contract-only until later runtime-support epics; TIFF fax packets move to
-bounded runtime support in Epic 4 and DOCX referrals move to bounded runtime
-support in Epic 5.
+Fixture extraction remains source-SHA-keyed. TIFF fax packets move to bounded
+runtime support in Epic 4, DOCX referrals move to bounded runtime support in
+Epic 5, and XLSX clinical workbooks move to bounded runtime support in Epic 6.
+HL7 v2 remains contract-only until a later runtime-support epic.
 
 ### Epic 4 - TIFF Fax Packet Support
 
@@ -388,7 +388,8 @@ TIFF source byte limit plus the existing VLM page limit. `fax_packet` is now
 runtime-ingestion supported, but fax facts are counted and persisted as cited
 document facts only; there is no chart-table promotion, packet splitting, OCR
 layer, or TIFF browser preview endpoint in this epic. DOCX remains fail-closed
-until Epic 5; XLSX and HL7 v2 remain fail-closed contract-only types.
+until Epic 5 and XLSX remains fail-closed until Epic 6; HL7 v2 remains
+fail-closed contract-only.
 
 ### Epic 5 - DOCX Referral Support
 
@@ -420,29 +421,31 @@ footers), deterministic paragraph/table anchors, and PHI-safe aggregate
 telemetry. Referral facts remain document facts only: there is no chart
 promotion, medication reconciliation, referral/order creation, DOCX preview
 endpoint, OCR layer, arbitrary Office support, or automatic requeue of older
-failed `unsupported_doc_type` jobs. XLSX and HL7 v2 remain contract-only.
+failed `unsupported_doc_type` jobs. XLSX remains contract-only until Epic 6 and
+HL7 v2 remains contract-only.
 
 ### Epic 6 - XLSX Workbook Support
 
-Status: Not started.
+Status: Implemented.
 
 Goal: Support workbook rows and tables with sheet/cell citations.
 
 Tasks:
 
 - Add `XlsxDocumentContentNormalizer`.
-- Parse workbook sheets, shared strings, table definitions, cell values, and cell addresses.
-- Preserve sheet names and cell ranges in normalized content.
-- Add `ClinicalWorkbookExtraction` schema and parser.
-- Add deterministic mapping for well-formed workbook tables before using the VLM.
-- Add fact mapper support for lab-like rows, medication-like rows, care gaps, and review notes.
-- Add fixture extraction output for at least one workbook.
+- Parse visible workbook sheets, shared strings, cell values, and cell addresses into normalized text/table content.
+- Preserve sheet names and cell/range anchors in normalized content.
+- Reuse the existing `ClinicalWorkbookExtraction` schema and parser.
+- Route normalized workbook content through the existing OpenAI/fixture extraction path.
+- Persist workbook findings as generic cited document facts only.
+- Keep the existing Chen workbook fixture extraction output as deterministic golden proof.
 
 Acceptance criteria:
 
 - At least one XLSX fixture extracts cited facts in fixture mode.
 - Extracted facts cite sheet names and cell/range anchors.
-- Hidden sheets, empty cells, formulas, and unsupported embedded objects produce warnings rather than unsafe inference.
+- Hidden sheets, hidden rows/columns, merged cells, and formulas produce coded warnings rather than unsafe inference. External workbook relationships, macros, embedded/binary parts, unsafe content types, malformed workbooks, empty normalized content, and limit violations fail closed with PHI-safe `normalization_failed`.
+- HL7 v2 remains contract-only.
 
 ### Epic 7 - HL7 v2 Message Support
 

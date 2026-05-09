@@ -30,6 +30,8 @@ use OpenEMR\AgentForge\Document\Extraction\RenderedPdfPage;
 use OpenEMR\AgentForge\Document\ExtractionErrorCode;
 use OpenEMR\AgentForge\Document\Worker\DocumentLoadResult;
 use OpenEMR\Tests\Isolated\AgentForge\Support\AgentForgeTestFixtures;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PHPUnit\Framework\TestCase;
 
 final class DocumentContentNormalizerRegistryTest extends TestCase
@@ -78,7 +80,7 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
         }
     }
 
-    public function testFactoryRegistrySupportsPdfImagesInjectedTiffRendererAndDocx(): void
+    public function testFactoryRegistrySupportsPdfImagesInjectedTiffRendererDocxAndXlsx(): void
     {
         $registry = DocumentContentNormalizerRegistryFactory::withTiffRenderer(
             new RegistryFactoryPdfRenderer(),
@@ -108,11 +110,17 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
             DocumentType::ReferralDocx,
             new DocumentLoadResult($this->minimalDocx(), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'referral.docx'),
         ), $deadline);
+        $xlsx = $registry->normalize(new DocumentContentNormalizationRequest(
+            new DocumentId(16),
+            DocumentType::ClinicalWorkbook,
+            new DocumentLoadResult($this->minimalXlsx(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx'),
+        ), $deadline);
 
         $this->assertSame('pdf', $pdf->telemetry()->normalizer);
         $this->assertSame('image', $image->telemetry()->normalizer);
         $this->assertSame('tiff', $tiff->telemetry()->normalizer);
         $this->assertSame('docx', $docx->telemetry()->normalizer);
+        $this->assertSame('xlsx', $xlsx->telemetry()->normalizer);
         $this->assertSame('data:image/png;base64,dGlmZi1wYWdl', $tiff->renderedPages[0]->dataUrl());
     }
 
@@ -127,6 +135,26 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
             '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Referral text</w:t></w:r></w:p></w:body></w:document>',
         );
         $zip->close();
+        $bytes = file_get_contents($path);
+        unlink($path);
+        $this->assertIsString($bytes);
+
+        return $bytes;
+    }
+
+    private function minimalXlsx(): string
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Patient');
+        $sheet->fromArray([
+            ['Field', 'Value'],
+            ['Name', 'Margaret Chen'],
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'agentforge-registry-xlsx-');
+        $this->assertIsString($path);
+        (new Xlsx($spreadsheet))->save($path);
+        $spreadsheet->disconnectWorksheets();
         $bytes = file_get_contents($path);
         unlink($path);
         $this->assertIsString($bytes);

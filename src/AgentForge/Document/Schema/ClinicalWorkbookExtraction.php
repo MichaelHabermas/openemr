@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Contract-only extraction schema for XLSX clinical workbook fixtures.
+ * Strict extraction schema for bounded XLSX clinical workbook ingestion.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org

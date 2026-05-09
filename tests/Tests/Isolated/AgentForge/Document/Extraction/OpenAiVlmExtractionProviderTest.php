@@ -285,6 +285,82 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         $this->assertStringNotContainsString('p01-chen-referral.docx', $payloadJson);
     }
 
+    public function testExtractClinicalWorkbookUsesWorkbookSchemaAndNormalizedTables(): void
+    {
+        $client = new RecordingExtractionOpenAiClient($this->openAiWorkbookResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+            contentNormalizers: new DocumentContentNormalizerRegistry([
+                new OpenAiProviderWorkbookNormalizer(),
+            ]),
+        );
+
+        $response = $provider->extract(
+            new DocumentId(18),
+            new DocumentLoadResult('xlsx-source-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'chen-workbook.xlsx'),
+            DocumentType::ClinicalWorkbook,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('clinical_workbook', $this->factCitationSourceType($response->facts[0] ?? []));
+        $payload = $client->lastPayload();
+        $this->assertSame(
+            ['doc_type', 'workbook_name', 'patient_identity', 'facts'],
+            $this->arrayPath($payload, ['response_format', 'json_schema', 'schema', 'required']),
+        );
+        $this->assertStringContainsString(
+            'Requested document type: clinical_workbook',
+            $this->stringPath($payload, ['messages', 0, 'content']),
+        );
+        $encodedPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('chen-workbook.xlsx', $encodedPayload);
+        $this->assertStringNotContainsString('xlsx-source-bytes', $encodedPayload);
+
+        $content = $this->arrayPath($payload, ['messages', 1, 'content']);
+        $this->assertCount(3, $content);
+        $this->assertStringContainsString('Normalized text section Patient!B2', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('sheet:Patient; Patient!B2', $this->contentTextAt($content, 1));
+        $this->assertStringContainsString('Normalized table sheet:Labs_Trend', $this->contentTextAt($content, 2));
+        $this->assertStringContainsString('Labs_Trend!H3', $this->contentTextAt($content, 2));
+        $this->assertSame('xlsx', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertSame(1, $response->normalizationTelemetry['text_section_count'] ?? null);
+        $this->assertSame(1, $response->normalizationTelemetry['table_count'] ?? null);
+    }
+
+    public function testExtractClinicalWorkbookWithDefaultRegistryNormalizesRealFixture(): void
+    {
+        $bytes = file_get_contents(__DIR__ . '/../../../../../../agent-forge/docs/example-documents/xlsx/p01-chen-workbook.xlsx');
+        $this->assertIsString($bytes);
+        $client = new RecordingExtractionOpenAiClient($this->openAiWorkbookResponse());
+        $provider = new OpenAiVlmExtractionProvider(
+            $client,
+            'test-key',
+            'gpt-4o-mini',
+            new TestPdfPageRenderer(),
+        );
+
+        $response = $provider->extract(
+            new DocumentId(19),
+            new DocumentLoadResult($bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'p01-chen-workbook.xlsx'),
+            DocumentType::ClinicalWorkbook,
+            $this->deadline(),
+        );
+
+        $this->assertTrue($response->schemaValid);
+        $this->assertSame('xlsx', $response->normalizationTelemetry['normalizer'] ?? null);
+        $this->assertGreaterThan(0, $response->normalizationTelemetry['table_count'] ?? 0);
+
+        $payloadJson = json_encode($client->lastPayload(), JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('Patient!B2', $payloadJson);
+        $this->assertStringContainsString('Labs_Trend!H3', $payloadJson);
+        $this->assertStringContainsString('Care_Gaps!A4:F4', $payloadJson);
+        $this->assertStringNotContainsString('p01-chen-workbook.xlsx', $payloadJson);
+    }
+
 
     public function testUnsupportedMimeFailsWithStableNormalizationError(): void
     {
@@ -681,6 +757,42 @@ final class OpenAiVlmExtractionProviderTest extends TestCase
         ];
     }
 
+    /** @return array<string, mixed> */
+    private function openAiWorkbookResponse(): array
+    {
+        return [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => json_encode([
+                            'doc_type' => 'clinical_workbook',
+                            'workbook_name' => 'Clinical workbook',
+                            'patient_identity' => [],
+                            'facts' => [
+                                [
+                                    'type' => 'lab_result',
+                                    'field_path' => 'Labs_Trend!H3',
+                                    'label' => 'LDL cholesterol (calc)',
+                                    'value' => '142 mg/dL on 2026-04-12',
+                                    'certainty' => 'document_fact',
+                                    'confidence' => 0.98,
+                                    'citation' => [
+                                        'source_type' => 'clinical_workbook',
+                                        'source_id' => 'sha256:fixture',
+                                        'page_or_section' => 'sheet:Labs_Trend',
+                                        'field_or_chunk_id' => 'H3',
+                                        'quote_or_value' => 'LDL cholesterol (calc) 142 mg/dL on 2026-04-12',
+                                    ],
+                                ],
+                            ],
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ],
+            ],
+            'usage' => ['prompt_tokens' => 80, 'completion_tokens' => 25],
+        ];
+    }
+
     private function deadline(): Deadline
     {
         return new Deadline(new SystemMonotonicClock(), 8000);
@@ -848,6 +960,42 @@ final class OpenAiProviderReferralDocxNormalizer implements DocumentContentNorma
     public function name(): string
     {
         return 'docx';
+    }
+}
+
+final class OpenAiProviderWorkbookNormalizer implements DocumentContentNormalizer
+{
+    public function supports(DocumentContentNormalizationRequest $request): bool
+    {
+        return $request->documentType === DocumentType::ClinicalWorkbook;
+    }
+
+    public function normalize(
+        DocumentContentNormalizationRequest $request,
+        Deadline $deadline,
+    ): NormalizedDocumentContent {
+        return new NormalizedDocumentContent(
+            NormalizedDocumentSource::fromLoadResult($request->document, $request->documentType),
+            textSections: [
+                new NormalizedTextSection('Patient!B2', 'Patient', 'Name: Margaret Chen', 'sheet:Patient; Patient!B2'),
+            ],
+            tables: [
+                new NormalizedTable('sheet:Labs_Trend', 'Labs_Trend', ['test', '2026_04_12'], [[
+                    '_anchor' => 'Labs_Trend!A3:H3',
+                    'test' => 'LDL cholesterol (calc)',
+                    '_cell_test' => 'Labs_Trend!A3',
+                    '2026_04_12' => '142',
+                    '_cell_2026_04_12' => 'Labs_Trend!H3',
+                ]]),
+            ],
+            normalizer: 'xlsx',
+            normalizationElapsedMs: 17,
+        );
+    }
+
+    public function name(): string
+    {
+        return 'xlsx';
     }
 }
 

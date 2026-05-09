@@ -24,6 +24,7 @@ use OpenEMR\AgentForge\Document\Identity\IdentityStatus;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Promotion\ClinicalDocumentFactPromotionRepository;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -96,6 +97,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
             !$response->extraction instanceof LabPdfExtraction
             && !$response->extraction instanceof IntakeFormExtraction
             && !$response->extraction instanceof ReferralDocxExtraction
+            && !$response->extraction instanceof ClinicalWorkbookExtraction
             && !$response->extraction instanceof FaxPacketExtraction
         ) {
             $timer->stop('extraction:parse_response');
@@ -146,7 +148,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
     private function verifyIdentity(
         DocumentJob $job,
         DocumentLoadResult $document,
-        LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction,
+        LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction,
     ): ?ProcessingResult {
         if (
             $job->id === null
@@ -202,7 +204,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
     /**
      * @return array{verified: int, document_fact: int, needs_review: int}
      */
-    private function countFactBuckets(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): array
+    private function countFactBuckets(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction): array
     {
         $counts = [
             'verified' => 0,
@@ -210,7 +212,11 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
             'needs_review' => 0,
         ];
 
-        if ($extraction instanceof ReferralDocxExtraction || $extraction instanceof FaxPacketExtraction) {
+        if (
+            $extraction instanceof ReferralDocxExtraction
+            || $extraction instanceof ClinicalWorkbookExtraction
+            || $extraction instanceof FaxPacketExtraction
+        ) {
             $documentFactClassifier = new DocumentFactClassifier($this->classifier);
             foreach ($extraction->facts as $candidate) {
                 $certainty = $documentFactClassifier->classify($job, $candidate);

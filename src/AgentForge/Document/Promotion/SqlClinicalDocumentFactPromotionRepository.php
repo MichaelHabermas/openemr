@@ -25,6 +25,7 @@ use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\DocumentCitation;
 use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
@@ -58,7 +59,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $this->wallClock = $wallClock ?? new SystemPsrClock();
     }
 
-    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): PromotionSummary
+    public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction): PromotionSummary
     {
         if ($job->id === null || !$this->trustedJob($job)) {
             return PromotionSummary::empty();

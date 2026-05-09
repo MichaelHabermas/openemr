@@ -165,6 +165,7 @@ final class ExtractionProviderFactoryTest extends TestCase
         $this->assertSame(5, $config->maxPdfPages);
         $this->assertSame(10_485_760, $config->maxTiffSourceBytes);
         $this->assertSame(10_485_760, $config->maxDocxSourceBytes);
+        $this->assertSame(10_485_760, $config->maxXlsxSourceBytes);
     }
 
     /** @return list<string> */
@@ -177,6 +178,7 @@ final class ExtractionProviderFactoryTest extends TestCase
             'AGENTFORGE_VLM_MODEL',
             'AGENTFORGE_VLM_MAX_TIFF_BYTES',
             'AGENTFORGE_VLM_MAX_DOCX_BYTES',
+            'AGENTFORGE_VLM_MAX_XLSX_BYTES',
             'AGENTFORGE_EXTRACTION_FIXTURE_MANIFEST',
             'AGENTFORGE_EXTRACTION_FIXTURES_DIR',
         ];

@@ -33,6 +33,7 @@ enum DocumentType: string
         return $this === self::LabPdf
             || $this === self::IntakeForm
             || $this === self::ReferralDocx
+            || $this === self::ClinicalWorkbook
             || $this === self::FaxPacket;
     }
 }

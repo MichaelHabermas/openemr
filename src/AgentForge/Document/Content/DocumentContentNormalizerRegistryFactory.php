@@ -22,9 +22,10 @@ final class DocumentContentNormalizerRegistryFactory
         int $maxPdfPages,
         int $maxTiffSourceBytes = 10_485_760,
         int $maxDocxSourceBytes = 10_485_760,
+        int $maxXlsxSourceBytes = 10_485_760,
     ): DocumentContentNormalizerRegistry
     {
-        return self::withTiffRenderer($pdfRenderer, $maxPdfPages, new ImagickTiffRasterRenderer(), $maxTiffSourceBytes, $maxDocxSourceBytes);
+        return self::withTiffRenderer($pdfRenderer, $maxPdfPages, new ImagickTiffRasterRenderer(), $maxTiffSourceBytes, $maxDocxSourceBytes, $maxXlsxSourceBytes);
     }
 
     public static function withTiffRenderer(
@@ -33,6 +34,7 @@ final class DocumentContentNormalizerRegistryFactory
         RasterDocumentRenderer $tiffRenderer,
         int $maxTiffSourceBytes = 10_485_760,
         int $maxDocxSourceBytes = 10_485_760,
+        int $maxXlsxSourceBytes = 10_485_760,
     ): DocumentContentNormalizerRegistry
     {
         $clock = new SystemMonotonicClock();
@@ -42,6 +44,7 @@ final class DocumentContentNormalizerRegistryFactory
             new ImageDocumentContentNormalizer($clock),
             new TiffDocumentContentNormalizer($tiffRenderer, $clock, $maxPages, $maxTiffSourceBytes),
             new DocxDocumentContentNormalizer($clock, $maxDocxSourceBytes),
+            new XlsxDocumentContentNormalizer($clock, $maxXlsxSourceBytes),
         ]);
     }
 }

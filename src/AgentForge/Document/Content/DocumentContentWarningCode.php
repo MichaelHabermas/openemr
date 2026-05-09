@@ -20,4 +20,10 @@ enum DocumentContentWarningCode: string
     case EmptyTextLayer = 'empty_text_layer';
     case RenderedPageLimitApplied = 'rendered_page_limit_applied';
     case UnsupportedMimeType = 'unsupported_mime_type';
+    case HiddenSheetSkipped = 'hidden_sheet_skipped';
+    case HiddenRowOrColumnSkipped = 'hidden_row_or_column_skipped';
+    case FormulaCellCachedValueUsed = 'formula_cell_cached_value_used';
+    case FormulaCellSkipped = 'formula_cell_skipped';
+    case MergedCellRangePresent = 'merged_cell_range_present';
+    case UnsupportedWorkbookRelationship = 'unsupported_workbook_relationship';
 }

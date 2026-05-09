@@ -152,15 +152,33 @@ final class AttachAndExtractToolTest extends TestCase
     {
         $tool = new AttachAndExtractTool(
             new InMemorySourceDocumentStorage(),
-            new FixedDocumentLoader(new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx')),
+            new FixedDocumentLoader(new DocumentLoadResult('hl7-bytes', 'text/plain', 'message.hl7')),
             new AttachToolStaticProvider(self::strictResponse()),
         );
 
-        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::ClinicalWorkbook, self::deadline());
+        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::Hl7v2Message, self::deadline());
 
         $this->assertFalse($result->success);
         $this->assertSame(ExtractionErrorCode::UnsupportedDocType, $result->errorCode);
         $this->assertSame(88, $result->documentId?->value);
+    }
+
+    public function testClinicalWorkbookExistingDocumentUsesProviderPath(): void
+    {
+        $tool = new AttachAndExtractTool(
+            new InMemorySourceDocumentStorage(),
+            new FixedDocumentLoader(new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx')),
+            new AttachToolStaticProvider(self::strictWorkbookResponse()),
+            new FixedPatientIdentityRepository(new PatientIdentity(new PatientId(1), 'Jane', 'Doe', '1980-04-15')),
+            new DocumentIdentityVerifier(),
+            new ExtractionIdentityEvidenceBuilder(),
+        );
+
+        $result = $tool->forExistingDocument(new PatientId(1), new DocumentId(88), DocumentType::ClinicalWorkbook, self::deadline());
+
+        $this->assertTrue($result->success);
+        $this->assertSame(88, $result->documentId?->value);
+        $this->assertSame('clinical_workbook', $result->extraction?->extraction?->documentType->value);
     }
 
     private static function strictResponse(): ExtractionProviderResponse
@@ -196,6 +214,35 @@ final class AttachAndExtractToolTest extends TestCase
         );
     }
 
+    private static function strictWorkbookResponse(): ExtractionProviderResponse
+    {
+        return ExtractionProviderResponse::fromStrictJson(
+            DocumentType::ClinicalWorkbook,
+            json_encode([
+                'doc_type' => 'clinical_workbook',
+                'workbook_name' => 'Clinical Workbook',
+                'patient_identity' => self::identityCandidates('clinical_workbook'),
+                'facts' => [[
+                    'type' => 'lab_result',
+                    'field_path' => 'Labs_Trend!H3',
+                    'label' => 'LDL cholesterol (calc)',
+                    'value' => '142 mg/dL on 2026-04-12',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.98,
+                    'citation' => [
+                        'source_type' => 'clinical_workbook',
+                        'source_id' => 'sha256:workbook',
+                        'page_or_section' => 'sheet:Labs_Trend',
+                        'field_or_chunk_id' => 'H3',
+                        'quote_or_value' => 'LDL cholesterol (calc) 142 mg/dL',
+                    ],
+                ]],
+            ], JSON_THROW_ON_ERROR),
+            DraftUsage::fixture(),
+            'fixture-vlm',
+        );
+    }
+
     private static function identityGatedTool(
         SourceDocumentStorage $storage,
         DocumentLoader $loader,
@@ -212,7 +259,7 @@ final class AttachAndExtractToolTest extends TestCase
     }
 
     /** @return list<array<string, mixed>> */
-    private static function identityCandidates(): array
+    private static function identityCandidates(string $sourceType = 'lab_pdf'): array
     {
         return [
             [
@@ -222,7 +269,7 @@ final class AttachAndExtractToolTest extends TestCase
                 'certainty' => 'verified',
                 'confidence' => 0.99,
                 'citation' => [
-                    'source_type' => 'lab_pdf',
+                        'source_type' => $sourceType,
                     'source_id' => 'documents:50',
                     'page_or_section' => 'page 1',
                     'field_or_chunk_id' => 'patient_name',
@@ -236,7 +283,7 @@ final class AttachAndExtractToolTest extends TestCase
                 'certainty' => 'verified',
                 'confidence' => 0.99,
                 'citation' => [
-                    'source_type' => 'lab_pdf',
+                        'source_type' => $sourceType,
                     'source_id' => 'documents:50',
                     'page_or_section' => 'page 1',
                     'field_or_chunk_id' => 'date_of_birth',

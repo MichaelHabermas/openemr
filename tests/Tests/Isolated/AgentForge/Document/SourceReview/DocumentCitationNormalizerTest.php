@@ -97,4 +97,19 @@ final class DocumentCitationNormalizerTest extends TestCase
         $this->assertNull($citation->pageNumber);
         $this->assertSame('paragraph:3', $citation->fieldOrChunkId);
     }
+
+    public function testPreservesWorkbookSheetAndCellRangeAnchors(): void
+    {
+        $citation = (new DocumentCitationNormalizer())->normalize([
+            'source_type' => 'clinical_workbook',
+            'source_id' => 'doc:66',
+            'page_or_section' => 'sheet:Labs_Trend',
+            'field_or_chunk_id' => 'Care_Gaps!A4:F4',
+            'quote_or_value' => 'Diabetic eye exam annual is overdue',
+        ]);
+
+        $this->assertSame('sheet:Labs_Trend', $citation->pageOrSection);
+        $this->assertNull($citation->pageNumber);
+        $this->assertSame('Care_Gaps!A4:F4', $citation->fieldOrChunkId);
+    }
 }

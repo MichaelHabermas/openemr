@@ -33,6 +33,7 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
     use OpenEMR\AgentForge\Document\Promotion\ClinicalDocumentFactPromotionRepository;
     use OpenEMR\AgentForge\Document\Promotion\PromotionSummary;
     use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
+    use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
     use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
     use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
     use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -217,8 +218,8 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
 
             $result = $worker->process(
-                self::job(docType: DocumentType::ClinicalWorkbook),
-                new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'workbook.xlsx'),
+                self::job(docType: DocumentType::Hl7v2Message),
+                new DocumentLoadResult('hl7-bytes', 'text/plain', 'message.hl7'),
             );
 
             $this->assertSame(JobStatus::Failed, $result->terminalStatus);
@@ -227,6 +228,44 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame(0, $provider->calls);
             $this->assertSame([], $identityChecks->results);
             $this->assertSame([], $logger->records);
+        }
+
+        public function testClinicalWorkbookRuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
+        {
+            $provider = new IntakeWorkerCountingProvider(self::strictWorkbookResponse(withIdentity: true));
+            $identityChecks = new IntakeWorkerIdentityCheckRepository();
+            $promotions = new IntakeWorkerPromotionRepository();
+            $logger = new IntakeWorkerRecordingLogger();
+            $worker = new IntakeExtractorWorker(
+                $provider,
+                new CertaintyClassifier(),
+                $logger,
+                AgentForgeTestFixtures::frozenMonotonicClock(1_000),
+                self::testPatientRefHasher(),
+                patientIdentities: new IntakeWorkerPatientIdentityRepository(),
+                identityChecks: $identityChecks,
+                identityVerifier: new DocumentIdentityVerifier(),
+                identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+                factPromotions: $promotions,
+            );
+
+            $result = $worker->process(
+                self::job(docType: DocumentType::ClinicalWorkbook),
+                new DocumentLoadResult('xlsx-bytes', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'chen-workbook.xlsx'),
+            );
+
+            $this->assertSame(JobStatus::Succeeded, $result->terminalStatus);
+            $this->assertSame(1, $provider->calls);
+            $this->assertCount(1, $identityChecks->results);
+            $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
+            $this->assertInstanceOf(ClinicalWorkbookExtraction::class, $promotions->lastExtraction);
+            $record = $logger->recordByMessage('document.extraction.completed');
+            $this->assertSame(0, $record['context']['fact_count_verified']);
+            $this->assertSame(1, $record['context']['fact_count_document_fact']);
+            $this->assertSame(1, $record['context']['fact_count_needs_review']);
+            $this->assertSame('xlsx', $record['context']['normalizer']);
+            $this->assertSame('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $record['context']['source_mime_type']);
+            $this->assertStringNotContainsString('chen-workbook.xlsx', json_encode($record['context'], JSON_THROW_ON_ERROR));
         }
 
         public function testFaxPacketRuntimeExtractionCallsProviderAndCountsDocumentFactsOnly(): void
@@ -448,6 +487,36 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             );
         }
 
+        private static function strictWorkbookResponse(bool $withIdentity = false): ExtractionProviderResponse
+        {
+            return ExtractionProviderResponse::fromStrictJson(
+                DocumentType::ClinicalWorkbook,
+                json_encode([
+                    'doc_type' => 'clinical_workbook',
+                    'workbook_name' => 'Worker Test Workbook',
+                    'patient_identity' => $withIdentity ? self::identityCandidates('clinical_workbook') : [],
+                    'facts' => [
+                        self::workbookFact('document_fact', 'LDL cholesterol (calc)', 0.91, '142 mg/dL'),
+                        self::workbookFact('needs_review', 'Diabetic eye exam', 0.40, 'overdue'),
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                new DraftUsage('fixture-vlm', 13, 8, 0.0014),
+                'fixture-vlm',
+                normalizationTelemetry: [
+                    'normalizer' => 'xlsx',
+                    'source_mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'source_byte_count' => 10,
+                    'rendered_page_count' => 0,
+                    'text_section_count' => 4,
+                    'table_count' => 2,
+                    'message_segment_count' => 0,
+                    'warning_codes' => [],
+                    'normalization_elapsed_ms' => 14,
+                    'spreadsheet_cells' => 'must be sanitized',
+                ],
+            );
+        }
+
         /** @return list<array<string, mixed>> */
         private static function identityCandidates(string $sourceType = 'lab_pdf'): array
         {
@@ -542,6 +611,26 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
                     'source_id' => 'sha256:worker-test',
                     'page_or_section' => 'section:reason-for-referral',
                     'field_or_chunk_id' => 'paragraph:3',
+                    'quote_or_value' => $quote,
+                ],
+            ];
+        }
+
+        /** @return array<string, mixed> */
+        private static function workbookFact(string $certainty, string $label, float $confidence, string $quote): array
+        {
+            return [
+                'type' => 'workbook_fact',
+                'field_path' => $label,
+                'label' => $label,
+                'value' => $quote,
+                'certainty' => $certainty,
+                'confidence' => $confidence,
+                'citation' => [
+                    'source_type' => 'clinical_workbook',
+                    'source_id' => 'sha256:worker-test',
+                    'page_or_section' => 'sheet:Labs_Trend',
+                    'field_or_chunk_id' => 'H3',
                     'quote_or_value' => $quote,
                 ],
             ];
@@ -663,9 +752,9 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
 
     final class IntakeWorkerPromotionRepository implements ClinicalDocumentFactPromotionRepository
     {
-        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction | null $lastExtraction = null;
+        public LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | null $lastExtraction = null;
 
-        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | FaxPacketExtraction $extraction): PromotionSummary
+        public function promote(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction $extraction): PromotionSummary
         {
             $this->lastExtraction = $extraction;
 

@@ -23,6 +23,7 @@ use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
 use OpenEMR\AgentForge\Document\Promotion\PromotionOutcome;
 use OpenEMR\AgentForge\Document\Promotion\SqlClinicalDocumentFactPromotionRepository;
+use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
@@ -246,6 +247,24 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
         $this->assertSame(0, $executor->ledgerWrites);
     }
 
+    public function testClinicalWorkbookFactsAreNotPromotedIntoNativeChartTables(): void
+    {
+        $executor = new ClinicalDocumentFactPromotionExecutor(trusted: true);
+        $summary = (new SqlClinicalDocumentFactPromotionRepository($executor))->promote(
+            $this->job(DocumentType::ClinicalWorkbook),
+            $this->workbookExtraction(),
+        );
+
+        $this->assertSame(0, $summary->promoted);
+        $this->assertSame(1, $summary->needsReview);
+        $this->assertSame(1, $summary->skipped);
+        $this->assertSame(0, $executor->insertCount('procedure_order'));
+        $this->assertSame(0, $executor->insertCount('procedure_report'));
+        $this->assertSame(0, $executor->insertCount('procedure_result'));
+        $this->assertSame(0, $executor->insertCount('lists'));
+        $this->assertSame(0, $executor->ledgerWrites);
+    }
+
     private function job(DocumentType $type): DocumentJob
     {
         return new DocumentJob(
@@ -378,6 +397,35 @@ final class ClinicalDocumentFactPromotionRepositoryTest extends TestCase
                     'certainty' => 'needs_review',
                     'confidence' => 0.4,
                     'citation' => $this->citation('referral_docx'),
+                ],
+            ],
+        ]);
+    }
+
+    private function workbookExtraction(): ClinicalWorkbookExtraction
+    {
+        return ClinicalWorkbookExtraction::fromArray([
+            'doc_type' => 'clinical_workbook',
+            'workbook_name' => 'Clinical workbook',
+            'patient_identity' => [],
+            'facts' => [
+                [
+                    'type' => 'lab_result',
+                    'field_path' => 'Labs_Trend!H3',
+                    'label' => 'LDL cholesterol (calc)',
+                    'value' => '142 mg/dL',
+                    'certainty' => 'document_fact',
+                    'confidence' => 0.9,
+                    'citation' => $this->citation('clinical_workbook'),
+                ],
+                [
+                    'type' => 'care_gap',
+                    'field_path' => 'Care_Gaps!A4:F4',
+                    'label' => 'Diabetic eye exam',
+                    'value' => 'Needs review',
+                    'certainty' => 'needs_review',
+                    'confidence' => 0.4,
+                    'citation' => $this->citation('clinical_workbook'),
                 ],
             ],
         ]);
