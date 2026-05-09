@@ -14,6 +14,7 @@ namespace OpenEMR\AgentForge\Observability;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use OpenEMR\AgentForge\Auth\PatientId;
 
 final readonly class RequestLog
 {
@@ -37,7 +38,9 @@ final readonly class RequestLog
         $context = [
             'request_id' => $this->requestId,
             'user_id' => $this->userId,
-            'patient_id' => $this->patientId,
+            'patient_ref' => $this->patientId !== null
+                ? PatientRefHasher::createDefault()->hash(new PatientId($this->patientId))
+                : null,
             'decision' => $this->decision,
             'latency_ms' => $this->latencyMs,
             'timestamp' => $this->timestamp->format(DateTimeInterface::ATOM),

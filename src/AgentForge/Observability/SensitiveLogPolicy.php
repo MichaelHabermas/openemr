@@ -18,7 +18,6 @@ final class SensitiveLogPolicy
     private const ALLOWED_KEYS = [
         'request_id' => true,
         'user_id' => true,
-        'patient_id' => true,
         'decision' => true,
         'latency_ms' => true,
         'timestamp' => true,
@@ -108,6 +107,7 @@ final class SensitiveLogPolicy
         'extracted_fields' => true,
         'exception' => true,
         'raw_exception' => true,
+        'patient_id' => true,
     ];
 
     /**
