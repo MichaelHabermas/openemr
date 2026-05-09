@@ -46,11 +46,11 @@
 
 - [ ] Show GitHub Actions CI workflow (`AgentForge Evals`) running on a PR
 - [ ] Show that a failing eval case blocks the PR merge
-- [ ] Show `thresholds.json`: all 13 rubrics at `1.0` threshold
+- [ ] Show `thresholds.json`: all 14 rubrics at `1.0` threshold
 - [ ] Show `baseline.json`: 65-case baseline with regression blocking (`regression_max_drop_pct: 5`)
 - [ ] Show Tier 0 results: 32/32 pass
 - [ ] Show Tier 1 SQL evidence results: 7/7 pass
-- [ ] Show Clinical Document Gate results: 65/65 pass across 13 rubrics
+- [ ] Show Clinical Document Gate results: 65/65 pass across 14 rubrics
 
 ## 7. Traces and Orchestration
 
