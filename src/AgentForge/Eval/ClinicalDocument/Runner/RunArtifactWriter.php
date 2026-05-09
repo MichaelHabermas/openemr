@@ -49,6 +49,18 @@ final readonly class RunArtifactWriter
                 ],
                 $result->rubricSummaries,
             ),
+            'doc_type_rubrics' => array_map(
+                static fn (array $rubrics): array => array_map(
+                    static fn (RubricSummary $summary): array => [
+                        'passed' => $summary->passed,
+                        'failed' => $summary->failed,
+                        'not_applicable' => $summary->notApplicable,
+                        'pass_rate' => $summary->passRate,
+                    ],
+                    $rubrics,
+                ),
+                $result->docTypeRubricSummaries,
+            ),
         ];
 
         $this->writeJson($runDir . '/run.json', $run);

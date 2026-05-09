@@ -74,3 +74,6 @@ Typed `ReviewLocatorKind` enum replaces `review_mode` string. Five locator kinds
 
 ### Visual PDF Source Review & Retraction UX
 Source-review modal with citation metadata, quote text, bounding-box highlight. No iframe embed. PDF page-image is CSS placeholder. Full retraction cascade proven locally and deployed VM (12→2 citations after deletion).
+
+### End-To-End Gate And Documentation (Epic 10)
+Per-format rubric pass rates surfaced in eval summary (`doc_type_rubrics` in summary.json). Gate script prints format coverage table after eval. Cost/latency report includes format coverage and per-format dimensions. AGENTFORGE-REVIEWER-GUIDE.md documents six-format matrix and known limitations. HL7 v2 ADT added to deployed smoke for non-PDF coverage. W2_ACCEPTANCE_MATRIX.md expanded with per-format acceptance rows.

@@ -31,6 +31,7 @@ final class ClinicalDocumentCostLatencyReportRenderer
             . "## Executive Summary\n\n"
             . "The latest clinical-document gate artifact contains `%d` cases with verdict `%s`. Clinical-document handoff latency is %s: the field is instrumented, but the current deterministic fixture artifact does not prove runtime latency. Clinical-document model cost remains `unknown/not recorded` unless a live clinical-document artifact provides provider token usage.\n\n"
             . "The available live-provider development spend baseline is %s using `%s` with `%s` input tokens and `%s` output tokens. Shared live request latency p50/p95 is `%s` / `%s`; deployed smoke p50/p95 is `%s` / `%s`.\n\n"
+            . "%s"
             . "## Evidence Used\n\n%s\n\n"
             . "## Current Metrics\n\n"
             . "| Metric | Value | Interpretation |\n"
@@ -73,6 +74,7 @@ final class ClinicalDocumentCostLatencyReportRenderer
             $tier2P95,
             $smokeP50,
             $smokeP95,
+            $this->formatCoverageSection($run->docTypeCounts, $run->sourceFormatCounts),
             $this->evidenceTable($run->evidencePaths),
             $run->clinicalExecutedAt,
             $run->clinicalCaseCount,
@@ -89,6 +91,49 @@ final class ClinicalDocumentCostLatencyReportRenderer
             $this->projectedSpendSection($run->tier2EstimatedCostUsd),
             $this->bottleneckSection($run->stageTimingsMs),
         )) . "\n";
+    }
+
+    private const DOC_TYPE_RUNTIME_SUPPORT = [
+        'lab_pdf' => 'Full bounded runtime',
+        'intake_form' => 'Full bounded runtime',
+        'referral_docx' => 'Bounded runtime',
+        'clinical_workbook' => 'Bounded runtime',
+        'fax_packet' => 'Bounded runtime',
+        'hl7v2_message' => 'Deterministic runtime',
+    ];
+
+    /**
+     * @param array<string, int> $docTypeCounts
+     * @param array<string, int> $sourceFormatCounts
+     */
+    private function formatCoverageSection(array $docTypeCounts, array $sourceFormatCounts): string
+    {
+        if ($docTypeCounts === [] && $sourceFormatCounts === []) {
+            return '';
+        }
+
+        $lines = ["## Format Coverage\n"];
+
+        if ($docTypeCounts !== []) {
+            $lines[] = '| Document Type | Cases | Runtime Support |';
+            $lines[] = '| --- | ---: | --- |';
+            foreach ($docTypeCounts as $docType => $count) {
+                $runtime = self::DOC_TYPE_RUNTIME_SUPPORT[$docType] ?? 'Unknown';
+                $lines[] = sprintf('| `%s` | %d | %s |', $docType, $count, $runtime);
+            }
+            $lines[] = '';
+        }
+
+        if ($sourceFormatCounts !== []) {
+            $lines[] = '| Source Format | Cases |';
+            $lines[] = '| --- | ---: |';
+            foreach ($sourceFormatCounts as $format => $count) {
+                $lines[] = sprintf('| `%s` | %d |', $format, $count);
+            }
+            $lines[] = '';
+        }
+
+        return implode("\n", $lines) . "\n";
     }
 
     /** @param list<int> $values */

@@ -26,8 +26,8 @@ $options = getopt('', [
     'output:',
 ]);
 
-$clinicalRun = (string) ($options['clinical-run'] ?? $repoDir . '/agent-forge/eval-results/clinical-document-20260506-230714/run.json');
-$clinicalSummary = (string) ($options['clinical-summary'] ?? $repoDir . '/agent-forge/eval-results/clinical-document-20260506-230714/summary.json');
+$clinicalRun = (string) ($options['clinical-run'] ?? $repoDir . '/agent-forge/eval-results/clinical-document-20260508-190800/run.json');
+$clinicalSummary = (string) ($options['clinical-summary'] ?? $repoDir . '/agent-forge/eval-results/clinical-document-20260508-190800/summary.json');
 $tier2 = isset($options['tier2']) ? (string) $options['tier2'] : $repoDir . '/agent-forge/eval-results/tier2-live-20260503-202550.json';
 $deployedSmoke = isset($options['deployed-smoke']) ? (string) $options['deployed-smoke'] : $repoDir . '/agent-forge/eval-results/deployed-smoke-20260503-201547.json';
 $output = (string) ($options['output'] ?? $repoDir . '/agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md');

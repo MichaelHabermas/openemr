@@ -31,6 +31,40 @@ run_step "Run AgentForge isolated PHPUnit" \
 run_step "Run Clinical document evals" \
   php agent-forge/scripts/run-clinical-document-evals.php
 
+run_step "Format coverage summary" php -r '
+$resultsDir = getenv("AGENTFORGE_CLINICAL_DOCUMENT_EVAL_RESULTS_DIR") ?: "agent-forge/eval-results";
+$dirs = glob($resultsDir . "/clinical-document-*", GLOB_ONLYDIR);
+if ($dirs === [] || $dirs === false) { echo "No clinical-document eval directories found.\n"; exit(0); }
+usort($dirs, static fn (string $a, string $b): int => strcmp($b, $a));
+$file = $dirs[0] . "/summary.json";
+if (!is_file($file)) { echo "No summary.json in latest run.\n"; exit(0); }
+$data = json_decode((string) file_get_contents($file), true);
+$meta = $data["metadata"] ?? [];
+$docTypes = $meta["doc_type_counts"] ?? [];
+$formats = $meta["source_format_counts"] ?? [];
+$perType = $data["doc_type_rubrics"] ?? [];
+if ($docTypes !== []) {
+    printf("  %-25s %s\n", "Document Type", "Cases");
+    printf("  %-25s %s\n", str_repeat("-", 25), str_repeat("-", 5));
+    foreach ($docTypes as $type => $count) { printf("  %-25s %d\n", $type, $count); }
+}
+if ($formats !== []) {
+    printf("\n  %-25s %s\n", "Source Format", "Cases");
+    printf("  %-25s %s\n", str_repeat("-", 25), str_repeat("-", 5));
+    foreach ($formats as $ext => $count) { printf("  %-25s %d\n", "." . $ext, $count); }
+}
+if ($perType !== []) {
+    printf("\n  Per-type rubric pass rates:\n");
+    foreach ($perType as $type => $rubrics) {
+        printf("    %s:\n", $type);
+        foreach ($rubrics as $name => $r) {
+            $total = $r["passed"] + $r["failed"];
+            printf("      %-28s %d/%d (%.0f%%)\n", $name, $r["passed"], $total, $r["pass_rate"] * 100);
+        }
+    }
+}
+'
+
 run_step "Run focused PHPStan (clinical document eval surface)" \
   composer phpstan -- --error-format=raw \
     src/AgentForge \

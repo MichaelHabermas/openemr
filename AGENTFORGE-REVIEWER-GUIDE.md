@@ -128,6 +128,44 @@ deployment's VM so the HTTP upload and database job polling inspect the same
 environment. Use `docker-compose` only for local Docker smoke targets, not for
 the public deployed URL.
 
+## Supported Document Types
+
+The AgentForge clinical document pipeline supports six document types across
+four source formats:
+
+| Document Type | Extensions | Implementation | Runtime Support |
+| --- | --- | --- | --- |
+| `lab_pdf` | `.pdf`, `.png` | VLM extraction | Full bounded runtime |
+| `intake_form` | `.pdf`, `.png` | VLM extraction | Full bounded runtime |
+| `referral_docx` | `.docx` | VLM + OOXML normalization | Bounded runtime |
+| `clinical_workbook` | `.xlsx` | VLM + sheet/table normalization | Bounded runtime |
+| `fax_packet` | `.tiff` | VLM + page rendering | Bounded runtime |
+| `hl7v2_message` | `.hl7` | Deterministic ADT/ORU parsing | Deterministic runtime |
+
+Category mappings (`clinical_document_type_mappings`) determine ingestion
+eligibility — not filenames, MIME types, or heuristics. Each OpenEMR document
+category maps to exactly one clinical document type.
+
+## Known Limitations
+
+The following limitations are explicit and intentional — they do not represent
+bugs or missing coverage:
+
+- **No chart promotion** for DOCX, XLSX, TIFF, or HL7v2 facts. These remain
+  cited document facts only; promotion into OpenEMR clinical tables requires a
+  later approved epic.
+- **No preview endpoints** for DOCX, XLSX, or HL7 documents. Source review shows
+  metadata and quote text only — no embedded document viewers.
+- **No medication reconciliation or order creation** from referral documents.
+- **No automatic replay** of historical `unsupported_doc_type` jobs when a
+  normalizer ships. Replay requires an explicit operational step.
+- **HL7v2 supports only ADT^A08 and ORU^R01** message shapes. Other shapes fail
+  closed with `unsupported_doc_type`.
+- **No TIFF packet splitting** into child documents. Each fax packet is one
+  source document with page-level citations.
+- **Default document fact embeddings** are deterministic/fixture-backed. Semantic
+  dense ranking requires live provider configuration.
+
 ## Week 2 Proof Snapshot
 
 Canonical Week 2 docs:

@@ -33,6 +33,10 @@ final class ClinicalDocumentCostLatencyArtifactNormalizer
         $deployedSmokeLatencies = $this->latenciesFromRows($deployedSmoke['cases'] ?? []);
         $stageTimings = $this->stageTimings($tier2['results'] ?? []);
 
+        $metadata = is_array($clinicalSummary['metadata'] ?? null) ? $clinicalSummary['metadata'] : [];
+        $docTypeCounts = $this->intArrayValue($metadata['doc_type_counts'] ?? []);
+        $sourceFormatCounts = $this->intArrayValue($metadata['source_format_counts'] ?? []);
+
         return new ClinicalDocumentCostLatencyRun(
             clinicalExecutedAt: $this->stringValue($clinicalSummary['executed_at_utc'] ?? $clinicalRun['executed_at_utc'] ?? 'unknown'),
             clinicalVerdict: $this->stringValue($clinicalSummary['verdict'] ?? 'unknown'),
@@ -47,6 +51,8 @@ final class ClinicalDocumentCostLatencyArtifactNormalizer
             deployedSmokeLatenciesMs: $deployedSmokeLatencies,
             stageTimingsMs: $stageTimings,
             evidencePaths: array_values(array_filter([$clinicalRunFile, $clinicalSummaryFile, $tier2File, $deployedSmokeFile])),
+            docTypeCounts: $docTypeCounts,
+            sourceFormatCounts: $sourceFormatCounts,
         );
     }
 
@@ -169,5 +175,24 @@ final class ClinicalDocumentCostLatencyArtifactNormalizer
     private function nullableFloat(mixed $value): ?float
     {
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function intArrayValue(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($value as $key => $count) {
+            if (is_string($key) && is_numeric($count)) {
+                $result[$key] = (int) $count;
+            }
+        }
+
+        return $result;
     }
 }

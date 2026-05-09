@@ -1,6 +1,6 @@
 # Week 2 Clinical Document Cost And Latency
 
-**Updated:** 2026-05-08
+**Updated:** 2026-05-09
 **Scope:** Week 2 clinical-document path: strict document extraction, guideline retrieval, supervisor handoffs, no-PHI logging, and deterministic eval artifacts.
 **Status:** Reproducible report rendered from AgentForge proof artifacts. Values are labeled as measured, projected, placeholder, or unknown.
 
@@ -9,6 +9,26 @@
 The latest clinical-document gate artifact contains `65` cases with verdict `baseline_met`. Clinical-document handoff latency is a placeholder: the field is instrumented, but the current deterministic fixture artifact does not prove runtime latency. Clinical-document model cost remains `unknown/not recorded` unless a live clinical-document artifact provides provider token usage.
 
 The available live-provider development spend baseline is $0.015599 using `gpt-5.4-mini` with `5943` input tokens and `2476` output tokens. Shared live request latency p50/p95 is `1699 ms` / `3691 ms`; deployed smoke p50/p95 is `1620 ms` / `6204 ms`.
+
+## Format Coverage
+
+| Document Type | Cases | Runtime Support |
+| --- | ---: | --- |
+| `clinical_workbook` | 1 | Bounded runtime |
+| `fax_packet` | 1 | Bounded runtime |
+| `hl7v2_message` | 2 | Deterministic runtime |
+| `intake_form` | 12 | Full bounded runtime |
+| `lab_pdf` | 14 | Full bounded runtime |
+| `referral_docx` | 1 | Bounded runtime |
+
+| Source Format | Cases |
+| --- | ---: |
+| `docx` | 1 |
+| `hl7` | 2 |
+| `pdf` | 17 |
+| `png` | 9 |
+| `tiff` | 1 |
+| `xlsx` | 1 |
 
 ## Evidence Used
 

@@ -525,7 +525,7 @@ Acceptance criteria:
 
 ### Epic 10 - End-To-End Gate And Documentation
 
-Status: Not started.
+Status: Implemented and gated.
 
 Goal: Make multi-format support visible, repeatable, and reviewer-friendly.
 
@@ -539,9 +539,16 @@ Tasks:
 
 Acceptance criteria:
 
-- One local command verifies the full multi-format clinical document gate.
-- Reporting separates failures by document type and format.
-- Known limitations are explicit and do not overclaim production readiness.
+- [x] One local command verifies the full multi-format clinical document gate.
+- [x] Reporting separates failures by document type and format.
+- [x] Known limitations are explicit and do not overclaim production readiness.
+
+Implementation note (2026-05-09): Per-format rubric pass rates added to eval
+summary (`doc_type_rubrics` in summary.json). Gate script prints format coverage
+table after eval. Cost/latency report includes format coverage and per-format
+dimensions. AGENTFORGE-REVIEWER-GUIDE.md documents supported format matrix and
+known limitations. HL7 v2 ADT added to deployed smoke for non-PDF coverage.
+Completed Epics Log updated.
 
 ## 8. Suggested Implementation Order
 

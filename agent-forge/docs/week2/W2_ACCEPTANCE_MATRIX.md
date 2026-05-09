@@ -1,6 +1,6 @@
 # Week 2 Acceptance Matrix
 
-Last updated: 2026-05-08 (local post-simplification verification).
+Last updated: 2026-05-09 (Epic 10 per-format acceptance rows).
 
 This file is the reviewer-facing map from Week 2 requirements to current proof.
 It intentionally distinguishes checked-in proof from rerunnable commands and
@@ -29,7 +29,11 @@ deployment credentials are available.
 | --- | --- | --- |
 | Lab PDF ingestion and strict extraction | Clinical gate artifact `clinical-document-20260508-190800` includes `lab_pdf` schema, citation, factual consistency, promotion, duplicate, and retraction cases. | None for deterministic/local gate. |
 | Intake form ingestion and strict extraction | Clinical gate artifact `clinical-document-20260508-190800` includes `intake_form` schema, citation, document fact, needs-review, and identity-gating cases. | None for deterministic/local gate. |
-| Multi-format contract and category mapping | `clinical-document-20260508-190800` includes DOCX, XLSX, TIFF, and HL7 v2 cases; Epic 2 maps `Referral Document`, `Clinical Workbook`, `Fax Packet`, and `HL7 v2 Message` categories. `Referral Document`, `Fax Packet`, and `Clinical Workbook` now have bounded runtime support; HL7 v2 still fails closed with `unsupported_doc_type` before provider extraction. | Runtime normalizers/live providers for HL7 v2 are deferred to later epics. |
+| Multi-format contract and category mapping | `clinical-document-20260508-190800` includes DOCX, XLSX, TIFF, and HL7 v2 cases; Epic 2 maps `Referral Document`, `Clinical Workbook`, `Fax Packet`, and `HL7 v2 Message` categories. All four non-PDF formats now have bounded runtime support. | None for local gate. |
+| DOCX referral ingestion | Bounded runtime via `DocxDocumentContentNormalizer` (OOXML text/table extraction). Golden cases cover schema, citation, document facts. Section/paragraph/table citations. | No chart promotion, no DOCX preview endpoint, no medication reconciliation from referrals. |
+| XLSX workbook ingestion | Bounded runtime via `XlsxDocumentContentNormalizer` (PhpSpreadsheet sheet/table normalization). Golden cases cover schema, citation, document facts. Sheet/cell/range citations. | No chart promotion, no XLSX preview endpoint, no formula evaluation. |
+| TIFF fax ingestion | Bounded runtime via `TiffDocumentContentNormalizer` (page rendering to PNG). Golden cases cover schema, citation, document facts. Page-level citations. | No chart promotion, no packet splitting into child documents. |
+| HL7 v2 message ingestion | Deterministic runtime via `Hl7v2DocumentContentNormalizer` for ADT^A08 and ORU^R01 shapes. Golden cases cover schema, citation, document facts. Segment/field citations. No model call required. | Only ADT^A08 and ORU^R01 supported; other shapes fail closed. No chart promotion of OBX observations. |
 | Source document storage before derived facts | M2-M5 implementation and eval cases prove OpenEMR source document references, job/fact provenance, and source-document deletion behavior. | None for local proof. |
 | Duplicate prevention and provenance | Clinical gate artifact covers duplicate upload and promotion expectations; promotion rows carry document/job/fact/citation provenance. | None for local proof. |
 | Wrong-patient and ambiguous identity safeguards | Identity checks gate active facts, embeddings, promotions, and evidence retrieval unless identity is verified or explicitly approved. | None for local proof. |

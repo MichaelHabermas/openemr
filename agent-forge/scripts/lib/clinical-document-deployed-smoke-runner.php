@@ -37,8 +37,10 @@ function agentforge_clinical_smoke_config(): array
         'pid' => agentforge_scripts_env_int('AGENTFORGE_CLINICAL_SMOKE_PID', AGENTFORGE_CLINICAL_SMOKE_DEFAULT_PID),
         'lab_path' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_LAB_PATH', $repoRoot . '/agent-forge/docs/example-documents/lab-results/p01-chen-lipid-panel.pdf'),
         'intake_path' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_INTAKE_PATH', $repoRoot . '/agent-forge/docs/example-documents/intake-forms/p01-chen-intake-typed.pdf'),
+        'hl7_path' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_HL7_PATH', $repoRoot . '/agent-forge/docs/example-documents/hl7v2/p01-chen-adt-a08.hl7'),
         'lab_category' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_LAB_CATEGORY', 'Lab Report'),
         'intake_category' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_INTAKE_CATEGORY', 'Intake Form'),
+        'hl7_category' => agentforge_scripts_env_string('AGENTFORGE_CLINICAL_SMOKE_HL7_CATEGORY', 'HL7 v2 Message'),
         'job_timeout_s' => agentforge_scripts_env_int('AGENTFORGE_CLINICAL_SMOKE_JOB_TIMEOUT_S', 180),
         'poll_interval_ms' => agentforge_scripts_env_int('AGENTFORGE_CLINICAL_SMOKE_POLL_INTERVAL_MS', 2000),
         'timeout_s' => agentforge_scripts_env_int('AGENTFORGE_SMOKE_TIMEOUT_S', 90),
@@ -83,6 +85,14 @@ function agentforge_clinical_smoke_main(): int
         $runtimeBefore = agentforge_clinical_smoke_runtime_snapshot();
         $lab = agentforge_clinical_smoke_upload_and_wait($config, $cookieJar, $csrf, 'lab_pdf', $config['lab_category'], $config['lab_path']);
         $intake = agentforge_clinical_smoke_upload_and_wait($config, $cookieJar, $csrf, 'intake_form', $config['intake_category'], $config['intake_path']);
+        $uploadedDocs = [$lab, $intake];
+
+        $hl7Path = $config['hl7_path'] ?? '';
+        if (is_string($hl7Path) && $hl7Path !== '' && is_file($hl7Path)) {
+            $hl7 = agentforge_clinical_smoke_upload_and_wait($config, $cookieJar, $csrf, 'hl7v2_message', $config['hl7_category'], $hl7Path, 'application/octet-stream');
+            $uploadedDocs[] = $hl7;
+        }
+
         $question = agentforge_deployed_smoke_post_question(
             $config['base_url'],
             $config['pid'],
@@ -98,7 +108,7 @@ function agentforge_clinical_smoke_main(): int
         $cases[] = [
             'id' => 'clinical_document_deployed_upload_worker_answer',
             'verdict' => $questionIssues === [] ? 'pass' : 'fail',
-            'uploaded_documents' => [$lab, $intake],
+            'uploaded_documents' => $uploadedDocs,
             'question' => [
                 'http_status' => $question['http_status'],
                 'request_id' => $question['request_id'],
@@ -191,7 +201,7 @@ function agentforge_clinical_smoke_requires_remote_db(string $baseUrl): bool
  * @param array<string, mixed> $config
  * @return array<string, mixed>
  */
-function agentforge_clinical_smoke_upload_and_wait(array $config, string $cookieJar, string $csrf, string $docType, string $categoryName, string $path): array
+function agentforge_clinical_smoke_upload_and_wait(array $config, string $cookieJar, string $csrf, string $docType, string $categoryName, string $path, string $mimeType = 'application/pdf'): array
 {
     $categoryId = agentforge_clinical_smoke_query_scalar("SELECT id FROM categories WHERE name = '" . agentforge_clinical_smoke_sql_quote($categoryName) . "' LIMIT 1");
     if ($categoryId === '') {
@@ -213,7 +223,7 @@ function agentforge_clinical_smoke_upload_and_wait(array $config, string $cookie
         'cookie_jar' => $cookieJar,
         'timeout_s' => $config['timeout_s'],
         'post_fields' => [
-            'file' => new CURLFile($path, 'application/pdf', $fileName),
+            'file' => new CURLFile($path, $mimeType, $fileName),
         ],
         'headers' => ['Accept: application/json'],
     ]);

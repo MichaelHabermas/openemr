@@ -31,6 +31,8 @@ final readonly class EvalRunner
     {
         $caseResults = [];
         $summaryBuckets = [];
+        /** @var array<string, array<string, array<string, int>>> $docTypeBuckets */
+        $docTypeBuckets = [];
 
         foreach ($this->rubrics->all() as $rubric) {
             $summaryBuckets[$rubric->name()] = [
@@ -50,6 +52,11 @@ final readonly class EvalRunner
                     'reason' => $result->reason,
                 ];
                 $summaryBuckets[$result->name][$result->status->value]++;
+
+                if ($case->docType !== null) {
+                    $docTypeBuckets[$case->docType][$result->name][$result->status->value]
+                        = ($docTypeBuckets[$case->docType][$result->name][$result->status->value] ?? 0) + 1;
+                }
             }
 
             $caseResults[] = [
@@ -79,6 +86,23 @@ final readonly class EvalRunner
             );
         }
 
-        return new EvalRunResult($caseResults, $summaries);
+        $docTypeSummaries = [];
+        foreach ($docTypeBuckets as $docType => $rubricBuckets) {
+            foreach ($rubricBuckets as $rubricName => $bucket) {
+                $passed = $bucket[RubricStatus::Pass->value] ?? 0;
+                $failed = $bucket[RubricStatus::Fail->value] ?? 0;
+                $na = $bucket[RubricStatus::NotApplicable->value] ?? 0;
+                $applicable = $passed + $failed;
+                $docTypeSummaries[$docType][$rubricName] = new RubricSummary(
+                    $rubricName,
+                    $passed,
+                    $failed,
+                    $na,
+                    $applicable === 0 ? 0.0 : $passed / $applicable,
+                );
+            }
+        }
+
+        return new EvalRunResult($caseResults, $summaries, $docTypeSummaries);
     }
 }

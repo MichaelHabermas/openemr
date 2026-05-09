@@ -36,7 +36,7 @@ final class ImagickTiffRasterRendererTest extends TestCase
             $this->markTestSkipped('Imagick extension not loaded.');
         }
 
-        $tiff = file_get_contents(__DIR__ . '/../../../../../../../agent-forge/docs/example-documents/tiff/p01-chen-fax-packet.tiff');
+        $tiff = file_get_contents(__DIR__ . '/../../../../../../agent-forge/docs/example-documents/tiff/p01-chen-fax-packet.tiff');
         $this->assertIsString($tiff);
 
         $pages = (new ImagickTiffRasterRenderer())->render($tiff, 2);

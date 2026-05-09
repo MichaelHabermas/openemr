@@ -21,6 +21,8 @@ final readonly class ClinicalDocumentCostLatencyRun
      * @param list<int> $deployedSmokeLatenciesMs
      * @param array<string, int> $stageTimingsMs
      * @param list<string> $evidencePaths
+     * @param array<string, int> $docTypeCounts
+     * @param array<string, int> $sourceFormatCounts
      */
     public function __construct(
         public string $clinicalExecutedAt,
@@ -36,6 +38,8 @@ final readonly class ClinicalDocumentCostLatencyRun
         public array $deployedSmokeLatenciesMs,
         public array $stageTimingsMs,
         public array $evidencePaths,
+        public array $docTypeCounts = [],
+        public array $sourceFormatCounts = [],
     ) {
     }
 

@@ -56,6 +56,22 @@ final class RunClinicalDocumentEvalsCommand
 
             printf("Clinical document eval verdict: %s\nArtifacts: %s\n", $verdict->value, $runDir);
 
+            if ($result->docTypeRubricSummaries !== []) {
+                printf("\n==> Per-document-type rubric pass rates\n");
+                foreach ($result->docTypeRubricSummaries as $docType => $rubrics) {
+                    printf("  %s:\n", $docType);
+                    foreach ($rubrics as $rubricName => $summary) {
+                        printf(
+                            "    %-30s %d/%d (%.0f%%)\n",
+                            $rubricName,
+                            $summary->passed,
+                            $summary->passed + $summary->failed,
+                            $summary->passRate * 100,
+                        );
+                    }
+                }
+            }
+
             return match ($verdict) {
                 RegressionVerdict::BaselineMet => self::EXIT_OK,
                 RegressionVerdict::RegressionExceeded => self::EXIT_REGRESSION,

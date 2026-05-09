@@ -17,10 +17,12 @@ final readonly class EvalRunResult
     /**
      * @param list<array<string, mixed>> $caseResults
      * @param array<string, RubricSummary> $rubricSummaries
+     * @param array<string, array<string, RubricSummary>> $docTypeRubricSummaries
      */
     public function __construct(
         public array $caseResults,
         public array $rubricSummaries,
+        public array $docTypeRubricSummaries = [],
     ) {
     }
 }
