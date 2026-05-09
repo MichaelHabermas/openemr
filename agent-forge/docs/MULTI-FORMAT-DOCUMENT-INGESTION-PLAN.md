@@ -219,6 +219,8 @@ CompositeDocumentExtractionProvider
 
 The provider order should be configurable by environment, but fixture mode must remain deterministic for tests and evals.
 
+**Implementation note:** The actual implementation uses `DocumentTypeRoutingExtractionProvider` instead of the composite pattern described above. It routes by `DocumentType` enum to the appropriate provider (fixture, deterministic HL7v2/XLSX, or VLM-backed). The three class names above (`CompositeDocumentExtractionProvider`, `DeterministicStructuredExtractionProvider`, `OpenAiNormalizedContentExtractionProvider`) were never implemented — the routing approach proved simpler than a chain-of-responsibility composite.
+
 ### 5.4 Schema Strategy
 
 Do not force all formats into `LabPdfExtraction` or `IntakeFormExtraction`.

@@ -373,8 +373,8 @@
           "expected_behavior": "Report that active allergies were checked for the sparse chart and not found."
         },
         {
-          "section": "Recent labs",
-          "expected_behavior": "Report that recent labs were checked for the sparse chart and not found."
+          "section": "Structured chart labs",
+          "expected_behavior": "Report that structured chart labs were checked for the sparse chart and not found."
         },
         {
           "section": "Recent vitals",

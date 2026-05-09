@@ -98,10 +98,15 @@ final readonly class SymfonyBackgroundServiceSpawner implements BackgroundServic
         $this->logger = $logger ?? ServiceContainer::getLogger();
     }
 
+    private function resolvePhpBinary(): string
+    {
+        return $this->phpBinary !== '' ? $this->phpBinary : PHP_BINDIR . '/php';
+    }
+
     public function spawn(string $name, bool $force, int $timeoutSeconds): array
     {
         $args = [
-            $this->phpBinary,
+            $this->resolvePhpBinary(),
             $this->projectDir . '/bin/console',
             'background:services',
             'run',

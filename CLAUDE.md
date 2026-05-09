@@ -1,6 +1,78 @@
-# OpenEMR Development Guide
+# CLAUDE.md — 12-rule template
 
-## Project Structure
+## General Rules
+
+These rules apply to every task in this project unless explicitly overridden.
+Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
+
+### Rule 1 — Think Before Coding
+
+State assumptions explicitly. If uncertain, ask rather than guess.
+Present multiple interpretations when ambiguity exists.
+Push back when a simpler approach exists.
+Stop when confused. Name what's unclear.
+
+### Rule 2 — Simplicity First
+
+Minimum code that solves the problem. Nothing speculative.
+No features beyond what was asked. No abstractions for single-use code.
+Test: would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### Rule 3 — Surgical Changes
+
+Touch only what you must. Clean up only your own mess.
+Don't "improve" adjacent code, comments, or formatting.
+Don't refactor what isn't broken. Match existing style.
+
+### Rule 4 — Goal-Driven Execution
+
+Define success criteria. Loop until verified.
+Don't follow steps. Define success and iterate.
+Strong success criteria let you loop independently.
+
+### Rule 5 — Use the model only for judgment calls
+
+Use me for: classification, drafting, summarization, extraction.
+Do NOT use me for: routing, retries, deterministic transforms.
+If code can answer, code answers.
+
+### Rule 6 — Token budgets are not advisory
+
+Per-task: 4,000 tokens. Per-session: 30,000 tokens.
+If approaching budget, summarize and start fresh.
+Surface the breach. Do not silently overrun.
+
+### Rule 7 — Surface conflicts, don't average them
+
+If two patterns contradict, pick one (more recent / more tested).
+Explain why. Flag the other for cleanup.
+Don't blend conflicting patterns.
+
+### Rule 8 — Read before you write
+
+Before adding code, read exports, immediate callers, shared utilities.
+"Looks orthogonal" is dangerous. If unsure why code is structured a way, ask.
+
+### Rule 9 — Tests verify intent, not just behavior
+
+Tests must encode WHY behavior matters, not just WHAT it does.
+A test that can't fail when business logic changes is wrong.
+
+### Rule 10 — Checkpoint after every significant step
+
+Summarize what was done, what's verified, what's left.
+Don't continue from a state you can't describe back.
+If you lose track, stop and restate.
+
+### Rule 11 — Fail loud
+
+"Completed" is wrong if anything was skipped silently.
+"Tests pass" is wrong if any were skipped.
+Default to surfacing uncertainty, not hiding it.
+
+## OpenEMR Development Guide
+
+### Project Structure
 
 ```
 /src/              - Modern PSR-4 code (OpenEMR\ namespace)
@@ -14,7 +86,7 @@
 /modules/          - Custom and third-party modules
 ```
 
-## Technology Stack
+### Technology Stack
 
 - **PHP:** 8.2+ required
 - **Backend:** Laminas MVC, Symfony components
@@ -25,7 +97,7 @@
 - **Testing:** PHPUnit 11, Jest 29
 - **Static Analysis:** PHPStan level 10, Rector, custom rules in `tests/PHPStan/Rules/`
 
-## Local Development
+### Local Development
 
 See `CONTRIBUTING.md` for full setup instructions. Quick start:
 
@@ -34,11 +106,11 @@ cd docker/development-easy
 docker compose up --detach --wait
 ```
 
-- **App URL:** http://localhost:8300/ or https://localhost:9300/
+- **App URL:** <http://localhost:8300/> or <https://localhost:9300/>
 - **Login:** `admin` / `pass`
-- **phpMyAdmin:** http://localhost:8310/
+- **phpMyAdmin:** <http://localhost:8310/>
 
-### AgentForge Deployment Guardrail
+#### AgentForge Deployment Guardrail
 
 Do not give generic VM, deploy, rollback, public URL, Docker restart, seed-data,
 or `git pull` instructions for AgentForge work. First inspect the current repo
@@ -55,7 +127,7 @@ available. Manual verification should proceed gate by gate: local UI checks,
 local automated proof, git status/diff review, explicit commit/push decision,
 VM deploy script, VM seed/verify, VM UI checks, then proof-file update.
 
-### AgentForge Memory Protocol
+#### AgentForge Memory Protocol
 
 Before starting AgentForge work, read `agent-forge/docs/MEMORY.md`.
 
@@ -67,7 +139,7 @@ tracker; active execution belongs in the current epic, plan, specs, and code.
 When an AgentForge epic file is replaced or heavily rewritten, preserve reusable
 lessons in `agent-forge/docs/MEMORY.md` before the old context disappears.
 
-## Testing
+### Testing
 
 Tests run inside Docker via devtools. Run from `docker/development-easy/`:
 
@@ -88,7 +160,7 @@ docker compose exec openemr /root/devtools php-log
 **Tip:** Install [openemr-cmd](https://github.com/openemr/openemr-devops/tree/master/utilities/openemr-cmd)
 for shorter commands (e.g., `openemr-cmd ut` for unit tests) from any directory.
 
-### Isolated tests (no Docker required)
+#### Isolated tests (no Docker required)
 
 Isolated tests run on the host without a database or Docker:
 
@@ -96,7 +168,7 @@ Isolated tests run on the host without a database or Docker:
 composer phpunit-isolated        # Run all isolated tests
 ```
 
-### Data providers: mark as `@codeCoverageIgnore`
+#### Data providers: mark as `@codeCoverageIgnore`
 
 PHPUnit data provider methods execute *before* coverage instrumentation
 starts, so their lines never register as "hit" even though they run on every
@@ -124,7 +196,7 @@ public static function exampleProvider(): array
 
 Use this exact wording so a repo-wide grep finds every provider in one pass.
 
-### Twig template tests
+#### Twig template tests
 
 Twig templates have two layers of testing (both isolated):
 
@@ -145,7 +217,7 @@ Review the diff before committing. See the
 [fixtures README](tests/Tests/Isolated/Common/Twig/fixtures/render/README.md)
 for details on adding new test cases.
 
-## Code Quality
+### Code Quality
 
 These run on the host (requires local PHP/Node):
 
@@ -172,7 +244,7 @@ npm run lint:js-fix       # ESLint auto-fix
 npm run stylelint         # CSS/SCSS lint
 ```
 
-## Build Commands
+### Build Commands
 
 ```bash
 npm run build        # Production build
@@ -180,9 +252,9 @@ npm run dev          # Development with file watching
 npm run gulp-build   # Build only (no watch)
 ```
 
-## Coding Standards
+### Coding Standards
 
-### Legacy Code Is Not the Standard
+#### Legacy Code Is Not the Standard
 
 OpenEMR's codebase predates modern PHP and contains many antipatterns: global
 state, stringly-typed parameters, `$_SESSION` and `$GLOBALS` as a service
@@ -192,14 +264,14 @@ not because they are correct. Never use existing legacy patterns as
 justification for writing new code the same way — follow the standards
 documented here instead.
 
-### Formatting and Structure
+#### Formatting and Structure
 
 - **Indentation:** 4 spaces
 - **Line endings:** LF (Unix)
 - **Namespaces:** PSR-4 with `OpenEMR\` prefix for `/src/`
 - New code goes in `/src/`, legacy helpers in `/library/`
 
-### PSR Standards
+#### PSR Standards
 
 | Standard | Purpose |
 |----------|---------|
@@ -215,7 +287,7 @@ messages), [PSR-15](https://www.php-fig.org/psr/psr-15/) (middleware),
 [PSR-18](https://www.php-fig.org/psr/psr-18/) (HTTP client),
 [PSR-20](https://www.php-fig.org/psr/psr-20/) (clock).
 
-### Database and Global Settings
+#### Database and Global Settings
 
 - **Database:** Use `QueryUtils` for queries. New schema changes use Doctrine
   Migrations. Do not instantiate database connections directly — use the
@@ -228,7 +300,7 @@ messages), [PSR-15](https://www.php-fig.org/psr/psr-15/) (middleware),
   - `getKernel()` for the Kernel instance
   - Check the parent class for more: `getAlpha()`, `getAlnum()`, `getDigits()`, `getEnum()`
 
-### Strict Typing
+#### Strict Typing
 
 Every new PHP file starts with `declare(strict_types=1)`. Without strict types,
 PHP silently coerces `"123abc"` to `123` when passed to an `int` parameter,
@@ -238,7 +310,7 @@ Every property, parameter, and return type should have a native type
 declaration. Reserve PHPDoc types for information native types cannot express
 (generics, array shapes, type narrowing).
 
-### Type System
+#### Type System
 
 - **Nullable types:** Use `?Type` for nullable. Use `Type|null` only in unions
   with three or more members.
@@ -252,7 +324,7 @@ declaration. Reserve PHPDoc types for information native types cannot express
   that always throw or exit, `self` for factories on `final` classes, `static`
   for factories on non-final classes.
 
-### Immutability
+#### Immutability
 
 - Use `readonly` classes or `readonly` properties for value objects, DTOs, and
   configuration. Mutable state should be the exception.
@@ -260,7 +332,7 @@ declaration. Reserve PHPDoc types for information native types cannot express
 - `DateTimeImmutable` over `DateTime` — always.
 - Wither methods (return a new instance) over setters on value objects.
 
-### Domain Primitives
+#### Domain Primitives
 
 Wrap primitive values in typed classes when the primitive could be confused with
 another primitive of the same PHP type. This prevents argument transposition
@@ -281,19 +353,19 @@ final readonly class PatientId
 Use for: IDs that could be confused (`PatientId` vs `EncounterId`), strings with
 semantic meaning (`Email`, `Npi`), numbers with constraints or units (`Money`).
 
-### Parse, Don't Validate
+#### Parse, Don't Validate
 
 At system boundaries (controllers, CLI handlers, message consumers), parse raw
 input into typed objects immediately. After parsing, the rest of the code works
 with types that guarantee their own validity — no re-validation downstream.
 
-### Exhaustive Matching
+#### Exhaustive Matching
 
 Use `match` on enums without a `default` branch. PHPStan verifies that every
 case is handled. Adding a `default` silently absorbs new cases and suppresses
 the exhaustiveness check.
 
-### Error Handling and Logging
+#### Error Handling and Logging
 
 **PSR-3 logging context:** Never concatenate or interpolate variables into log
 messages. Use PSR-3 context arrays:
@@ -323,7 +395,7 @@ generic message to the user.
 describing the failed operation. The original exception is accessible via
 `->getPrevious()` — do not embed its message in the wrapper.
 
-### Dependency Injection
+#### Dependency Injection
 
 Inject all dependencies through the constructor. Never use `new` for
 service-layer objects inside business logic, never call static service locators,
@@ -343,7 +415,7 @@ dependencies.
   In legacy code where this is unavoidable, confine superglobal reads to the
   outermost entry point and parse into typed objects immediately.
 
-### Null Safety
+#### Null Safety
 
 - **Early returns:** Flatten null checks with early returns rather than nesting.
 - **Null coalescing:** `??` for defaults, `??=` for lazy initialization.
@@ -353,7 +425,7 @@ dependencies.
   handle the null case explicitly. Do not add `@var` casts or `@phpstan-ignore`
   comments to silence it.
 
-### Static Analysis (PHPStan)
+#### Static Analysis (PHPStan)
 
 PHPStan runs at level 10 (`max`). Key principles:
 
@@ -373,7 +445,7 @@ PHPStan runs at level 10 (`max`). Key principles:
 - **Always run on the full codebase** and filter output for changed files. Never
   run on a subset — PHPStan's type inference depends on full-codebase context.
 
-### Authorization Modeling
+#### Authorization Modeling
 
 When an operation requires authorization, type the principal — do not pass
 authorization context as strings or bare integers:
@@ -390,7 +462,7 @@ When an operation is scoped to a facility or tenant, encode that scope in the
 type (e.g., a scoped repository) rather than relying on runtime checks scattered
 through the codebase.
 
-## Commit Messages
+### Commit Messages
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
@@ -401,11 +473,12 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 **Types:** feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
 
 **Examples:**
+
 - `feat(api): add PATCH support for patient resource`
 - `fix(calendar): correct date parsing for recurring events`
 - `chore(deps): bump monolog/monolog to 3.10.0`
 
-### AI Assistance Trailer
+#### AI Assistance Trailer
 
 If an AI assistant helped write a commit, add an `Assisted-by` trailer to that
 commit:
@@ -418,7 +491,7 @@ Use the name of the tool as the trailer value (e.g. `Claude Code`,
 `GitHub Copilot`, `ChatGPT`). When the AI agent creates commits automatically,
 this trailer is typically added for you.
 
-## Service Layer Pattern
+### Service Layer Pattern
 
 New services should extend `BaseService`:
 
@@ -436,7 +509,7 @@ class ExampleService extends BaseService
 }
 ```
 
-## File Headers
+### File Headers
 
 When modifying PHP files, ensure proper docblock:
 
@@ -454,7 +527,7 @@ When modifying PHP files, ensure proper docblock:
 
 Preserve existing authors/copyrights when editing files.
 
-## Common Gotchas
+### Common Gotchas
 
 - Multiple template engines: check extension (.twig, .html, .php)
 - Event system uses Symfony EventDispatcher
@@ -465,7 +538,7 @@ Preserve existing authors/copyrights when editing files.
   (forbidden globals, forbidden direct instantiations, namespace rules, etc.)
 - Commit messages are validated against Conventional Commits format in CI
 
-## Key Documentation
+### Key Documentation
 
 - `CONTRIBUTING.md` - Contributing guidelines
 - `API_README.md` - REST API docs

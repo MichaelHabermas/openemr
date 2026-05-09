@@ -57,6 +57,8 @@ Measured A1c request:
 
 The original single-request VM latency was also a product risk. A chart-orientation tool must feel like a seconds-scale workflow. That single `10,693 ms` VM measurement is now a historical baseline superseded by `LATENCY-RESULTS.md`, which records 20 deployed A1c requests with p95 `3212 ms` and 20 deployed visit-briefing requests with p95 `8309 ms`, both under the `10000 ms` demo budget. Production readiness still needs broader p95/p99 proof, SLOs, alerting, and operational retention controls.
 
+Structural decomposition of the A1c request attributes ~80-90% of wall time to the `draft` stage (live model call), with evidence collection, authorization, conversation, and verification contributing <10% combined. The VM-vs-local delta is provider network round-trip, not agent-internal overhead. This guided the May 2026 latency optimization pass (see `COMPLETED_EPICS_LOG.md`), which targeted provider-side mitigations (prompt caching, deadline-aware retries) before agent-internal optimizations.
+
 ## Tier 2 Live-LLM Eval Spend
 
 The nightly Tier 2 evaluation workflow (`.github/workflows/agentforge-tier2.yml`) exercises 14 live-model cases against the configured OpenAI or Anthropic provider. With `gpt-4o-mini` pricing and chart-evidence-sized prompts comparable to the measured A1c request, one full pass is roughly:

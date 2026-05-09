@@ -112,7 +112,7 @@ final readonly class SqlChartEvidenceRepository implements ChartEvidenceReposito
             . 'LEFT JOIN procedure_order_code poc ON poc.procedure_order_id = po.procedure_order_id '
             . 'LEFT JOIN documents source_doc ON source_doc.id = pr.document_id '
             . 'WHERE po.patient_id = ? '
-            . 'AND (pr.document_id IS NULL OR (source_doc.id IS NOT NULL AND (source_doc.deleted IS NULL OR source_doc.deleted = 0))) '
+            . 'AND (pr.document_id IS NULL OR pr.document_id = 0 OR (source_doc.id IS NOT NULL AND (source_doc.deleted IS NULL OR source_doc.deleted = 0))) '
             . 'AND NOT EXISTS ('
             . 'SELECT 1 FROM clinical_document_promotions cdp '
             . 'LEFT JOIN clinical_document_processing_jobs cdpj ON cdpj.id = cdp.job_id '

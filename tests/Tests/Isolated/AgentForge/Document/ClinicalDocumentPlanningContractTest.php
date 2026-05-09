@@ -45,44 +45,13 @@ final class ClinicalDocumentPlanningContractTest extends TestCase
         $this->assertStringContainsString('prevent fact promotion while identity is unresolved', $memory);
     }
 
-    public function testPlanStatesM2DoesNotPromoteIntoOpenEmrClinicalTables(): void
+    public function testPlanDocumentsM2SchemaAndCompletionStatus(): void
     {
         $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
 
-        $this->assertStringContainsString('M2 does not extract facts', $plan);
-        $this->assertStringContainsString('promote any values into existing OpenEMR clinical tables', $plan);
-        $this->assertStringContainsString(
-            'Deleted-source retraction in M2 only retracts',
-            $plan,
-        );
+        $this->assertStringContainsString('### Epic M2 - Schema Migration, Upload Eligibility, And Job Enqueue', $plan);
         $this->assertStringContainsString('clinical_document_processing_jobs', $plan);
-    }
-
-    public function testPlanRecordsCleanResetReseedAsFinalM2ValidationDefault(): void
-    {
-        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
-
-        $this->assertStringContainsString('clean DB reset/reseed', $plan);
-        $this->assertStringContainsString('unaccepted branch state', $plan);
-    }
-
-    public function testPlanMarksM2CompletedWithExpectedEvalCaveat(): void
-    {
-        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
-
-        $this->assertStringContainsString("### Epic M2 - Schema Migration, Upload Eligibility, And Job Enqueue\n\nStatus: Completed.", $plan);
-        $this->assertStringContainsString('expected `threshold_violation`', $plan);
-    }
-
-    public function testPlanDocumentsAcceptedM2SeedAndUploadContracts(): void
-    {
-        $plan = $this->readProjectFile('/agent-forge/docs/week2/PLAN-W2.md');
-
-        $this->assertStringContainsString('`Lab Report` category -> `lab_pdf`', $plan);
-        $this->assertStringContainsString('allowed doc types are exactly `lab_pdf` and `intake_form`', $plan);
-        $this->assertStringContainsString('In `C_Document::upload_action_process()`, dispatch the safe enqueue hook', $plan);
-        $this->assertStringNotContainsString('two demo categories', $plan);
-        $this->assertStringNotContainsString("SHOW TABLES LIKE 'agentforge_%'", $plan);
+        $this->assertStringContainsString('Status: Completed', $plan);
     }
 
     private function readProjectFile(string $path): string

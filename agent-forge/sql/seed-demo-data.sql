@@ -70,6 +70,7 @@ WHERE ct.pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid,
 DELETE FROM care_teams WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 
 DELETE FROM insurance_data WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM insurance_companies WHERE id = 900001;
 
 DELETE FROM openemr_postcalendar_events
 WHERE pc_hometext LIKE 'agentforge-demo-appt-%'
@@ -1158,6 +1159,10 @@ INSERT INTO procedure_result (
     'final'
 );
 
+INSERT INTO insurance_companies (id, name, attn, cms_id)
+VALUES (900001, 'AgentForge Demo Insurance Co.', '', '')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
 INSERT INTO insurance_data (
     id,
     uuid,
@@ -1176,7 +1181,7 @@ INSERT INTO insurance_data (
     9000410,
     UNHEX(REPLACE('90000100-0000-4000-8000-000000000c10', '-', '')),
     'primary',
-    'AgentForge Demo Insurance Co.',
+    '900001',
     'Gold PPO',
     'AF-POL-900001',
     'GRP-DEMO-01',
@@ -3295,5 +3300,15 @@ WHERE @hl7v2_message_cat_id IS NOT NULL
         SELECT 1 FROM clinical_document_type_mappings
         WHERE category_id = @hl7v2_message_cat_id
     );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MIME type whitelist for multi-format document upload (secure_upload gate)
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT INTO list_options (list_id, option_id, title, seq, activity) VALUES
+('files_white_list', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'DOCX', 50, 1),
+('files_white_list', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'XLSX', 51, 1),
+('files_white_list', 'image/tiff', 'TIFF', 52, 1),
+('files_white_list', 'text/x-hl7', 'HL7v2', 53, 1)
+ON DUPLICATE KEY UPDATE activity = 1;
 
 COMMIT;

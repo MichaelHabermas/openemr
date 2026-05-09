@@ -95,6 +95,14 @@ Source of truth is always the code. This file preserves the *why*.
 - **Measured latency:** local 2,989ms, VM 10,693ms. Production readiness blocked until p95 < 10s.
 - **100K users requires architecture redesign,** not just a larger bill.
 
+## Latency
+
+- **Draft stage dominates.** ~80-90% of wall time is the live model call. Evidence, auth, conversation, and verification are <10% combined.
+- **VM-vs-local delta is network.** Same code, same evidence, same model — the 7.7s delta isolates to provider round-trip and TLS, not agent logic.
+- **Shipped optimizations (May 2026):** medication query UNION ALL, memoizing patient access, deadline-aware retries, Anthropic prompt-cache breakpoints, serial→concurrent evidence collection seam, session-store delta writes.
+- **Deferred:** (1) Streaming LLM with incremental verification — needs SSE, streaming verifier, frontend. (2) Post-response writes via `fastcgi_finish_request()` — SAPI-dependent. (3) Semantic cache for repeat questions — needs key strategy and invalidation. (4) Speculative pre-fetch on chart open — primitive exists (`PrefetchableChartEvidenceRepository`), needs trigger surface.
+- **Provider serialization lesson.** Multi-block prompt representations for one provider (Anthropic cache breakpoints) must not break the single-string path consumed by another provider (OpenAI). Commit `4022ac7e8` fixed a regression where `PromptParts::joined()` produced invalid JSON for OpenAI.
+
 ## Submission
 
 - **Three root documents:** `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md` (mandated by `SPECS.txt` hard gate).
