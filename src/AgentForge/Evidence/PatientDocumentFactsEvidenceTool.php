@@ -139,7 +139,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
      */
     private function displayLabel(array $row, array $structured): string
     {
-        foreach (['display_label', 'test_name', 'label', 'name'] as $key) {
+        foreach (['display_label', 'test_name', 'label', 'field', 'name'] as $key) {
             $value = Fmt::string($structured, $key);
             if ($value !== '') {
                 return str_replace('_', ' ', $value);

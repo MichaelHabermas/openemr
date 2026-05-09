@@ -14,16 +14,21 @@ namespace OpenEMR\AgentForge\Document\Extraction;
 
 use DomainException;
 use OpenEMR\AgentForge\Document\DocumentType;
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactDraft;
+use OpenEMR\AgentForge\Document\Mapping\ClinicalWorkbookFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactMapperRegistry;
+use OpenEMR\AgentForge\Document\Mapping\FaxPacketFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\Hl7v2MessageFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\IntakeFormFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\LabPdfFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\ReferralDocxFactMapper;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\DocumentCitation;
-use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
-use OpenEMR\AgentForge\Document\Schema\IntakeFormFinding;
 use OpenEMR\AgentForge\Document\Schema\LabPdfExtraction;
-use OpenEMR\AgentForge\Document\Schema\LabResultRow;
 use OpenEMR\AgentForge\Document\Schema\ReferralDocxExtraction;
 use OpenEMR\AgentForge\ResponseGeneration\DraftUsage;
 use OpenEMR\AgentForge\StringKeyedArray;
@@ -96,9 +101,18 @@ final readonly class ExtractionProviderResponse
             DocumentType::Hl7v2Message => Hl7v2MessageExtraction::fromJson($json),
         };
 
+        $registry = new DocumentFactMapperRegistry(
+            new LabPdfFactMapper(),
+            new IntakeFormFactMapper(),
+            new ReferralDocxFactMapper(),
+            new ClinicalWorkbookFactMapper(),
+            new FaxPacketFactMapper(),
+            new Hl7v2MessageFactMapper(),
+        );
+
         return new self(
             true,
-            self::factsFromExtraction($extraction),
+            self::factsFromDrafts($registry->map($documentType, $extraction)),
             $warnings,
             $usage,
             $model,
@@ -121,30 +135,27 @@ final readonly class ExtractionProviderResponse
     }
 
     /**
+     * @param list<DocumentFactDraft> $drafts
      * @return list<array<string, mixed>>
      */
-    private static function factsFromExtraction(
-        LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction,
-    ): array {
-        if ($extraction instanceof LabPdfExtraction) {
-            $facts = [];
-            foreach ($extraction->results as $index => $row) {
-                $facts[] = self::factFromLabRow($row, $index);
+    private static function factsFromDrafts(array $drafts): array
+    {
+        return array_map(static function (DocumentFactDraft $draft): array {
+            $fact = [
+                'type' => $draft->factType,
+                'field_path' => $draft->fieldPath,
+                'label' => $draft->displayLabel,
+            ];
+            foreach ($draft->structuredValue as $key => $value) {
+                if (!isset($fact[$key])) {
+                    $fact[$key] = $value;
+                }
             }
+            $fact['citation'] = self::citationToArray($draft->citation);
+            $fact['bounding_box'] = self::boundingBoxToArray($draft->citation->boundingBox);
 
-            return $facts;
-        }
-
-        if ($extraction instanceof IntakeFormExtraction) {
-            $facts = [];
-            foreach ($extraction->findings as $finding) {
-                $facts[] = self::factFromIntakeFinding($finding);
-            }
-
-            return $facts;
-        }
-
-        return array_map(self::factFromGenericClinicalFact(...), $extraction->facts);
+            return $fact;
+        }, $drafts);
     }
 
     /**
@@ -187,62 +198,6 @@ final readonly class ExtractionProviderResponse
         }
 
         return $out;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function factFromLabRow(LabResultRow $row, int $index): array
-    {
-        return [
-            'type' => 'lab_result',
-            'field_path' => sprintf('results[%d]', $index),
-            'test_name' => $row->testName,
-            'label' => $row->testName,
-            'value' => $row->value,
-            'unit' => $row->unit,
-            'reference_range' => $row->referenceRange,
-            'collected_at' => $row->collectedAt,
-            'abnormal_flag' => $row->abnormalFlag->value,
-            'certainty' => $row->certainty->value,
-            'confidence' => $row->confidence,
-            'citation' => self::citationToArray($row->citation),
-            'bounding_box' => self::boundingBoxToArray($row->citation->boundingBox),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function factFromIntakeFinding(IntakeFormFinding $finding): array
-    {
-        return [
-            'type' => 'intake_finding',
-            'field_path' => $finding->field,
-            'label' => $finding->field,
-            'value' => $finding->value,
-            'certainty' => $finding->certainty->value,
-            'confidence' => $finding->confidence,
-            'citation' => self::citationToArray($finding->citation),
-            'bounding_box' => self::boundingBoxToArray($finding->citation->boundingBox),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function factFromGenericClinicalFact(ExtractedClinicalFact $fact): array
-    {
-        return [
-            'type' => $fact->type,
-            'field_path' => $fact->fieldPath,
-            'label' => $fact->label,
-            'value' => $fact->value,
-            'certainty' => $fact->certainty->value,
-            'confidence' => $fact->confidence,
-            'citation' => self::citationToArray($fact->citation),
-            'bounding_box' => self::boundingBoxToArray($fact->citation->boundingBox),
-        ];
     }
 
     /**

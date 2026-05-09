@@ -231,8 +231,8 @@ namespace OpenEMR\Tests\Isolated\AgentForge\Document\Worker {
             $this->assertSame(IdentityStatus::Verified, $identityChecks->results[0]->status);
             $this->assertInstanceOf(Hl7v2MessageExtraction::class, $promotions->lastExtraction);
             $record = $logger->recordByMessage('document.extraction.completed');
-            $this->assertSame(0, $record['context']['fact_count_verified']);
-            $this->assertSame(1, $record['context']['fact_count_document_fact']);
+            $this->assertSame(1, $record['context']['fact_count_verified']);
+            $this->assertSame(0, $record['context']['fact_count_document_fact']);
             $this->assertSame(1, $record['context']['fact_count_needs_review']);
             $this->assertSame('hl7v2', $record['context']['normalizer']);
             $this->assertSame('text/plain', $record['context']['source_mime_type']);

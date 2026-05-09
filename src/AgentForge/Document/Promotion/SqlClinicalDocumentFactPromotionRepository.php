@@ -22,12 +22,19 @@ use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\Embedding\DocumentFactEmbeddingRepository;
 use OpenEMR\AgentForge\Document\Embedding\EmbeddingProvider;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Document\Mapping\ClinicalWorkbookFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactDraft;
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactMapperRegistry;
+use OpenEMR\AgentForge\Document\Mapping\FaxPacketFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\Hl7v2MessageFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\IntakeFormFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\LabPdfFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\ReferralDocxFactMapper;
 use OpenEMR\AgentForge\Document\Schema\BoundingBox;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\Schema\ClinicalWorkbookExtraction;
 use OpenEMR\AgentForge\Document\Schema\DocumentCitation;
-use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
 use OpenEMR\AgentForge\Document\Schema\FaxPacketExtraction;
 use OpenEMR\AgentForge\Document\Schema\Hl7v2MessageExtraction;
 use OpenEMR\AgentForge\Document\Schema\IntakeFormExtraction;
@@ -54,6 +61,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
         private PromotionFingerprinter $fingerprinter = new PromotionFingerprinter(),
         ?ClockInterface $wallClock = null,
+        private ?DocumentFactMapperRegistry $mapperRegistry = null,
     ) {
         $this->certaintyClassifier = new CertaintyClassifier();
         $this->documentFactClassifier = new DocumentFactClassifier($this->certaintyClassifier);
@@ -69,6 +77,7 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $promoted = 0;
         $needsReview = 0;
         $skipped = 0;
+
         if ($extraction instanceof LabPdfExtraction) {
             foreach ($extraction->results as $index => $row) {
                 $outcome = $this->promoteLabRow($job, $row, sprintf('results[%d]', $index));
@@ -100,9 +109,17 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
                 };
             }
         } else {
-            foreach ($extraction->facts as $index => $fact) {
-                $certainty = $this->documentFactClassifier->classify($job, $fact);
-                $this->persistGenericFact($job, $fact, $fact->fieldPath !== '' ? $fact->fieldPath : sprintf('facts[%d]', $index), $certainty);
+            $registry = $this->mapperRegistry ?? new DocumentFactMapperRegistry(
+                new LabPdfFactMapper(),
+                new IntakeFormFactMapper(),
+                new ReferralDocxFactMapper(),
+                new ClinicalWorkbookFactMapper(),
+                new FaxPacketFactMapper(),
+                new Hl7v2MessageFactMapper(),
+            );
+            foreach ($registry->map($job->docType, $extraction) as $draft) {
+                $certainty = $this->documentFactClassifier->classifyDraft($job->docType, $draft);
+                $this->persistDraft($job, $draft, $certainty);
                 if ($certainty === Certainty::NeedsReview) {
                     ++$needsReview;
                 } else {
@@ -562,23 +579,26 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         $this->embedFact($factId, $finding->value, $certainty);
     }
 
-    private function persistGenericFact(
+    private function persistDraft(
         DocumentJob $job,
-        ExtractedClinicalFact $fact,
-        string $fieldPath,
+        DocumentFactDraft $draft,
         Certainty $certainty,
     ): void {
         if ($this->facts === null || $job->id === null) {
             return;
         }
 
-        $valueJson = $this->genericValueJson($fact) + ['field_path' => $fieldPath];
-        $clinicalContentFingerprint = $this->fingerprinter->patientClinicalFingerprint($fact->type, $fact->label, $valueJson);
-        $factFingerprint = $this->fingerprinter->sourceFactFingerprint($job, $fact->type, $fieldPath, $valueJson);
-        $factText = trim($fact->label . ': ' . $fact->value);
-        if ($factText === ':') {
-            $factText = $fieldPath;
-        }
+        $clinicalContentFingerprint = $this->fingerprinter->patientClinicalFingerprint(
+            $draft->factType,
+            $draft->displayLabel,
+            $draft->structuredValue,
+        );
+        $factFingerprint = $this->fingerprinter->sourceFactFingerprint(
+            $job,
+            $draft->factType,
+            $draft->fieldPath,
+            $draft->structuredValue,
+        );
 
         $factId = $this->facts->upsert(new DocumentFact(
             null,
@@ -586,17 +606,17 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
             $job->documentId,
             new DocumentJobId($job->id->value),
             $job->docType,
-            $fact->type,
+            $draft->factType,
             $certainty->value,
             $factFingerprint,
             $clinicalContentFingerprint,
-            $factText,
-            $valueJson,
-            $this->citationJson($fact->citation),
-            $fact->confidence,
+            $draft->factText,
+            $draft->structuredValue,
+            $this->citationJson($draft->citation),
+            $draft->confidence,
             $this->documentFactClassifier->promotionStatus($certainty),
         ));
-        $this->embedFact($factId, $factText, $certainty);
+        $this->embedFact($factId, $draft->factText, $certainty);
     }
 
     private function embedFact(int $factId, string $factText, Certainty $certainty): void
@@ -669,18 +689,6 @@ final readonly class SqlClinicalDocumentFactPromotionRepository implements Clini
         return [
             'field' => strtolower($finding->field),
             'value' => strtolower($finding->value),
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function genericValueJson(ExtractedClinicalFact $fact): array
-    {
-        return [
-            'type' => $fact->type,
-            'label' => $fact->label,
-            'value' => $fact->value,
-            'certainty' => $fact->certainty->value,
-            'confidence' => $fact->confidence,
         ];
     }
 

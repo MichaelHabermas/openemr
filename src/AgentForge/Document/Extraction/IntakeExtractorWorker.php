@@ -16,6 +16,13 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\ClinicalDocumentIngestionWorkflow;
 use OpenEMR\AgentForge\Document\DocumentFactClassifier;
 use OpenEMR\AgentForge\Document\DocumentJob;
+use OpenEMR\AgentForge\Document\Mapping\ClinicalWorkbookFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactMapperRegistry;
+use OpenEMR\AgentForge\Document\Mapping\FaxPacketFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\Hl7v2MessageFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\IntakeFormFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\LabPdfFactMapper;
+use OpenEMR\AgentForge\Document\Mapping\ReferralDocxFactMapper;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
 use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
@@ -55,6 +62,7 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
         private ?DocumentIdentityVerifier $identityVerifier = null,
         private ?ExtractionIdentityEvidenceBuilder $identityEvidenceBuilder = null,
         private ?ClinicalDocumentFactPromotionRepository $factPromotions = null,
+        private ?DocumentFactMapperRegistry $mapperRegistry = null,
     ) {
     }
 
@@ -208,45 +216,22 @@ final readonly class IntakeExtractorWorker implements ClinicalDocumentIngestionW
      */
     private function countFactBuckets(DocumentJob $job, LabPdfExtraction | IntakeFormExtraction | ReferralDocxExtraction | ClinicalWorkbookExtraction | FaxPacketExtraction | Hl7v2MessageExtraction $extraction): array
     {
-        $counts = [
-            'verified' => 0,
-            'document_fact' => 0,
-            'needs_review' => 0,
-        ];
+        $counts = ['verified' => 0, 'document_fact' => 0, 'needs_review' => 0];
+        $registry = $this->mapperRegistry ?? new DocumentFactMapperRegistry(
+            new LabPdfFactMapper(),
+            new IntakeFormFactMapper(),
+            new ReferralDocxFactMapper(),
+            new ClinicalWorkbookFactMapper(),
+            new FaxPacketFactMapper(),
+            new Hl7v2MessageFactMapper(),
+        );
+        $documentFactClassifier = new DocumentFactClassifier($this->classifier);
 
-        if (
-            $extraction instanceof ReferralDocxExtraction
-            || $extraction instanceof ClinicalWorkbookExtraction
-            || $extraction instanceof FaxPacketExtraction
-            || $extraction instanceof Hl7v2MessageExtraction
-        ) {
-            $documentFactClassifier = new DocumentFactClassifier($this->classifier);
-            foreach ($extraction->facts as $candidate) {
-                $certainty = $documentFactClassifier->classify($job, $candidate);
-                ++$counts[$certainty->value];
-            }
-
-            return [
-                'verified' => $counts['verified'],
-                'document_fact' => $counts['document_fact'],
-                'needs_review' => $counts['needs_review'],
-            ];
-        }
-
-        if ($extraction instanceof LabPdfExtraction) {
-            $candidates = $extraction->results;
-        } else {
-            $candidates = $extraction->findings;
-        }
-        foreach ($candidates as $candidate) {
-            $certainty = $this->classifier->classify($job->docType, $candidate);
+        foreach ($registry->map($job->docType, $extraction) as $draft) {
+            $certainty = $documentFactClassifier->classifyDraft($job->docType, $draft);
             ++$counts[$certainty->value];
         }
 
-        return [
-            'verified' => $counts['verified'],
-            'document_fact' => $counts['document_fact'],
-            'needs_review' => $counts['needs_review'],
-        ];
+        return $counts;
     }
 }

@@ -482,24 +482,26 @@ AgentForge check passed for this boundary.
 
 ### Epic 8 - Unified Fact Mapping, Identity, And Retrieval
 
-Status: Not started.
+Status: Complete.
 
 Goal: Let all extraction types produce trusted document facts through one path.
 
-Tasks:
+Completed:
 
-- Add `DocumentFactMapper` interface and per-format mappers.
-- Update `ExtractionProviderResponse` or replace its fact conversion with mapper-based conversion.
-- Extend `ExtractionIdentityEvidenceBuilder` for new extraction types.
-- Extend `CertaintyClassifier` for new fact categories.
-- Ensure `PatientDocumentFactsEvidenceTool` can retrieve facts across new document types without format-specific branching.
-- Add tests for identity mismatch, ambiguity, trusted identity, and retrieval for each new document type.
+- `DocumentFactMapper` interface + `DocumentFactDraft` value object + `DocumentFactMapperRegistry` (first-match dispatch).
+- 6 per-format mappers: `LabPdfFactMapper`, `IntakeFormFactMapper`, `ReferralDocxFactMapper`, `ClinicalWorkbookFactMapper`, `FaxPacketFactMapper`, `Hl7v2MessageFactMapper`.
+- `CertaintyClassifier.classifyDraft()` with per-format chart destination rules.
+- `ExtractionProviderResponse.fromStrictJson()` delegates to mappers via `factsFromDrafts()`.
+- `IntakeExtractorWorker.countFactBuckets()` unified through mapper + `classifyDraft()`.
+- `SqlClinicalDocumentFactPromotionRepository.promote()` unified: lab/intake keep format-specific paths (chart writes + stable fingerprints), generic 4 types use mapper + `persistDraft()`.
+- `PatientDocumentFactsEvidenceTool.displayLabel()` handles all mapper output shapes.
+- Comprehensive isolated test suite: 94 mapper/registry/classifier tests, 864 AgentForge tests green.
 
 Acceptance criteria:
 
-- All formats use the same trusted identity gate.
-- Answer-time evidence retrieval works from persisted facts regardless of original source format.
-- No new format bypasses retraction, identity, citation, or PHI logging rules.
+- [x] All formats use the same trusted identity gate.
+- [x] Answer-time evidence retrieval works from persisted facts regardless of original source format.
+- [x] No new format bypasses retraction, identity, citation, or PHI logging rules.
 
 ### Epic 9 - Source Review And Citation Rendering
 

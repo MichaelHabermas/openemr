@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Document;
 
+use OpenEMR\AgentForge\Document\Mapping\DocumentFactDraft;
 use OpenEMR\AgentForge\Document\Schema\Certainty;
 use OpenEMR\AgentForge\Document\Schema\CertaintyClassifier;
 use OpenEMR\AgentForge\Document\Schema\ExtractedClinicalFact;
@@ -35,6 +36,11 @@ final readonly class DocumentFactClassifier
         }
 
         return $this->classifier->classify($job->docType, $candidate);
+    }
+
+    public function classifyDraft(DocumentType $documentType, DocumentFactDraft $draft): Certainty
+    {
+        return $this->classifier->classifyDraft($documentType, $draft);
     }
 
     public function promotionStatus(Certainty $certainty): string
