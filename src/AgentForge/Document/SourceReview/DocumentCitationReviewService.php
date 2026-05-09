@@ -24,9 +24,8 @@ final readonly class DocumentCitationReviewService
     public function __construct(
         private DatabaseExecutor $executor,
         private SourceDocumentAccessGate $accessGate,
-        private string $documentUrlBase = 'agent_document_source.php',
-        private string $pageImageUrlBase = 'agent_document_source_page.php',
         private DocumentCitationNormalizer $citationNormalizer = new DocumentCitationNormalizer(),
+        private SourceReviewPresenter $presenter = new SourceReviewPresenter(),
     ) {
     }
 
@@ -41,7 +40,7 @@ final readonly class DocumentCitationReviewService
         }
 
         $rows = $this->executor->fetchRecords(
-            'SELECT f.id, f.citation_json, f.structured_value_json '
+            'SELECT f.id, f.doc_type, f.citation_json, f.structured_value_json '
             . 'FROM clinical_document_facts f '
             . 'WHERE f.patient_id = ? '
             . 'AND f.document_id = ? '
@@ -69,54 +68,25 @@ final readonly class DocumentCitationReviewService
         }
 
         $normalized = $this->citationNormalizer->normalize($citation, $structured);
+        $docType = $this->string($row, 'doc_type');
+        $locator = $this->presenter->locator($docType, $normalized);
+
+        $pageImageUrl = $locator->kind->hasPageImage()
+            ? $this->presenter->pageImageUrl($patientId->value, $documentId->value, $jobId->value, $factId, $normalized->pageNumber)
+            : '';
 
         return new DocumentCitationReview(
             $documentId->value,
             $jobId->value,
             $this->positiveIntOrNull($row['id'] ?? null),
-            $this->documentUrl($patientId, $documentId, $jobId, $factId),
-            $this->pageImageUrl($patientId, $documentId, $jobId, $factId, $normalized->pageNumber),
+            $this->presenter->openSourceUrl($patientId->value, $documentId->value, $jobId->value),
+            $pageImageUrl,
             $normalized->pageOrSection,
             $normalized->pageNumber,
             $normalized->fieldOrChunkId,
             $normalized->quoteOrValue,
-            $normalized->boundingBox,
+            $locator,
         );
-    }
-
-    private function documentUrl(PatientId $patientId, DocumentId $documentId, DocumentJobId $jobId, ?int $factId): string
-    {
-        $separator = str_contains($this->documentUrlBase, '?') ? '&' : '?';
-        $url = $this->documentUrlBase
-            . $separator . 'patient_id=' . rawurlencode((string) $patientId->value)
-            . '&document_id=' . rawurlencode((string) $documentId->value)
-            . '&job_id=' . rawurlencode((string) $jobId->value)
-            . '&as_file=false';
-        if ($factId !== null) {
-            $url .= '&fact_id=' . rawurlencode((string) $factId);
-        }
-
-        return $url;
-    }
-
-    private function pageImageUrl(
-        PatientId $patientId,
-        DocumentId $documentId,
-        DocumentJobId $jobId,
-        ?int $factId,
-        ?int $pageNumber,
-    ): string {
-        $separator = str_contains($this->pageImageUrlBase, '?') ? '&' : '?';
-        $url = $this->pageImageUrlBase
-            . $separator . 'patient_id=' . rawurlencode((string) $patientId->value)
-            . '&document_id=' . rawurlencode((string) $documentId->value)
-            . '&job_id=' . rawurlencode((string) $jobId->value)
-            . '&page=' . rawurlencode((string) max(1, $pageNumber ?? 1));
-        if ($factId !== null) {
-            $url .= '&fact_id=' . rawurlencode((string) $factId);
-        }
-
-        return $url;
     }
 
     /**

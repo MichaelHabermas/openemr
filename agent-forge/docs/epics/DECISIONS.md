@@ -47,6 +47,8 @@ Source of truth is always the code. This file preserves the *why*.
 
 - **No iframe embed.** Source review renders citation metadata, quote/value text, and bounding-box highlight — deliberately does not embed the source document.
 - **PDF page-image rendering is placeholder.** CSS-grid area; actual PDF embed is future work.
+- **Typed locator kinds over `review_mode` string.** Five `ReviewLocatorKind` enum cases (`image_region`, `page_quote`, `text_anchor`, `table_cell`, `message_field`) replace the `bounding_box`/`page_quote_fallback` string pair. Template JS dispatches on `locator.kind`; non-page formats (DOCX, XLSX, HL7) render metadata + quote only.
+- **`SourceReviewPresenter` owns all review URLs and locator mapping.** Pure presentation, no DB/auth. Injected into both the evidence tool and the review service — single source of truth for URL construction and doc-type → locator-kind mapping.
 - **Source-review gate:** active chart patient, `patients:med` ACL, succeeded unretracted job, trusted identity or approved review, non-deleted active document, active unretracted fact.
 - **Retraction = deactivation, never hard-delete.** `active=0`, `retracted_at`, audit rows. `lists` rows get `activity=0`; `procedure_result` rows marked corrected/excluded.
 - **Append-only audit** via `clinical_document_retractions` with prior state, new state, action, actor, reason, source document linkage.

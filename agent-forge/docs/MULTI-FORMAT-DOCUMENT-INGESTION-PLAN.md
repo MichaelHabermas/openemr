@@ -505,23 +505,23 @@ Acceptance criteria:
 
 ### Epic 9 - Source Review And Citation Rendering
 
-Status: Not started.
+Status: Complete.
 
 Goal: Make citations reviewable for all formats.
 
 Tasks:
 
-- Extend citation normalization for DOCX, XLSX, TIFF, and HL7 anchors.
-- Render source review metadata for each citation family.
-- Keep page image overlay support for PDF/image/TIFF where available.
-- For DOCX, XLSX, and HL7, show citation metadata and quote/value without embedding raw whole documents.
-- Add tests proving citation links render for facts from every document type.
+- [x] Extend citation normalization for DOCX, XLSX, TIFF, and HL7 anchors.
+- [x] Render source review metadata for each citation family.
+- [x] Keep page image overlay support for PDF/image/TIFF where available.
+- [x] For DOCX, XLSX, and HL7, show citation metadata and quote/value without embedding raw whole documents.
+- [x] Add tests proving citation links render for facts from every document type.
 
 Acceptance criteria:
 
-- Every extracted fact can produce a clickable or reviewable source citation.
-- Source review remains gated by patient, ACL, job status, identity status, document state, and fact activity.
-- Source review does not expose unrelated raw document content.
+- [x] Every extracted fact can produce a clickable or reviewable source citation.
+- [x] Source review remains gated by patient, ACL, job status, identity status, document state, and fact activity.
+- [x] Source review does not expose unrelated raw document content.
 
 ### Epic 10 - End-To-End Gate And Documentation
 

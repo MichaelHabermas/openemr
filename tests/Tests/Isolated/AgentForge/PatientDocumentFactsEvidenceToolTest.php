@@ -57,6 +57,16 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
                 'page_or_section' => 'page 1',
                 'field_or_chunk_id' => 'results[0]',
                 'quote_or_value' => 'LDL Cholesterol 148 mg/dL',
+                'review_url' => 'agent_document_source_review.php?document_id=11&job_id=17&fact_id=41',
+                'open_source_url' => 'agent_document_source.php?patient_id=900101&document_id=11&job_id=17&as_file=false',
+                'inline_marker' => 'Citation: lab_pdf, page 1, results[0]',
+                'locator' => [
+                    'kind' => 'image_region',
+                    'page' => 1,
+                    'page_label' => 'page 1',
+                    'field' => 'results[0]',
+                    'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
+                ],
                 'bounding_box' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08],
             ],
             $result->items[0]->citation,
@@ -114,6 +124,38 @@ final class PatientDocumentFactsEvidenceToolTest extends TestCase
         $this->assertStringContainsString('Citation: intake_form, page 1, needs_review[0]', $result->items[0]->value);
         $this->assertSame('page 1', $result->items[0]->citation['page_or_section']);
         $this->assertSame(['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08], $result->items[0]->citation['bounding_box']);
+    }
+
+    public function testNonPageDocTypeProducesCorrectLocatorKindInCitationMetadata(): void
+    {
+        $row = $this->factRow();
+        $row['id'] = 43;
+        $row['doc_type'] = 'referral_docx';
+        $row['fact_type'] = 'referral_content';
+        $row['fact_text'] = 'Cardiology consult requested for chest pain evaluation';
+        $row['structured_value_json'] = json_encode([
+            'display_label' => 'Referral reason',
+        ], JSON_THROW_ON_ERROR);
+        $row['citation_json'] = json_encode([
+            'source_type' => 'referral_docx',
+            'source_id' => 'doc:55',
+            'page_or_section' => 'section:reason-for-referral',
+            'field_or_chunk_id' => 'paragraph:3',
+            'quote_or_value' => 'Cardiology consult requested',
+        ], JSON_THROW_ON_ERROR);
+
+        $result = (new PatientDocumentFactsEvidenceTool(new PatientDocumentFactsEvidenceExecutor([$row])))
+            ->collect(new PatientId(900101), new Deadline(new SystemMonotonicClock(), -1));
+
+        $this->assertCount(1, $result->items);
+        $citation = $result->items[0]->citation;
+        $this->assertSame('referral_docx', $citation['doc_type']);
+        $this->assertSame(
+            ['kind' => 'text_anchor', 'section' => 'section:reason-for-referral', 'anchor' => 'paragraph:3'],
+            $citation['locator'],
+        );
+        $this->assertArrayNotHasKey('bounding_box', $citation);
+        $this->assertStringContainsString('Citation: referral_docx', $result->items[0]->value);
     }
 
     public function testOutOfBoundsBoundingBoxIsDroppedFromCitationMetadata(): void

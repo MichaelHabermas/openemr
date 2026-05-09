@@ -18,8 +18,10 @@ use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\DatabaseExecutor;
 use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\StringKeyedArray;
 use OpenEMR\AgentForge\Document\SourceReview\DocumentCitationNormalizer;
 use OpenEMR\AgentForge\Document\SourceReview\NormalizedDocumentCitation;
+use OpenEMR\AgentForge\Document\SourceReview\SourceReviewPresenter;
 use OpenEMR\AgentForge\Document\TrustedDocumentGate;
 use OpenEMR\AgentForge\Evidence\DocumentEvidenceFormatting as Fmt;
 
@@ -30,6 +32,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
         private int $limit = 12,
         private DocumentCitationNormalizer $citationNormalizer = new DocumentCitationNormalizer(),
         private TrustedDocumentGate $trustedDocuments = new TrustedDocumentGate(),
+        private SourceReviewPresenter $presenter = new SourceReviewPresenter(),
     ) {
     }
 
@@ -47,7 +50,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
         $items = [];
         foreach ($this->activeFactRows($patientId, $deadline) as $row) {
             try {
-                $item = $this->itemFromRow($row);
+                $item = $this->itemFromRow($row, $patientId);
             } catch (DomainException | JsonException) {
                 continue;
             }
@@ -99,7 +102,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
     }
 
     /** @param array<string, mixed> $row */
-    private function itemFromRow(array $row): ?EvidenceItem
+    private function itemFromRow(array $row, PatientId $patientId): ?EvidenceItem
     {
         $factText = Fmt::string($row, 'fact_text');
         if ($factText === '') {
@@ -114,6 +117,7 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             : $normalizedCitation->fieldOrChunkId;
         $page = $normalizedCitation->pageOrSection;
         $docType = Fmt::string($row, 'doc_type');
+        $inlineMarker = $this->presenter->inlineMarker($docType, $page, $field);
         $label = $this->displayLabel($row, $structured);
         $isNeedsReview = Fmt::string($row, 'certainty') === 'needs_review';
 
@@ -128,8 +132,8 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
                 Fmt::string($row, 'document_date'),
             ),
             $isNeedsReview ? 'Needs review: ' . $label : $label,
-            EvidenceText::bounded(sprintf('%s; %s', $factText, Fmt::evidenceCitationSuffix($docType, $page, $field)), 300),
-            $this->citationMetadata($row, $normalizedCitation, $field, $page),
+            EvidenceText::bounded(sprintf('%s; %s', $factText, $inlineMarker), 300),
+            $this->citationMetadata($row, $normalizedCitation, $field, $page, $patientId),
         );
     }
 
@@ -154,16 +158,22 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
      * @param array<string, mixed> $row
      * @return array<string, mixed>
      */
-    private function citationMetadata(array $row, NormalizedDocumentCitation $citation, string $field, string $page): array
+    private function citationMetadata(array $row, NormalizedDocumentCitation $citation, string $field, string $page, PatientId $patientId): array
     {
+        $docType = Fmt::string($row, 'doc_type');
+        $documentId = Fmt::positiveInt($row, 'document_id');
+        $jobId = Fmt::positiveInt($row, 'job_id');
+        $factId = Fmt::positiveInt($row, 'id');
+        $locator = $this->presenter->locator($docType, $citation);
+
         $metadata = [
             'source_type' => 'document',
-            'doc_type' => Fmt::string($row, 'doc_type'),
-            'source_id' => $citation->sourceId !== '' ? $citation->sourceId : 'document:' . Fmt::string($row, 'document_id'),
-            'document_id' => Fmt::positiveInt($row, 'document_id'),
-            'job_id' => Fmt::positiveInt($row, 'job_id'),
+            'doc_type' => $docType,
+            'source_id' => $citation->sourceId !== '' ? $citation->sourceId : 'document:' . (string) $documentId,
+            'document_id' => $documentId,
+            'job_id' => $jobId,
             'identity_check_id' => Fmt::positiveInt($row, 'identity_check_id'),
-            'fact_id' => Fmt::positiveInt($row, 'id'),
+            'fact_id' => $factId,
             'fact_type' => Fmt::string($row, 'fact_type'),
             'certainty' => Fmt::string($row, 'certainty'),
             'promotion_status' => Fmt::string($row, 'promotion_status'),
@@ -172,6 +182,10 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             'page_or_section' => $page,
             'field_or_chunk_id' => $field,
             'quote_or_value' => EvidenceText::bounded($citation->quoteOrValue, 240),
+            'review_url' => $this->presenter->reviewUrl($documentId, $jobId, $factId),
+            'open_source_url' => $this->presenter->openSourceUrl($patientId->value, $documentId, $jobId),
+            'inline_marker' => $this->presenter->inlineMarker($docType, $page, $field),
+            'locator' => $locator->toArray(),
         ];
 
         if ($citation->boundingBox !== null) {
@@ -199,13 +213,6 @@ final readonly class PatientDocumentFactsEvidenceTool implements ChartEvidenceTo
             return [];
         }
 
-        $out = [];
-        foreach ($decoded as $key => $value) {
-            if (is_string($key)) {
-                $out[$key] = $value;
-            }
-        }
-
-        return $out;
+        return StringKeyedArray::filter($decoded);
     }
 }

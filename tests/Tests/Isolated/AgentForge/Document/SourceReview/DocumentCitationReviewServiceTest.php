@@ -19,6 +19,7 @@ use OpenEMR\AgentForge\Document\DocumentId;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\SourceReview\DocumentCitationReviewService;
 use OpenEMR\AgentForge\Document\SourceReview\SourceDocumentAccessGate;
+use OpenEMR\AgentForge\Document\SourceReview\SourceReviewPresenter;
 use PHPUnit\Framework\TestCase;
 
 final class DocumentCitationReviewServiceTest extends TestCase
@@ -26,13 +27,18 @@ final class DocumentCitationReviewServiceTest extends TestCase
     public function testBoundingBoxCitationReturnsReviewPayload(): void
     {
         $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$this->factRow()]));
-        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor), 'doc.php?retrieve');
+        $service = new DocumentCitationReviewService(
+            $executor,
+            new SourceDocumentAccessGate($executor),
+            presenter: new SourceReviewPresenter(sourceUrlBase: 'doc.php?retrieve'),
+        );
 
         $review = $service->review(new PatientId(900101), new DocumentId(11), new DocumentJobId(7), 41);
 
         $this->assertNotNull($review);
         $payload = $review->toArray();
-        $this->assertSame('bounding_box', $payload['review_mode']);
+        $this->assertArrayNotHasKey('review_mode', $payload);
+        $this->assertSame('image_region', $payload['locator']['kind']);
         $this->assertSame(11, $payload['document_id']);
         $this->assertSame(7, $payload['job_id']);
         $this->assertSame(41, $payload['fact_id']);
@@ -40,10 +46,11 @@ final class DocumentCitationReviewServiceTest extends TestCase
         $this->assertSame('page 1', $payload['page_or_section']);
         $this->assertSame('results[0]', $payload['field_or_chunk_id']);
         $this->assertSame('LDL Cholesterol 148 mg/dL', $payload['quote_or_value']);
-        $this->assertArrayHasKey('bounding_box', $payload);
-        $this->assertSame(['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08], $payload['bounding_box']);
+        $this->assertArrayHasKey('bounding_box', $payload['locator']);
+        $this->assertSame(['x' => 0.1, 'y' => 0.2, 'width' => 0.3, 'height' => 0.08], $payload['locator']['bounding_box']);
         $this->assertStringContainsString('patient_id=900101', $payload['document_url']);
         $this->assertStringContainsString('document_id=11', $payload['document_url']);
+        $this->assertArrayHasKey('page_image_url', $payload);
         $this->assertStringContainsString('agent_document_source_page.php', $payload['page_image_url']);
         $this->assertStringContainsString('document_id=11', $payload['page_image_url']);
         $this->assertStringContainsString('page=1', $payload['page_image_url']);
@@ -64,9 +71,10 @@ final class DocumentCitationReviewServiceTest extends TestCase
 
         $this->assertNotNull($review);
         $payload = $review->toArray();
-        $this->assertSame('page_quote_fallback', $payload['review_mode']);
+        $this->assertArrayNotHasKey('review_mode', $payload);
+        $this->assertSame('page_quote', $payload['locator']['kind']);
         $this->assertNull($payload['page_number']);
-        $this->assertArrayNotHasKey('bounding_box', $payload);
+        $this->assertArrayNotHasKey('bounding_box', $payload['locator']);
         $this->assertSame('chief concern', $payload['page_or_section']);
         $this->assertSame('Follow-up for fatigue', $payload['quote_or_value']);
     }
@@ -91,7 +99,7 @@ final class DocumentCitationReviewServiceTest extends TestCase
             'field_or_chunk_id' => 'needs_review[0]',
             'quote_or_value' => 'shellfish?? maybe iodine itchy?',
             'bounding_box' => ['x' => 0.126, 'y' => 0.300, 'width' => 0.110, 'height' => 0.026],
-        ]);
+        ], 'intake_form');
         $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
         $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
 
@@ -99,11 +107,88 @@ final class DocumentCitationReviewServiceTest extends TestCase
 
         $this->assertNotNull($review);
         $payload = $review->toArray();
+        $this->assertSame('image_region', $payload['locator']['kind']);
         $this->assertSame(1, $payload['page_number']);
         $this->assertSame('page 1', $payload['page_or_section']);
+        $this->assertArrayHasKey('page_image_url', $payload);
         $this->assertStringContainsString('page=1', $payload['page_image_url']);
-        $this->assertArrayHasKey('bounding_box', $payload);
-        $this->assertSame(['x' => 0.126, 'y' => 0.300, 'width' => 0.110, 'height' => 0.026], $payload['bounding_box']);
+        $this->assertArrayHasKey('bounding_box', $payload['locator']);
+        $this->assertSame(['x' => 0.126, 'y' => 0.300, 'width' => 0.110, 'height' => 0.026], $payload['locator']['bounding_box']);
+    }
+
+    public function testReferralDocxReturnsTextAnchorLocatorWithoutPageImage(): void
+    {
+        $row = $this->factRow([
+            'source_type' => 'referral_docx',
+            'page_or_section' => 'section:reason-for-referral',
+            'field_or_chunk_id' => 'paragraph:3',
+            'quote_or_value' => 'Cardiology consult requested',
+            'bounding_box' => null,
+        ], 'referral_docx');
+        $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
+        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
+
+        $review = $service->review(new PatientId(900101), new DocumentId(55), new DocumentJobId(7), 41);
+
+        $this->assertNotNull($review);
+        $payload = $review->toArray();
+        $this->assertSame('text_anchor', $payload['locator']['kind']);
+        $this->assertSame('section:reason-for-referral', $payload['locator']['section']);
+        $this->assertSame('paragraph:3', $payload['locator']['anchor']);
+        $this->assertArrayNotHasKey('bounding_box', $payload['locator']);
+        $this->assertArrayNotHasKey('page_image_url', $payload);
+        $this->assertNull($payload['page_number']);
+        $this->assertSame('Cardiology consult requested', $payload['quote_or_value']);
+    }
+
+    public function testClinicalWorkbookReturnsTableCellLocatorWithoutPageImage(): void
+    {
+        $row = $this->factRow([
+            'source_type' => 'clinical_workbook',
+            'page_or_section' => 'sheet:Labs_Trend',
+            'field_or_chunk_id' => 'Care_Gaps!A4:F4',
+            'quote_or_value' => 'Overdue screening',
+            'bounding_box' => null,
+        ], 'clinical_workbook');
+        $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
+        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
+
+        $review = $service->review(new PatientId(900101), new DocumentId(66), new DocumentJobId(7), 41);
+
+        $this->assertNotNull($review);
+        $payload = $review->toArray();
+        $this->assertSame('table_cell', $payload['locator']['kind']);
+        $this->assertSame('sheet:Labs_Trend', $payload['locator']['sheet']);
+        $this->assertSame('Care_Gaps!A4:F4', $payload['locator']['cell_ref']);
+        $this->assertArrayNotHasKey('bounding_box', $payload['locator']);
+        $this->assertArrayNotHasKey('page_image_url', $payload);
+        $this->assertNull($payload['page_number']);
+        $this->assertSame('Overdue screening', $payload['quote_or_value']);
+    }
+
+    public function testHl7v2MessageReturnsMessageFieldLocatorWithoutPageImage(): void
+    {
+        $row = $this->factRow([
+            'source_type' => 'hl7v2_message',
+            'page_or_section' => 'message:MSG-ORU-1',
+            'field_or_chunk_id' => 'OBX[2].5',
+            'quote_or_value' => '142 mg/dL',
+            'bounding_box' => null,
+        ], 'hl7v2_message');
+        $executor = new SourceReviewExecutor($this->results([['id' => 17]], [$row]));
+        $service = new DocumentCitationReviewService($executor, new SourceDocumentAccessGate($executor));
+
+        $review = $service->review(new PatientId(900101), new DocumentId(77), new DocumentJobId(7), 41);
+
+        $this->assertNotNull($review);
+        $payload = $review->toArray();
+        $this->assertSame('message_field', $payload['locator']['kind']);
+        $this->assertSame('message:MSG-ORU-1', $payload['locator']['message']);
+        $this->assertSame('OBX[2].5', $payload['locator']['field_path']);
+        $this->assertArrayNotHasKey('bounding_box', $payload['locator']);
+        $this->assertArrayNotHasKey('page_image_url', $payload);
+        $this->assertNull($payload['page_number']);
+        $this->assertSame('142 mg/dL', $payload['quote_or_value']);
     }
 
     public function testOutOfBoundsBoundingBoxFallsBackToPageQuoteReview(): void
@@ -118,8 +203,9 @@ final class DocumentCitationReviewServiceTest extends TestCase
 
         $this->assertNotNull($review);
         $payload = $review->toArray();
-        $this->assertSame('page_quote_fallback', $payload['review_mode']);
-        $this->assertArrayNotHasKey('bounding_box', $payload);
+        $this->assertArrayNotHasKey('review_mode', $payload);
+        $this->assertSame('page_quote', $payload['locator']['kind']);
+        $this->assertArrayNotHasKey('bounding_box', $payload['locator']);
     }
 
     public function testDeniedAccessFailsClosedBeforeFactLookup(): void
@@ -182,12 +268,13 @@ final class DocumentCitationReviewServiceTest extends TestCase
      * @param array<string, mixed> $citation
      * @return array<string, mixed>
      */
-    private function factRow(array $citation = []): array
+    private function factRow(array $citation = [], string $docType = 'lab_pdf'): array
     {
         return [
             'id' => 41,
+            'doc_type' => $docType,
             'citation_json' => json_encode(array_merge([
-                'source_type' => 'lab_pdf',
+                'source_type' => $docType,
                 'source_id' => 'doc:11',
                 'page_or_section' => 'page 1',
                 'field_or_chunk_id' => 'results[0]',

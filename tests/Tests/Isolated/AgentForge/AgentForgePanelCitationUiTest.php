@@ -49,6 +49,48 @@ final class AgentForgePanelCitationUiTest extends TestCase
         $this->assertStringContainsString("sourceBox.style.height = (box.height * 100) + '%'", $template);
     }
 
+    public function testPanelDispatchesOnLocatorKindInsteadOfReviewMode(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString("const locator = reviewed.locator || {}", $template);
+        $this->assertStringContainsString("const kind = locator.kind || ''", $template);
+        $this->assertStringContainsString("kind === 'image_region' || kind === 'page_quote'", $template);
+        $this->assertStringContainsString("kind === 'image_region' && hasBoundingBox(locator.bounding_box)", $template);
+        $this->assertStringContainsString('showSourceBox(locator.bounding_box)', $template);
+        $this->assertStringContainsString('locatorFallback(locator, reviewed)', $template);
+    }
+
+    public function testPanelLocatorFallbackHandlesAllKinds(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('function locatorFallback(locator, reviewed)', $template);
+        $this->assertStringContainsString("case 'text_anchor':", $template);
+        $this->assertStringContainsString("locator.section || ''", $template);
+        $this->assertStringContainsString("locator.anchor || ''", $template);
+        $this->assertStringContainsString("case 'table_cell':", $template);
+        $this->assertStringContainsString("locator.sheet || ''", $template);
+        $this->assertStringContainsString("locator.cell_ref || ''", $template);
+        $this->assertStringContainsString("case 'message_field':", $template);
+        $this->assertStringContainsString("locator.message || ''", $template);
+        $this->assertStringContainsString("locator.field_path || ''", $template);
+    }
+
+    public function testPanelPrefersPreBuiltReviewUrl(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('citation.review_url', $template);
+    }
+
+    public function testNormalizeReviewPayloadIncludesLocator(): void
+    {
+        $template = $this->agentForgePanelTemplate();
+
+        $this->assertStringContainsString('reviewed.locator || (detail.citation && detail.citation.locator) || null', $template);
+    }
+
     public function testPanelShowsDeterministicNoBoxFallbackWithPageAndQuote(): void
     {
         $template = $this->agentForgePanelTemplate();

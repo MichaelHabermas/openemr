@@ -69,5 +69,8 @@ Server-issued conversation ID bound to session user+patient. No persistent trans
 ### Verifier Hardening & Tool Routing
 Verifier distrusts model labels. Token-set matching via EvidenceMatcher. Date canonicalization to ISO. Unsupported factual tails blocked. Semantic paraphrase verification deferred.
 
+### Source Review & Citation Rendering (Epic 9)
+Typed `ReviewLocatorKind` enum replaces `review_mode` string. Five locator kinds: `image_region` (page + bbox), `page_quote` (page, no bbox), `text_anchor` (DOCX sections), `table_cell` (XLSX cells), `message_field` (HL7 segments). `SourceReviewPresenter` maps doc_type → locator kind and constructs all review URLs. Template JS dispatches on `locator.kind`. Non-page formats (DOCX, XLSX, HL7) show metadata + quote only — no document viewers. Evidence metadata carries `review_url`, `open_source_url`, `inline_marker`, `locator` fields.
+
 ### Visual PDF Source Review & Retraction UX
 Source-review modal with citation metadata, quote text, bounding-box highlight. No iframe embed. PDF page-image is CSS placeholder. Full retraction cascade proven locally and deployed VM (12→2 citations after deletion).
