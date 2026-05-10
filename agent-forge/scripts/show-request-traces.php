@@ -83,6 +83,7 @@ function agentforge_show_request_traces_main(): int
     }
 
     agentforge_show_traces_print_table($entries);
+    agentforge_show_traces_print_merge_telemetry($entries);
     agentforge_show_traces_print_stage_details($entries);
 
     if ($phiLeakDetected) {
@@ -169,6 +170,51 @@ function agentforge_show_traces_print_table(array $entries): void
             str_pad($verifier, 14),
             str_pad($sourceIds, 7),
             $failure,
+        ));
+    }
+}
+
+/** @param list<array<string, mixed>> $entries */
+function agentforge_show_traces_print_merge_telemetry(array $entries): void
+{
+    $hasAny = false;
+    foreach ($entries as $entry) {
+        if (is_array($entry['merge_telemetry'] ?? null) && $entry['merge_telemetry'] !== []) {
+            $hasAny = true;
+            break;
+        }
+    }
+    if (!$hasAny) {
+        return;
+    }
+
+    fwrite(STDOUT, "\n## Hybrid Retrieval Merge Telemetry\n\n");
+    fwrite(STDOUT, "| # | request_id   | sparse | dense | overlap | merged | accepted | reranker_used          |\n");
+    fwrite(STDOUT, "|---|--------------|--------|-------|---------|--------|----------|------------------------|\n");
+
+    foreach ($entries as $i => $entry) {
+        $merge = is_array($entry['merge_telemetry'] ?? null) ? $entry['merge_telemetry'] : null;
+        if ($merge === null || $merge === []) {
+            continue;
+        }
+        $requestId = is_string($entry['request_id'] ?? null) ? substr($entry['request_id'], 0, 12) : '—';
+        $sparse = is_numeric($merge['sparse_candidate_count'] ?? null) ? (string) $merge['sparse_candidate_count'] : '—';
+        $dense = is_numeric($merge['dense_candidate_count'] ?? null) ? (string) $merge['dense_candidate_count'] : '—';
+        $overlap = is_numeric($merge['overlap_count'] ?? null) ? (string) $merge['overlap_count'] : '—';
+        $merged = is_numeric($merge['merged_candidate_count'] ?? null) ? (string) $merge['merged_candidate_count'] : '—';
+        $accepted = is_numeric($merge['accepted_count'] ?? null) ? (string) $merge['accepted_count'] : '—';
+        $reranker = is_string($merge['reranker_used'] ?? null) ? $merge['reranker_used'] : '—';
+
+        fwrite(STDOUT, sprintf(
+            "| %d | %s | %s | %s | %s | %s | %s | %s |\n",
+            $i + 1,
+            str_pad($requestId, 12),
+            str_pad($sparse, 6),
+            str_pad($dense, 5),
+            str_pad($overlap, 7),
+            str_pad($merged, 6),
+            str_pad($accepted, 8),
+            $reranker,
         ));
     }
 }
