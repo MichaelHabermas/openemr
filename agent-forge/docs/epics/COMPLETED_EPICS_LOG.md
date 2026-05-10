@@ -77,3 +77,6 @@ Source-review modal with citation metadata, quote text, bounding-box highlight. 
 
 ### End-To-End Gate And Documentation (Epic 10)
 Per-format rubric pass rates surfaced in eval summary (`doc_type_rubrics` in summary.json). Gate script prints format coverage table after eval. Cost/latency report includes format coverage and per-format dimensions. AGENTFORGE-REVIEWER-GUIDE.md documents six-format matrix and known limitations. HL7 v2 ADT added to deployed smoke for non-PDF coverage. W2_ACCEPTANCE_MATRIX.md expanded with per-format acceptance rows.
+
+### Final Submission Infrastructure
+Observability trace report (`show-request-traces.php`) backed by `AuditLogTransport` interface (local/SSH/docker-compose strategies) and `AuditLogEntryParser`. Citation density safety net in eval runner catches missing citation expectations on `ok` responses. Latency SLO targets documented in `LATENCY-RESULTS.md`. `preflight-final-submission.sh` runs all gates in one command with `LOCAL_ONLY` mode for host-only checks. VM compatibility fixes: Composer process timeout for PHPStan (300s→900s), Docker fallback for PHPUnit when host lacks extensions, Imagick delegate skip guards in tests. Tier 2 evals 13/14 (1 LLM behavior flake on prompt injection). Deployed smoke 4/4. Latency p95 under 10s budget.

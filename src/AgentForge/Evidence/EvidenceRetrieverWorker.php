@@ -70,6 +70,11 @@ final readonly class EvidenceRetrieverWorker
             }
         }
 
+        $mergeTelemetry = $guidelineResult->mergeTelemetry?->toContext();
+        if ($mergeTelemetry !== null) {
+            $mergeTelemetry['reranker_used'] = $guidelineResult->rerankerUsed;
+        }
+
         return new EvidenceRun(
             new EvidenceBundle(
                 array_merge($chartRun->bundle->items, $guidelineItems),
@@ -79,6 +84,7 @@ final readonly class EvidenceRetrieverWorker
             $chartRun->results,
             array_values(array_unique(array_merge($chartRun->toolsCalled, [self::GUIDELINE_SECTION]))),
             $chartRun->skippedSections,
+            $mergeTelemetry,
         );
     }
 

@@ -131,7 +131,8 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
             ->withToolSelection($plan->selectorMode, $plan->selectorResult, $plan->selectorFallbackReason)
             ->withMergedStageTimings($plannerTimer->timings())
             ->withMergedStageTimings($timer->timings())
-            ->withTraceId($traceId->value);
+            ->withTraceId($traceId->value)
+            ->withMergeTelemetry($evidenceRun->mergeTelemetry);
 
         return $draftingResult->response;
     }

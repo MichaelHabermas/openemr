@@ -20,6 +20,7 @@ final readonly class AgentTelemetry
      * @param list<string> $sourceIds
      * @param array<string, int> $stageTimingsMs
      * @param list<ModelUsageTelemetry> $modelCalls
+     * @param ?array<string, mixed> $mergeTelemetry
      */
     public function __construct(
         public string $questionType,
@@ -38,6 +39,7 @@ final readonly class AgentTelemetry
         public ?string $selectorFallbackReason = null,
         public array $modelCalls = [],
         public ?string $traceId = null,
+        public ?array $mergeTelemetry = null,
     ) {
     }
 
@@ -58,7 +60,8 @@ final readonly class AgentTelemetry
      *     selector_result: string,
      *     selector_fallback_reason: ?string,
      *     model_calls: list<array<string, mixed>>,
-     *     trace_id: ?string
+     *     trace_id: ?string,
+     *     merge_telemetry: ?array<string, mixed>
      * }
      */
     public function toContext(): array
@@ -83,6 +86,7 @@ final readonly class AgentTelemetry
                 $this->modelCalls,
             ),
             'trace_id' => $this->traceId,
+            'merge_telemetry' => $this->mergeTelemetry,
         ];
     }
 
@@ -106,6 +110,7 @@ final readonly class AgentTelemetry
             $this->selectorFallbackReason,
             $this->modelCalls,
             $this->traceId,
+            $this->mergeTelemetry,
         );
     }
 
@@ -128,6 +133,7 @@ final readonly class AgentTelemetry
             $selectorFallbackReason,
             $this->modelCalls,
             $this->traceId,
+            $this->mergeTelemetry,
         );
     }
 
@@ -150,6 +156,31 @@ final readonly class AgentTelemetry
             $this->selectorFallbackReason,
             $this->modelCalls,
             $traceId,
+            $this->mergeTelemetry,
+        );
+    }
+
+    /** @param ?array<string, mixed> $mergeTelemetry */
+    public function withMergeTelemetry(?array $mergeTelemetry): self
+    {
+        return new self(
+            $this->questionType,
+            $this->toolsCalled,
+            $this->skippedChartSections,
+            $this->sourceIds,
+            $this->model,
+            $this->inputTokens,
+            $this->outputTokens,
+            $this->estimatedCost,
+            $this->failureReason,
+            $this->verifierResult,
+            $this->stageTimingsMs,
+            $this->selectorMode,
+            $this->selectorResult,
+            $this->selectorFallbackReason,
+            $this->modelCalls,
+            $this->traceId,
+            $mergeTelemetry,
         );
     }
 

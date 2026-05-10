@@ -93,6 +93,7 @@ final class SensitiveLogPolicy
         'threshold_applied' => true,
         'top_pre_rerank_score' => true,
         'top_post_rerank_score' => true,
+        'reranker_used' => true,
         'merge_telemetry' => true,
     ];
 

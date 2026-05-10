@@ -103,6 +103,17 @@ Source of truth is always the code. This file preserves the *why*.
 - **Deferred:** (1) Streaming LLM with incremental verification — needs SSE, streaming verifier, frontend. (2) Post-response writes via `fastcgi_finish_request()` — SAPI-dependent. (3) Semantic cache for repeat questions — needs key strategy and invalidation. (4) Speculative pre-fetch on chart open — primitive exists (`PrefetchableChartEvidenceRepository`), needs trigger surface.
 - **Provider serialization lesson.** Multi-block prompt representations for one provider (Anthropic cache breakpoints) must not break the single-string path consumed by another provider (OpenAI). Commit `4022ac7e8` fixed a regression where `PromptParts::joined()` produced invalid JSON for OpenAI.
 
+## Observability Tooling
+
+- **`AuditLogTransport` interface with three strategies** (local file, SSH, docker-compose exec). Extracted from inline implementations in deployed-smoke-runner and latency-trace scripts to eliminate duplication and enable `show-request-traces.php`.
+- **`AuditLogEntryParser`** extracts JSON blob from raw log lines. Shared by all observability scripts.
+- **`show-request-traces.php`** formats recent `agent_forge_request` entries as a Markdown table with stage timings. Validates no PHI leak via `SensitiveLogPolicy`. Exits non-zero if forbidden keys detected.
+- **Citation density safety net.** Eval runner asserts `citations >= 1` for any `ok` response where no explicit citation expectation is set. Prevents accidental omission of citation checks in new eval cases.
+- **`preflight-final-submission.sh`** runs all gates in one command: local quality (check-agentforge.sh), latency SLO doc, eval freshness (Tier 2 + deployed smoke < 7d), deployed health/demo/observability. `AGENTFORGE_PREFLIGHT_LOCAL_ONLY=1` skips deployed checks.
+- **Composer process timeout for PHPStan** set to 900s via `COMPOSER_PROCESS_TIMEOUT` env var. Default 300s is insufficient for 515-file analysis inside Docker on the VM.
+- **Docker fallback for PHPUnit in gate scripts.** Host PHP on the VM lacks `dom`/`xml`/`xmlwriter`. Gate scripts detect missing extensions and transparently run PHPUnit inside the openemr container.
+- **Imagick delegate checks in tests.** Container has Imagick extension but may lack TIFF/PDF decode delegates. Tests use `\Imagick::queryFormats()` to skip cleanly rather than error.
+
 ## Submission
 
 - **Three root documents:** `AUDIT.md`, `USERS.md`, `ARCHITECTURE.md` (mandated by `SPECS.txt` hard gate).
