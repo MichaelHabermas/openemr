@@ -14,6 +14,39 @@ run_step() {
   "$@"
 }
 
+host_php_has_phpunit_extensions() {
+  php -r '
+      $required = ["dom", "json", "libxml", "mbstring", "tokenizer", "xml", "xmlwriter"];
+      foreach ($required as $ext) {
+          if (!extension_loaded($ext)) { exit(1); }
+      }
+      exit(0);
+  ' 2>/dev/null
+}
+
+run_agentforge_isolated_phpunit() {
+  local compose_file="${REPO_DIR}/docker/development-easy/docker-compose.yml"
+
+  if host_php_has_phpunit_extensions; then
+      composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+      return
+  fi
+
+  if [[ ! -f "${compose_file}" ]]; then
+      printf 'Host PHP is missing extensions required by PHPUnit.\n' >&2
+      return 1
+  fi
+
+  if ! docker compose -f "${compose_file}" ps --status running -q openemr 2>/dev/null | grep -q .; then
+      printf 'Host PHP is missing extensions and openemr container is not running.\n' >&2
+      return 1
+  fi
+
+  printf 'Host PHP lacks PHPUnit extensions; running isolated PHPUnit in the openemr container.\n'
+  docker compose -f "${compose_file}" exec -T -w /var/www/localhost/htdocs/openemr openemr \
+      bash -lc 'git config --global --add safe.directory "$PWD" 2>/dev/null || true; composer phpunit-isolated -- --filter '"'"'OpenEMR\\Tests\\Isolated\\AgentForge'"'"''
+}
+
 run_step "Check diff whitespace" git diff --check
 
 run_step "Check PHP syntax (clinical document eval surface)" bash -c \
@@ -26,7 +59,7 @@ run_step "Check shell script syntax" bash -c \
   "find agent-forge/scripts -type f -name '*.sh' -print0 | xargs -0 -n 1 bash -n"
 
 run_step "Run AgentForge isolated PHPUnit" \
-  composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge'
+  run_agentforge_isolated_phpunit
 
 run_step "Run Clinical document evals" \
   php agent-forge/scripts/run-clinical-document-evals.php
@@ -66,7 +99,7 @@ if ($perType !== []) {
 '
 
 run_step "Run focused PHPStan (clinical document eval surface)" \
-  composer phpstan -- --error-format=raw \
+  env COMPOSER_PROCESS_TIMEOUT=900 composer phpstan -- --error-format=raw \
     src/AgentForge \
     tests/Tests/Isolated/AgentForge \
     interface/patient_file/summary/agent_request.php \

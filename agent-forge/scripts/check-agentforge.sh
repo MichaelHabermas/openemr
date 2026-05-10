@@ -17,6 +17,43 @@ run_step() {
     "$@"
 }
 
+host_php_has_phpunit_extensions() {
+    php -r '
+        $required = ["dom", "json", "libxml", "mbstring", "tokenizer", "xml", "xmlwriter"];
+        foreach ($required as $ext) {
+            if (!extension_loaded($ext)) {
+                exit(1);
+            }
+        }
+        exit(0);
+    ' 2>/dev/null
+}
+
+run_clinical_document_phpunit() {
+    local compose_file="${REPO_DIR}/docker/development-easy/docker-compose.yml"
+    local filter='OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'
+
+    if host_php_has_phpunit_extensions; then
+        composer phpunit-isolated -- --filter "${filter}"
+        return
+    fi
+
+    if [[ ! -f "${compose_file}" ]]; then
+        printf 'Host PHP is missing extensions required by PHPUnit (dom, xml, xmlwriter, etc.).\n' >&2
+        printf 'No %s found; cannot run in container.\n' "${compose_file}" >&2
+        return 1
+    fi
+
+    if ! docker compose -f "${compose_file}" ps --status running -q openemr 2>/dev/null | grep -q .; then
+        printf 'Host PHP is missing extensions and openemr container is not running.\n' >&2
+        return 1
+    fi
+
+    printf 'Host PHP lacks PHPUnit extensions; running clinical document PHPUnit in the openemr container.\n'
+    docker compose -f "${compose_file}" exec -T -w /var/www/localhost/htdocs/openemr openemr \
+        bash -lc 'git config --global --add safe.directory "$PWD" 2>/dev/null || true; composer phpunit-isolated -- --filter '"'"'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'"'"''
+}
+
 run_clinical_document_gate() {
     local output_file
     local exit_code
@@ -61,7 +98,7 @@ run_step "Run baseline AgentForge gate" \
     bash agent-forge/scripts/check-local.sh
 
 run_step "Run clinical document harness self-tests" \
-    composer phpunit-isolated -- --filter 'OpenEMR\\Tests\\Isolated\\AgentForge\\Eval\\ClinicalDocument'
+    run_clinical_document_phpunit
 
 run_step "Run clinical document gate (${CLINICAL_DOCUMENT_GATE_EXPECTATION})" \
     run_clinical_document_gate
