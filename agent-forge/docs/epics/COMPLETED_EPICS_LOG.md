@@ -18,7 +18,7 @@ Fake demo patient (pid=900001, Alex Testpatient) with falsifiability as design p
 ### Epic 4 — Agent Request Shell
 Patient-chart request shell with fail-closed authorization gate. Three relationship shapes only; everything else deferred and refused. Output buffering prevents accidental prior output from corrupting JSON.
 
-### Epic 8 — Reviewer Submission Packaging
+### Reviewer Submission Packaging
 Root-level AUDIT.md, USERS.md, ARCHITECTURE.md as canonical reviewer artifacts. Reviewer guide separates implemented proof from planned remediation.
 
 ### Adversarial Demo Patients

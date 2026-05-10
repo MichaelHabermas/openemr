@@ -523,9 +523,12 @@ required rubrics with per-case applicability. A case may mark a rubric as
 `null` when the rubric is not applicable to that case; applicable cases still
 produce boolean pass/fail results, and `StructuralCoveragePolicy` fails the
 runner if any registered rubric is never declared by an applicable golden case.
-The H1 implementation additionally gates Week 2-specific rubrics for guideline
-retrieval, answer citation coverage, bounding boxes, deleted-document
-exclusion, promotion expectations, and document-fact expectations.
+The H1 implementation registers 14 rubrics total: `schema_valid`,
+`citation_present`, `factually_consistent`, `safe_refusal`, `no_phi_in_logs`,
+`guideline_retrieval`, `final_answer_sections`, `supervisor_handoff`,
+`answer_citation_coverage`, `bounding_box_present`,
+`deleted_document_not_retrieved`, `promotion_expectations`,
+`document_fact_expectations`, and `latency_budget`.
 
 ### 10.3 Gate Policy
 

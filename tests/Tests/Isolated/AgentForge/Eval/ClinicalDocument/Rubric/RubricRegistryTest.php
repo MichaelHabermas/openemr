@@ -34,5 +34,6 @@ final class RubricRegistryTest extends TestCase
         $this->assertNotNull($registry->get('deleted_document_not_retrieved'));
         $this->assertNotNull($registry->get('promotion_expectations'));
         $this->assertNotNull($registry->get('document_fact_expectations'));
+        $this->assertNotNull($registry->get('latency_budget'));
     }
 }

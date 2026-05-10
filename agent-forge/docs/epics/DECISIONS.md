@@ -64,7 +64,7 @@ Source of truth is always the code. This file preserves the *why*.
 ## Audit Logs
 
 - **PHI-minimized, not de-identified.** Logs contain user, patient, and source identifiers.
-- **Allowed fields:** request id, user id, patient id, decision, timestamp, latency, `stage_timings_ms`, question type, tools, source ids, model, token counts, cost, failure reason, verifier result.
+- **Allowed fields:** request id, user id, patient ref (HMAC hash), decision, timestamp, latency, `stage_timings_ms`, question type, tools, source ids, model, token counts, cost, failure reason, verifier result, trace id.
 - **Forbidden fields:** raw question, full answer, full prompt, full chart text, patient name, credentials, raw exception internals.
 - **Known gap:** Apache referer lines still carry `set_pid` URL parameter outside AgentForge JSON payload.
 - **PSR telemetry at warning level** for Docker logger visibility.

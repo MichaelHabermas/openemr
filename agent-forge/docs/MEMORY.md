@@ -25,7 +25,7 @@ These are active constraints across all milestones.
 - Patient/user scope must be resolved before patient data is read.
 - Model-facing clinical behavior must be grounded in evidence, citations, and deterministic checks.
 - Unsupported or unsafe clinical requests must fail closed with a safe refusal.
-- Logs and telemetry must avoid raw PHI. Forbidden keys: `quote`, `quote_or_value`, `raw_value`, `document_text`, `document_image`, `extracted_fields`.
+- Logs and telemetry must avoid raw PHI. Forbidden keys: `patient_id`, `quote`, `quote_or_value`, `raw_value`, `document_text`, `document_image`, `extracted_fields`.
 - LLM keys are server env only; never committed. `deploy-vm.sh` fails fast when the chosen provider's key is missing.
 - Document upload must succeed even if all AgentForge code fails.
 - Week 2 PDF is canonical. `SPECS-W2.md` is an implementation translation and must not weaken or bypass `agent-forge/docs/week2/Week-2-AgentForge-Clinical-Co-Pilot.pdf`.
@@ -61,6 +61,11 @@ Contracts that downstream code depends on.
 - Document citation handling must use shared normalization; do not add fixture-specific runtime citation corrections.
 - Upload enqueue dispatches once in `C_Document::upload_action_process()`.
 - Multi-turn state stored via `SessionUtil::setSensitiveSession` under `agent_forge_conversations`.
+- `PatientRefHasher` converts raw `patient_id` to a truncated HMAC-SHA256 hex string (`patient_ref`). Raw `patient_id` is forbidden in all log output.
+- `TraceId` is a `final readonly` UUID v4 value object for correlating operations across log lines. Generated per request/job, propagated through telemetry.
+- `RetrievalMergeTelemetry` captures hybrid retrieval merge metrics: sparse/dense/overlap candidate counts, merge strategy, reranker used, threshold, accepted count.
+- `GuidelineReranker::name()` returns the reranker identity string (`cohere` or `deterministic`). `GuidelineRetrievalResult` carries `$rerankerUsed: ?string` instead of a boolean.
+- `LatencyBudgetRubric` is the 14th clinical document eval rubric. Checks `latency_ms` presence in supervisor handoffs. Always passes structural coverage (no per-case declaration needed).
 
 ## Stakeholder Clarifications (2026-05-05)
 

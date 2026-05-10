@@ -83,7 +83,7 @@ Default to surfacing uncertainty, not hiding it.
 /sql/              - Database schema and migrations
 /public/           - Static assets
 /docker/           - Docker configurations
-/modules/          - Custom and third-party modules
+/interface/modules/ - Custom and third-party modules
 ```
 
 ### Technology Stack

@@ -5,7 +5,7 @@
 - [ ] Deployed app accessible at stable URL (HTTPS)
 - [ ] Login with `admin` / `pass` succeeds
 - [ ] Docker services healthy: `docker compose ps` shows `openemr`, `mysql`, `agentforge-worker` running
-- [ ] `/meta/health/readyz` returns `status: ready`, `database: true`, `agentforge_runtime: true`
+- [ ] `/meta/health/readyz` returns `{"status":"ready","checks":{"database":true,"agentforge_runtime":true,...}}`
 - [ ] Worker heartbeat shows `intake-extractor` with recent `last_heartbeat_at`
 - [ ] Demo patient (pid 900001) exists with seeded chart data
 
