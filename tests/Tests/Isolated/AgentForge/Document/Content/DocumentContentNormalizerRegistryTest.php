@@ -173,6 +173,9 @@ final class DocumentContentNormalizerRegistryTest extends TestCase
         if (!extension_loaded('imagick') || !class_exists(\Imagick::class)) {
             $this->markTestSkipped('Imagick extension not loaded.');
         }
+        if (\Imagick::queryFormats('TIFF') === []) {
+            $this->markTestSkipped('Imagick TIFF delegate not available.');
+        }
 
         $tiff = file_get_contents(__DIR__ . '/../../../../../../agent-forge/docs/example-documents/tiff/p01-chen-fax-packet.tiff');
         $this->assertIsString($tiff);

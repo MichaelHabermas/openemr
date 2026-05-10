@@ -35,6 +35,9 @@ final class ImagickPdfPageRendererTest extends TestCase
         if (!extension_loaded('imagick') || !class_exists(\Imagick::class)) {
             $this->markTestSkipped('Imagick extension not loaded.');
         }
+        if (\Imagick::queryFormats('PDF') === []) {
+            $this->markTestSkipped('Imagick PDF delegate not available.');
+        }
 
         $pdf = '%PDF-1.4
 1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
