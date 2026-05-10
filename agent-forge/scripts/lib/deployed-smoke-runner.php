@@ -15,7 +15,11 @@
 declare(strict_types=1);
 
 use OpenEMR\AgentForge\Cli\AgentForgeRepoPaths;
+use OpenEMR\AgentForge\Observability\AuditLogEntryParser;
+use OpenEMR\AgentForge\Observability\DockerComposeAuditLogTransport;
+use OpenEMR\AgentForge\Observability\LocalFileAuditLogTransport;
 use OpenEMR\AgentForge\Observability\SensitiveLogPolicy;
+use OpenEMR\AgentForge\Observability\SshAuditLogTransport;
 
 require_once __DIR__ . '/code-version.php';
 require_once __DIR__ . '/script-runtime.php';
@@ -746,57 +750,22 @@ function agentforge_deployed_smoke_grep_audit_log(string $sshHost, string $logPa
         return ['found' => false, 'fields' => [], 'raw_line' => null, 'error' => 'request_id was empty'];
     }
 
-    $remoteCommand = sprintf('grep -F %s %s | tail -n 1', escapeshellarg($requestId), escapeshellarg($logPath));
-    $executionLabel = 'ssh';
-    $command = $remoteCommand;
     $auditMode = strtolower(trim($sshHost));
-    if ($auditMode === 'docker-compose') {
-        $executionLabel = 'docker compose grep';
-        $command = sprintf(
-            'docker compose -f %s exec -T openemr sh -lc %s',
-            escapeshellarg(agentforge_deployed_smoke_compose_file_path()),
-            escapeshellarg($remoteCommand),
-        );
-    } elseif ($auditMode !== 'local') {
-        $command = sprintf(
-            'ssh -o BatchMode=yes -o ConnectTimeout=10 %s %s',
-            escapeshellarg($sshHost),
-            escapeshellarg($remoteCommand),
-        );
-    } else {
-        $executionLabel = 'local grep';
-    }
+    $transport = match (true) {
+        $auditMode === 'local' => new LocalFileAuditLogTransport(),
+        $auditMode === 'docker-compose' => new DockerComposeAuditLogTransport(
+            agentforge_deployed_smoke_compose_file_path(),
+        ),
+        default => new SshAuditLogTransport($sshHost),
+    };
 
-    $descriptors = [
-        1 => ['pipe', 'w'],
-        2 => ['pipe', 'w'],
-    ];
-    $process = proc_open($command, $descriptors, $pipes);
-    if (!is_resource($process)) {
-        return ['found' => false, 'fields' => [], 'raw_line' => null, 'error' => 'failed to spawn ssh process'];
-    }
-    $stdout = stream_get_contents($pipes[1]) ?: '';
-    $stderr = stream_get_contents($pipes[2]) ?: '';
-    foreach ($pipes as $pipe) {
-        fclose($pipe);
-    }
-    $exitCode = proc_close($process);
-
-    if ($exitCode !== 0 && trim($stdout) === '') {
-        return [
-            'found' => false,
-            'fields' => [],
-            'raw_line' => null,
-            'error' => sprintf('%s exit %d: %s', $executionLabel, $exitCode, trim($stderr) !== '' ? trim($stderr) : 'no output'),
-        ];
-    }
-
-    $line = trim($stdout);
-    if ($line === '') {
+    $lines = $transport->grepLines($requestId, $logPath, 1);
+    if ($lines === []) {
         return ['found' => false, 'fields' => [], 'raw_line' => null, 'error' => 'no log line matched'];
     }
 
-    $fields = agentforge_deployed_smoke_extract_log_fields($line);
+    $line = $lines[array_key_last($lines)];
+    $fields = AuditLogEntryParser::extractFields($line);
 
     return ['found' => true, 'fields' => $fields, 'raw_line' => $line, 'error' => null];
 }
@@ -826,26 +795,7 @@ function agentforge_deployed_smoke_compose_file_path(): string
  */
 function agentforge_deployed_smoke_extract_log_fields(string $line): array
 {
-    $start = strpos($line, '{');
-    if ($start === false) {
-        return [];
-    }
-    $candidate = substr($line, $start);
-    $decoded = json_decode($candidate, true);
-    if (is_array($decoded)) {
-        return $decoded;
-    }
-
-    $end = strrpos($line, '}');
-    if ($end === false || $end <= $start) {
-        return [];
-    }
-    $decoded = json_decode(substr($line, $start, ($end - $start) + 1), true);
-    if (is_array($decoded)) {
-        return $decoded;
-    }
-
-    return [];
+    return AuditLogEntryParser::extractFields($line);
 }
 
 /**

@@ -416,6 +416,24 @@ function agentforge_eval_evaluate_case(array $case, array $result, array $logCon
         }
     }
 
+    $hasExplicitCitationExpectation = isset($case['expected_citations'])
+        || isset($case['expected_citations_exact'])
+        || isset($case['expected_citations_contains']);
+
+    $actualStatusIsOk = $response->status === 'ok';
+    $expectedStatusIncludesOk = ($case['expected_status'] ?? null) === 'ok'
+        || (is_array($case['expected_status_any_of'] ?? null)
+            && in_array('ok', $case['expected_status_any_of'], true));
+
+    if (
+        !$hasExplicitCitationExpectation
+        && $expectedStatusIncludesOk
+        && $actualStatusIsOk
+        && count($response->citations) === 0
+    ) {
+        $failures[] = 'Response status is ok but no citations were returned (implicit citation density check).';
+    }
+
     $logSourceIds = $logContext['source_ids'] ?? null;
     if (is_array($logSourceIds)) {
         $normalizedLogSources = agentforge_eval_normalized_string_list($logSourceIds);

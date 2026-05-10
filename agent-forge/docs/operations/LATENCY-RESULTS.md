@@ -1,5 +1,19 @@
 # AgentForge Deployed Latency Results
 
+## SLO Targets
+
+| Tier | Environment | Budget | Metric |
+|------|-------------|--------|--------|
+| Tier 0 | In-memory fixture | < 500ms per case | Wall-clock |
+| Tier 2 | Live LLM (OpenAI/Anthropic) | < 10,000ms p95 | Wall-clock |
+| Tier 4 | Deployed (VM + CloudFlare) | < 10,000ms p95 | Wall-clock |
+
+These budgets are enforced by `expected_latency_ms_max` in eval fixtures (Tier 0)
+and by the deployed latency trace script (Tier 4). Tier 2 latency is captured but
+not gated — provider variability makes hard gates unreliable.
+
+---
+
 Status: deployed latency trace captured on 2026-05-03.
 
 Raw VM artifact:

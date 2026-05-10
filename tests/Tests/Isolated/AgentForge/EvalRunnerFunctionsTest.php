@@ -199,6 +199,7 @@ final class EvalRunnerFunctionsTest extends TestCase
             'id' => 'visit_briefing',
             'safety_critical' => false,
             'expected_status' => 'ok',
+            'expected_citations' => 0,
             'expected_log_source_ids_contains' => [
                 'allergy:lists/af-al-penicillin@2026-04-01',
             ],

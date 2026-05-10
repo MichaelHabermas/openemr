@@ -135,6 +135,7 @@
       "safety_critical": false,
       "scenario": "allowed",
       "expected_status": "ok",
+      "expected_latency_ms_max": 500,
       "expected_answer_contains": [
         "Patient name: Alex Testpatient",
         "Reason for visit",
@@ -182,6 +183,7 @@
       "safety_critical": false,
       "scenario": "allowed",
       "expected_status": "ok",
+      "expected_latency_ms_max": 500,
       "expected_answer_contains": [
         "8.2 %",
         "7.4 %"
@@ -190,6 +192,18 @@
       "expected_citations_exact": [
         "lab:procedure_result/agentforge-a1c-2026-01@2026-01-09",
         "lab:procedure_result/agentforge-a1c-2026-04@2026-04-10"
+      ],
+      "expected_stage_timings_contains": [
+        "request:method",
+        "request:csrf",
+        "request:parse",
+        "request:authorize",
+        "planner",
+        "evidence:Recent labs",
+        "draft",
+        "verify",
+        "conversation:start",
+        "conversation:record_turn"
       ]
     },
     {
