@@ -94,6 +94,10 @@ WHERE po.patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitak
 
 DELETE FROM procedure_order WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE FROM forms WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM patient_treatment_intervention_preferences WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM patient_care_experience_preferences WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM extended_log WHERE patient_id IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
+DELETE FROM amendments WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE FROM form_vitals WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE FROM form_clinical_notes WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
 DELETE FROM form_encounter WHERE pid IN (@demo_pid, @poly_pid, @sparse_pid, @chen_pid, @h7_whitaker_pid, @h7_reyes_pid, @h7_kowalski_pid, @h7_patel_pid, @h7_johnson_pid, @h7_nguyen_pid, @empty_pid, @partial_pid, @layout_pid);
@@ -999,6 +1003,34 @@ INSERT INTO form_vitals (
     'af-vitals-20260415'
 );
 
+SET @demo_vitals_id := LAST_INSERT_ID();
+
+INSERT INTO forms (
+    date,
+    encounter,
+    form_name,
+    form_id,
+    pid,
+    user,
+    groupname,
+    authorized,
+    deleted,
+    formdir,
+    provider_id
+) VALUES (
+    '2026-04-15 08:25:00',
+    @encounter_id,
+    'Vitals',
+    @demo_vitals_id,
+    @demo_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    0,
+    'vitals',
+    1
+);
+
 INSERT INTO procedure_order (
     procedure_order_id,
     uuid,
@@ -1593,6 +1625,34 @@ INSERT INTO form_vitals (
     '76',
     72.000000,
     'af-vit-900003-stale'
+);
+
+SET @sparse_vitals_id := LAST_INSERT_ID();
+
+INSERT INTO forms (
+    date,
+    encounter,
+    form_name,
+    form_id,
+    pid,
+    user,
+    groupname,
+    authorized,
+    deleted,
+    formdir,
+    provider_id
+) VALUES (
+    '2024-01-10 08:00:00',
+    @sparse_encounter_id,
+    'Vitals',
+    @sparse_vitals_id,
+    @sparse_pid,
+    @demo_user,
+    @demo_group,
+    1,
+    0,
+    'vitals',
+    1
 );
 
 INSERT INTO lists (
@@ -2766,139 +2826,41 @@ INSERT INTO prescriptions (
     'af7-107-rx-b'
 );
 
-INSERT INTO form_vitals (
-    uuid,
-    date,
-    pid,
-    user,
-    groupname,
-    authorized,
-    activity,
-    bps,
-    bpd,
-    weight,
-    height,
-    temperature,
-    pulse,
-    respiration,
-    BMI,
-    oxygen_saturation,
-    external_id
-) VALUES
-(
-    UNHEX(REPLACE('90010131-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-10 08:25:00',
-    @chen_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '138',
-    '86',
-    168.000000,
-    64.000000,
-    98.400000,
-    72.000000,
-    14.000000,
-    28.800000,
-    98.00,
-    'af-h7-vit-101'
-),
-(
-    UNHEX(REPLACE('90010231-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-11 08:25:00',
-    @h7_whitaker_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '128',
-    '78',
-    198.000000,
-    70.000000,
-    98.200000,
-    68.000000,
-    14.000000,
-    28.400000,
-    96.00,
-    'af-h7-vit-102'
-),
-(
-    UNHEX(REPLACE('90010331-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-12 08:25:00',
-    @h7_reyes_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '118',
-    '74',
-    152.000000,
-    63.000000,
-    98.000000,
-    76.000000,
-    15.000000,
-    27.000000,
-    99.00,
-    'af-h7-vit-103'
-),
-(
-    UNHEX(REPLACE('90010431-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-13 08:25:00',
-    @h7_kowalski_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '132',
-    '82',
-    210.000000,
-    72.000000,
-    98.500000,
-    70.000000,
-    16.000000,
-    28.500000,
-    97.00,
-    'af-h7-vit-104'
-),
-(
-    UNHEX(REPLACE('90010631-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-15 08:25:00',
-    @h7_johnson_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '146',
-    '90',
-    220.000000,
-    69.000000,
-    98.300000,
-    88.000000,
-    18.000000,
-    32.500000,
-    95.00,
-    'af-h7-vit-106'
-),
-(
-    UNHEX(REPLACE('90010731-0000-4000-8000-000000000801', '-', '')),
-    '2026-05-16 08:25:00',
-    @h7_nguyen_pid,
-    @demo_user,
-    @demo_group,
-    1,
-    1,
-    '112',
-    '70',
-    138.000000,
-    65.000000,
-    98.100000,
-    68.000000,
-    14.000000,
-    23.000000,
-    99.00,
-    'af-h7-vit-107'
-);
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010131-0000-4000-8000-000000000801', '-', '')), '2026-05-10 08:25:00', @chen_pid, @demo_user, @demo_group, 1, 1, '138', '86', 168.000000, 64.000000, 98.400000, 72.000000, 14.000000, 28.800000, 98.00, 'af-h7-vit-101');
+SET @h7_vit_101 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-10 08:25:00', 901101, 'Vitals', @h7_vit_101, @chen_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
+
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010231-0000-4000-8000-000000000801', '-', '')), '2026-05-11 08:25:00', @h7_whitaker_pid, @demo_user, @demo_group, 1, 1, '128', '78', 198.000000, 70.000000, 98.200000, 68.000000, 14.000000, 28.400000, 96.00, 'af-h7-vit-102');
+SET @h7_vit_102 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-11 08:25:00', 901102, 'Vitals', @h7_vit_102, @h7_whitaker_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
+
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010331-0000-4000-8000-000000000801', '-', '')), '2026-05-12 08:25:00', @h7_reyes_pid, @demo_user, @demo_group, 1, 1, '118', '74', 152.000000, 63.000000, 98.000000, 76.000000, 15.000000, 27.000000, 99.00, 'af-h7-vit-103');
+SET @h7_vit_103 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-12 08:25:00', 901103, 'Vitals', @h7_vit_103, @h7_reyes_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
+
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010431-0000-4000-8000-000000000801', '-', '')), '2026-05-13 08:25:00', @h7_kowalski_pid, @demo_user, @demo_group, 1, 1, '132', '82', 210.000000, 72.000000, 98.500000, 70.000000, 16.000000, 28.500000, 97.00, 'af-h7-vit-104');
+SET @h7_vit_104 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-13 08:25:00', 901104, 'Vitals', @h7_vit_104, @h7_kowalski_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
+
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010631-0000-4000-8000-000000000801', '-', '')), '2026-05-15 08:25:00', @h7_johnson_pid, @demo_user, @demo_group, 1, 1, '146', '90', 220.000000, 69.000000, 98.300000, 88.000000, 18.000000, 32.500000, 95.00, 'af-h7-vit-106');
+SET @h7_vit_106 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-15 08:25:00', 901106, 'Vitals', @h7_vit_106, @h7_johnson_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
+
+INSERT INTO form_vitals (uuid, date, pid, user, groupname, authorized, activity, bps, bpd, weight, height, temperature, pulse, respiration, BMI, oxygen_saturation, external_id)
+VALUES (UNHEX(REPLACE('90010731-0000-4000-8000-000000000801', '-', '')), '2026-05-16 08:25:00', @h7_nguyen_pid, @demo_user, @demo_group, 1, 1, '112', '70', 138.000000, 65.000000, 98.100000, 68.000000, 14.000000, 23.000000, 99.00, 'af-h7-vit-107');
+SET @h7_vit_107 := LAST_INSERT_ID();
+INSERT INTO forms (date, encounter, form_name, form_id, pid, user, groupname, authorized, deleted, formdir, provider_id)
+VALUES ('2026-05-16 08:25:00', 901107, 'Vitals', @h7_vit_107, @h7_nguyen_pid, @demo_user, @demo_group, 1, 0, 'vitals', 1);
 
 INSERT INTO form_clinical_notes (
     uuid,
@@ -3310,5 +3272,104 @@ INSERT INTO list_options (list_id, option_id, title, seq, activity) VALUES
 ('files_white_list', 'image/tiff', 'TIFF', 52, 1),
 ('files_white_list', 'text/x-hl7', 'HL7v2', 53, 1)
 ON DUPLICATE KEY UPDATE activity = 1;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Dashboard enrichment for Alex Testpatient (pid 900001)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+INSERT INTO patient_treatment_intervention_preferences (
+    uuid,
+    patient_id,
+    observation_code,
+    observation_code_text,
+    value_type,
+    value_code,
+    value_code_system,
+    value_display,
+    effective_datetime,
+    status,
+    note
+) VALUES (
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000901', '-', '')),
+    @demo_pid,
+    '75776-5',
+    'Preference on consulting a healthcare provider when making medical decisions',
+    'coded',
+    'LA33-6',
+    'http://loinc.org',
+    'Yes',
+    '2026-04-15 09:00:00',
+    'final',
+    'Patient prefers to discuss all treatment options before starting new medications.'
+),
+(
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000902', '-', '')),
+    @demo_pid,
+    '81329-5',
+    'Thoughts on resuscitation',
+    'coded',
+    'LA33-6',
+    'http://loinc.org',
+    'Yes',
+    '2026-04-15 09:05:00',
+    'final',
+    'Patient wants full resuscitation measures.'
+);
+
+INSERT INTO patient_care_experience_preferences (
+    uuid,
+    patient_id,
+    observation_code,
+    observation_code_text,
+    value_type,
+    value_text,
+    effective_datetime,
+    status,
+    note
+) VALUES (
+    UNHEX(REPLACE('90000100-0000-4000-8000-000000000911', '-', '')),
+    @demo_pid,
+    '95541-9',
+    'Care experience preference',
+    'text',
+    'Patient prefers morning appointments and phone-call follow-ups over portal messages.',
+    '2026-04-15 09:10:00',
+    'final',
+    'Expressed during annual wellness visit.'
+);
+
+INSERT INTO extended_log (
+    date,
+    event,
+    user,
+    recipient,
+    description,
+    patient_id
+) VALUES (
+    '2026-03-20 14:30:00',
+    'disclosure-treatment',
+    @demo_user,
+    'BlueCross Insurance — claims review',
+    'Released summary of active diagnoses and current medications for insurance pre-authorization of endocrinology referral.',
+    @demo_pid
+);
+
+INSERT INTO amendments (
+    amendment_date,
+    amendment_by,
+    amendment_status,
+    pid,
+    amendment_desc,
+    created_by,
+    created_time
+) VALUES (
+    '2026-04-20',
+    'patient',
+    'approved',
+    @demo_pid,
+    'Patient requested correction of birth name from Alexandra Birthname to Alexandra Birthsurname.',
+    1,
+    '2026-04-20 10:00:00'
+);
 
 COMMIT;
