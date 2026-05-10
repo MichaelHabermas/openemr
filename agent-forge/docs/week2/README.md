@@ -58,8 +58,8 @@ checks, and artifact writing.
 
 Current local proof artifacts:
 
-- `agent-forge/eval-results/clinical-document-20260508-190800/summary.json`
-- `agent-forge/eval-results/clinical-document-20260508-190800/run.json`
+- `agent-forge/eval-results/clinical-document-20260510-011748/summary.json`
+- `agent-forge/eval-results/clinical-document-20260510-011748/run.json`
 - `agent-forge/eval-results/eval-results-20260508-161500.json`
 
 The checked-in repository includes deployed clinical smoke artifacts under

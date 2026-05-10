@@ -38,7 +38,7 @@ final class AgentForgeWeek2DocumentationContractTest extends TestCase
             '[agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md](agent-forge/docs/operations/CLINICAL-DOCUMENT-COST-LATENCY.md)',
             '[agent-forge/eval-results/README.md](agent-forge/eval-results/README.md)',
             '[.github/workflows/agentforge-deployed-smoke.yml](.github/workflows/agentforge-deployed-smoke.yml)',
-            'clinical-document-20260508-190800',
+            'clinical-document-20260510-011748',
             'BHS-2847163',
             'assigned-vm-ssh-host',
             'eval-results-20260508-161500.json',
@@ -65,7 +65,7 @@ final class AgentForgeWeek2DocumentationContractTest extends TestCase
             'agent-forge/scripts/check-agentforge.sh',
             'agent-forge/scripts/check-clinical-document.sh',
             '[W2_ACCEPTANCE_MATRIX.md](W2_ACCEPTANCE_MATRIX.md)',
-            'clinical-document-20260508-190800',
+            'clinical-document-20260510-011748',
             'clinical-document-deployed-smoke-20260508-001525.json',
         ]);
     }
