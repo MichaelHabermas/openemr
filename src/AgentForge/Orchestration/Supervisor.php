@@ -1,7 +1,10 @@
 <?php
 
 /**
- * Thin deterministic supervisor/router for AgentForge clinical document jobs.
+ * Unified supervisor/router for AgentForge using pluggable handoff policies.
+ *
+ * Delegates all routing decisions to HandoffPolicy implementations,
+ * handling only persistence of decisions and audit trail logging.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -12,59 +15,77 @@ declare(strict_types=1);
 
 namespace OpenEMR\AgentForge\Orchestration;
 
-use OpenEMR\AgentForge\Document\DocumentJob;
-use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Time\MonotonicClock;
 
 final readonly class Supervisor
 {
-    public function decide(DocumentJob $job, bool $trustedForEvidence): SupervisorDecision
-    {
-        $context = $this->decisionContext($job, $trustedForEvidence);
-
-        if ($job->retractedAt !== null || $job->status === JobStatus::Retracted) {
-            return $this->holdDecision('document_retracted', $context);
-        }
-
-        if ($job->status === JobStatus::Failed) {
-            return $this->holdDecision('document_processing_failed', $context);
-        }
-
-        if ($job->status !== JobStatus::Succeeded) {
-            return $this->handoffDecision(NodeName::IntakeExtractor, 'document_extraction_required', $context);
-        }
-
-        if (!$trustedForEvidence) {
-            return $this->holdDecision('identity_not_trusted_for_evidence', $context);
-        }
-
-        return $this->handoffDecision(NodeName::EvidenceRetriever, 'trusted_document_ready_for_evidence', $context);
+    public function __construct(
+        private HandoffPolicy $policy,
+        private SupervisorHandoffRepository $handoffs,
+        private MonotonicClock $clock,
+    ) {
     }
 
     /**
-     * @return array<string, scalar|null>
+     * Route based on policy decision and persist to audit trail.
+     *
+     * All decision logic is delegated to the injected HandoffPolicy.
+     * This method handles:
+     * - Policy invocation
+     * - Decision logging
+     * - Audit trail persistence
+     *
+     * @param HandoffContext $context The routing context
+     * @return HandoffDecision The decision (with logging completed)
      */
-    private function decisionContext(DocumentJob $job, bool $trustedForEvidence): array
+    public function route(HandoffContext $context): HandoffDecision
     {
-        return [
-            'job_status' => $job->status->value,
-            'doc_type' => $job->docType->value,
-            'trusted_for_evidence' => $trustedForEvidence ? 1 : 0,
-        ];
+        $startMs = $this->clock->nowMs();
+
+        // Delegate to policy for decision
+        $decision = $this->policy->decide($context);
+
+        $latencyMs = $this->clock->nowMs() - $startMs;
+
+        // Log to audit trail if handoff decision
+        if ($decision->shouldHandoff()) {
+            $this->recordHandoff($context, $decision, $latencyMs);
+        }
+
+        return $decision;
     }
 
     /**
-     * @param array<string, scalar|null> $context
+     * Record a handoff decision to the audit repository.
      */
-    private function holdDecision(string $reason, array $context): SupervisorDecision
+    private function recordHandoff(HandoffContext $context, HandoffDecision $decision, int $latencyMs): void
     {
-        return SupervisorDecision::hold($reason, $context);
+        if ($decision->targetNode === null) {
+            return;
+        }
+
+        $this->handoffs->recordRequestHandoff(
+            requestId: $this->deriveRequestId($context),
+            destinationNode: $decision->targetNode,
+            decisionReason: $decision->reason,
+            taskType: $context->questionType,
+            outcome: 'handoff',
+            latencyMs: $latencyMs,
+            errorReason: null,
+        );
     }
 
     /**
-     * @param array<string, scalar|null> $context
+     * Derive a request ID from context for logging.
      */
-    private function handoffDecision(NodeName $targetNode, string $reason, array $context): SupervisorDecision
+    private function deriveRequestId(HandoffContext $context): string
     {
-        return SupervisorDecision::handoff($targetNode, $reason, $context);
+        // Use patient + question hash as synthetic request ID for correlation
+        return hash('sha256', sprintf(
+            '%d:%s:%s',
+            $context->patientId->value,
+            $context->question->value,
+            $context->isDocumentJob() ? 'doc' : 'chat'
+        ));
     }
 }

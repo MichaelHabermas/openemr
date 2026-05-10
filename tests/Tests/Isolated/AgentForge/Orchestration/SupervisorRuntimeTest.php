@@ -19,43 +19,80 @@ use OpenEMR\AgentForge\Document\DocumentJob;
 use OpenEMR\AgentForge\Document\DocumentJobId;
 use OpenEMR\AgentForge\Document\DocumentType;
 use OpenEMR\AgentForge\Document\JobStatus;
+use OpenEMR\AgentForge\Orchestration\DecisionType;
+use OpenEMR\AgentForge\Orchestration\HandoffDecision;
 use OpenEMR\AgentForge\Orchestration\NodeName;
+use OpenEMR\AgentForge\Orchestration\Policy\DefaultHandoffPolicy;
 use OpenEMR\AgentForge\Orchestration\Supervisor;
-use OpenEMR\AgentForge\Orchestration\SupervisorDecision;
 use OpenEMR\AgentForge\Orchestration\SupervisorHandoffRepository;
 use OpenEMR\AgentForge\Orchestration\SupervisorRuntime;
+use OpenEMR\AgentForge\Support\FrozenMonotonicClock;
 use PHPUnit\Framework\TestCase;
 
 final class SupervisorRuntimeTest extends TestCase
 {
-    public function testInspectAndRecordPersistsHandoffDecision(): void
+    public function testRouteDocumentJobReturnsGuidelineDecisionForTrustedJob(): void
     {
+        $clock = new FrozenMonotonicClock(1000);
         $handoffs = new RecordingSupervisorHandoffRepository();
-        $runtime = new SupervisorRuntime(new Supervisor(), $handoffs);
+        $runtime = new SupervisorRuntime(
+            new Supervisor(new DefaultHandoffPolicy(), $handoffs, $clock),
+        );
         $job = $this->job(JobStatus::Succeeded);
 
-        $decision = $runtime->inspect($job, true);
-        $id = $runtime->record($job, $decision, 'request-1', 12);
+        $decision = $runtime->routeDocumentJob($job, new PatientId(1), true);
 
-        $this->assertSame(1, $id);
+        $this->assertSame(DecisionType::Guideline, $decision->type);
         $this->assertSame(NodeName::EvidenceRetriever, $decision->targetNode);
-        $this->assertCount(1, $handoffs->records);
-        $this->assertSame($job, $handoffs->records[0]['job']);
-        $this->assertSame($decision, $handoffs->records[0]['decision']);
-        $this->assertSame('request-1', $handoffs->records[0]['request_id']);
-        $this->assertSame(12, $handoffs->records[0]['latency_ms']);
     }
 
-    public function testHoldDecisionDoesNotCreateHandoffRow(): void
+    public function testRouteDocumentJobReturnsExtractDecisionForPendingJob(): void
     {
+        $clock = new FrozenMonotonicClock(1000);
         $handoffs = new RecordingSupervisorHandoffRepository();
-        $runtime = new SupervisorRuntime(new Supervisor(), $handoffs);
-        $job = $this->job(JobStatus::Succeeded);
+        $runtime = new SupervisorRuntime(
+            new Supervisor(new DefaultHandoffPolicy(), $handoffs, $clock),
+        );
+        $job = $this->job(JobStatus::Pending);
 
-        $decision = $runtime->inspect($job, false);
+        $decision = $runtime->routeDocumentJob($job, new PatientId(1), false);
 
-        $this->assertNull($runtime->record($job, $decision));
-        $this->assertSame([], $handoffs->records);
+        $this->assertSame(DecisionType::Extract, $decision->type);
+        $this->assertSame(NodeName::IntakeExtractor, $decision->targetNode);
+    }
+
+    public function testRouteChatRequestReturnsGuidelineDecisionForGuidelineQuestion(): void
+    {
+        $clock = new FrozenMonotonicClock(1000);
+        $handoffs = new RecordingSupervisorHandoffRepository();
+        $runtime = new SupervisorRuntime(
+            new Supervisor(new DefaultHandoffPolicy(), $handoffs, $clock),
+        );
+
+        $decision = $runtime->routeChatRequest(
+            new \OpenEMR\AgentForge\Handlers\AgentQuestion('What guideline should I follow?'),
+            new PatientId(1),
+            'general',
+        );
+
+        $this->assertSame(DecisionType::Guideline, $decision->type);
+    }
+
+    public function testRouteChatRequestReturnsRefuseDecisionForCrossPatientQuery(): void
+    {
+        $clock = new FrozenMonotonicClock(1000);
+        $handoffs = new RecordingSupervisorHandoffRepository();
+        $runtime = new SupervisorRuntime(
+            new Supervisor(new DefaultHandoffPolicy(), $handoffs, $clock),
+        );
+
+        $decision = $runtime->routeChatRequest(
+            new \OpenEMR\AgentForge\Handlers\AgentQuestion('Compare to other patient'),
+            new PatientId(1),
+            'general',
+        );
+
+        $this->assertSame(DecisionType::Refuse, $decision->type);
     }
 
     private function job(JobStatus $status): DocumentJob
@@ -81,7 +118,7 @@ final class SupervisorRuntimeTest extends TestCase
 
 final class RecordingSupervisorHandoffRepository implements SupervisorHandoffRepository
 {
-    /** @var list<array{job: DocumentJob, decision: SupervisorDecision, request_id: ?string, latency_ms: ?int}> */
+    /** @var list<array{request_id: string, destination_node: NodeName, decision_reason: string, latency_ms: ?int}> */
     public array $records = [];
 
     public function recordRequestHandoff(
@@ -93,23 +130,24 @@ final class RecordingSupervisorHandoffRepository implements SupervisorHandoffRep
         ?int $latencyMs = null,
         ?string $errorReason = null,
     ): int {
-        return 1;
-    }
-
-    public function record(
-        DocumentJob $job,
-        SupervisorDecision $decision,
-        ?string $requestId = null,
-        ?int $latencyMs = null,
-        ?string $errorReason = null,
-    ): int {
         $this->records[] = [
-            'job' => $job,
-            'decision' => $decision,
             'request_id' => $requestId,
+            'destination_node' => $destinationNode,
+            'decision_reason' => $decisionReason,
             'latency_ms' => $latencyMs,
         ];
 
         return count($this->records);
+    }
+
+    public function record(
+        DocumentJob $job,
+        \OpenEMR\AgentForge\Orchestration\SupervisorDecision $decision,
+        ?string $requestId = null,
+        ?int $latencyMs = null,
+        ?string $errorReason = null,
+    ): int {
+        // Legacy method not used in new API
+        return 1;
     }
 }

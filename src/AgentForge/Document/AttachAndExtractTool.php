@@ -45,6 +45,9 @@ final readonly class AttachAndExtractTool
 
     /**
      * In-memory storage that also satisfies {@see DocumentLoader} — safe pairing for tests and evals.
+     *
+     * @deprecated Use ClinicalDocumentExtractionPort::createToolForEval() via ClinicalDocumentExtractionAdapter
+     *             for proper eval/runtime isolation. This static method will be removed in a future release.
      */
     public static function forInMemoryEvalAndTest(
         DocumentExtractionProvider $provider,

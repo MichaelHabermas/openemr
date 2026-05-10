@@ -14,13 +14,15 @@ namespace OpenEMR\AgentForge\Eval\ClinicalDocument\Adapter;
 
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
-use OpenEMR\AgentForge\Document\AttachAndExtractTool;
 use OpenEMR\AgentForge\Document\DocumentType;
-use OpenEMR\AgentForge\Document\Extraction\FixtureExtractionProvider;
+use OpenEMR\AgentForge\Document\Extraction\Port\ClinicalDocumentExtractionAdapter as PortAdapter;
+use OpenEMR\AgentForge\Document\Extraction\Port\EvalExtractionContext;
+use OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Document\Identity\DocumentIdentityVerifier;
 use OpenEMR\AgentForge\Document\Identity\ExtractionIdentityEvidenceBuilder;
 use OpenEMR\AgentForge\Document\Identity\FixedPatientIdentityRepository;
 use OpenEMR\AgentForge\Document\Identity\PatientIdentity;
+use OpenEMR\AgentForge\Document\Identity\SqlDocumentIdentityCheckRepository;
 use OpenEMR\AgentForge\Eval\ClinicalDocument\Case\EvalCase;
 use OpenEMR\AgentForge\Guidelines\DeterministicGuidelineEmbeddingProvider;
 use OpenEMR\AgentForge\Guidelines\DeterministicReranker;
@@ -63,12 +65,19 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         }
 
         $patientId = new PatientId(1);
-        $tool = AttachAndExtractTool::forInMemoryEvalAndTest(
-            new FixtureExtractionProvider($this->extractionFixturesDir . '/manifest.json'),
+
+        // Use port-based composition for eval isolation (Plan 3)
+        $port = new PortAdapter();
+        $evalContext = new EvalExtractionContext(
+            fixtureManifestPath: $this->extractionFixturesDir . '/manifest.json',
+            clock: $this->clock,
             patientIdentities: new FixedPatientIdentityRepository($this->patientIdentityForCase($patientId, $case)),
+            identityChecks: $this->createNoOpIdentityCheckRepository(),
             identityVerifier: new DocumentIdentityVerifier(),
             identityEvidenceBuilder: new ExtractionIdentityEvidenceBuilder(),
+            firstDocumentId: 1,
         );
+        $tool = $port->createToolForEval($evalContext);
         $result = $tool->forUploadedFile(
             $patientId,
             $absolutePath,
@@ -422,6 +431,25 @@ final class ClinicalDocumentExtractionAdapter implements ExtractionSystemAdapter
         }
 
         return rtrim($this->repoDir, '/') . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * Create a no-op identity check repository for eval contexts.
+     * Eval contexts don't need persistent identity checks.
+     */
+    private function createNoOpIdentityCheckRepository(): DocumentIdentityCheckRepository
+    {
+        return new class implements DocumentIdentityCheckRepository {
+            public function recordCheck(int $patientId, int $documentId, string $status, ?string $evidenceHash = null): void
+            {
+                // No-op for eval
+            }
+
+            public function findLatestForPatientDocument(int $patientId, int $documentId): ?\OpenEMR\AgentForge\Document\Identity\DocumentIdentityCheck
+            {
+                return null;
+            }
+        };
     }
 
     /**

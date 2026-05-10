@@ -25,6 +25,7 @@ use OpenEMR\AgentForge\Observability\AgentTelemetryProvider;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\Observability\TraceId;
 use OpenEMR\AgentForge\Orchestration\NodeName;
+use OpenEMR\AgentForge\Orchestration\Policy\DefaultHandoffPolicy;
 use OpenEMR\AgentForge\Orchestration\SqlSupervisorHandoffRepository;
 use OpenEMR\AgentForge\Orchestration\Supervisor;
 use OpenEMR\AgentForge\Orchestration\SupervisorRuntime;
@@ -69,7 +70,13 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         $this->collector = $collector ?? new SerialChartEvidenceCollector($tools, $logger, $this->clock);
         $this->evidenceRetriever = new EvidenceRetrieverWorker($this->collector, $guidelineRetriever);
         $this->pipeline = new VerifiedDraftingPipeline($draftProvider, $verifier, $this->clock, $logger);
-        $this->supervisorRuntime = $supervisorRuntime ?? ($handoffs === null ? null : new SupervisorRuntime(new Supervisor(), $handoffs));
+        $this->supervisorRuntime = $supervisorRuntime ?? ($handoffs === null ? null : new SupervisorRuntime(
+            new Supervisor(
+                new DefaultHandoffPolicy(),
+                $handoffs,
+                $clock,
+            ),
+        ));
     }
 
     public function handle(AgentRequest $request): AgentResponse
@@ -172,13 +179,20 @@ final class VerifiedAgentHandler implements AgentHandler, AgentTelemetryProvider
         }
 
         try {
-            $this->supervisorRuntime->recordRequestHandoff(
-                $request->requestId,
-                NodeName::EvidenceRetriever,
-                'guideline_evidence_required',
+            // Route through supervisor to trigger handoff logging
+            $decision = $this->supervisorRuntime->routeChatRequest(
+                $request->question,
+                $request->patientId,
                 $questionType,
-                'handoff',
+                $this->deadlineMs,
+                $request->conversationSummary,
             );
+
+            $this->logger->debug('Guideline handoff recorded', [
+                'request_id' => $request->requestId,
+                'decision_type' => $decision->type->value,
+                'decision_reason' => $decision->reason,
+            ]);
         } catch (RuntimeException $exception) {
             $this->logger->error('AgentForge supervisor handoff recording failed.', [
                 'failure_class' => $exception::class,
