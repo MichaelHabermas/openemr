@@ -148,14 +148,7 @@ final readonly class AttachAndExtractTool
             );
         }
 
-        if (
-            $response->extraction instanceof LabPdfExtraction
-            || $response->extraction instanceof IntakeFormExtraction
-            || $response->extraction instanceof ReferralDocxExtraction
-            || $response->extraction instanceof ClinicalWorkbookExtraction
-            || $response->extraction instanceof FaxPacketExtraction
-            || $response->extraction instanceof Hl7v2MessageExtraction
-        ) {
+        if ($this->extractionRequiresIdentityGate($response->extraction)) {
             if (
                 $this->patientIdentities === null
                 || $this->identityVerifier === null
@@ -197,6 +190,16 @@ final readonly class AttachAndExtractTool
         }
 
         return AttachAndExtractResult::succeeded($documentId, $response);
+    }
+
+    private function extractionRequiresIdentityGate(mixed $extraction): bool
+    {
+        return $extraction instanceof LabPdfExtraction
+            || $extraction instanceof IntakeFormExtraction
+            || $extraction instanceof ReferralDocxExtraction
+            || $extraction instanceof ClinicalWorkbookExtraction
+            || $extraction instanceof FaxPacketExtraction
+            || $extraction instanceof Hl7v2MessageExtraction;
     }
 
     private static function patientDocumentScopeValid(PatientId $patientId, DocumentId $documentId): bool
