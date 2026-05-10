@@ -265,6 +265,57 @@ php agent-forge/scripts/render-clinical-document-cost-latency.php \
   --clinical-summary=agent-forge/eval-results/clinical-document-20260510-011748/summary.json
 ```
 
+## Live Demo Commands (VM)
+
+All commands below run on the deployed VM from `~/repos/openemr`. SSH to the VM
+first, then execute in order.
+
+### 1. Hybrid Retrieval Merge Telemetry
+
+```sh
+AGENTFORGE_AUDIT_MODE=docker-compose php agent-forge/scripts/show-request-traces.php
+```
+
+Output shows `sparse_candidate_count`, `dense_candidate_count`, `overlap_count`,
+and `reranker_used` fields per request trace.
+
+### 2. Trace ID Propagation
+
+Same command as above. Each trace row contains a UUID v4 `trace_id` that threads
+through planner → evidence → draft → verify stages. The Stage Timings section
+shows the same ID linking all stages.
+
+### 3. PHI-Safe Logging
+
+```sh
+cd docker/development-easy
+docker compose exec -T openemr grep -c "patient_id" /var/log/php-error.log
+docker compose exec -T openemr grep -c "patient_ref" /var/log/php-error.log
+cd ~/repos/openemr
+```
+
+First grep returns `0` (no raw patient IDs in logs). Second grep returns nonzero
+(hashed `patient_ref` tokens appear instead). `SensitiveLogPolicy` enforces this
+at write time.
+
+### 4. Patient Dashboard Normalization
+
+Open `https://openemr-client.titleredacted.cc/`, log in, navigate to demo
+patient pid `900001`. Verify Encounters, Medications, and Allergies tabs render
+cleanly with seeded data.
+
+If data is missing, re-seed on the VM host (not inside the container):
+
+```sh
+bash agent-forge/scripts/seed-demo-data.sh
+```
+
+Verify seed correctness:
+
+```sh
+bash agent-forge/scripts/verify-demo-data.sh
+```
+
 ## Review Configuration
 
 Normal deployed-app review needs only the deployed URL and assigned OpenEMR
