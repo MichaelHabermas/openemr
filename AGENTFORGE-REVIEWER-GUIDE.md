@@ -267,36 +267,52 @@ php agent-forge/scripts/render-clinical-document-cost-latency.php \
 
 ## Live Demo Commands (VM)
 
-All commands below run on the deployed VM from `~/repos/openemr`. SSH to the VM
-first, then execute in order.
+All commands below run on the deployed VM. SSH to `root@gauntlet-mgh` first.
 
 ### 1. Hybrid Retrieval Merge Telemetry
 
+First trigger a guideline question so merge telemetry is logged. Open the
+Clinical Co-Pilot at `https://openemr.titleredacted.cc/`, sign in, select
+patient Chen (pid 900101), and ask:
+
+> What changed in recent documents, which evidence is notable, and what sources support it?
+
+Then on the VM:
+
 ```sh
-AGENTFORGE_AUDIT_MODE=docker-compose php agent-forge/scripts/show-request-traces.php
+cd ~/repos/openemr
+AGENTFORGE_AUDIT_MODE=docker-compose \
+AGENTFORGE_AUDIT_LOG_PATH=/var/log/apache2/error.log \
+  php agent-forge/scripts/show-request-traces.php --limit 5
 ```
 
-Output shows `sparse_candidate_count`, `dense_candidate_count`, `overlap_count`,
-and `reranker_used` fields per request trace.
+The "Hybrid Retrieval Merge Telemetry" table shows `sparse`, `dense`,
+`overlap`, `merged`, `accepted`, and `reranker_used` per trace.
 
 ### 2. Trace ID Propagation
 
-Same command as above. Each trace row contains a UUID v4 `trace_id` that threads
-through planner → evidence → draft → verify stages. The Stage Timings section
-shows the same ID linking all stages.
+Same command output as above. Each trace row contains a UUID v4 `trace_id`.
+The Stage Timings section shows the same ID linking planner → evidence →
+draft → verify stages.
 
 ### 3. PHI-Safe Logging
 
 ```sh
-cd docker/development-easy
-docker compose exec -T openemr grep -c "patient_id" /var/log/php-error.log
-docker compose exec -T openemr grep -c "patient_ref" /var/log/php-error.log
-cd ~/repos/openemr
+cd ~/repos/openemr/docker/development-easy
+docker compose exec -T openemr sh -c \
+  'grep "agent_forge_request" /var/log/apache2/error.log | grep -c "\"patient_id\":"'
+docker compose exec -T openemr sh -c \
+  'grep "agent_forge_request" /var/log/apache2/error.log | grep -c "\"patient_ref\":"'
 ```
 
-First grep returns `0` (no raw patient IDs in logs). Second grep returns nonzero
-(hashed `patient_ref` tokens appear instead). `SensitiveLogPolicy` enforces this
-at write time.
+First grep returns `0` — no raw `"patient_id":` JSON keys in audit log entries.
+Second grep returns nonzero — hashed `patient_ref` tokens appear instead.
+`SensitiveLogPolicy` enforces this at write time; `PatientRefHasher` converts
+IDs to one-way hashes before they reach the logger.
+
+If stale log entries from a prior deployment contain `"patient_id":`, truncate
+the log first: `docker compose exec -T openemr truncate -s 0 /var/log/apache2/error.log`,
+then trigger a new request before running the grep.
 
 ### 4. Patient Dashboard Normalization
 
@@ -307,6 +323,7 @@ cleanly with seeded data.
 If data is missing, re-seed on the VM host (not inside the container):
 
 ```sh
+cd ~/repos/openemr
 bash agent-forge/scripts/seed-demo-data.sh
 ```
 

@@ -15,6 +15,7 @@ namespace OpenEMR\AgentForge\Evidence;
 use DomainException;
 use OpenEMR\AgentForge\Auth\PatientId;
 use OpenEMR\AgentForge\Deadline;
+use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -34,7 +35,7 @@ final class ChartEvidenceToolInvoker
                 [
                     'failure_class' => $exception::class,
                     'tool' => $tool::class,
-                    'patient_id' => $patientId->value,
+                    'patient_ref' => PatientRefHasher::createDefault()->hash($patientId),
                 ],
             );
 

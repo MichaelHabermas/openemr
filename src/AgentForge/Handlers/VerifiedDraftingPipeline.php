@@ -17,6 +17,7 @@ use OpenEMR\AgentForge\Deadline;
 use OpenEMR\AgentForge\Evidence\EvidenceBundle;
 use OpenEMR\AgentForge\Evidence\EvidenceBundleItem;
 use OpenEMR\AgentForge\Observability\AgentTelemetry;
+use OpenEMR\AgentForge\Observability\PatientRefHasher;
 use OpenEMR\AgentForge\Observability\StageTimer;
 use OpenEMR\AgentForge\ResponseGeneration\DraftClaim;
 use OpenEMR\AgentForge\ResponseGeneration\DraftProvider;
@@ -205,7 +206,7 @@ final readonly class VerifiedDraftingPipeline
     ): ?VerifiedDraftingResult {
         $this->logger->error('AgentForge draft provider failed; deterministic evidence fallback attempted.', [
             'failure_class' => $exception::class,
-            'patient_id' => $draftRequest->patientId->value,
+            'patient_ref' => PatientRefHasher::createDefault()->hash($draftRequest->patientId),
         ]);
 
         try {
@@ -366,7 +367,7 @@ final readonly class VerifiedDraftingPipeline
     ): VerifiedDraftingResult {
         $this->logger->error($logMessage, [
             'failure_class' => $exception::class,
-            'patient_id' => $draftRequest->patientId->value,
+            'patient_ref' => PatientRefHasher::createDefault()->hash($draftRequest->patientId),
         ]);
 
         return new VerifiedDraftingResult(
