@@ -153,7 +153,7 @@ function agentforge_show_traces_print_table(array $entries): void
     foreach ($entries as $i => $entry) {
         $requestId = is_string($entry['request_id'] ?? null) ? substr($entry['request_id'], 0, 12) : '—';
         $decision = is_string($entry['decision'] ?? null) ? $entry['decision'] : '—';
-        $latency = is_int($entry['latency_ms'] ?? null) ? (string) $entry['latency_ms'] : '—';
+        $latency = is_numeric($entry['latency_ms'] ?? null) ? (string) (int) $entry['latency_ms'] : '—';
         $model = is_string($entry['model'] ?? null) ? $entry['model'] : '—';
         $verifier = is_string($entry['verifier_result'] ?? null) ? $entry['verifier_result'] : '—';
         $sourceIds = is_array($entry['source_ids'] ?? null) ? (string) count($entry['source_ids']) : '0';
@@ -187,7 +187,7 @@ function agentforge_show_traces_print_stage_details(array $entries): void
             continue;
         }
 
-        $latency = is_int($entry['latency_ms'] ?? null) ? $entry['latency_ms'] : null;
+        $latency = is_numeric($entry['latency_ms'] ?? null) ? (int) $entry['latency_ms'] : null;
         $header = sprintf("### [%d] %s", $i + 1, $requestId);
         if ($latency !== null) {
             $header .= sprintf(" — total %dms", $latency);
@@ -195,7 +195,7 @@ function agentforge_show_traces_print_stage_details(array $entries): void
         fwrite(STDOUT, $header . "\n");
 
         foreach ($timings as $stage => $ms) {
-            if (is_int($ms) || is_float($ms)) {
+            if (is_numeric($ms)) {
                 fwrite(STDOUT, sprintf("  %s: %dms\n", $stage, (int) $ms));
             }
         }
