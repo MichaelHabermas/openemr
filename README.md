@@ -35,11 +35,15 @@ There are two reviewer paths:
 
 Deployed reviewer URL: [https://openemr.titleredacted.cc/](https://openemr.titleredacted.cc/)
 
+Client frontend: [https://openemr-client.titleredacted.cc/](https://openemr-client.titleredacted.cc/)
+
 Final submission links:
 
 - Gauntlet Labs submission: [https://labs.gauntletai.com/michaelhabermas/openemr](https://labs.gauntletai.com/michaelhabermas/openemr)
 - Demo video: [Loom demo](https://www.loom.com/share/bd57c6cd2c5346b397ed7f60ad8a8f32)
 - Social post: [X post](https://x.com/habermoose/status/2052575143768084988)
+- Social post: [X post](https://x.com/habermoose/status/2053498095451660631)
+- Social post: [LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7459265258289840128/)
 
 Reviewers should start with [AGENTFORGE-REVIEWER-GUIDE.md](AGENTFORGE-REVIEWER-GUIDE.md) for the current health-check command, fake patients, Week 1 and Week 2 demo paths, seed and eval commands, artifact map, implemented proof, and known production-readiness blockers.
 
