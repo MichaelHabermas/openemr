@@ -74,7 +74,7 @@ gate_eval_freshness_tier2() {
         return 1
     fi
     local age_days
-    age_days=$(( ( $(date +%s) - $(stat -f %m "$latest" 2>/dev/null || stat -c %Y "$latest" 2>/dev/null) ) / 86400 ))
+    age_days=$(( ( $(date +%s) - $(stat -c %Y "$latest" 2>/dev/null || stat -f %m "$latest" 2>/dev/null) ) / 86400 ))
     if [ "$age_days" -gt "$max_age_days" ]; then
         echo "FAIL: Latest Tier 2 result ($latest) is ${age_days}d old (max ${max_age_days}d)."
         echo "  Run: php agent-forge/scripts/run-tier2-evals.php"
@@ -92,7 +92,7 @@ gate_eval_freshness_deployed_smoke() {
         return 1
     fi
     local age_days
-    age_days=$(( ( $(date +%s) - $(stat -f %m "$latest" 2>/dev/null || stat -c %Y "$latest" 2>/dev/null) ) / 86400 ))
+    age_days=$(( ( $(date +%s) - $(stat -c %Y "$latest" 2>/dev/null || stat -f %m "$latest" 2>/dev/null) ) / 86400 ))
     if [ "$age_days" -gt "$max_age_days" ]; then
         echo "FAIL: Latest deployed smoke result ($latest) is ${age_days}d old (max ${max_age_days}d)."
         echo "  Run: php agent-forge/scripts/run-deployed-smoke.php"
