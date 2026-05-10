@@ -143,6 +143,7 @@
         "pounds",
         "grams"
       ],
+      "expected_citations": 0,
       "expected_citations_not_contains": [
         "demographic:patient_data/900001-birth-weight@2026-04-15"
       ]
