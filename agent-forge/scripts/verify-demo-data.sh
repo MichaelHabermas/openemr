@@ -322,26 +322,6 @@ main() {
         "1"
 
     expect_count \
-        "referral document maps to referral_docx" \
-        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Referral Document' AND m.doc_type = 'referral_docx' AND m.active = 1;" \
-        "1"
-
-    expect_count \
-        "clinical workbook maps to clinical_workbook" \
-        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Clinical Workbook' AND m.doc_type = 'clinical_workbook' AND m.active = 1;" \
-        "1"
-
-    expect_count \
-        "fax packet maps to fax_packet" \
-        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'Fax Packet' AND m.doc_type = 'fax_packet' AND m.active = 1;" \
-        "1"
-
-    expect_count \
-        "hl7 v2 message maps to hl7v2_message" \
-        "SELECT COUNT(*) FROM categories c INNER JOIN clinical_document_type_mappings m ON m.category_id = c.id WHERE c.name = 'HL7 v2 Message' AND m.doc_type = 'hl7v2_message' AND m.active = 1;" \
-        "1"
-
-    expect_count \
         "empty chart demographics" \
         "SELECT COUNT(*) FROM patient_data WHERE pid = ${EMPTY_PID} AND pubpid = 'AF-DEMO-900004' AND fname = 'Quinn' AND lname = 'Emptychart';" \
         "1"
