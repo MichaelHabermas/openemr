@@ -94,7 +94,7 @@ run_step "Run AgentForge deterministic evals" \
     php agent-forge/scripts/run-evals.php
 
 run_step "Run focused AgentForge PHPStan" \
-    composer phpstan -- --error-format=raw \
+    env COMPOSER_PROCESS_TIMEOUT=900 composer phpstan -- --error-format=raw \
         src/AgentForge \
         interface/patient_file/summary/agent_request.php \
         tests/Tests/Isolated/AgentForge
