@@ -1494,6 +1494,18 @@ INSERT INTO care_team_member (
     'Care coordinator for referrals and prior auth.',
     1,
     1
+),
+(
+    @alex_care_team_id,
+    @af_clin_smoke_user_id,
+    NULL,
+    'healthcare_professional',
+    3,
+    '2025-12-01',
+    'active',
+    'AgentForge clinician smoke user (non-admin chart access for Co-Pilot QA).',
+    1,
+    1
 );
 
 INSERT INTO openemr_postcalendar_events (

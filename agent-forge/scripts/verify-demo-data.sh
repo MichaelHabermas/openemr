@@ -364,7 +364,7 @@ main() {
     expect_count \
         "alex care team active members" \
         "SELECT COUNT(*) FROM care_team_member ctm INNER JOIN care_teams ct ON ct.id = ctm.care_team_id WHERE ct.pid = ${DEMO_PID} AND ctm.status = 'active';" \
-        "4"
+        "5"
 
     expect_count \
         "alex primary insurance row" \
