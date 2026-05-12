@@ -396,6 +396,16 @@ main() {
         "SELECT COUNT(*) FROM care_team_member ctm INNER JOIN care_teams ct ON ct.id = ctm.care_team_id WHERE ct.pid = ${POLY_PID};" \
         "2"
 
+    expect_count \
+        "acl smoke clinician user and group" \
+        "SELECT COUNT(*) FROM users u INNER JOIN gacl_aro a ON a.section_value = 'users' AND a.value = u.username INNER JOIN gacl_groups_aro_map m ON m.aro_id = a.id INNER JOIN gacl_aro_groups g ON g.id = m.group_id WHERE u.username = 'agentforge_clinician_smoke' AND u.active = 1 AND g.value = 'clin';" \
+        "1"
+
+    expect_count \
+        "acl smoke front desk user and group" \
+        "SELECT COUNT(*) FROM users u INNER JOIN gacl_aro a ON a.section_value = 'users' AND a.value = u.username INNER JOIN gacl_groups_aro_map m ON m.aro_id = a.id INNER JOIN gacl_aro_groups g ON g.id = m.group_id WHERE u.username = 'agentforge_frontdesk_smoke' AND u.active = 1 AND g.value = 'front';" \
+        "1"
+
     if [[ "${FAILURES}" -gt 0 ]]; then
         printf 'Demo data verification failed: %s check(s) failed.\n' "${FAILURES}" >&2
         exit 1
