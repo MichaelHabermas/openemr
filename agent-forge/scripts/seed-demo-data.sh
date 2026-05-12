@@ -53,6 +53,7 @@ main() {
     printf 'Seeding AgentForge demo data from %s\n' "${SQL_FILE}"
     mysql_exec < "${sql_path}"
     printf 'PASS seed: fake demo patients pid=900001,900002,900003,900004,900005,900006,900101,900102,900103,900104,900105,900106,900107 loaded.\n'
+    printf 'PASS seed: ACL smoke users agentforge_clinician_smoke (Clinicians) and agentforge_frontdesk_smoke (Front Office); password hash copied from admin at seed time.\n'
 }
 
 main "$@"

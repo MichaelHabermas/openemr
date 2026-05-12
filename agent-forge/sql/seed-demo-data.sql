@@ -1,5 +1,7 @@
 -- AgentForge demo data.
--- Idempotent for fake patients pid=900001-900006 and 900101-900107. This script never drops tables.
+-- Idempotent for fake patients pid=900001-900006 and 900101-900107; ACL smoke users
+-- agentforge_clinician_smoke (Clinicians) and agentforge_frontdesk_smoke (Front Office).
+-- This script never drops tables.
 
 SET @demo_pid := 900001;
 SET @demo_pubpid := 'AF-DEMO-900001';
@@ -46,21 +48,55 @@ SET @ct_nurse_user_id := 900201;
 SET @ct_nurse_username := 'af_demo_ct_nurse';
 SET @ct_spec_user_id := 900202;
 SET @ct_spec_username := 'af_demo_ct_specialist';
+SET @af_clin_smoke_user_id := 900203;
+SET @af_clin_smoke_username := 'agentforge_clinician_smoke';
+SET @af_front_smoke_user_id := 900204;
+SET @af_front_smoke_username := 'agentforge_frontdesk_smoke';
 SET @admin_acl_group_id := 11;
 
 START TRANSACTION;
 
-DELETE FROM gacl_groups_aro_map WHERE aro_id IN (@unrelated_aro_id, @ct_nurse_user_id, @ct_spec_user_id);
+DELETE FROM gacl_groups_aro_map WHERE aro_id IN (
+    @unrelated_aro_id,
+    @ct_nurse_user_id,
+    @ct_spec_user_id,
+    @af_clin_smoke_user_id,
+    @af_front_smoke_user_id
+);
 DELETE FROM gacl_aro
-WHERE id IN (@unrelated_aro_id, @ct_nurse_user_id, @ct_spec_user_id)
-    OR (section_value = 'users' AND value IN (@unrelated_username, @ct_nurse_username, @ct_spec_username));
-DELETE FROM groups WHERE user IN (@unrelated_username, @ct_nurse_username, @ct_spec_username);
+WHERE id IN (@unrelated_aro_id, @ct_nurse_user_id, @ct_spec_user_id, @af_clin_smoke_user_id, @af_front_smoke_user_id)
+    OR (section_value = 'users' AND value IN (
+        @unrelated_username,
+        @ct_nurse_username,
+        @ct_spec_username,
+        @af_clin_smoke_username,
+        @af_front_smoke_username
+    ));
+DELETE FROM groups WHERE user IN (
+    @unrelated_username,
+    @ct_nurse_username,
+    @ct_spec_username,
+    @af_clin_smoke_username,
+    @af_front_smoke_username
+);
 DELETE FROM users_secure
-WHERE id IN (@unrelated_user_id, @ct_nurse_user_id, @ct_spec_user_id)
-    OR username IN (@unrelated_username, @ct_nurse_username, @ct_spec_username);
+WHERE id IN (@unrelated_user_id, @ct_nurse_user_id, @ct_spec_user_id, @af_clin_smoke_user_id, @af_front_smoke_user_id)
+    OR username IN (
+        @unrelated_username,
+        @ct_nurse_username,
+        @ct_spec_username,
+        @af_clin_smoke_username,
+        @af_front_smoke_username
+    );
 DELETE FROM users
-WHERE id IN (@unrelated_user_id, @ct_nurse_user_id, @ct_spec_user_id)
-    OR username IN (@unrelated_username, @ct_nurse_username, @ct_spec_username);
+WHERE id IN (@unrelated_user_id, @ct_nurse_user_id, @ct_spec_user_id, @af_clin_smoke_user_id, @af_front_smoke_user_id)
+    OR username IN (
+        @unrelated_username,
+        @ct_nurse_username,
+        @ct_spec_username,
+        @af_clin_smoke_username,
+        @af_front_smoke_username
+    );
 
 DELETE ctm
 FROM care_team_member ctm
@@ -576,6 +612,160 @@ INSERT INTO gacl_groups_aro_map (
     @admin_acl_group_id,
     @ct_spec_user_id
 );
+
+INSERT INTO users (
+    id,
+    uuid,
+    username,
+    password,
+    authorized,
+    fname,
+    lname,
+    facility_id,
+    active,
+    calendar
+)
+SELECT
+    @af_clin_smoke_user_id,
+    UNHEX(REPLACE('90020300-0000-4000-8000-000000000001', '-', '')),
+    @af_clin_smoke_username,
+    password,
+    1,
+    'AgentForge',
+    'ClinicianSmoke',
+    facility_id,
+    1,
+    0
+FROM users
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO users_secure (
+    id,
+    username,
+    password,
+    last_update_password
+)
+SELECT
+    @af_clin_smoke_user_id,
+    @af_clin_smoke_username,
+    password,
+    NOW()
+FROM users_secure
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO groups (
+    name,
+    user
+) VALUES (
+    @demo_group,
+    @af_clin_smoke_username
+);
+
+INSERT INTO gacl_aro (
+    id,
+    section_value,
+    value,
+    order_value,
+    name,
+    hidden
+) VALUES (
+    @af_clin_smoke_user_id,
+    'users',
+    @af_clin_smoke_username,
+    @af_clin_smoke_user_id,
+    'AgentForge Clinician Smoke',
+    0
+);
+
+INSERT INTO gacl_groups_aro_map (
+    group_id,
+    aro_id
+)
+SELECT
+    g.id,
+    @af_clin_smoke_user_id
+FROM gacl_aro_groups g
+WHERE g.value = 'clin'
+LIMIT 1;
+
+INSERT INTO users (
+    id,
+    uuid,
+    username,
+    password,
+    authorized,
+    fname,
+    lname,
+    facility_id,
+    active,
+    calendar
+)
+SELECT
+    @af_front_smoke_user_id,
+    UNHEX(REPLACE('90020400-0000-4000-8000-000000000001', '-', '')),
+    @af_front_smoke_username,
+    password,
+    0,
+    'AgentForge',
+    'FrontdeskSmoke',
+    facility_id,
+    1,
+    0
+FROM users
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO users_secure (
+    id,
+    username,
+    password,
+    last_update_password
+)
+SELECT
+    @af_front_smoke_user_id,
+    @af_front_smoke_username,
+    password,
+    NOW()
+FROM users_secure
+WHERE username = @demo_user
+LIMIT 1;
+
+INSERT INTO groups (
+    name,
+    user
+) VALUES (
+    @demo_group,
+    @af_front_smoke_username
+);
+
+INSERT INTO gacl_aro (
+    id,
+    section_value,
+    value,
+    order_value,
+    name,
+    hidden
+) VALUES (
+    @af_front_smoke_user_id,
+    'users',
+    @af_front_smoke_username,
+    @af_front_smoke_user_id,
+    'AgentForge Front Desk Smoke',
+    0
+);
+
+INSERT INTO gacl_groups_aro_map (
+    group_id,
+    aro_id
+)
+SELECT
+    g.id,
+    @af_front_smoke_user_id
+FROM gacl_aro_groups g
+WHERE g.value = 'front'
+LIMIT 1;
 
 INSERT INTO lists (
     uuid,
